@@ -1,7 +1,14 @@
 """
 BagHolderAI - Exchange Connection
 Handles connection to Binance via ccxt.
-Supports both testnet (paper trading) and live mode.
+
+Paper trading: connects to LIVE Binance (read-only) for real prices.
+Live trading: connects to LIVE Binance (read + trade).
+
+We don't use Binance testnet because:
+- Testnet requires separate API keys
+- Testnet prices are fake and don't reflect real market
+- Our paper trading simulates fills internally, it just needs real prices
 """
 
 import ccxt
@@ -11,12 +18,11 @@ from config.settings import ExchangeConfig, TradingMode
 def create_exchange() -> ccxt.binance:
     """
     Create and return a configured Binance exchange instance.
-    Automatically uses testnet if TRADING_MODE=paper.
+    Paper mode: no API keys needed, just reads public price data.
+    Live mode: requires API keys for trading.
     """
     config = {
-        "apiKey": ExchangeConfig.API_KEY,
-        "secret": ExchangeConfig.SECRET,
-        "sandbox": ExchangeConfig.TESTNET,  # ccxt sandbox = testnet
+        "sandbox": False,  # Always use live API for real prices
         "enableRateLimit": True,
         "options": {
             "defaultType": "spot",
@@ -24,11 +30,12 @@ def create_exchange() -> ccxt.binance:
         },
     }
     
-    exchange = ccxt.binance(config)
+    # Only include API keys in live mode
+    if TradingMode.is_live():
+        config["apiKey"] = ExchangeConfig.API_KEY
+        config["secret"] = ExchangeConfig.SECRET
     
-    # Set testnet URLs if paper trading
-    if TradingMode.is_paper():
-        exchange.set_sandbox_mode(True)
+    exchange = ccxt.binance(config)
     
     return exchange
 
@@ -36,21 +43,26 @@ def create_exchange() -> ccxt.binance:
 def test_connection(exchange: ccxt.binance) -> dict:
     """
     Test the exchange connection. Returns account info or error.
-    Safe to call — only reads, never trades.
+    Paper mode: just fetches a price (no auth needed).
+    Live mode: also checks balance (needs auth).
     """
     try:
-        # Fetch server time (no auth needed)
-        server_time = exchange.fetch_time()
+        # Fetch a real price — proves connection works
+        ticker = exchange.fetch_ticker("BTC/USDT")
         
-        # Try to fetch balance (needs auth)
-        balance = exchange.fetch_balance()
-        
-        return {
+        result = {
             "status": "connected",
-            "mode": "testnet" if TradingMode.is_paper() else "LIVE",
-            "server_time": server_time,
-            "total_usdt": balance.get("USDT", {}).get("total", 0),
+            "mode": "PAPER (live prices)" if TradingMode.is_paper() else "LIVE",
+            "btc_price": ticker["last"],
         }
+        
+        # In live mode, also check balance
+        if TradingMode.is_live():
+            balance = exchange.fetch_balance()
+            result["total_usdt"] = balance.get("USDT", {}).get("total", 0)
+        
+        return result
+        
     except ccxt.AuthenticationError:
         return {
             "status": "auth_error",
@@ -66,3 +78,11 @@ def test_connection(exchange: ccxt.binance) -> dict:
             "status": "error",
             "message": str(e),
         }
+
+
+def fetch_ticker(exchange: ccxt.binance, symbol: str) -> dict:
+    """
+    Fetch current ticker for a symbol. No auth needed.
+    Returns: {"last": price, "bid": bid, "ask": ask, "volume": vol}
+    """
+    return exchange.fetch_ticker(symbol)

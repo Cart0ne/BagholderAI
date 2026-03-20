@@ -1,0 +1,11 @@
+# Secrets
+config/.env
+
+# Python
+__pycache__/
+*.pyc
+venv/
+.DS_Store
+
+# Old files
+*_old*

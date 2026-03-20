@@ -29,12 +29,10 @@ def print_banner():
 def print_status():
     """Print current configuration and status."""
     mode = "🟡 PAPER TRADING" if TradingMode.is_paper() else "🔴 LIVE TRADING"
-    testnet = "Yes" if ExchangeConfig.TESTNET else "NO — REAL MONEY"
     api_configured = "Yes" if ExchangeConfig.API_KEY else "No — needs .env"
     
     print(f"""
     Mode:           {mode}
-    Testnet:        {testnet}
     API configured: {api_configured}
     
     === Hardcoded Rules ===
@@ -70,7 +68,9 @@ def run_test():
     
     if result["status"] == "connected":
         print(f"  ✅ Connected ({result['mode']})")
-        print(f"  USDT balance: {result['total_usdt']}")
+        print(f"  BTC/USDT: ${result['btc_price']:,.2f}")
+        if "total_usdt" in result:
+            print(f"  USDT balance: {result['total_usdt']}")
     else:
         print(f"  ❌ {result['status']}: {result.get('message', 'Unknown error')}")
     
@@ -90,11 +90,6 @@ def main():
     
     # Normal startup
     print_status()
-    
-    if not ExchangeConfig.API_KEY:
-        print("  ⚠️  No API key configured. Set up your .env file first.")
-        print("  Copy config/.env.example to config/.env and fill in your keys.")
-        return
     
     result = run_test()
     if result["status"] != "connected":
