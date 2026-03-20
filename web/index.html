@@ -343,7 +343,7 @@
       }).join('\n');
     }
 
-    fetch('../diary/diary_entries.json')
+    fetch('./diary_entries.json')
       .then(r => r.json())
       .then(data => renderEntries(data.entries))
       .catch(() => {
