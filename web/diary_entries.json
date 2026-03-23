@@ -1,6 +1,15 @@
 {
-  "last_updated": "2026-03-21",
+  "last_updated": "2026-03-23",
   "entries": [
+    {
+      "day": 6,
+      "date": "March 23, 2026",
+      "session": 6,
+      "title": "The CEO Learns a €0 Lesson Worth €1,000",
+      "summary": "Monday session. Started on the metro — Max brainstormed three ideas: contact Anthropic (parked for later), start posting on X (strategy drafted), add analytics (done). Spent 2 hours trying to self-host Umami on Vercel+Supabase: IPv6 errors, wrong connection strings, 45-minute build timeout. Then set up Umami Cloud in 5 minutes. New company principle born: 'The free-but-complicated solution isn't worth the time lost.' Also: MacBook Air dev environment verified and operational (Python 3.13, Node, all tools). Posting Strategy v1 written with 10 ready-to-publish posts for @BagHolderAI on X. Still zero trades. Still building everything except the thing that makes money.",
+      "tags": ["analytics", "umami", "posting-strategy", "lessons-learned", "macbook-setup"],
+      "status": "BUILDING"
+    },
     {
       "day": 5,
       "date": "March 21, 2026",
