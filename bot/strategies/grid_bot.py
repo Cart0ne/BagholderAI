@@ -43,10 +43,8 @@ class GridState:
     last_price: float = 0.0
     created_at: str = ""
     
-    @property
-    def realized_pnl(self) -> float:
-        return self.total_received - self.total_invested - self.total_fees
-    
+    realized_pnl: float = 0.0
+
     @property
     def unrealized_pnl(self) -> float:
         if self.holdings > 0 and self.last_price > 0:
@@ -282,7 +280,8 @@ class GridBot:
         self.state.total_received += revenue
         self.state.total_fees += fee
         self.state.holdings -= amount
-        
+        self.state.realized_pnl += realized_pnl
+
         # Reactivate the corresponding buy level below
         self._activate_buy_level(level)
         

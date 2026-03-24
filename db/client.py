@@ -38,6 +38,7 @@ class TradeLogger:
         exchange_order_id: Optional[str] = None,
         realized_pnl: Optional[float] = None,
         buy_trade_id: Optional[str] = None,
+        cost: Optional[float] = None,
     ) -> dict:
         """Log a trade to the database."""
         data = {
@@ -45,7 +46,7 @@ class TradeLogger:
             "side": side,
             "amount": amount,
             "price": price,
-            "cost": round(amount * price, 8),
+            "cost": round(cost, 8) if cost is not None else round(amount * price, 8),
             "fee": fee,
             "strategy": strategy,
             "brain": brain,

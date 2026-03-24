@@ -11,6 +11,7 @@ Usage:
 
 import asyncio
 import logging
+import threading
 from datetime import date, datetime
 from typing import Optional
 
@@ -135,17 +136,25 @@ class TelegramNotifier:
 
 # === Sync wrappers for use in non-async code ===
 
+_loop = None
+_thread = None
+
+
+def _get_loop():
+    """Get or create a persistent event loop in a background thread."""
+    global _loop, _thread
+    if _loop is None or _loop.is_closed():
+        _loop = asyncio.new_event_loop()
+        _thread = threading.Thread(target=_loop.run_forever, daemon=True)
+        _thread.start()
+    return _loop
+
+
 def _run_async(coro):
-    """Run an async function from sync code."""
-    try:
-        loop = asyncio.get_running_loop()
-        # If there's already a loop, create a task
-        import concurrent.futures
-        with concurrent.futures.ThreadPoolExecutor() as pool:
-            return pool.submit(asyncio.run, coro).result()
-    except RuntimeError:
-        # No loop running, safe to use asyncio.run
-        return asyncio.run(coro)
+    """Run an async function from sync code using a persistent loop."""
+    loop = _get_loop()
+    future = asyncio.run_coroutine_threadsafe(coro, loop)
+    return future.result(timeout=10)
 
 
 class SyncTelegramNotifier:
