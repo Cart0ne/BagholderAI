@@ -87,6 +87,17 @@ class TradeLogger:
         )
         return result.count or 0
 
+    def get_today_trades(self) -> list:
+        """Fetch all of today's trades."""
+        today = date.today().isoformat()
+        result = (
+            self.client.table("trades")
+            .select("*")
+            .gte("created_at", f"{today}T00:00:00")
+            .order("created_at", desc=True)
+            .execute()
+        )
+        return result.data or []
 
 class PortfolioManager:
     """Manages current holdings."""

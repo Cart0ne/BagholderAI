@@ -13,7 +13,8 @@ import sys
 import time
 import logging
 import argparse
-from datetime import datetime
+from datetime import datetime, date
+from utils.telegram_notifier import SyncTelegramNotifier
 
 # Setup logging
 logging.basicConfig(
@@ -87,7 +88,10 @@ def run_grid_bot(once: bool = False, dry_run: bool = False):
         trade_logger = TradeLogger()
         portfolio_manager = PortfolioManager()
         pnl_tracker = DailyPnLTracker()
-    
+ 
+    # Initialize Telegram
+    notifier = SyncTelegramNotifier()
+ 
     # Create grid bot
     bot = GridBot(
         exchange=exchange,
@@ -119,7 +123,9 @@ def run_grid_bot(once: bool = False, dry_run: bool = False):
         amount_str = f" ({level.order_amount:.6f} BTC)" if level.order_amount > 0 else ""
         logger.info(f"  ${level.price:>10,.2f}  {marker}{amount_str}")
     logger.info(f"  Current price: ${price:,.2f}")
-    
+ 
+    notifier.send_bot_started(bot.get_status())
+
     if once:
         logger.info("Single cycle mode — checking once and exiting.")
         trades = bot.check_price_and_execute(price)
@@ -130,6 +136,9 @@ def run_grid_bot(once: bool = False, dry_run: bool = False):
     logger.info(f"Starting main loop (checking every {CHECK_INTERVAL}s)...")
     logger.info("Press Ctrl+C to stop.\n")
     
+    daily_report_sent = None  # Track which date we sent the report
+    REPORT_HOUR = 21  # Send daily report at 21:00
+
     cycle = 0
     while True:
         try:
@@ -152,10 +161,22 @@ def run_grid_bot(once: bool = False, dry_run: bool = False):
                         f"{emoji} {t['side'].upper()} {t['amount']:.6f} "
                         f"@ ${t['price']:,.2f} | {t['reason']}"
                     )
-            
+                    notifier.send_trade_alert(t)
+
             # Periodic status update (every 10 cycles = ~5 min)
             if cycle % 10 == 0:
                 _print_status(bot)
+            
+            # Daily report at 21:00
+            now = datetime.now()
+            if now.hour >= REPORT_HOUR and daily_report_sent != date.today():
+                try:
+                    today_trades = trade_logger.get_today_trades() if trade_logger else []
+                    notifier.send_daily_report(today_trades, bot.get_status())
+                    daily_report_sent = date.today()
+                    logger.info("Daily report sent via Telegram.")
+                except Exception as e:
+                    logger.error(f"Failed to send daily report: {e}")
             
             # Check daily P&L limit (hardcoded rule)
             if bot.state.realized_pnl < HardcodedRules.STRATEGY_A_MIN_DAILY_PNL:
@@ -174,6 +195,8 @@ def run_grid_bot(once: bool = False, dry_run: bool = False):
             logger.error(f"Error in main loop: {e}")
             time.sleep(CHECK_INTERVAL)  # wait and retry
     
+    notifier.send_bot_stopped(bot.get_status(), reason="manual")
+   
     # Final status
     logger.info("\n" + "=" * 50)
     logger.info("FINAL STATUS")
