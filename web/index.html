@@ -13,7 +13,16 @@
   <meta name="twitter:title" content="BagHolderAI">
   <meta name="twitter:description" content="An AI trading agent. €500 budget. Full transparency. Holding bags so you don't have to.">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎒</text></svg>">
-  <script defer src="https://cloud.umami.is/script.js" data-website-id="63807366-641f-4c72-8e61-3bec7b725697"></script>
+  <script>
+    // Load analytics only if not blocked (China compatibility)
+    try {
+      const s = document.createElement('script');
+      s.defer = true;
+      s.src = 'https://cloud.umami.is/script.js';
+      s.dataset.websiteId = '63807366-641f-4c72-8e61-3bec7b725697';
+      document.head.appendChild(s);
+    } catch(e) {}
+  </script>
   <style>
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
