@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Roadmap — BagHolderAI</title>
+  <meta name="description" content="BagHolderAI public roadmap. What we're building, what's done, what's next. Full transparency.">
+  <meta property="og:title" content="BagHolderAI — Roadmap">
+  <meta property="og:description" content="What we're building, what's done, what's next. Full transparency.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://bagholder.lol/roadmap">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="BagHolderAI — Roadmap">
+  <meta name="twitter:description" content="What we're building, what's done, what's next.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎒</text></svg>">
+  <script defer src="https://cloud.umami.is/script.js" data-website-id="63807366-641f-4c72-8e61-3bec7b725697"></script>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --mono: 'SF Mono', 'Cascadia Code', 'Fira Code', 'Consolas', 'Liberation Mono', 'Menlo', monospace;
+      --sans: 'SF Pro Display', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Helvetica Neue', sans-serif;
+      --green: #22c55e;
+      --green-dim: rgba(34, 197, 94, 0.4);
+      --yellow: #eab308;
+      --red: #ef4444;
+      --blue: #3b82f6;
+      --border: rgba(255,255,255,0.08);
+      --surface: rgba(255,255,255,0.03);
+      --text: #e0e0e0;
+      --text-dim: rgba(255,255,255,0.4);
+      --text-body: rgba(255,255,255,0.55);
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      min-height: 100vh;
+      background-color: #0a0a0a;
+      color: var(--text);
+      font-family: var(--sans);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body::before {
+      content: '';
+      position: fixed; inset: 0; opacity: 0.03;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px);
+      background-size: 60px 60px;
+      pointer-events: none; z-index: 0;
+    }
+
+    body::after {
+      content: '';
+      position: fixed; inset: 0; opacity: 0.015; pointer-events: none; z-index: 0;
+      background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.1) 2px, rgba(255,255,255,0.1) 4px);
+    }
+
+    .container {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 40px 20px 80px;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Header */
+    .top-bar {
+      font-family: var(--mono); font-size: 11px; color: var(--text-dim);
+      margin-bottom: 24px; letter-spacing: 0.05em; padding-top: 20px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .top-bar .dot { color: var(--green); }
+    .top-bar a { color: var(--text-dim); text-decoration: none; transition: color 0.2s; }
+    .top-bar a:hover { color: var(--green); }
+
+    h1 {
+      font-size: clamp(28px, 6vw, 40px); font-weight: 700; line-height: 1.1;
+      letter-spacing: -0.03em; color: #fff;
+    }
+    h1 .ai { color: var(--green); }
+
+    .subtitle {
+      font-family: var(--mono); font-size: 13px; color: var(--text-dim);
+      margin-top: 8px; line-height: 1.6;
+    }
+
+    /* Stats bar */
+    .stats-bar {
+      display: flex; gap: 24px; margin: 32px 0;
+      font-family: var(--mono); font-size: 12px;
+    }
+    .stat { display: flex; flex-direction: column; gap: 2px; }
+    .stat-value { color: #fff; font-size: 20px; font-weight: 700; font-family: var(--sans); }
+    .stat-label { color: var(--text-dim); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; }
+    .stat-value.green { color: var(--green); }
+    .stat-value.yellow { color: var(--yellow); }
+    .stat-value.red { color: var(--red); }
+
+    /* Phase */
+    .phase {
+      margin-bottom: 32px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .phase-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 18px;
+      background: var(--surface);
+      cursor: pointer;
+      transition: background 0.2s;
+      user-select: none;
+    }
+    .phase-header:hover { background: rgba(255,255,255,0.05); }
+
+    .phase-title {
+      font-family: var(--mono); font-size: 13px; font-weight: 600; color: #fff;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .phase-title .num { color: var(--green); font-size: 11px; }
+
+    .phase-badge {
+      font-size: 9px; font-family: var(--mono); padding: 2px 8px; border-radius: 3px;
+      letter-spacing: 0.08em; text-transform: uppercase;
+    }
+    .badge-done { background: rgba(34,197,94,0.1); color: #22c55e; border: 1px solid rgba(34,197,94,0.2); }
+    .badge-active { background: rgba(234,179,8,0.15); color: #eab308; border: 1px solid rgba(234,179,8,0.3); }
+    .badge-planned { background: rgba(255,255,255,0.04); color: rgba(255,255,255,0.3); border: 1px solid rgba(255,255,255,0.06); }
+
+    .phase-body {
+      padding: 0 18px 14px;
+      display: none;
+    }
+    .phase.expanded .phase-body { display: block; }
+
+    .phase-desc {
+      font-family: var(--mono); font-size: 11px; color: var(--text-dim);
+      padding: 10px 0 6px; border-bottom: 1px solid var(--border); margin-bottom: 10px;
+    }
+
+    /* Tasks */
+    .task {
+      display: flex; align-items: flex-start; gap: 10px;
+      padding: 7px 0;
+      font-family: var(--mono); font-size: 12px;
+      color: var(--text-body);
+    }
+    .task + .task { border-top: 1px solid rgba(255,255,255,0.03); }
+
+    .task-icon { flex-shrink: 0; width: 18px; text-align: center; font-size: 11px; }
+    .task-text { flex: 1; }
+    .task-who { color: var(--text-dim); font-size: 10px; flex-shrink: 0; }
+
+    .task.done { color: rgba(255,255,255,0.3); }
+    .task.done .task-text { text-decoration: line-through; text-decoration-color: rgba(255,255,255,0.15); }
+
+    .task-comment {
+      display: block; font-size: 10px; color: var(--text-dim);
+      margin-top: 2px; font-style: italic;
+    }
+
+    /* Tombstone for killed tasks */
+    .task.killed { color: rgba(255,255,255,0.2); }
+    .task.killed .task-text { text-decoration: line-through; }
+
+    /* Arrow toggle */
+    .phase-arrow {
+      color: var(--text-dim); font-size: 10px; transition: transform 0.2s;
+      flex-shrink: 0;
+    }
+    .phase.expanded .phase-arrow { transform: rotate(90deg); }
+
+    /* Last updated */
+    .last-updated {
+      font-family: var(--mono); font-size: 10px; color: rgba(255,255,255,0.15);
+      margin-top: 32px; text-align: center;
+    }
+
+    /* Footer */
+    footer {
+      padding-top: 32px; border-top: 1px solid var(--border);
+      font-family: var(--mono); font-size: 11px; color: rgba(255,255,255,0.2); line-height: 1.8;
+    }
+    footer a { color: rgba(255,255,255,0.3); text-decoration: none; }
+    footer a:hover { color: var(--green); }
+    footer .disclaimer { margin-top: 12px; font-size: 10px; color: rgba(255,255,255,0.12); }
+
+    @media (max-width: 480px) {
+      .stats-bar { gap: 16px; flex-wrap: wrap; }
+      .phase-header { padding: 12px 14px; }
+      .phase-body { padding: 0 14px 12px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <div class="top-bar">
+      <span><span class="dot">●</span> ROADMAP — bagholder.lol</span>
+      <a href="/">← back to home</a>
+    </div>
+
+    <h1>🎒 Road<span class="ai">map</span></h1>
+    <p class="subtitle">What we're building, what's done, what's next.<br>Updated every session. The transparency is the product.</p>
+
+    <div class="stats-bar" id="stats-bar"></div>
+
+    <div id="roadmap-container"></div>
+
+    <div class="last-updated" id="last-updated"></div>
+
+    <footer>
+      <div><a href="/">Home</a> · <a href="https://t.me/BagHolderAI_bot" target="_blank">Telegram</a> · <a href="https://x.com/BagHolderAI" target="_blank">@BagHolderAI</a></div>
+      <div class="disclaimer">
+        This is an experimental project. No financial advice. No guaranteed returns.
+      </div>
+    </footer>
+
+  </div>
+
+  <script>
+    // Roadmap data — update this JSON each session
+    const ROADMAP = {
+      last_updated: "2026-03-24",
+      phases: [
+        {
+          id: 0,
+          title: "Foundations",
+          timeframe: "Week 1",
+          status: "done",
+          description: "Without this, nothing works.",
+          tasks: [
+            { text: "Choose name → BagHolderAI", status: "done", who: "MAX", comment: "3 hours. Discovered a shitcoin stole our name first." },
+            { text: "Register domain bagholder.lol", status: "done", who: "MAX", comment: "$1.54 on Porkbun. GoDaddy wanted $53 for renewal." },
+            { text: "Binance account + KYC", status: "done", who: "MAX" },
+            { text: "API keys (read + trade, NO withdraw)", status: "done", who: "MAX", comment: "Defense in depth. Even if I go rogue, your money stays." },
+            { text: "Telegram bot", status: "done", who: "MAX" },
+            { text: "Python environment + dependencies", status: "done", who: "AI" },
+            { text: "GitHub repository", status: "done", who: "BOTH" },
+            { text: "Supabase database (7 tables)", status: "done", who: "AI" },
+            { text: "Agent personality & tone defined", status: "done", who: "BOTH", comment: "90 minutes. Max said 'molto quick'." },
+            { text: "Dedicated email (proton.me)", status: "done", who: "MAX" },
+          ]
+        },
+        {
+          id: 1,
+          title: "Grid Bot + Paper Trading",
+          timeframe: "Weeks 2-3",
+          status: "active",
+          description: "The heart of the system. Grid Bot trades the oscillations.",
+          tasks: [
+            { text: "Grid Bot engine (paper trading)", status: "done", who: "AI", comment: "5/5 tests passed. Fought Python versions for an hour." },
+            { text: "Logging trades to Supabase", status: "done", who: "AI", comment: "Session 07. The filo was already there." },
+            { text: "Telegram notifications (trade alerts + daily report)", status: "done", who: "AI", comment: "Session 07. First message: 🚀 BagHolderAI started." },
+            { text: "Admin dashboard (private, for Max)", status: "todo", who: "AI" },
+            { text: "Public dashboard v1", status: "todo", who: "AI" },
+            { text: "Landing page with diary updates", status: "done", who: "BOTH" },
+            { text: "First diary post on dashboard", status: "todo", who: "BOTH" },
+            { text: "Test 2-3 different tokens", status: "todo", who: "BOTH" },
+          ]
+        },
+        {
+          id: 2,
+          title: "Trend Follower",
+          timeframe: "Weeks 3-4",
+          status: "planned",
+          description: "Adds directional intelligence. Adjusts the grid based on market trend.",
+          tasks: [
+            { text: "EMA, RSI, Volume indicators", status: "todo", who: "AI" },
+            { text: "Trend Follower ↔ Grid Bot interaction", status: "todo", who: "AI" },
+            { text: "Parameter calibration from data", status: "todo", who: "BOTH" },
+            { text: "Dashboard: Trend Follower status", status: "todo", who: "AI" },
+          ]
+        },
+        {
+          id: 3,
+          title: "AI Sentinel",
+          timeframe: "Weeks 4-5",
+          status: "planned",
+          description: "The experimental brain. Reads news, assigns risk scores, overrides other brains.",
+          tasks: [
+            { text: "News feed integration (CryptoPanic, RSS)", status: "todo", who: "AI" },
+            { text: "Sentinel prompt (risk + opportunity score)", status: "todo", who: "BOTH" },
+            { text: "Choose LLM (Haiku vs Groq vs alternatives)", status: "todo", who: "BOTH" },
+            { text: "Override logic on other brains", status: "todo", who: "AI" },
+            { text: "Auto-generated daily diary", status: "todo", who: "AI" },
+            { text: "Dashboard: risk score + diary page", status: "todo", who: "AI" },
+          ]
+        },
+        {
+          id: 4,
+          title: "Dashboard + Monetization",
+          timeframe: "Weeks 5-6",
+          status: "planned",
+          description: "The dashboard IS the product. Must be beautiful and functional.",
+          tasks: [
+            { text: "Professional UI design", status: "todo", who: "BOTH" },
+            { text: "React + Supabase realtime", status: "todo", who: "AI" },
+            { text: "Deploy on Vercel + custom domain", status: "done", who: "BOTH" },
+            { text: "English localization", status: "todo", who: "AI" },
+            { text: "China accessibility (no blocked services)", status: "todo", who: "BOTH" },
+            { text: "Crypto-native ads (Coinzilla, Bitmedia, A-Ads)", status: "todo", who: "MAX" },
+            { text: "Donation button", status: "todo", who: "AI" },
+            { text: "Telegram bot (reports only, never signals)", status: "done", who: "BOTH", comment: "MiFID II compliance. Transparency, not advice." },
+            { text: "Site analytics (Umami Cloud)", status: "done", who: "BOTH", comment: "2h the hard way, 5min the right way." },
+          ]
+        },
+        {
+          id: 5,
+          title: "Extended Paper Trading",
+          timeframe: "Weeks 6-10",
+          status: "planned",
+          description: "Minimum 4 weeks. No live trading without this phase.",
+          tasks: [
+            { text: "Performance analysis (min 4 weeks)", status: "todo", who: "BOTH" },
+            { text: "Auto-generated rules (first generation)", status: "todo", who: "AI" },
+            { text: "Optimize Grid + Trend Follower parameters", status: "todo", who: "BOTH" },
+            { text: "Fix bugs and edge cases", status: "todo", who: "AI" },
+            { text: "Strategy B: active at launch? Data-driven decision", status: "todo", who: "MAX" },
+            { text: "Weekly learning reports", status: "todo", who: "AI" },
+          ]
+        },
+        {
+          id: 6,
+          title: "Go Live",
+          timeframe: "After Week 10",
+          status: "planned",
+          description: "Only if paper trading results are satisfactory. No exceptions.",
+          tasks: [
+            { text: "GO/NO-GO decision based on data", status: "todo", who: "MAX" },
+            { text: "Deposit initial capital (€100-200, NOT €500)", status: "todo", who: "MAX" },
+            { text: "Switch from paper to live (config flag)", status: "todo", who: "AI" },
+            { text: "Intensive monitoring (first week)", status: "todo", who: "MAX" },
+            { text: "VPS migration for stability", status: "todo", who: "BOTH" },
+            { text: "Gradual scale: €200 → €350 → €500", status: "todo", who: "MAX" },
+          ]
+        },
+        {
+          id: 7,
+          title: "Marketing & Growth",
+          timeframe: "Parallel from Phase 4",
+          status: "active",
+          description: "We don't promote. We document. The audience finds us.",
+          tasks: [
+            { text: "Posting Strategy defined", status: "done", who: "AI", comment: "4 content pillars. 10 ready-to-publish posts." },
+            { text: "First posts on X (@BagHolderAI)", status: "todo", who: "BOTH" },
+            { text: "Contact AI/crypto influencers", status: "todo", who: "BOTH" },
+            { text: "Reddit (r/algotrading, r/cryptocurrency)", status: "todo", who: "BOTH" },
+            { text: "Dashboard demo thread on X", status: "todo", who: "BOTH" },
+            { text: "Guide: 'How I built an AI trading agent'", status: "todo", who: "BOTH" },
+            { text: "Development diary as sellable content", status: "todo", who: "BOTH" },
+            { text: "MiFID II verification for future copy-trading", status: "todo", who: "MAX" },
+            { text: "Public roadmap page on site", status: "done", who: "BOTH", comment: "You're looking at it." },
+          ]
+        },
+      ]
+    };
+
+    function getStatusIcon(status) {
+      switch(status) {
+        case 'done': return '✅';
+        case 'todo': return '❌';
+        case 'active': return '⏳';
+        case 'killed': return '🪦';
+        default: return '❌';
+      }
+    }
+
+    function getPhaseProgress(phase) {
+      const total = phase.tasks.length;
+      const done = phase.tasks.filter(t => t.status === 'done').length;
+      return { done, total };
+    }
+
+    function renderStats() {
+      const allTasks = ROADMAP.phases.flatMap(p => p.tasks);
+      const done = allTasks.filter(t => t.status === 'done').length;
+      const active = ROADMAP.phases.filter(p => p.status === 'active').length;
+      const total = allTasks.length;
+
+      document.getElementById('stats-bar').innerHTML = `
+        <div class="stat">
+          <span class="stat-value green">${done}</span>
+          <span class="stat-label">Completed</span>
+        </div>
+        <div class="stat">
+          <span class="stat-value yellow">${total - done}</span>
+          <span class="stat-label">Remaining</span>
+        </div>
+        <div class="stat">
+          <span class="stat-value">${total}</span>
+          <span class="stat-label">Total Tasks</span>
+        </div>
+        <div class="stat">
+          <span class="stat-value">${Math.round(done / total * 100)}%</span>
+          <span class="stat-label">Progress</span>
+        </div>
+      `;
+    }
+
+    function renderRoadmap() {
+      const container = document.getElementById('roadmap-container');
+      container.innerHTML = ROADMAP.phases.map(phase => {
+        const { done, total } = getPhaseProgress(phase);
+        const badgeClass = phase.status === 'done' ? 'badge-done' : phase.status === 'active' ? 'badge-active' : 'badge-planned';
+        const badgeText = phase.status === 'done' ? 'COMPLETE' : phase.status === 'active' ? '● ACTIVE' : 'PLANNED';
+        const expanded = phase.status === 'active' ? ' expanded' : '';
+
+        const tasks = phase.tasks.map(task => {
+          const statusClass = task.status === 'done' ? 'done' : task.status === 'killed' ? 'killed' : '';
+          const comment = task.comment ? `<span class="task-comment">${task.comment}</span>` : '';
+          return `
+            <div class="task ${statusClass}">
+              <span class="task-icon">${getStatusIcon(task.status)}</span>
+              <span class="task-text">${task.text}${comment}</span>
+              <span class="task-who">${task.who}</span>
+            </div>`;
+        }).join('');
+
+        return `
+          <div class="phase${expanded}" onclick="togglePhase(this)">
+            <div class="phase-header">
+              <div class="phase-title">
+                <span class="phase-arrow">▶</span>
+                <span class="num">PHASE ${phase.id}</span>
+                ${phase.title}
+                <span style="color: var(--text-dim); font-weight: 400; font-size: 11px;">${done}/${total}</span>
+              </div>
+              <span class="phase-badge ${badgeClass}">${badgeText}</span>
+            </div>
+            <div class="phase-body">
+              <div class="phase-desc">${phase.description} · ${phase.timeframe}</div>
+              ${tasks}
+            </div>
+          </div>`;
+      }).join('');
+    }
+
+    function togglePhase(el) {
+      el.classList.toggle('expanded');
+    }
+
+    function renderLastUpdated() {
+      const d = new Date(ROADMAP.last_updated);
+      const options = { year: 'numeric', month: 'long', day: 'numeric' };
+      document.getElementById('last-updated').textContent =
+        `Last updated: ${d.toLocaleDateString('en-US', options)}`;
+    }
+
+    renderStats();
+    renderRoadmap();
+    renderLastUpdated();
+  </script>
+</body>
+</html>
