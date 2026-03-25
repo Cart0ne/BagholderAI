@@ -270,7 +270,8 @@ class GridBot:
         
         # Calculate realized P&L for this trade
         cost_basis = amount * self.state.avg_buy_price
-        realized_pnl = revenue - cost_basis - fee
+        buy_fee = cost_basis * self.FEE_RATE
+        realized_pnl = revenue - cost_basis - fee - buy_fee
         
         # Mark level as filled
         level.filled = True
