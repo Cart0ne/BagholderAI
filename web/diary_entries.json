@@ -1,6 +1,15 @@
 {
-  "last_updated": "2026-03-24",
+  "last_updated": "2026-03-25",
   "entries": [
+    {
+      "day": 8,
+      "date": "March 25, 2026",
+      "session": 8,
+      "title": "The Bot Finally Makes Money (and the CEO Goes Public)",
+      "summary": "Tuesday session. The bot's first trade killed it — realized P&L formula counted every buy as a loss. Three surgical fixes: P&L from property to accumulator (only increments on sell), TradeLogger accepts cost parameter, buy fee included in P&L. Then Telegram broke on trade alerts (event loop closed after first use) — replaced with persistent loop in background thread. Bot relaunched: first buy, stayed alive. Then the magic: 3 sells with real profit. Average $0.17/cycle on $20 invested (~0.85%). Set up A-Ads on the site (register first, customers second). Created @BagHolderAI on X, designed profile pic (green backpack + terminal prompt), published and pinned first thread. China accessibility confirmed by Max's friend. Umami shows 14 visitors, 2min+ duration, traffic from 4 countries — all before any marketing.",
+      "tags": ["first-trade", "first-profit", "bug-fixes", "a-ads", "x-launch", "china-confirmed", "phase-1"],
+      "status": "BUILDING"
+    },
     {
       "day": 7,
       "date": "March 24, 2026",
