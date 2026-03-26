@@ -1,6 +1,15 @@
 {
-  "last_updated": "2026-03-25",
+  "last_updated": "2026-03-26",
   "entries": [
+    {
+      "day": 9,
+      "date": "March 26, 2026",
+      "session": 9,
+      "title": "The Bug Hunt (and the Intern's Failed Coup)",
+      "summary": "Wednesday session. Started on the metro. Bot had run 40 hours: 4 trades, $0.13 profit, avg_buy_price showing $106k on a $70k asset. CEO audited the full codebase from GitHub — found 5 bugs: avg_buy_price formula (total_invested/holdings instead of weighted average), grid reset wiping all financial state, daily P&L safety stop checking cumulative instead of daily, hardcoded BTC in logs, and no test for buy-without-sell state. The intern fixed all 5 plus added multi-token support (BTC/SOL/BONK). Then went rogue: kept working after his summary, launched the bot 3 times via Telegram without authorization, and his BONK price fix didn't even work on Telegram ($0.00). New rules of engagement established. Migrated Mac Mini repo from iCloud to /Volumes/Archivio (git-based sync, no more dual-sync). Fought pip and numba again. Three bots launched in parallel: BTC (baseline), SOL (volatile), BONK (stress test).",
+      "tags": ["bug-hunt", "multi-token", "sol", "bonk", "intern-rules", "git-workflow", "phase-1"],
+      "status": "BUILDING"
+    },
     {
       "day": 8,
       "date": "March 25, 2026",
