@@ -221,6 +221,260 @@ def test_never_sell_at_loss():
     print("✅ Never-sell-at-loss rule working correctly\n")
 
 
+def test_avg_buy_price_accounting():
+    """Test that avg_buy_price is a correct weighted average, survives sells, and resets to 0."""
+    from bot.strategies.grid_bot import GridBot
+
+    mock_logger = MockTradeLogger()
+    bot = GridBot(
+        exchange=None,
+        trade_logger=mock_logger,
+        portfolio_manager=MockPortfolioManager(),
+        pnl_tracker=MockPnLTracker(),
+        symbol="BTC/USDT",
+        strategy="A",
+        capital=100.0,
+        num_levels=10,
+        range_percent=0.04,
+    )
+
+    bot.setup_grid(84000.0)
+
+    print("=" * 60)
+    print("TEST 5: avg_buy_price Accounting")
+    print("=" * 60)
+
+    # --- (a) Multiple buys at different prices → weighted average ---
+    buy_levels = [l for l in bot.state.levels if l.side == "buy"]
+
+    # Fill only the highest buy level first
+    highest_buy = buy_levels[-1]
+    bot.check_price_and_execute(highest_buy.price)
+    avg_after_first = bot.state.avg_buy_price
+    holdings_after_first = bot.state.holdings
+    print(f"  After buy #1 @ ${highest_buy.price:,.2f}: avg=${avg_after_first:,.2f}, holdings={holdings_after_first:.8f}")
+    assert abs(avg_after_first - highest_buy.price) < 1.0, "After single buy, avg should equal buy price"
+
+    # Drop price further — fills remaining buy levels. Track weighted average manually.
+    second_lowest = buy_levels[1]
+    # This will fill buy_levels[1], [2], [3] (indices with price >= second_lowest.price and not yet filled)
+    trades = bot.check_price_and_execute(second_lowest.price)
+    filled_in_round = [t for t in trades if t and t["side"] == "buy"]
+
+    # Compute expected weighted average: start from first buy, then add each new fill
+    weighted_sum = highest_buy.price * highest_buy.order_amount
+    total_qty = highest_buy.order_amount
+    for t in filled_in_round:
+        weighted_sum += t["price"] * t["amount"]
+        total_qty += t["amount"]
+    expected_avg = weighted_sum / total_qty
+
+    avg_after_multi = bot.state.avg_buy_price
+    print(f"  After {1 + len(filled_in_round)} buys: avg=${avg_after_multi:,.2f} (expected ${expected_avg:,.2f})")
+    assert abs(avg_after_multi - expected_avg) < 1.0, f"Weighted avg wrong: got {avg_after_multi}, expected {expected_avg}"
+    print("  ✅ (a) Weighted average correct after multiple buys")
+
+    # --- (b) avg_buy_price unchanged after a sell ---
+    avg_before_sell = bot.state.avg_buy_price
+    holdings_before_sell = bot.state.holdings
+    # Price rises above grid → trigger sells
+    sell_levels = [l for l in bot.state.levels if l.side == "sell" and l.order_amount > 0]
+    if sell_levels:
+        # Sell just one level (the lowest active sell)
+        high_price = sell_levels[0].price
+        bot.check_price_and_execute(high_price)
+        avg_after_sell = bot.state.avg_buy_price
+        print(f"  After sell: avg=${avg_after_sell:,.2f} (was ${avg_before_sell:,.2f}), holdings={bot.state.holdings:.8f}")
+        if bot.state.holdings > 0:
+            assert abs(avg_after_sell - avg_before_sell) < 0.01, "avg_buy_price must NOT change on sell"
+            print("  ✅ (b) avg_buy_price unchanged after sell (partial)")
+        else:
+            assert avg_after_sell == 0, "avg_buy_price should be 0 when holdings is 0"
+            print("  ✅ (b) avg_buy_price reset to 0 (all sold)")
+
+    # --- (c) avg_buy_price → 0 when holdings → 0 ---
+    # Sell everything remaining
+    while bot.state.holdings > 0:
+        # Force a sell level active above current avg
+        found = False
+        for level in bot.state.levels:
+            if level.side == "sell" and not level.filled:
+                level.order_amount = bot.state.holdings
+                level.price = bot.state.avg_buy_price + 500
+                found = True
+                break
+        if not found:
+            break
+        sell_price = bot.state.avg_buy_price + 500
+        trades = bot.check_price_and_execute(sell_price)
+        if not trades:
+            break
+
+    print(f"  After selling all: avg=${bot.state.avg_buy_price:,.2f}, holdings={bot.state.holdings:.8f}")
+    assert bot.state.holdings == 0, "Holdings should be 0"
+    assert bot.state.avg_buy_price == 0, "avg_buy_price should be 0 when no holdings"
+    print("  ✅ (c) avg_buy_price is 0 when holdings is 0")
+
+    # --- (d) unrealized P&L correct ---
+    # Reset and do a fresh test
+    bot.setup_grid(84000.0)
+    buy_levels_new = [l for l in bot.state.levels if l.side == "buy"]
+    bot.check_price_and_execute(buy_levels_new[-1].price)
+
+    # Check unrealized at a known price
+    test_price = 85000.0
+    bot.state.last_price = test_price
+    expected_unrealized = (test_price - bot.state.avg_buy_price) * bot.state.holdings
+    actual_unrealized = bot.state.unrealized_pnl
+    print(f"  Unrealized @ ${test_price:,.2f}: ${actual_unrealized:.4f} (expected ${expected_unrealized:.4f})")
+    assert abs(actual_unrealized - expected_unrealized) < 0.0001, "Unrealized P&L mismatch"
+
+    # Unrealized should be 0 when holdings is 0
+    bot.state.holdings = 0
+    bot.state.avg_buy_price = 0
+    bot.state.last_price = 85000.0
+    assert bot.state.unrealized_pnl == 0, "Unrealized should be 0 with no holdings"
+    print("  ✅ (d) Unrealized P&L correct in all scenarios")
+
+    print("✅ avg_buy_price accounting OK\n")
+
+
+def test_grid_reset_preserves_state():
+    """BUG 2: Grid reset must preserve accounting and activate sell levels for existing holdings."""
+    from bot.strategies.grid_bot import GridBot
+
+    mock_logger = MockTradeLogger()
+    bot = GridBot(
+        exchange=None,
+        trade_logger=mock_logger,
+        portfolio_manager=MockPortfolioManager(),
+        pnl_tracker=MockPnLTracker(),
+        symbol="BTC/USDT",
+        strategy="A",
+        capital=100.0,
+        num_levels=10,
+        range_percent=0.04,
+    )
+
+    print("=" * 60)
+    print("TEST 6: Grid Reset Preserves State")
+    print("=" * 60)
+
+    # Setup grid and execute a buy
+    bot.setup_grid(84000.0)
+    buy_levels = [l for l in bot.state.levels if l.side == "buy"]
+    bot.check_price_and_execute(buy_levels[-1].price)
+
+    # Record accounting before reset
+    holdings_before = bot.state.holdings
+    avg_buy_before = bot.state.avg_buy_price
+    invested_before = bot.state.total_invested
+    fees_before = bot.state.total_fees
+    realized_before = bot.state.realized_pnl
+    daily_pnl_before = bot.state.daily_realized_pnl
+    print(f"  Before reset: holdings={holdings_before:.8f}, avg=${avg_buy_before:,.2f}, invested=${invested_before:.2f}")
+
+    assert holdings_before > 0, "Should have holdings before reset"
+
+    # Simulate price moving far away — trigger reset
+    new_price = 90000.0
+    assert bot.should_reset_grid(new_price), "Price should be outside grid range"
+    bot.setup_grid(new_price)
+
+    print(f"  After reset:  holdings={bot.state.holdings:.8f}, avg=${bot.state.avg_buy_price:,.2f}, invested=${bot.state.total_invested:.2f}")
+
+    # Verify accounting preserved
+    assert bot.state.holdings == holdings_before, f"Holdings lost: {bot.state.holdings} != {holdings_before}"
+    assert bot.state.avg_buy_price == avg_buy_before, f"avg_buy_price lost: {bot.state.avg_buy_price} != {avg_buy_before}"
+    assert bot.state.total_invested == invested_before, f"total_invested lost"
+    assert bot.state.total_fees == fees_before, f"total_fees lost"
+    assert bot.state.realized_pnl == realized_before, f"realized_pnl lost"
+    assert bot.state.daily_realized_pnl == daily_pnl_before, f"daily_realized_pnl lost"
+    print("  ✅ Accounting preserved after reset")
+
+    # Verify sell levels have order_amount (holdings distributed)
+    sell_levels_with_amount = [l for l in bot.state.levels if l.side == "sell" and l.order_amount > 0]
+    assert len(sell_levels_with_amount) > 0, "Sell levels should have order_amount after reset with holdings"
+    total_sell_amount = sum(l.order_amount for l in sell_levels_with_amount)
+    assert abs(total_sell_amount - holdings_before) < 1e-6, f"Sell amounts ({total_sell_amount}) should equal holdings ({holdings_before})"
+    print(f"  ✅ {len(sell_levels_with_amount)} sell levels activated with total amount={total_sell_amount:.8f}")
+
+    # Verify new grid is centered on new price
+    assert bot.state.lower_bound < new_price < bot.state.upper_bound, "New grid should be centered on new price"
+    print(f"  ✅ New grid range: ${bot.state.lower_bound:,.2f} - ${bot.state.upper_bound:,.2f}")
+
+    print("✅ Grid reset preserves state OK\n")
+
+
+def test_daily_pnl_resets():
+    """BUG 3: daily_realized_pnl resets at day change, realized_pnl stays cumulative."""
+    from datetime import date
+    from bot.strategies.grid_bot import GridBot
+    from unittest.mock import patch
+
+    mock_logger = MockTradeLogger()
+    bot = GridBot(
+        exchange=None,
+        trade_logger=mock_logger,
+        portfolio_manager=MockPortfolioManager(),
+        pnl_tracker=MockPnLTracker(),
+        symbol="BTC/USDT",
+        strategy="A",
+        capital=100.0,
+        num_levels=10,
+        range_percent=0.04,
+    )
+
+    print("=" * 60)
+    print("TEST 7: Daily P&L Resets")
+    print("=" * 60)
+
+    # Day 1: setup, buy, then sell for profit
+    day1 = date(2026, 3, 26)
+    with patch("bot.strategies.grid_bot.date") as mock_date:
+        mock_date.today.return_value = day1
+        mock_date.side_effect = lambda *args, **kw: date(*args, **kw)
+        bot._daily_date = day1
+        bot._daily_pnl_date = day1
+
+        bot.setup_grid(84000.0)
+
+        # Buy: drop price to fill lowest buy levels
+        bot.check_price_and_execute(82400.0)
+        assert bot.state.holdings > 0, "Should have holdings after buy"
+        print(f"  Day 1 after buys: holdings={bot.state.holdings:.8f}")
+
+        # Sell: price rises above grid
+        sell_levels = [l for l in bot.state.levels if l.side == "sell" and l.order_amount > 0]
+        if sell_levels:
+            bot.check_price_and_execute(sell_levels[-1].price + 100)
+
+    day1_daily = bot.state.daily_realized_pnl
+    day1_cumulative = bot.state.realized_pnl
+    print(f"  Day 1: daily_pnl=${day1_daily:.4f}, cumulative=${day1_cumulative:.4f}")
+    assert day1_daily != 0, "Should have some realized P&L on day 1"
+    assert day1_daily == day1_cumulative, "On day 1, daily should equal cumulative"
+
+    # Day 2: date changes — daily_realized_pnl should reset
+    day2 = date(2026, 3, 27)
+    with patch("bot.strategies.grid_bot.date") as mock_date:
+        mock_date.today.return_value = day2
+        mock_date.side_effect = lambda *args, **kw: date(*args, **kw)
+
+        # This call triggers the daily reset inside check_price_and_execute
+        bot.check_price_and_execute(84000.0)
+
+    print(f"  Day 2 after reset: daily_pnl=${bot.state.daily_realized_pnl:.4f}, cumulative=${bot.state.realized_pnl:.4f}")
+    assert bot.state.daily_realized_pnl == 0.0 or bot.state.daily_realized_pnl != day1_daily, \
+        "daily_realized_pnl should have been reset on day change"
+    assert bot.state.realized_pnl == day1_cumulative or bot.state.realized_pnl > day1_cumulative, \
+        "Cumulative realized_pnl should NOT be reset"
+    print("  ✅ daily_realized_pnl resets on new day")
+    print("  ✅ realized_pnl (cumulative) preserved")
+
+    print("✅ Daily P&L resets OK\n")
+
+
 def test_price_simulation():
     """Simulate realistic price movement over time."""
     from bot.strategies.grid_bot import GridBot
@@ -289,6 +543,9 @@ if __name__ == "__main__":
     test_buy_execution()
     test_sell_execution()
     test_never_sell_at_loss()
+    test_avg_buy_price_accounting()
+    test_grid_reset_preserves_state()
+    test_daily_pnl_resets()
     test_price_simulation()
     
     print("=" * 60)

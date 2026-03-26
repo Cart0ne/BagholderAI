@@ -76,8 +76,10 @@ class TelegramNotifier:
         total_fees = sum(float(t.get("fee", 0)) for t in trades)
         realized = sum(float(t.get("realized_pnl", 0)) for t in trades if t.get("realized_pnl"))
 
+        symbol = status.get('symbol', 'N/A')
+        base = symbol.split("/")[0] if "/" in symbol else symbol
         text = (
-            f"📊 <b>BagHolderAI Daily Report</b>\n"
+            f"📊 <b>BagHolderAI Daily Report — {symbol}</b>\n"
             f"📅 {today}\n"
             f"{'─' * 28}\n"
             f"\n"
@@ -86,7 +88,7 @@ class TelegramNotifier:
             f"<b>Fees:</b> ${total_fees:.4f}\n"
             f"\n"
             f"<b>Portfolio:</b>\n"
-            f"  Holdings: {status.get('holdings', 0):.6f} BTC\n"
+            f"  Holdings: {status.get('holdings', 0):.6f} {base}\n"
             f"  Avg buy: ${status.get('avg_buy_price', 0):,.2f}\n"
             f"  Unrealized P&L: ${status.get('unrealized_pnl', 0):+.4f}\n"
             f"\n"

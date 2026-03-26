@@ -44,6 +44,7 @@ class GridState:
     created_at: str = ""
     
     realized_pnl: float = 0.0
+    daily_realized_pnl: float = 0.0
 
     @property
     def unrealized_pnl(self) -> float:
@@ -90,34 +91,56 @@ class GridBot:
         self.state: Optional[GridState] = None
         self._daily_trade_count = 0
         self._daily_date = date.today()
+        self._daily_pnl_date = date.today()
     
+    @staticmethod
+    def _price_decimals(price: float) -> int:
+        """Determine the number of decimals to use for rounding based on price magnitude."""
+        if price >= 1:
+            return 2
+        if price >= 0.01:
+            return 4
+        if price >= 0.0001:
+            return 6
+        return 8
+
     def setup_grid(self, current_price: float) -> GridState:
         """
         Create a new grid centered on the current price.
-        
+
         Buy levels below current price, sell levels above.
         Each level gets an equal share of the allocated capital.
+
+        On reset (self.state already exists): preserves accounting
+        (holdings, avg_buy_price, realized_pnl, etc.) and distributes
+        existing holdings across the new sell levels.
         """
+        # Save old accounting before overwriting state
+        old_state = self.state
+
         half_range = current_price * (self.range_percent / 2)
         lower = current_price - half_range
         upper = current_price + half_range
-        
+
         # Calculate step size between levels
         step = (upper - lower) / (self.num_levels - 1)
-        
+
+        # Determine rounding precision based on price
+        decimals = self._price_decimals(current_price)
+
         # Capital per level (only buy levels use capital)
         num_buy_levels = self.num_levels // 2
         capital_per_level = self.capital / num_buy_levels
-        
+
         levels = []
         for i in range(self.num_levels):
             level_price = lower + (step * i)
-            
+
             if level_price < current_price:
                 # Buy level — below current price
-                amount = capital_per_level / level_price  # how much BTC we'd buy
+                amount = capital_per_level / level_price
                 levels.append(GridLevel(
-                    price=round(level_price, 2),
+                    price=round(level_price, decimals),
                     side="buy",
                     order_amount=round(amount, 8),
                 ))
@@ -125,30 +148,50 @@ class GridBot:
                 # Sell level — above current price
                 # Sell levels start empty (nothing to sell until we buy)
                 levels.append(GridLevel(
-                    price=round(level_price, 2),
+                    price=round(level_price, decimals),
                     side="sell",
                     order_amount=0.0,
                 ))
-        
+
         self.state = GridState(
             symbol=self.symbol,
             strategy=self.strategy,
-            center_price=round(current_price, 2),
-            lower_bound=round(lower, 2),
-            upper_bound=round(upper, 2),
+            center_price=round(current_price, decimals),
+            lower_bound=round(lower, decimals),
+            upper_bound=round(upper, decimals),
             levels=levels,
             last_price=current_price,
             created_at=datetime.utcnow().isoformat(),
         )
-        
+
+        # On reset: restore accounting from old state
+        if old_state is not None:
+            self.state.holdings = old_state.holdings
+            self.state.avg_buy_price = old_state.avg_buy_price
+            self.state.total_invested = old_state.total_invested
+            self.state.total_received = old_state.total_received
+            self.state.total_fees = old_state.total_fees
+            self.state.realized_pnl = old_state.realized_pnl
+            self.state.daily_realized_pnl = old_state.daily_realized_pnl
+            self.state.trades_today = old_state.trades_today
+
+            # Distribute existing holdings across sell levels
+            if self.state.holdings > 0:
+                sell_levels = [l for l in levels if l.side == "sell"]
+                if sell_levels:
+                    amount_per_level = self.state.holdings / len(sell_levels)
+                    for sl in sell_levels:
+                        sl.order_amount = round(amount_per_level, 8)
+
+        is_reset = "RESET" if old_state is not None else "NEW"
         logger.info(
-            f"Grid created: {self.symbol} | "
+            f"Grid {is_reset}: {self.symbol} | "
             f"Center: ${current_price:.2f} | "
             f"Range: ${lower:.2f} - ${upper:.2f} | "
             f"Levels: {self.num_levels} | "
             f"Capital: ${self.capital}"
         )
-        
+
         return self.state
     
     def check_price_and_execute(self, current_price: float) -> list:
@@ -163,11 +206,14 @@ class GridBot:
         if not self.state:
             raise RuntimeError("Grid not initialized. Call setup_grid() first.")
         
-        # Reset daily counter if new day
+        # Reset daily counters if new day
         today = date.today()
         if today != self._daily_date:
             self._daily_trade_count = 0
             self._daily_date = today
+        if today != self._daily_pnl_date:
+            self.state.daily_realized_pnl = 0.0
+            self._daily_pnl_date = today
         
         trades = []
         self.state.last_price = current_price
@@ -204,14 +250,16 @@ class GridBot:
         level.filled = True
         level.filled_at = time.time()
         
-        # Update state
+        # Update state — weighted average buy price
+        old_holdings = self.state.holdings
+        old_avg = self.state.avg_buy_price
         self.state.total_invested += cost
         self.state.total_fees += fee
         self.state.holdings += amount
-        
-        # Recalculate average buy price
+
+        # Recalculate average buy price (weighted average on buys only)
         if self.state.holdings > 0:
-            self.state.avg_buy_price = self.state.total_invested / self.state.holdings
+            self.state.avg_buy_price = (old_avg * old_holdings + price * amount) / self.state.holdings
         
         # Activate the corresponding sell level above
         self._activate_sell_level(level, amount)
@@ -277,11 +325,17 @@ class GridBot:
         level.filled = True
         level.filled_at = time.time()
         
-        # Update state
+        # Update state — do NOT touch avg_buy_price on sells
         self.state.total_received += revenue
         self.state.total_fees += fee
         self.state.holdings -= amount
         self.state.realized_pnl += realized_pnl
+        self.state.daily_realized_pnl += realized_pnl
+
+        # Reset avg_buy_price when fully sold out
+        if self.state.holdings <= 0:
+            self.state.holdings = 0
+            self.state.avg_buy_price = 0
 
         # Reactivate the corresponding buy level below
         self._activate_buy_level(level)
@@ -351,7 +405,7 @@ class GridBot:
             "strategy": self.strategy,
             "mode": self.mode,
             "center_price": self.state.center_price,
-            "range": f"${self.state.lower_bound:.2f} - ${self.state.upper_bound:.2f}",
+            "range": f"${self.state.lower_bound:.{self._price_decimals(self.state.center_price)}f} - ${self.state.upper_bound:.{self._price_decimals(self.state.center_price)}f}",
             "last_price": self.state.last_price,
             "levels": {
                 "total": self.num_levels,

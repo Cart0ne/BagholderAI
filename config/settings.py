@@ -5,6 +5,7 @@ Rules in HARDCODED_RULES cannot be modified by the AI agent.
 """
 
 import os
+from dataclasses import dataclass
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -109,6 +110,50 @@ class GridConfig:
     DEFAULT_LEVELS = 10  # 8-12 per token
     MIN_LEVELS = 8
     MAX_LEVELS = 12
+
+
+@dataclass
+class GridInstanceConfig:
+    """Configuration for a single grid bot instance."""
+    symbol: str = "BTC/USDT"
+    capital: float = 100.0
+    num_levels: int = 10
+    grid_range_pct: float = 0.04
+    order_amount: float = 20.0
+
+
+# Pre-configured grid instances
+GRID_INSTANCES = [
+    GridInstanceConfig(
+        symbol="BTC/USDT",
+        capital=100.0,
+        num_levels=10,
+        grid_range_pct=0.04,
+        order_amount=20.0,
+    ),
+    GridInstanceConfig(
+        symbol="SOL/USDT",
+        capital=50.0,
+        num_levels=10,
+        grid_range_pct=0.06,
+        order_amount=10.0,
+    ),
+    GridInstanceConfig(
+        symbol="BONK/USDT",
+        capital=30.0,
+        num_levels=12,
+        grid_range_pct=0.08,
+        order_amount=5.0,
+    ),
+]
+
+
+def get_grid_config(symbol: str) -> GridInstanceConfig:
+    """Look up a grid instance config by symbol. Falls back to default BTC config."""
+    for cfg in GRID_INSTANCES:
+        if cfg.symbol == symbol:
+            return cfg
+    return GRID_INSTANCES[0]  # default = BTC/USDT
 
 
 # === Trend Follower Configuration ===

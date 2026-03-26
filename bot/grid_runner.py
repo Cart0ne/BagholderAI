@@ -26,27 +26,26 @@ logger = logging.getLogger("bagholderai.runner")
 
 # Imports from project
 from config.settings import (
-    TradingMode, HardcodedRules, GridConfig, ExchangeConfig
+    TradingMode, HardcodedRules, GridConfig, ExchangeConfig, get_grid_config
 )
 from bot.exchange import create_exchange
 from bot.strategies.grid_bot import GridBot
 from db.client import TradeLogger, PortfolioManager, DailyPnLTracker
 
 
-# === Configuration ===
-SYMBOL = "BTC/USDT"
 STRATEGY = "A"
-
-# Capital for grid: Strategy A gets 80% of operational capital
-# Operational = MAX_CAPITAL * 90% (10% reserve)
-# For paper trading, we use a smaller test amount
-GRID_CAPITAL = 100.0  # Start small in paper trading
-
-NUM_LEVELS = 10
-RANGE_PERCENT = 0.04  # 4% range — tight enough for frequent trades
-
-# How often to check price (seconds)
 CHECK_INTERVAL = 30  # Every 30 seconds in paper trading
+
+
+def fmt_price(price: float) -> str:
+    """Format a price with appropriate decimals (handles micro-prices like BONK)."""
+    if price >= 1:
+        return f"${price:,.2f}"
+    if price >= 0.01:
+        return f"${price:.4f}"
+    if price >= 0.0001:
+        return f"${price:.6f}"
+    return f"${price:.8f}"
 
 
 def fetch_price(exchange, symbol: str) -> float:
@@ -55,16 +54,20 @@ def fetch_price(exchange, symbol: str) -> float:
     return ticker["last"]
 
 
-def run_grid_bot(once: bool = False, dry_run: bool = False):
+def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = False):
     """Main loop."""
-    
+
+    # Load config for this symbol
+    cfg = get_grid_config(symbol)
+
     logger.info("=" * 50)
     logger.info("BagHolderAI Grid Bot starting...")
     logger.info(f"Mode: {'PAPER' if TradingMode.is_paper() else 'LIVE'}")
-    logger.info(f"Symbol: {SYMBOL}")
-    logger.info(f"Capital: ${GRID_CAPITAL}")
-    logger.info(f"Levels: {NUM_LEVELS}")
-    logger.info(f"Range: {RANGE_PERCENT * 100}%")
+    logger.info(f"Symbol: {cfg.symbol}")
+    logger.info(f"Capital: ${cfg.capital}")
+    logger.info(f"Levels: {cfg.num_levels}")
+    logger.info(f"Range: {cfg.grid_range_pct * 100}%")
+    logger.info(f"Order amount: ${cfg.order_amount}")
     logger.info("=" * 50)
     
     # Safety check
@@ -98,18 +101,18 @@ def run_grid_bot(once: bool = False, dry_run: bool = False):
         trade_logger=trade_logger,
         portfolio_manager=portfolio_manager,
         pnl_tracker=pnl_tracker,
-        symbol=SYMBOL,
+        symbol=cfg.symbol,
         strategy=STRATEGY,
-        capital=GRID_CAPITAL,
-        num_levels=NUM_LEVELS,
-        range_percent=RANGE_PERCENT,
+        capital=cfg.capital,
+        num_levels=cfg.num_levels,
+        range_percent=cfg.grid_range_pct,
         mode="paper",
     )
-    
+
     # Fetch initial price and setup grid
     try:
-        price = fetch_price(exchange, SYMBOL)
-        logger.info(f"Current {SYMBOL} price: ${price:,.2f}")
+        price = fetch_price(exchange, cfg.symbol)
+        logger.info(f"Current {cfg.symbol} price: {fmt_price(price)}")
     except Exception as e:
         logger.error(f"Failed to fetch price: {e}")
         return
@@ -120,9 +123,10 @@ def run_grid_bot(once: bool = False, dry_run: bool = False):
     logger.info("Grid levels:")
     for level in bot.state.levels:
         marker = "BUY ↓" if level.side == "buy" else "SELL ↑"
-        amount_str = f" ({level.order_amount:.6f} BTC)" if level.order_amount > 0 else ""
-        logger.info(f"  ${level.price:>10,.2f}  {marker}{amount_str}")
-    logger.info(f"  Current price: ${price:,.2f}")
+        base = cfg.symbol.split("/")[0]
+        amount_str = f" ({level.order_amount:.6f} {base})" if level.order_amount > 0 else ""
+        logger.info(f"  {fmt_price(level.price):>14}  {marker}{amount_str}")
+    logger.info(f"  Current price: {fmt_price(price)}")
  
     notifier.send_bot_started(bot.get_status())
 
@@ -143,11 +147,11 @@ def run_grid_bot(once: bool = False, dry_run: bool = False):
     while True:
         try:
             cycle += 1
-            price = fetch_price(exchange, SYMBOL)
+            price = fetch_price(exchange, cfg.symbol)
             
             # Check if grid needs reset (price moved too far)
             if bot.should_reset_grid(price):
-                logger.info(f"Price ${price:,.2f} outside grid range. Resetting grid...")
+                logger.info(f"Price {fmt_price(price)} outside grid range. Resetting grid...")
                 bot.setup_grid(price)
             
             # Run grid logic
@@ -159,7 +163,7 @@ def run_grid_bot(once: bool = False, dry_run: bool = False):
                     emoji = "🟢" if t["side"] == "buy" else "🔴"
                     logger.info(
                         f"{emoji} {t['side'].upper()} {t['amount']:.6f} "
-                        f"@ ${t['price']:,.2f} | {t['reason']}"
+                        f"@ {fmt_price(t['price'])} | {t['reason']}"
                     )
                     notifier.send_trade_alert(t)
 
@@ -179,9 +183,9 @@ def run_grid_bot(once: bool = False, dry_run: bool = False):
                     logger.error(f"Failed to send daily report: {e}")
             
             # Check daily P&L limit (hardcoded rule)
-            if bot.state.realized_pnl < HardcodedRules.STRATEGY_A_MIN_DAILY_PNL:
+            if bot.state.daily_realized_pnl < HardcodedRules.STRATEGY_A_MIN_DAILY_PNL:
                 logger.warning(
-                    f"Daily P&L ${bot.state.realized_pnl:.2f} below limit "
+                    f"Daily P&L ${bot.state.daily_realized_pnl:.2f} below limit "
                     f"${HardcodedRules.STRATEGY_A_MIN_DAILY_PNL}. STOPPING."
                 )
                 break
@@ -212,10 +216,11 @@ def _print_status(bot: GridBot):
         return
     
     logger.info(f"--- {status['symbol']} Grid Status ---")
-    logger.info(f"  Price:        ${status['last_price']:,.2f}")
+    logger.info(f"  Price:        {fmt_price(status['last_price'])}")
     logger.info(f"  Range:        {status['range']}")
-    logger.info(f"  Holdings:     {status['holdings']:.6f} BTC")
-    logger.info(f"  Avg buy:      ${status['avg_buy_price']:,.2f}")
+    base = status['symbol'].split("/")[0]
+    logger.info(f"  Holdings:     {status['holdings']:.6f} {base}")
+    logger.info(f"  Avg buy:      {fmt_price(status['avg_buy_price'])}")
     logger.info(f"  Invested:     ${status['invested']:,.2f}")
     logger.info(f"  Received:     ${status['received']:,.2f}")
     logger.info(f"  Fees:         ${status['fees']:.4f}")
@@ -227,8 +232,9 @@ def _print_status(bot: GridBot):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="BagHolderAI Grid Bot")
+    parser.add_argument("--symbol", type=str, default="BTC/USDT", help="Trading pair (e.g. SOL/USDT)")
     parser.add_argument("--once", action="store_true", help="Run one cycle only")
     parser.add_argument("--dry-run", action="store_true", help="Don't log to database")
     args = parser.parse_args()
-    
-    run_grid_bot(once=args.once, dry_run=args.dry_run)
+
+    run_grid_bot(symbol=args.symbol, once=args.once, dry_run=args.dry_run)
