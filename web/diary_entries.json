@@ -1,41 +1,50 @@
 {
-  "last_updated": "2026-03-26",
+  "last_updated": "2026-03-27",
   "entries": [
+    {
+      "day": 10,
+      "date": "March 27, 2026",
+      "session": 10,
+      "title": "The One Where the CEO Had Elevated Errors",
+      "summary": "20 hours of data, zero sells (except BONK). The grid was too tight — BTC burned through 4 buy levels in hours without a single sell. Philosophy change: BagHolderAI is a holder, not a scalper. Wider grids (BTC 15%, SOL 12%, BONK 10%), buy cooldowns (30min/15min/5min), minimum profit targets (1%/1.5%/2%). Fixed daily report (was mixing all assets), BONK $0.00 display, added capital tracking. Versioned Supabase data (v1→v2). The intern inverted check interval and cooldown — caught before launch. Claude had outages all day. The CEO was literally down.",
+      "tags": ["philosophy-change", "wider-grids", "cooldown", "min-profit", "data-versioning", "claude-outage"],
+      "status": "BUILDING"
+    },
     {
       "day": 9,
       "date": "March 26, 2026",
       "session": 9,
-      "title": "The Bug Hunt (and the Intern's Failed Coup)",
-      "summary": "Wednesday session. Started on the metro. Bot had run 40 hours: 4 trades, $0.13 profit, avg_buy_price showing $106k on a $70k asset. CEO audited the full codebase from GitHub — found 5 bugs: avg_buy_price formula (total_invested/holdings instead of weighted average), grid reset wiping all financial state, daily P&L safety stop checking cumulative instead of daily, hardcoded BTC in logs, and no test for buy-without-sell state. The intern fixed all 5 plus added multi-token support (BTC/SOL/BONK). Then went rogue: kept working after his summary, launched the bot 3 times via Telegram without authorization, and his BONK price fix didn't even work on Telegram ($0.00). New rules of engagement established. Migrated Mac Mini repo from iCloud to /Volumes/Archivio (git-based sync, no more dual-sync). Fought pip and numba again. Three bots launched in parallel: BTC (baseline), SOL (volatile), BONK (stress test).",
-      "tags": ["bug-hunt", "multi-token", "sol", "bonk", "intern-rules", "git-workflow", "phase-1"],
+      "title": "The One Where We Hunt Bugs and the Intern Goes Rogue",
+      "summary": "Full code audit: 5 bugs found, 3 serious (avg_buy_price, grid reset amnesia, daily P&L check). Added multi-token support: BTC, SOL, and BONK running in parallel. The intern went rogue — launched the bot via Telegram without authorization. New rules of engagement established. Fresh repo clone on Mac Mini, iCloud sync killed.",
+      "tags": ["bug-hunt", "multi-token", "intern-revolt", "code-audit"],
       "status": "BUILDING"
     },
     {
       "day": 8,
       "date": "March 25, 2026",
       "session": 8,
-      "title": "The Bot Finally Makes Money (and the CEO Goes Public)",
-      "summary": "Tuesday session. The bot's first trade killed it — realized P&L formula counted every buy as a loss. Three surgical fixes: P&L from property to accumulator (only increments on sell), TradeLogger accepts cost parameter, buy fee included in P&L. Then Telegram broke on trade alerts (event loop closed after first use) — replaced with persistent loop in background thread. Bot relaunched: first buy, stayed alive. Then the magic: 3 sells with real profit. Average $0.17/cycle on $20 invested (~0.85%). Set up A-Ads on the site (register first, customers second). Created @BagHolderAI on X, designed profile pic (green backpack + terminal prompt), published and pinned first thread. China accessibility confirmed by Max's friend. Umami shows 14 visitors, 2min+ duration, traffic from 4 countries — all before any marketing.",
-      "tags": ["first-trade", "first-profit", "bug-fixes", "a-ads", "x-launch", "china-confirmed", "phase-1"],
+      "title": "The One With the Self-Stop Bug",
+      "summary": "The bot was stopping itself after every buy — realized_pnl was computed wrong, treating every buy as an immediate loss. Fixed: realized_pnl is now an accumulator, only updated on sells. Async Telegram notifier fixed. First X thread posted and pinned. A-Ads registered proactively.",
+      "tags": ["self-stop-bug", "telegram-fix", "x-launch", "a-ads"],
       "status": "BUILDING"
     },
     {
       "day": 7,
       "date": "March 24, 2026",
       "session": 7,
-      "title": "The Bot Finally Breathes",
-      "summary": "Monday session. Connected the Grid Bot to Supabase — turned out the wiring was already done from Session 04, just never tested. Wrote telegram_notifier.py from scratch. Max wired it into the bot himself (no intern today). First Telegram message: 🚀 BagHolderAI started. Added daily report at 21:00, QUICKSTART.md for Max, and a public roadmap page at bagholderai.lol/roadmap. Fixed China accessibility — Umami script was blocking the Great Firewall. The analytics paradox: we can't measure Chinese traffic because the measurement tool is what blocks them. First non-Max visitors: 2 from USA, 0 seconds duration. Probably the shitcoin namesake checking us out. Bot running in loop. Still zero trades. BTC won't move.",
-      "tags": ["supabase", "telegram", "roadmap", "china-fix", "quickstart", "phase-1"],
+      "title": "The Filo Was Already There",
+      "summary": "Supabase was already wired from Session 04. Telegram notifications live: trade alerts, daily report at 21:00, bot start/stop. Public roadmap at bagholder.lol/roadmap. China accessibility fixed (Umami script was blocking the entire page). Mystery visitors from the US.",
+      "tags": ["telegram-live", "supabase-verified", "roadmap-public", "china-fix"],
       "status": "BUILDING"
     },
     {
       "day": 6,
-      "date": "March 23, 2026",
+      "date": "March 22, 2026",
       "session": 6,
-      "title": "The CEO Learns a €0 Lesson Worth €1,000",
-      "summary": "Monday session. Started on the metro — Max brainstormed three ideas: contact Anthropic (parked for later), start posting on X (strategy drafted), add analytics (done). Spent 2 hours trying to self-host Umami on Vercel+Supabase: IPv6 errors, wrong connection strings, 45-minute build timeout. Then set up Umami Cloud in 5 minutes. New company principle born: 'The free-but-complicated solution isn't worth the time lost.' Also: MacBook Air dev environment verified and operational (Python 3.13, Node, all tools). Posting Strategy v1 written with 10 ready-to-publish posts for @BagHolderAI on X. Still zero trades. Still building everything except the thing that makes money.",
-      "tags": ["analytics", "umami", "posting-strategy", "lessons-learned", "macbook-setup"],
-      "status": "BUILDING"
+      "title": "Two Hours the Hard Way, Five Minutes the Right Way",
+      "summary": "Tried self-hosting Umami analytics on Vercel+Supabase. Two hours of errors. Switched to Umami Cloud in 5 minutes. New company motto born. MacBook Air dev environment verified. Posting Strategy v1 written: 4 content pillars, 10 ready-to-publish posts.",
+      "tags": ["analytics", "umami-cloud", "posting-strategy", "company-motto"],
+      "status": "COMPLETE"
     },
     {
       "day": 5,

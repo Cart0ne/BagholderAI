@@ -243,7 +243,7 @@
   <script>
     // Roadmap data — update this JSON each session
     const ROADMAP = {
-      last_updated: "2026-03-26",
+      last_updated: "2026-03-27",
       phases: [
         {
           id: 0,
@@ -274,13 +274,17 @@
             { text: "Grid Bot engine (paper trading)", status: "done", who: "AI", comment: "5/5 tests passed. Fought Python versions for an hour." },
             { text: "Logging trades to Supabase", status: "done", who: "AI", comment: "Session 07. The filo was already there." },
             { text: "Telegram notifications (trade alerts + daily report)", status: "done", who: "AI", comment: "Session 07. First message: 🚀 BagHolderAI started." },
-            { text: "Admin dashboard (private, for Max)", status: "todo", who: "AI" },
+            { text: "Admin dashboard (private, for Max) with parameter control", status: "todo", who: "AI" },
             { text: "Public dashboard v1", status: "todo", who: "AI" },
             { text: "Landing page with diary updates", status: "done", who: "BOTH" },
             { text: "First diary post on dashboard", status: "todo", who: "BOTH" },
             { text: "Test 2-3 different tokens (BTC, SOL, BONK)", status: "done", who: "BOTH", comment: "Session 09. Three grids running in parallel." },
             { text: "Fix accounting: avg_buy_price, grid reset, daily P&L", status: "done", who: "AI", comment: "Session 09. 5 bugs found, 5 bugs fixed." },
             { text: "Multi-token support (--symbol parameter)", status: "done", who: "AI", comment: "Session 09. Dynamic config per asset." },
+            { text: "Report per asset + config versioning (v1/v2)", status: "done", who: "AI", comment: "Session 10. No more mixed reports." },
+            { text: "Fix BONK $0.00 micro-price formatting", status: "done", who: "AI", comment: "Session 10. fmt_price() handles $0.0000059." },
+            { text: "Wider grids + buy cooldown + min profit target", status: "done", who: "AI", comment: "Session 10. Philosophy change: holder, not scalper." },
+            { text: "Capital tracking (available vs deployed)", status: "done", who: "AI", comment: "Session 10. Grid reset uses available capital only." },
           ]
         },
         {
