@@ -39,6 +39,7 @@ class TradeLogger:
         realized_pnl: Optional[float] = None,
         buy_trade_id: Optional[str] = None,
         cost: Optional[float] = None,
+        config_version: str = "v2",
     ) -> dict:
         """Log a trade to the database."""
         data = {
@@ -55,6 +56,7 @@ class TradeLogger:
             "exchange_order_id": exchange_order_id,
             "realized_pnl": realized_pnl,
             "buy_trade_id": buy_trade_id,
+            "config_version": config_version,
         }
         
         result = self.client.table("trades").insert(data).execute()
@@ -88,16 +90,20 @@ class TradeLogger:
         )
         return result.count or 0
 
-    def get_today_trades(self) -> list:
-        """Fetch all of today's trades."""
+    def get_today_trades(self, symbol: Optional[str] = None, config_version: Optional[str] = "v2") -> list:
+        """Fetch all of today's trades, optionally filtered by symbol and config_version."""
         today = date.today().isoformat()
-        result = (
+        query = (
             self.client.table("trades")
             .select("*")
             .gte("created_at", f"{today}T00:00:00")
             .order("created_at", desc=True)
-            .execute()
         )
+        if symbol:
+            query = query.eq("symbol", symbol)
+        if config_version:
+            query = query.eq("config_version", config_version)
+        result = query.execute()
         return result.data or []
 
 class PortfolioManager:

@@ -42,7 +42,7 @@ class GridState:
     trades_today: int = 0
     last_price: float = 0.0
     created_at: str = ""
-    
+
     realized_pnl: float = 0.0
     daily_realized_pnl: float = 0.0
 
@@ -57,14 +57,14 @@ class GridBot:
     """
     Grid trading bot. Places buy and sell orders at regular intervals
     within a price range. Profits from oscillations.
-    
+
     In paper mode: reads real prices, simulates order fills.
     In live mode: places real orders via exchange API (future).
     """
-    
+
     # Fee rate for Binance spot with BNB discount
     FEE_RATE = 0.00075  # 0.075%
-    
+
     def __init__(
         self,
         exchange,
@@ -77,6 +77,8 @@ class GridBot:
         num_levels: int = 10,
         range_percent: float = 0.04,  # 4% range (2% above and below)
         mode: str = "paper",
+        buy_cooldown_seconds: int = 0,  # Task 5: min seconds between buys
+        min_profit_pct: float = 0.0,    # Task 10: min gross margin to allow a sell (e.g. 0.01 = 1%)
     ):
         self.exchange = exchange
         self.trade_logger = trade_logger
@@ -88,11 +90,14 @@ class GridBot:
         self.num_levels = num_levels
         self.range_percent = range_percent
         self.mode = mode
+        self.buy_cooldown_seconds = buy_cooldown_seconds
+        self.min_profit_pct = min_profit_pct
         self.state: Optional[GridState] = None
         self._daily_trade_count = 0
         self._daily_date = date.today()
         self._daily_pnl_date = date.today()
-    
+        self._last_buy_time: float = 0.0  # Task 5: timestamp of last buy
+
     @staticmethod
     def _price_decimals(price: float) -> int:
         """Determine the number of decimals to use for rounding based on price magnitude."""
@@ -109,14 +114,21 @@ class GridBot:
         Create a new grid centered on the current price.
 
         Buy levels below current price, sell levels above.
-        Each level gets an equal share of the allocated capital.
+        Each level gets an equal share of the available capital.
 
         On reset (self.state already exists): preserves accounting
         (holdings, avg_buy_price, realized_pnl, etc.) and distributes
-        existing holdings across the new sell levels.
+        existing holdings across the new sell levels. Buy level sizes
+        are calculated from available_capital (Task 7), not total capital.
         """
         # Save old accounting before overwriting state
         old_state = self.state
+
+        # Task 7: use available capital on reset, full capital on first setup
+        if old_state is not None:
+            available_capital = max(0.0, self.capital - old_state.total_invested + old_state.total_received)
+        else:
+            available_capital = self.capital
 
         half_range = current_price * (self.range_percent / 2)
         lower = current_price - half_range
@@ -130,7 +142,7 @@ class GridBot:
 
         # Capital per level (only buy levels use capital)
         num_buy_levels = self.num_levels // 2
-        capital_per_level = self.capital / num_buy_levels
+        capital_per_level = available_capital / num_buy_levels
 
         levels = []
         for i in range(self.num_levels):
@@ -189,23 +201,23 @@ class GridBot:
             f"Center: ${current_price:.2f} | "
             f"Range: ${lower:.2f} - ${upper:.2f} | "
             f"Levels: {self.num_levels} | "
-            f"Capital: ${self.capital}"
+            f"Available capital: ${available_capital:.2f}"
         )
 
         return self.state
-    
+
     def check_price_and_execute(self, current_price: float) -> list:
         """
         Check current price against grid levels and execute fills.
         Returns list of trades executed.
-        
+
         Logic:
-        - Price drops to/below a buy level → fill the buy
-        - Price rises to/above a sell level → fill the sell (if we have holdings)
+        - Price drops to/below a buy level → fill the buy (if cooldown elapsed)
+        - Price rises to/above a sell level → fill the sell (no cooldown on sells)
         """
         if not self.state:
             raise RuntimeError("Grid not initialized. Call setup_grid() first.")
-        
+
         # Reset daily counters if new day
         today = date.today()
         if today != self._daily_date:
@@ -214,42 +226,55 @@ class GridBot:
         if today != self._daily_pnl_date:
             self.state.daily_realized_pnl = 0.0
             self._daily_pnl_date = today
-        
+
         trades = []
         self.state.last_price = current_price
-        
+
+        # Task 5: check if buy cooldown is active
+        now = time.time()
+        buy_cooldown_active = (
+            self.buy_cooldown_seconds > 0
+            and (now - self._last_buy_time) < self.buy_cooldown_seconds
+        )
+        if buy_cooldown_active:
+            remaining = self.buy_cooldown_seconds - (now - self._last_buy_time)
+            logger.debug(f"Buy cooldown active, {remaining:.0f}s remaining. Skipping buy levels.")
+
         for level in self.state.levels:
             if level.filled:
                 continue
-            
+
             # Check daily operation limit (hardcoded rule)
             if self._daily_trade_count >= 50:
                 logger.warning("Daily operation limit reached (50). Stopping.")
                 break
-            
+
             if level.side == "buy" and current_price <= level.price:
+                if buy_cooldown_active:
+                    continue  # skip all buys while cooldown is active
                 trade = self._execute_buy(level, current_price)
                 if trade:
                     trades.append(trade)
-            
+                    buy_cooldown_active = self.buy_cooldown_seconds > 0  # block further buys this cycle
+
             elif level.side == "sell" and current_price >= level.price:
                 if self.state.holdings > 0:
                     trade = self._execute_sell(level, current_price)
                     if trade:
                         trades.append(trade)
-        
+
         return trades
-    
+
     def _execute_buy(self, level: GridLevel, price: float) -> Optional[dict]:
         """Execute a buy at a grid level."""
         amount = level.order_amount
         cost = amount * price
         fee = cost * self.FEE_RATE
-        
+
         # Mark level as filled
         level.filled = True
         level.filled_at = time.time()
-        
+
         # Update state — weighted average buy price
         old_holdings = self.state.holdings
         old_avg = self.state.avg_buy_price
@@ -260,12 +285,13 @@ class GridBot:
         # Recalculate average buy price (weighted average on buys only)
         if self.state.holdings > 0:
             self.state.avg_buy_price = (old_avg * old_holdings + price * amount) / self.state.holdings
-        
+
         # Activate the corresponding sell level above
         self._activate_sell_level(level, amount)
-        
+
         self._daily_trade_count += 1
-        
+        self._last_buy_time = time.time()  # Task 5: record buy timestamp
+
         trade_data = {
             "symbol": self.symbol,
             "side": "buy",
@@ -278,53 +304,63 @@ class GridBot:
             "reason": f"Grid buy at level ${level.price:.2f} (price dropped to ${price:.2f})",
             "mode": self.mode,
         }
-        
+
         # Log to database
         try:
             self.trade_logger.log_trade(**trade_data)
         except Exception as e:
             logger.error(f"Failed to log trade: {e}")
-        
+
         logger.info(
             f"BUY {amount:.6f} {self.symbol} @ ${price:.2f} "
             f"(cost: ${cost:.2f}, fee: ${fee:.4f})"
         )
-        
+
         return trade_data
-    
+
     def _execute_sell(self, level: GridLevel, price: float) -> Optional[dict]:
         """
         Execute a sell at a grid level.
-        
+
         HARDCODED RULE: Strategy A NEVER sells at a loss.
         """
+        # Task 10: enforce minimum profit target before selling
+        if self.min_profit_pct > 0 and self.state.avg_buy_price > 0:
+            min_price = self.state.avg_buy_price * (1 + self.min_profit_pct)
+            if price < min_price:
+                logger.info(
+                    f"SKIP: sell at ${price:.2f} below min profit target "
+                    f"(need ${min_price:.2f}, {self.min_profit_pct * 100:.1f}% above avg buy)"
+                )
+                return None
+
         if self.strategy == "A" and price < self.state.avg_buy_price:
             logger.info(
                 f"BLOCKED: Sell at ${price:.2f} < avg buy ${self.state.avg_buy_price:.2f}. "
                 f"Strategy A never sells at loss."
             )
             return None
-        
+
         # Sell the amount that was bought at the corresponding buy level
         amount = level.order_amount
         if amount <= 0 or amount > self.state.holdings:
             amount = self.state.holdings  # sell what we have
-        
+
         if amount <= 0:
             return None
-        
+
         revenue = amount * price
         fee = revenue * self.FEE_RATE
-        
+
         # Calculate realized P&L for this trade
         cost_basis = amount * self.state.avg_buy_price
         buy_fee = cost_basis * self.FEE_RATE
         realized_pnl = revenue - cost_basis - fee - buy_fee
-        
+
         # Mark level as filled
         level.filled = True
         level.filled_at = time.time()
-        
+
         # Update state — do NOT touch avg_buy_price on sells
         self.state.total_received += revenue
         self.state.total_fees += fee
@@ -339,9 +375,9 @@ class GridBot:
 
         # Reactivate the corresponding buy level below
         self._activate_buy_level(level)
-        
+
         self._daily_trade_count += 1
-        
+
         trade_data = {
             "symbol": self.symbol,
             "side": "sell",
@@ -355,20 +391,20 @@ class GridBot:
             "mode": self.mode,
             "realized_pnl": realized_pnl,
         }
-        
+
         # Log to database
         try:
             self.trade_logger.log_trade(**trade_data)
         except Exception as e:
             logger.error(f"Failed to log trade: {e}")
-        
+
         logger.info(
             f"SELL {amount:.6f} {self.symbol} @ ${price:.2f} "
             f"(revenue: ${revenue:.2f}, fee: ${fee:.4f}, pnl: ${realized_pnl:.4f})"
         )
-        
+
         return trade_data
-    
+
     def _activate_sell_level(self, buy_level: GridLevel, amount: float):
         """
         When a buy fills, activate the nearest unfilled sell level above it.
@@ -378,7 +414,7 @@ class GridBot:
             if level.side == "sell" and not level.filled and level.price > buy_level.price:
                 level.order_amount = amount
                 return
-    
+
     def _activate_buy_level(self, sell_level: GridLevel):
         """
         When a sell fills, reactivate the nearest filled buy level below it.
@@ -389,17 +425,20 @@ class GridBot:
                 level.filled = False
                 level.filled_at = None
                 return
-    
+
     def get_status(self) -> dict:
         """Return current grid status for dashboard/Telegram."""
         if not self.state:
             return {"status": "not_initialized"}
-        
+
         filled_buys = sum(1 for l in self.state.levels if l.side == "buy" and l.filled)
         filled_sells = sum(1 for l in self.state.levels if l.side == "sell" and l.filled)
         active_buys = sum(1 for l in self.state.levels if l.side == "buy" and not l.filled)
         active_sells = sum(1 for l in self.state.levels if l.side == "sell" and not l.filled and l.order_amount > 0)
-        
+
+        # Task 3: available_capital = allocated - invested + received
+        available_capital = max(0.0, self.capital - self.state.total_invested + self.state.total_received)
+
         return {
             "symbol": self.symbol,
             "strategy": self.strategy,
@@ -416,6 +455,8 @@ class GridBot:
             },
             "holdings": self.state.holdings,
             "avg_buy_price": self.state.avg_buy_price,
+            "capital": self.capital,
+            "available_capital": available_capital,
             "invested": self.state.total_invested,
             "received": self.state.total_received,
             "fees": self.state.total_fees,
@@ -423,7 +464,7 @@ class GridBot:
             "unrealized_pnl": self.state.unrealized_pnl,
             "trades_today": self._daily_trade_count,
         }
-    
+
     def should_reset_grid(self, current_price: float) -> bool:
         """
         Check if the price has moved too far from the grid center.
@@ -431,7 +472,7 @@ class GridBot:
         """
         if not self.state:
             return True
-        
+
         margin = (self.state.upper_bound - self.state.lower_bound) * 0.1
         return (
             current_price < self.state.lower_bound - margin

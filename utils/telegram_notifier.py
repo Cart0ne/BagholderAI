@@ -19,6 +19,7 @@ from telegram import Bot
 from telegram.constants import ParseMode
 
 from config.settings import TelegramConfig
+from utils.formatting import fmt_price
 
 logger = logging.getLogger("bagholderai.telegram")
 
@@ -54,7 +55,7 @@ class TelegramNotifier:
         text = (
             f"{emoji} <b>{trade['side'].upper()}</b> {trade['symbol']}\n"
             f"Amount: {trade['amount']:.6f}\n"
-            f"Price: ${trade['price']:,.2f}\n"
+            f"Price: {fmt_price(trade['price'])}\n"
             f"Cost: ${trade['cost']:.2f}\n"
             f"Fee: ${trade['fee']:.4f}\n"
             f"Brain: {trade['brain']} | Mode: {trade['mode']}"
@@ -65,9 +66,9 @@ class TelegramNotifier:
     async def send_daily_report(self, trades: list, status: dict) -> bool:
         """
         Send end-of-day summary.
-        
+
         Args:
-            trades: list of today's trades from DB
+            trades: list of today's trades from DB (already filtered by symbol + config_version)
             status: dict from bot.get_status()
         """
         today = date.today().strftime("%d/%m/%Y")
@@ -78,6 +79,18 @@ class TelegramNotifier:
 
         symbol = status.get('symbol', 'N/A')
         base = symbol.split("/")[0] if "/" in symbol else symbol
+
+        # Capital line (Task 3)
+        capital = status.get('capital', 0)
+        available = status.get('available_capital', 0)
+        deployed = capital - available
+        active_buys = status.get('levels', {}).get('active_buys', 0)
+        capital_line = (
+            f"  Capital: {fmt_price(deployed)}/{fmt_price(capital)} deployed"
+            f" | Available: {fmt_price(available)}"
+            f" | Buy levels remaining: {active_buys}"
+        )
+
         text = (
             f"📊 <b>BagHolderAI Daily Report — {symbol}</b>\n"
             f"📅 {today}\n"
@@ -89,12 +102,15 @@ class TelegramNotifier:
             f"\n"
             f"<b>Portfolio:</b>\n"
             f"  Holdings: {status.get('holdings', 0):.6f} {base}\n"
-            f"  Avg buy: ${status.get('avg_buy_price', 0):,.2f}\n"
+            f"  Avg buy: {fmt_price(status.get('avg_buy_price', 0))}\n"
             f"  Unrealized P&L: ${status.get('unrealized_pnl', 0):+.4f}\n"
+            f"\n"
+            f"<b>Capital:</b>\n"
+            f"{capital_line}\n"
             f"\n"
             f"<b>Grid:</b>\n"
             f"  Range: {status.get('range', 'N/A')}\n"
-            f"  Active buys: {status.get('levels', {}).get('active_buys', 0)}\n"
+            f"  Active buys: {active_buys}\n"
             f"  Active sells: {status.get('levels', {}).get('active_sells', 0)}\n"
             f"\n"
             f"🤖 <i>Mode: {status.get('mode', 'paper').upper()}</i>"
@@ -103,11 +119,10 @@ class TelegramNotifier:
 
     async def send_bot_started(self, status: dict) -> bool:
         """Notify that the bot has started."""
-        price = status.get("last_price", 0)
         text = (
             f"🚀 <b>BagHolderAI started</b>\n"
             f"Symbol: {status.get('symbol', 'N/A')}\n"
-            f"Price: ${price:,.2f}\n"
+            f"Price: {fmt_price(status.get('last_price', 0))}\n"
             f"Range: {status.get('range', 'N/A')}\n"
             f"Mode: {status.get('mode', 'paper').upper()}\n"
             f"Levels: {status.get('levels', {}).get('total', 0)}"
@@ -116,10 +131,13 @@ class TelegramNotifier:
 
     async def send_bot_stopped(self, status: dict, reason: str = "manual") -> bool:
         """Notify that the bot has stopped."""
+        symbol = status.get('symbol', 'N/A')
+        base = symbol.split("/")[0] if "/" in symbol else symbol
         text = (
             f"🛑 <b>BagHolderAI stopped</b>\n"
+            f"Symbol: {symbol}\n"
             f"Reason: {reason}\n"
-            f"Holdings: {status.get('holdings', 0):.6f} BTC\n"
+            f"Holdings: {status.get('holdings', 0):.6f} {base}\n"
             f"Realized P&L: ${status.get('realized_pnl', 0):+.4f}\n"
             f"Trades today: {status.get('trades_today', 0)}"
         )
@@ -129,7 +147,7 @@ class TelegramNotifier:
         """Notify that the grid was reset due to price movement."""
         text = (
             f"🔄 <b>Grid Reset</b>\n"
-            f"Price moved to ${price:,.2f}\n"
+            f"Price moved to {fmt_price(price)}\n"
             f"Old range: {old_range}\n"
             f"New range: {new_range}"
         )

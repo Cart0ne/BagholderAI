@@ -120,33 +120,44 @@ class GridInstanceConfig:
     num_levels: int = 10
     grid_range_pct: float = 0.04
     order_amount: float = 20.0
+    check_interval_seconds: int = 60   # Task 6: per-asset check interval
+    buy_cooldown_seconds: int = 0      # Task 5: min seconds between consecutive buys
+    min_profit_pct: float = 0.0        # Task 10: min gross margin to allow a sell (e.g. 0.01 = 1%)
 
 
-# Pre-configured grid instances
+# Pre-configured grid instances (Task 8: updated params — wider grids, less frequent buys)
 GRID_INSTANCES = [
     GridInstanceConfig(
         symbol="BTC/USDT",
         capital=100.0,
-        num_levels=10,
-        grid_range_pct=0.04,
+        num_levels=8,
+        grid_range_pct=0.15,
         order_amount=20.0,
+        check_interval_seconds=60,     # check ogni 1 min
+        buy_cooldown_seconds=1800,     # cooldown 30 min tra buy
+        min_profit_pct=0.01,           # 1% min profit before selling
     ),
     GridInstanceConfig(
         symbol="SOL/USDT",
         capital=50.0,
-        num_levels=10,
-        grid_range_pct=0.06,
+        num_levels=8,
+        grid_range_pct=0.12,
         order_amount=10.0,
+        check_interval_seconds=45,     # check ogni 45 sec
+        buy_cooldown_seconds=900,      # cooldown 15 min tra buy
+        min_profit_pct=0.015,          # 1.5% min profit before selling
     ),
     GridInstanceConfig(
         symbol="BONK/USDT",
         capital=30.0,
-        num_levels=12,
-        grid_range_pct=0.08,
+        num_levels=10,
+        grid_range_pct=0.10,
         order_amount=5.0,
+        check_interval_seconds=20,     # check ogni 20 sec
+        buy_cooldown_seconds=300,      # cooldown 5 min tra buy
+        min_profit_pct=0.02,           # 2% min profit before selling
     ),
 ]
-
 
 def get_grid_config(symbol: str) -> GridInstanceConfig:
     """Look up a grid instance config by symbol. Falls back to default BTC config."""
