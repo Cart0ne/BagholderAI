@@ -206,6 +206,39 @@ class GridBot:
 
         return self.state
 
+    def restore_state_from_db(self):
+        """
+        Restore holdings, avg_buy_price, and P&L from historical trades in DB.
+        Call after setup_grid() on startup to recover v1 positions.
+        """
+        if not self.trade_logger or not self.state:
+            return
+
+        pos = self.trade_logger.get_open_position(self.symbol)
+        if pos["holdings"] <= 0:
+            logger.info(f"No open position found in DB for {self.symbol}.")
+            return
+
+        self.state.holdings = pos["holdings"]
+        self.state.avg_buy_price = pos["avg_buy_price"]
+        self.state.realized_pnl = pos["realized_pnl"]
+        self.state.total_fees = pos["total_fees"]
+        self.state.total_invested = pos["total_invested"]
+        self.state.total_received = pos["total_received"]
+
+        # Distribute recovered holdings across sell levels
+        sell_levels = [l for l in self.state.levels if l.side == "sell"]
+        if sell_levels:
+            amount_per_level = self.state.holdings / len(sell_levels)
+            for sl in sell_levels:
+                sl.order_amount = round(amount_per_level, 8)
+
+        logger.info(
+            f"Restored from DB: {pos['holdings']:.6f} {self.symbol} "
+            f"@ avg ${pos['avg_buy_price']:.2f} | "
+            f"Realized P&L: ${pos['realized_pnl']:.4f}"
+        )
+
     def check_price_and_execute(self, current_price: float) -> list:
         """
         Check current price against grid levels and execute fills.

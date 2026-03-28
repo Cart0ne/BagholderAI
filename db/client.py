@@ -90,7 +90,7 @@ class TradeLogger:
         )
         return result.count or 0
 
-    def get_today_trades(self, symbol: Optional[str] = None, config_version: Optional[str] = "v2") -> list:
+    def get_today_trades(self, symbol: Optional[str] = None, config_version: Optional[str] = None) -> list:
         """Fetch all of today's trades, optionally filtered by symbol and config_version."""
         today = date.today().isoformat()
         query = (
@@ -105,6 +105,61 @@ class TradeLogger:
             query = query.eq("config_version", config_version)
         result = query.execute()
         return result.data or []
+
+    def get_open_position(self, symbol: str) -> dict:
+        """
+        Reconstruct net position for a symbol from all historical trades.
+        Returns dict with holdings, avg_buy_price, realized_pnl, total_fees.
+        Used to restore bot state after restart.
+        """
+        result = (
+            self.client.table("trades")
+            .select("*")
+            .eq("symbol", symbol)
+            .order("created_at", desc=True)
+            .execute()
+        )
+        trades = result.data or []
+
+        holdings = 0.0
+        avg_buy_price = 0.0
+        realized_pnl = 0.0
+        total_fees = 0.0
+        total_invested = 0.0
+        total_received = 0.0
+
+        # Process in chronological order
+        for t in reversed(trades):
+            side = t.get("side")
+            amount = float(t.get("amount", 0))
+            price = float(t.get("price", 0))
+            fee = float(t.get("fee", 0))
+            total_fees += fee
+
+            if side == "buy":
+                total_invested += amount * price
+                old_holdings = holdings
+                holdings += amount
+                if holdings > 0:
+                    avg_buy_price = (avg_buy_price * old_holdings + price * amount) / holdings
+            elif side == "sell":
+                total_received += amount * price
+                rpnl = float(t.get("realized_pnl", 0) or 0)
+                realized_pnl += rpnl
+                holdings -= amount
+                if holdings <= 0:
+                    holdings = 0.0
+                    avg_buy_price = 0.0
+
+        return {
+            "holdings": holdings,
+            "avg_buy_price": avg_buy_price,
+            "realized_pnl": realized_pnl,
+            "total_fees": total_fees,
+            "total_invested": total_invested,
+            "total_received": total_received,
+        }
+
 
 class PortfolioManager:
     """Manages current holdings."""

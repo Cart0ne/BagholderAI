@@ -52,24 +52,32 @@ class TelegramNotifier:
         if trade.get("realized_pnl") is not None:
             pnl_line = f"\n💰 P&L: ${trade['realized_pnl']:.4f}"
 
+        cost_label = "Revenue" if trade["side"] == "sell" else "Cost"
         text = (
             f"{emoji} <b>{trade['side'].upper()}</b> {trade['symbol']}\n"
             f"Amount: {trade['amount']:.6f}\n"
             f"Price: {fmt_price(trade['price'])}\n"
-            f"Cost: ${trade['cost']:.2f}\n"
+            f"{cost_label}: ${trade['cost']:.2f}\n"
             f"Fee: ${trade['fee']:.4f}\n"
             f"Brain: {trade['brain']} | Mode: {trade['mode']}"
             f"{pnl_line}"
         )
         return await self.send_message(text)
 
-    async def send_daily_report(self, trades: list, status: dict) -> bool:
+    async def send_daily_report(
+        self,
+        trades: list,
+        status: dict,
+        portfolio_summary: Optional[dict] = None,
+    ) -> bool:
         """
         Send end-of-day summary.
 
         Args:
-            trades: list of today's trades from DB (already filtered by symbol + config_version)
+            trades: list of today's trades from DB (already filtered by symbol)
             status: dict from bot.get_status()
+            portfolio_summary: optional dict with consolidated portfolio data:
+                {total_value, cash, holdings_value, initial_capital, total_pnl, positions: [{symbol, holdings, value, unrealized_pnl}]}
         """
         today = date.today().strftime("%d/%m/%Y")
         num_buys = sum(1 for t in trades if t.get("side") == "buy")
@@ -80,7 +88,7 @@ class TelegramNotifier:
         symbol = status.get('symbol', 'N/A')
         base = symbol.split("/")[0] if "/" in symbol else symbol
 
-        # Capital line (Task 3)
+        # Capital line
         capital = status.get('capital', 0)
         available = status.get('available_capital', 0)
         deployed = capital - available
@@ -112,9 +120,38 @@ class TelegramNotifier:
             f"  Range: {status.get('range', 'N/A')}\n"
             f"  Active buys: {active_buys}\n"
             f"  Active sells: {status.get('levels', {}).get('active_sells', 0)}\n"
-            f"\n"
-            f"🤖 <i>Mode: {status.get('mode', 'paper').upper()}</i>"
         )
+
+        # Consolidated portfolio summary (all assets)
+        if portfolio_summary:
+            ps = portfolio_summary
+            total_val = ps.get('total_value', 0)
+            cash = ps.get('cash', 0)
+            holdings_val = ps.get('holdings_value', 0)
+            initial = ps.get('initial_capital', 0)
+            total_pnl = ps.get('total_pnl', 0)
+            pnl_pct = (total_pnl / initial * 100) if initial > 0 else 0
+
+            text += (
+                f"\n{'─' * 28}\n"
+                f"💼 <b>Portfolio Totale</b>\n"
+                f"  Cash: ${cash:.2f}\n"
+                f"  Holdings: ${holdings_val:.2f}\n"
+                f"  <b>Valore totale: ${total_val:.2f}</b>\n"
+                f"  Capitale iniziale: ${initial:.2f}\n"
+                f"  P&L: ${total_pnl:+.2f} ({pnl_pct:+.1f}%)\n"
+            )
+
+            positions = ps.get('positions', [])
+            if positions:
+                text += "\n  <b>Posizioni:</b>\n"
+                for p in positions:
+                    psym = p.get('symbol', '?')
+                    pval = p.get('value', 0)
+                    ppnl = p.get('unrealized_pnl', 0)
+                    text += f"    {psym}: ${pval:.2f} (P&L: ${ppnl:+.4f})\n"
+
+        text += f"\n🤖 <i>Mode: {status.get('mode', 'paper').upper()}</i>"
         return await self.send_message(text)
 
     async def send_bot_started(self, status: dict) -> bool:
@@ -192,8 +229,8 @@ class SyncTelegramNotifier:
     def send_trade_alert(self, trade: dict) -> bool:
         return _run_async(self._async.send_trade_alert(trade))
 
-    def send_daily_report(self, trades: list, status: dict) -> bool:
-        return _run_async(self._async.send_daily_report(trades, status))
+    def send_daily_report(self, trades: list, status: dict, portfolio_summary: dict = None) -> bool:
+        return _run_async(self._async.send_daily_report(trades, status, portfolio_summary))
 
     def send_bot_started(self, status: dict) -> bool:
         return _run_async(self._async.send_bot_started(status))

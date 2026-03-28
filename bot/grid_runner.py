@@ -27,7 +27,8 @@ logger = logging.getLogger("bagholderai.runner")
 
 # Imports from project
 from config.settings import (
-    TradingMode, HardcodedRules, GridConfig, ExchangeConfig, get_grid_config
+    TradingMode, HardcodedRules, GridConfig, ExchangeConfig, get_grid_config,
+    GRID_INSTANCES,
 )
 from bot.exchange import create_exchange
 from bot.strategies.grid_bot import GridBot
@@ -111,6 +112,7 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
         return
 
     bot.setup_grid(price)
+    bot.restore_state_from_db()
 
     # Print initial grid
     logger.info("Grid levels:")
@@ -173,7 +175,33 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
             if now.hour >= REPORT_HOUR and daily_report_sent != date.today():
                 try:
                     today_trades = trade_logger.get_today_trades(symbol=cfg.symbol) if trade_logger else []
-                    notifier.send_daily_report(today_trades, bot.get_status())
+                    status = bot.get_status()
+
+                    # Build consolidated portfolio summary across all grid instances
+                    portfolio_summary = _build_portfolio_summary(
+                        trade_logger, exchange, bot, cfg.symbol
+                    )
+
+                    notifier.send_daily_report(today_trades, status, portfolio_summary)
+
+                    # Save snapshot to daily_pnl
+                    if pnl_tracker and portfolio_summary:
+                        today_all_trades = trade_logger.get_today_trades() if trade_logger else []
+                        day_fees = sum(float(t.get("fee", 0)) for t in today_all_trades)
+                        day_realized = sum(
+                            float(t.get("realized_pnl", 0))
+                            for t in today_all_trades if t.get("realized_pnl")
+                        )
+                        pnl_tracker.record_daily(
+                            total_value=portfolio_summary["total_value"],
+                            daily_pnl=day_realized,
+                            cumulative_pnl=portfolio_summary["total_pnl"],
+                            strategy_a_pnl=day_realized,
+                            total_fees=day_fees,
+                            trades_count=len(today_all_trades),
+                        )
+                        logger.info("Daily P&L snapshot saved to database.")
+
                     daily_report_sent = date.today()
                     logger.info("Daily report sent via Telegram.")
                 except Exception as e:
@@ -203,6 +231,58 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
     logger.info("FINAL STATUS")
     _print_status(bot)
     logger.info("=" * 50)
+
+
+def _build_portfolio_summary(trade_logger, exchange, current_bot, current_symbol: str) -> dict:
+    """
+    Build a consolidated portfolio summary across all grid instances.
+    Queries DB positions + live prices to calculate total portfolio value.
+    """
+    initial_capital = sum(inst.capital for inst in GRID_INSTANCES)
+    cash = 0.0
+    holdings_value = 0.0
+    positions = []
+
+    for inst in GRID_INSTANCES:
+        pos = trade_logger.get_open_position(inst.symbol)
+        h = pos["holdings"]
+
+        # Get available capital for this instance
+        available = max(0.0, inst.capital - pos["total_invested"] + pos["total_received"])
+        cash += available
+
+        if h > 0:
+            # Use current bot's price if same symbol, otherwise fetch
+            if inst.symbol == current_symbol:
+                live_price = current_bot.state.last_price if current_bot.state else 0
+            else:
+                try:
+                    ticker = exchange.fetch_ticker(inst.symbol)
+                    live_price = ticker["last"]
+                except Exception:
+                    live_price = pos["avg_buy_price"]  # fallback
+
+            value = h * live_price
+            unrealized = (live_price - pos["avg_buy_price"]) * h if pos["avg_buy_price"] > 0 else 0
+            holdings_value += value
+            positions.append({
+                "symbol": inst.symbol,
+                "holdings": h,
+                "value": value,
+                "unrealized_pnl": unrealized,
+            })
+
+    total_value = cash + holdings_value
+    total_pnl = total_value - initial_capital
+
+    return {
+        "total_value": total_value,
+        "cash": cash,
+        "holdings_value": holdings_value,
+        "initial_capital": initial_capital,
+        "total_pnl": total_pnl,
+        "positions": positions,
+    }
 
 
 def _print_status(bot: GridBot):
