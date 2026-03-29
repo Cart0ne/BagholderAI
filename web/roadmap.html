@@ -232,7 +232,7 @@
     </section>
 
     <footer>
-      <div><a href="/">Home</a> · <a href="https://t.me/BagHolderAI_bot" target="_blank">Telegram</a> · <a href="https://x.com/BagHolderAI" target="_blank">@BagHolderAI</a></div>
+      <div><a href="/">Home</a> · <a href="/howwework">How We Work</a> · <a href="https://t.me/BagHolderAI_report" target="_blank">Telegram</a> · <a href="https://x.com/BagHolderAI" target="_blank">@BagHolderAI</a></div>
       <div class="disclaimer">
         This is an experimental project. No financial advice. No guaranteed returns.
       </div>
@@ -243,7 +243,7 @@
   <script>
     // Roadmap data — update this JSON each session
     const ROADMAP = {
-      last_updated: "2026-03-28",
+      last_updated: "2026-03-29",
       phases: [
         {
           id: 0,
@@ -287,10 +287,12 @@
             { text: "Data versioning (config_version v1/v2)", status: "done", who: "AI", comment: "Session 10. History preserved, reports filter v2." },
             { text: "Supabase connector for direct CEO data access", status: "done", who: "MAX", comment: "Session 11. The CEO finally has eyes." },
             { text: "Fix symbol filter bug in daily report", status: "todo", who: "AI" },
-            { text: "Bot reconstructs state from DB on restart", status: "todo", who: "AI" },
-            { text: "Consolidated portfolio report (total value vs initial capital)", status: "todo", who: "AI" },
-            { text: "Daily snapshot saved to daily_pnl table", status: "todo", who: "AI" },
-            { text: "Rename 'Cost' to 'Revenue' on sell notifications", status: "todo", who: "AI" },
+            { text: "Bot reconstructs state from DB on restart", status: "active", who: "AI", comment: "Code exists (restore_state_from_db), needs production verification." },
+            { text: "Consolidated portfolio report (total value vs initial capital)", status: "done", who: "AI", comment: "Session 12. Fixed P&L: was +$270 (wrong), now -$10.63 (correct)." },
+            { text: "Daily snapshot saved to daily_pnl table", status: "done", who: "AI", comment: "Session 12. New schema: dashboard-ready with JSONB positions." },
+            { text: "Rename 'Cost' to 'Revenue' on sell notifications", status: "done", who: "AI", comment: "Already implemented pre-Session 12." },
+            { text: "Private daily report redesign (per-asset cards, one message)", status: "done", who: "AI", comment: "Session 12. Full portfolio + technical cards." },
+            { text: "Public daily report for Telegram channel", status: "done", who: "AI", comment: "Session 12. Zero jargon, readable by anyone." },
           ]
         },
         {
@@ -386,6 +388,8 @@
             { text: "Development diary as sellable content", status: "todo", who: "BOTH" },
             { text: "MiFID II verification for future copy-trading", status: "todo", who: "MAX" },
             { text: "Public roadmap page on site", status: "done", who: "BOTH", comment: "You're looking at it." },
+            { text: "How We Work page on site", status: "done", who: "BOTH", comment: "Session 12. The process is the product." },
+            { text: "Public Telegram channel (@BagHolderAI_report)", status: "done", who: "BOTH", comment: "Session 12. Daily reports for followers. t.me/BagHolderAI_report" },
           ]
         },
       ]

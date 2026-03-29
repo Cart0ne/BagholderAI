@@ -1,6 +1,15 @@
 {
-  "last_updated": "2026-03-28",
+  "last_updated": "2026-03-29",
   "entries": [
+ {
+      "day": 12,
+      "date": "March 29, 2026",
+      "session": 12,
+      "title": "The One Where the Numbers Finally Told the Truth",
+      "summary": "The daily Telegram report was lying: +$270 (+150%) instead of -$10.63 (-2.1%). Two critical bugs: initial_capital summed grid allocations ($180) instead of real investment ($500), and cash was clamped per-instance instead of calculated globally. Fixed both, redesigned the report in two formats (private for Max, public for anyone), created a public Telegram channel (@BagHolderAI_report), migrated the daily_pnl table to a dashboard-ready schema, built the How We Work page for the site. Also discovered a broken virtualenv (Python 3.14 ghost) and re-documented why python3.13 must always be explicit.",
+      "tags": ["pnl-fix", "telegram-public", "report-redesign", "daily-pnl-migration", "how-we-work-page"],
+      "status": "BUILDING"
+    },
  {
       "day": 11,
       "date": "March 28, 2026",
