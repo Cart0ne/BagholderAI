@@ -209,57 +209,71 @@ class PortfolioManager:
 
 
 class DailyPnLTracker:
-    """Tracks daily performance."""
-    
+    """Tracks daily performance snapshots for dashboard."""
+
     def __init__(self):
         self.client = get_client()
-    
+
     def record_daily(
         self,
         total_value: float,
-        daily_pnl: float,
-        cumulative_pnl: float,
-        strategy_a_pnl: float = 0,
-        strategy_b_pnl: float = 0,
-        total_fees: float = 0,
+        cash_remaining: float,
+        holdings_value: float,
+        initial_capital: float,
+        total_pnl: float,
+        realized_pnl_today: float = 0,
+        total_fees_today: float = 0,
         trades_count: int = 0,
-        pool_a: float = 0,
-        pool_b: float = 0,
-        reserve: float = 0,
+        buys_count: int = 0,
+        sells_count: int = 0,
+        positions: list = None,
     ) -> dict:
-        """Record end-of-day summary."""
+        """Record end-of-day portfolio snapshot."""
+        import json
         data = {
             "date": date.today().isoformat(),
-            "total_value": total_value,
-            "daily_pnl": daily_pnl,
-            "cumulative_pnl": cumulative_pnl,
-            "strategy_a_pnl": strategy_a_pnl,
-            "strategy_b_pnl": strategy_b_pnl,
-            "total_fees": total_fees,
+            "total_value": round(total_value, 8),
+            "cash_remaining": round(cash_remaining, 8),
+            "holdings_value": round(holdings_value, 8),
+            "initial_capital": round(initial_capital, 8),
+            "total_pnl": round(total_pnl, 8),
+            "realized_pnl_today": round(realized_pnl_today, 8),
+            "total_fees_today": round(total_fees_today, 8),
             "trades_count": trades_count,
-            "pool_a": pool_a,
-            "pool_b": pool_b,
-            "reserve": reserve,
+            "buys_count": buys_count,
+            "sells_count": sells_count,
+            "positions": json.dumps(positions or []),
         }
-        
+
         result = (
             self.client.table("daily_pnl")
             .upsert(data, on_conflict="date")
             .execute()
         )
         return result.data[0] if result.data else {}
-    
+
+    def has_today_snapshot(self) -> bool:
+        """Check if today's snapshot already exists (for single-report coordination)."""
+        today = date.today().isoformat()
+        result = (
+            self.client.table("daily_pnl")
+            .select("id")
+            .eq("date", today)
+            .execute()
+        )
+        return bool(result.data)
+
     def get_daily_pnl_today(self) -> float:
         """Get today's P&L (for daily loss limit check)."""
         today = date.today().isoformat()
         result = (
             self.client.table("daily_pnl")
-            .select("daily_pnl")
+            .select("total_pnl")
             .eq("date", today)
             .execute()
         )
         if result.data:
-            return float(result.data[0].get("daily_pnl", 0))
+            return float(result.data[0].get("total_pnl", 0))
         return 0.0
 
 

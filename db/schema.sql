@@ -59,31 +59,25 @@ CREATE TABLE portfolio (
 
 
 -- === DAILY P&L ===
--- One row per day, for dashboard charts and monitoring
+-- Daily portfolio snapshots (dashboard-ready)
 CREATE TABLE daily_pnl (
-    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    date DATE NOT NULL UNIQUE,
-    
-    -- Summary
-    total_value DECIMAL(18, 8) NOT NULL,
-    daily_pnl DECIMAL(18, 8) NOT NULL,
-    cumulative_pnl DECIMAL(18, 8) NOT NULL,
-    
-    -- Breakdown
-    strategy_a_pnl DECIMAL(18, 8) DEFAULT 0,
-    strategy_b_pnl DECIMAL(18, 8) DEFAULT 0,
-    total_fees DECIMAL(18, 8) DEFAULT 0,
-    
-    -- Activity
-    trades_count INTEGER DEFAULT 0,
-    
-    -- Capital allocation
-    pool_a DECIMAL(18, 8),
-    pool_b DECIMAL(18, 8),
-    reserve DECIMAL(18, 8)
+    id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+    date date NOT NULL UNIQUE,
+    total_value numeric NOT NULL,
+    cash_remaining numeric NOT NULL,
+    holdings_value numeric NOT NULL,
+    initial_capital numeric NOT NULL,
+    total_pnl numeric NOT NULL,
+    realized_pnl_today numeric DEFAULT 0,
+    total_fees_today numeric DEFAULT 0,
+    trades_count integer DEFAULT 0,
+    buys_count integer DEFAULT 0,
+    sells_count integer DEFAULT 0,
+    positions jsonb DEFAULT '[]'::jsonb,
+    created_at timestamptz DEFAULT now()
 );
 
-CREATE INDEX idx_daily_pnl_date ON daily_pnl(date DESC);
+CREATE INDEX idx_daily_pnl_date ON daily_pnl (date DESC);
 
 
 -- === SENTINEL LOGS ===

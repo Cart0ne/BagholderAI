@@ -35,6 +35,9 @@ class DatabaseConfig:
 class TelegramConfig:
     BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
     CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
+    # Public bot (read-only daily reports for followers)
+    PUBLIC_BOT_TOKEN = os.getenv("TELEGRAM_PUBLIC_BOT_TOKEN", "")
+    PUBLIC_CHAT_ID = os.getenv("TELEGRAM_PUBLIC_CHAT_ID", "")
 
 
 # === AI Sentinel Configuration ===
