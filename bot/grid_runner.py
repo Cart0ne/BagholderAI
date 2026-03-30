@@ -185,7 +185,7 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
                         )
 
                         # Get today's trades for ALL symbols
-                        today_all_trades = trade_logger.get_today_trades() if trade_logger else []
+                        today_all_trades = trade_logger.get_today_trades(config_version="v3") if trade_logger else []
                         today_buys = sum(1 for t in today_all_trades if t.get("side") == "buy")
                         today_sells = sum(1 for t in today_all_trades if t.get("side") == "sell")
                         day_fees = sum(float(t.get("fee", 0)) for t in today_all_trades)
@@ -309,7 +309,7 @@ def _build_portfolio_summary(trade_logger, exchange, current_bot, current_symbol
     positions = []
 
     for inst in GRID_INSTANCES:
-        pos = trade_logger.get_open_position(inst.symbol)
+        pos = trade_logger.get_open_position(inst.symbol, config_version="v3")
         h = pos["holdings"]
         total_invested_all += pos["total_invested"]
         total_received_all += pos["total_received"]

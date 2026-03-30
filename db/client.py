@@ -39,7 +39,7 @@ class TradeLogger:
         realized_pnl: Optional[float] = None,
         buy_trade_id: Optional[str] = None,
         cost: Optional[float] = None,
-        config_version: str = "v2",
+        config_version: str = "v3",
     ) -> dict:
         """Log a trade to the database."""
         data = {
@@ -106,19 +106,21 @@ class TradeLogger:
         result = query.execute()
         return result.data or []
 
-    def get_open_position(self, symbol: str) -> dict:
+    def get_open_position(self, symbol: str, config_version: str = "v3") -> dict:
         """
-        Reconstruct net position for a symbol from all historical trades.
+        Reconstruct net position for a symbol from trades in DB.
+        Filters by config_version to avoid cross-contamination between v1/v2/v3.
         Returns dict with holdings, avg_buy_price, realized_pnl, total_fees.
-        Used to restore bot state after restart.
         """
-        result = (
+        query = (
             self.client.table("trades")
             .select("*")
             .eq("symbol", symbol)
             .order("created_at", desc=True)
-            .execute()
         )
+        if config_version:
+            query = query.eq("config_version", config_version)
+        result = query.execute()
         trades = result.data or []
 
         holdings = 0.0
