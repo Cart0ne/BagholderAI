@@ -9,3 +9,6 @@ venv/
 
 # Old files
 *_old*
+
+# Completed briefs archive
+config/.mdcompletati/
