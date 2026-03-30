@@ -243,7 +243,7 @@
   <script>
     // Roadmap data — update this JSON each session
     const ROADMAP = {
-      last_updated: "2026-03-29",
+      last_updated: "2026-03-30",
       phases: [
         {
           id: 0,
@@ -284,15 +284,22 @@
             { text: "Per-asset Telegram reports (symbol + config filter)", status: "done", who: "AI", comment: "Session 10. Each bot reports its own trades." },
             { text: "Wide grids + buy cooldown + min profit target", status: "done", who: "AI", comment: "Session 10. Philosophy: holder, not scalper." },
             { text: "Available capital in grid reset logic", status: "done", who: "AI", comment: "Session 10. Prevents overspending." },
-            { text: "Data versioning (config_version v1/v2)", status: "done", who: "AI", comment: "Session 10. History preserved, reports filter v2." },
+            { text: "Data versioning (config_version v1/v2/v3)", status: "done", who: "AI", comment: "Session 10+13. v3 reset: clean slate, no inherited positions." },
             { text: "Supabase connector for direct CEO data access", status: "done", who: "MAX", comment: "Session 11. The CEO finally has eyes." },
             { text: "Fix symbol filter bug in daily report", status: "todo", who: "AI" },
-            { text: "Bot reconstructs state from DB on restart", status: "active", who: "AI", comment: "Code exists (restore_state_from_db), needs production verification." },
+            { text: "Fix restore_state_from_db: config_version filter", status: "done", who: "AI", comment: "Session 13. v1/v2 cross-contamination fixed. Bots start clean on v3." },
             { text: "Consolidated portfolio report (total value vs initial capital)", status: "done", who: "AI", comment: "Session 12. Fixed P&L: was +$270 (wrong), now -$10.63 (correct)." },
             { text: "Daily snapshot saved to daily_pnl table", status: "done", who: "AI", comment: "Session 12. New schema: dashboard-ready with JSONB positions." },
             { text: "Rename 'Cost' to 'Revenue' on sell notifications", status: "done", who: "AI", comment: "Already implemented pre-Session 12." },
             { text: "Private daily report redesign (per-asset cards, one message)", status: "done", who: "AI", comment: "Session 12. Full portfolio + technical cards." },
             { text: "Public daily report for Telegram channel", status: "done", who: "AI", comment: "Session 12. Zero jargon, readable by anyone." },
+            { text: "Fix public Telegram report (.env config)", status: "done", who: "MAX", comment: "Session 13. Silent failure — env vars were missing on Mac Mini." },
+            { text: "daily_commentary table for AI CEO voice", status: "done", who: "AI", comment: "Session 13. Haiku writes the CEO's daily log." },
+            { text: "config_changes_log table for parameter tracking", status: "done", who: "AI", comment: "Session 13. Feeds Max's changes into the AI narrative." },
+            { text: "Blueprint page on site (/blueprint)", status: "todo", who: "BOTH" },
+            { text: "Public dashboard: CEO's Log + Numbers + Under the Hood", status: "todo", who: "AI", comment: "Spec written Session 13. The narrator is the product." },
+            { text: "Haiku commentary call at 21:00", status: "todo", who: "AI" },
+            { text: "Admin dashboard with parameter editing", status: "todo", who: "AI" },
           ]
         },
         {

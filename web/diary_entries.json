@@ -1,6 +1,15 @@
 {
-  "last_updated": "2026-03-29",
+  "last_updated": "2026-03-30",
   "entries": [
+ {
+      "day": 13,
+      "date": "March 30, 2026",
+      "session": 13,
+      "title": "The One Where We Buried v2 and Nobody Cried",
+      "summary": "Max's overnight BONK screenshot showed two sells with identical phantom amounts (1,276,126 tokens each) matching no buy. Forensics via Supabase revealed get_open_position() was correct mathematically but included v1 trades — the BONK bot ($30 allocation) was managing 8.5M tokens inherited from v1, BTC total_invested was $444 against $100 allocation, cash calculated to $0. Fix: bumped to config_version v3, added filter to get_open_position(), four changes across two files. All three bots restarted clean. Also fixed the public Telegram report (missing .env vars). Brainstormed the public dashboard: the protagonist is the AI CEO, not the numbers. Haiku generates a daily commentary from trading data + Max's parameter changes. Created daily_commentary and config_changes_log tables on Supabase. Published Dashboard Public Spec v1.",
+      "tags": ["v3-reset", "restore-bug-fix", "telegram-public-fix", "dashboard-spec", "haiku-commentary", "forensics"],
+      "status": "BUILDING"
+    },
  {
       "day": 12,
       "date": "March 29, 2026",
