@@ -83,6 +83,9 @@
       transition: opacity 0.2s;
     }
     .back-link:hover { opacity: 1; }
+    .nav { display: flex; gap: 6px; flex-wrap: wrap; margin: 16px 0 0; }
+    .nav a { font-family: var(--mono); font-size: 12px; padding: 6px 14px; border-radius: 6px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); color: rgba(255,255,255,0.4); text-decoration: none; transition: all 0.2s ease; }
+    .nav a:hover { border-color: var(--green); color: var(--green); }
 
     /* Header */
     h1 {
@@ -303,10 +306,14 @@
 <body>
   <div class="container">
 
-    <a href="/" class="back-link">← back to bagholder.lol</a>
+    <a href="/" class="back-link">← Dashboard</a>
 
     <h1>How We Work</h1>
     <p class="subtitle">A CEO, a Co-Founder, and an Intern walk into a terminal...</p>
+    <nav class="nav">
+      <a href="/diary">Diary</a>
+      <a href="/roadmap">Roadmap</a>
+    </nav>
     <p class="version">v2.0 — March 2026 · Updated every time the workflow changes</p>
     <p class="intro">
       This page describes how BagHolderAI is actually built. Not the architecture, not the code — the human process. Three entities collaborate on this project, none of them fully understand what the others are doing, and somehow things get shipped.

@@ -86,6 +86,10 @@
     .top-bar a { color: var(--text-dim); text-decoration: none; transition: color 0.2s; }
     .top-bar a:hover { color: var(--green); }
 
+    .nav { display: flex; gap: 6px; flex-wrap: wrap; margin: 20px 0 0; }
+    .nav a { font-family: var(--mono); font-size: 12px; padding: 6px 14px; border-radius: 6px; background: var(--surface); border: 1px solid var(--border); color: var(--text-dim); text-decoration: none; transition: all 0.2s ease; }
+    .nav a:hover { border-color: var(--green); color: var(--green); }
+
     h1 {
       font-size: clamp(28px, 6vw, 40px); font-weight: 700; line-height: 1.1;
       letter-spacing: -0.03em; color: #fff;
@@ -211,11 +215,15 @@
 
     <div class="top-bar">
       <span><span class="dot">●</span> ROADMAP — bagholder.lol</span>
-      <a href="/">← back to home</a>
+      <a href="/">← Dashboard</a>
     </div>
 
     <h1>🎒 Road<span class="ai">map</span></h1>
     <p class="subtitle">What we're building, what's done, what's next.<br>Updated every session. The transparency is the product.</p>
+    <nav class="nav">
+      <a href="/diary">Diary</a>
+      <a href="/howwework">How We Work</a>
+    </nav>
 
     <div class="stats-bar" id="stats-bar"></div>
 
@@ -232,7 +240,7 @@
     </section>
 
     <footer>
-      <div><a href="/">Home</a> · <a href="/howwework">How We Work</a> · <a href="https://t.me/BagHolderAI_report" target="_blank">Telegram</a> · <a href="https://x.com/BagHolderAI" target="_blank">@BagHolderAI</a></div>
+      <div><a href="/">Dashboard</a> · <a href="/diary">Diary</a> · <a href="/howwework">How We Work</a> · <a href="https://t.me/BagHolderAI_report" target="_blank">Telegram</a> · <a href="https://x.com/BagHolderAI" target="_blank">@BagHolderAI</a></div>
       <div class="disclaimer">
         This is an experimental project. No financial advice. No guaranteed returns.
       </div>
@@ -243,7 +251,7 @@
   <script>
     // Roadmap data — update this JSON each session
     const ROADMAP = {
-      last_updated: "2026-03-30",
+      last_updated: "2026-03-31",
       phases: [
         {
           id: 0,
@@ -275,9 +283,9 @@
             { text: "Logging trades to Supabase", status: "done", who: "AI", comment: "Session 07. The filo was already there." },
             { text: "Telegram notifications (trade alerts + daily report)", status: "done", who: "AI", comment: "Session 07. First message: 🚀 BagHolderAI started." },
             { text: "Admin dashboard (private, for Max)", status: "todo", who: "AI" },
-            { text: "Public dashboard v1", status: "todo", who: "AI" },
+            { text: "Public dashboard v1", status: "done", who: "AI", comment: "Session 14. Dashboard is now the homepage." },
             { text: "Landing page with diary updates", status: "done", who: "BOTH" },
-            { text: "First diary post on dashboard", status: "todo", who: "BOTH" },
+            { text: "First diary post on dashboard", status: "done", who: "BOTH", comment: "Session 14. CEO's Log with Haiku commentary." },
             { text: "Test 2-3 different tokens (BTC, SOL, BONK)", status: "done", who: "BOTH", comment: "Session 09. Three grids running in parallel." },
             { text: "Fix accounting: avg_buy_price, grid reset, daily P&L", status: "done", who: "AI", comment: "Session 09. 5 bugs found, 5 bugs fixed." },
             { text: "Multi-token support (--symbol parameter)", status: "done", who: "AI", comment: "Session 09. Dynamic config per asset." },
@@ -297,9 +305,14 @@
             { text: "daily_commentary table for AI CEO voice", status: "done", who: "AI", comment: "Session 13. Haiku writes the CEO's daily log." },
             { text: "config_changes_log table for parameter tracking", status: "done", who: "AI", comment: "Session 13. Feeds Max's changes into the AI narrative." },
             { text: "Blueprint page on site (/blueprint)", status: "todo", who: "BOTH" },
-            { text: "Public dashboard: CEO's Log + Numbers + Under the Hood", status: "todo", who: "AI", comment: "Spec written Session 13. The narrator is the product." },
-            { text: "Haiku commentary call at 21:00", status: "todo", who: "AI" },
+            { text: "Public dashboard: CEO's Log + Numbers + Under the Hood", status: "done", who: "AI", comment: "Session 14. Dashboard is now the homepage. Static HTML + Supabase REST." },
+            { text: "Haiku commentary call at 21:00", status: "done", who: "AI", comment: "Session 14. commentary.py integrated into grid_runner.py. First output: 'a shopping spree.'" },
             { text: "Admin dashboard with parameter editing", status: "todo", who: "AI" },
+            { text: "Dashboard becomes homepage, /diary for construction log", status: "done", who: "BOTH", comment: "Session 14. Visitors see data first, not a 'coming soon' page." },
+            { text: "Nav bar on all site pages", status: "done", who: "AI", comment: "Session 14. Diary, Roadmap, How We Work on every page." },
+            { text: "RLS policies for public dashboard reads", status: "done", who: "AI", comment: "Session 14. anon SELECT on daily_pnl + daily_commentary." },
+            { text: "Commentary archive after 7 days on dashboard", status: "todo", who: "AI" },
+            { text: "Fallback colors for new asset symbols", status: "todo", who: "AI" },
           ]
         },
         {
@@ -397,6 +410,7 @@
             { text: "Public roadmap page on site", status: "done", who: "BOTH", comment: "You're looking at it." },
             { text: "How We Work page on site", status: "done", who: "BOTH", comment: "Session 12. The process is the product." },
             { text: "Public Telegram channel (@BagHolderAI_report)", status: "done", who: "BOTH", comment: "Session 12. Daily reports for followers. t.me/BagHolderAI_report" },
+            { text: "Diary page on site (/diary)", status: "done", who: "BOTH", comment: "Session 14. Construction log has its own page." },
           ]
         },
       ]

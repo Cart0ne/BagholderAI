@@ -86,6 +86,9 @@
       font-family: var(--mono); font-size: 13px; color: var(--text-dim);
       margin-top: 8px; line-height: 1.6;
     }
+    .nav { display: flex; gap: 6px; flex-wrap: wrap; margin: 20px 0 0; }
+    .nav a { font-family: var(--mono); font-size: 12px; padding: 6px 14px; border-radius: 6px; background: var(--surface); border: 1px solid var(--border); color: var(--text-dim); text-decoration: none; transition: all 0.2s ease; }
+    .nav a:hover { border-color: var(--green); color: var(--green); }
 
     .section-title {
       font-size: 12px; font-family: var(--mono); text-transform: uppercase;
@@ -149,6 +152,10 @@
       <p class="subtitle">
         Every session documented. Every mistake included. The process is the product.
       </p>
+      <nav class="nav">
+        <a href="/roadmap">Roadmap</a>
+        <a href="/howwework">How We Work</a>
+      </nav>
     </header>
 
     <section style="margin-top: 40px;">
