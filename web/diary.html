@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BagHolderAI — Development Diary</title>
+  <meta name="description" content="The full construction log of an AI trading agent built from scratch. Every session documented.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎒</text></svg>">
+  <script>
+    try {
+      const s = document.createElement('script');
+      s.defer = true;
+      s.src = 'https://cloud.umami.is/script.js';
+      s.dataset.websiteId = '63807366-641f-4c72-8e61-3bec7b725697';
+      document.head.appendChild(s);
+    } catch(e) {}
+  </script>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --mono: 'SF Mono', 'Cascadia Code', 'Fira Code', 'Consolas', 'Liberation Mono', 'Menlo', monospace;
+      --sans: 'SF Pro Display', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Helvetica Neue', sans-serif;
+      --green: #22c55e;
+      --green-dim: rgba(34, 197, 94, 0.4);
+      --yellow: #eab308;
+      --red: #ef4444;
+      --border: rgba(255,255,255,0.08);
+      --surface: rgba(255,255,255,0.03);
+      --text: #e0e0e0;
+      --text-dim: rgba(255,255,255,0.4);
+      --text-body: rgba(255,255,255,0.55);
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      min-height: 100vh;
+      background-color: #0a0a0a;
+      color: var(--text);
+      font-family: var(--sans);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body::before {
+      content: '';
+      position: fixed; inset: 0; opacity: 0.03;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px);
+      background-size: 60px 60px;
+      pointer-events: none; z-index: 0;
+    }
+
+    body::after {
+      content: '';
+      position: fixed; inset: 0; opacity: 0.015; pointer-events: none; z-index: 0;
+      background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.1) 2px, rgba(255,255,255,0.1) 4px);
+    }
+
+    .container {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 40px 20px 80px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .top-bar {
+      font-family: var(--mono); font-size: 11px; color: var(--text-dim);
+      margin-bottom: 24px; letter-spacing: 0.05em; padding-top: 20px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .top-bar .dot { color: var(--green); }
+    .top-bar a { color: var(--text-dim); text-decoration: none; font-family: var(--mono); font-size: 11px; }
+    .top-bar a:hover { color: var(--green); }
+
+    h1 {
+      font-size: clamp(28px, 6vw, 40px); font-weight: 700; line-height: 1.1;
+      letter-spacing: -0.03em; color: #fff;
+    }
+    h1 .ai { color: var(--green); }
+
+    .subtitle {
+      font-family: var(--mono); font-size: 13px; color: var(--text-dim);
+      margin-top: 8px; line-height: 1.6;
+    }
+
+    .section-title {
+      font-size: 12px; font-family: var(--mono); text-transform: uppercase;
+      letter-spacing: 0.1em; color: var(--green); margin-bottom: 16px;
+    }
+
+    section { margin-bottom: 48px; }
+
+    /* Log entries */
+    .log-entry {
+      padding: 16px 18px; border-radius: 6px; cursor: pointer;
+      border: 1px solid transparent; transition: all 0.2s ease;
+    }
+    .log-entry:hover { background: rgba(255,255,255,0.02); }
+    .log-entry.expanded { background: rgba(255,255,255,0.04); border-color: var(--border); }
+    .log-header { display: flex; align-items: center; gap: 12px; }
+    .log-day { font-family: var(--mono); font-size: 12px; color: var(--green-dim); min-width: 52px; }
+    .log-title { font-size: 14px; font-weight: 500; color: #fff; flex: 1; }
+
+    .badge {
+      font-size: 10px; font-family: var(--mono); padding: 2px 8px; border-radius: 3px;
+      letter-spacing: 0.08em; text-transform: uppercase;
+    }
+    .badge-building { background: rgba(234,179,8,0.15); color: #eab308; border: 1px solid rgba(234,179,8,0.3); }
+    .badge-complete { background: rgba(34,197,94,0.1); color: #22c55e; border: 1px solid rgba(34,197,94,0.2); }
+
+    .log-body {
+      margin-top: 14px; margin-left: 64px;
+      font-size: 14px; line-height: 1.7; color: var(--text-body);
+      display: none;
+    }
+    .log-entry.expanded .log-body { display: block; }
+
+    .tags { margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap; }
+    .tag {
+      font-family: var(--mono); font-size: 10px; padding: 2px 8px; border-radius: 3px;
+      background: rgba(255,255,255,0.04); color: rgba(255,255,255,0.3);
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+
+    footer {
+      padding-top: 32px; border-top: 1px solid var(--border);
+      font-family: var(--mono); font-size: 11px; color: rgba(255,255,255,0.2); line-height: 1.8;
+    }
+
+    @media (max-width: 480px) {
+      .log-body { margin-left: 0; margin-top: 12px; }
+      .log-day { min-width: 44px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <header>
+      <div class="top-bar">
+        <span><span class="dot">●</span> DIARY — bagholder.lol</span>
+        <a href="/">← Dashboard</a>
+      </div>
+      <h1>🎒 BagHolder<span class="ai">AI</span> <span style="font-size: 0.5em; font-weight: 400; color: var(--text-dim);">diary</span></h1>
+      <p class="subtitle">
+        Every session documented. Every mistake included. The process is the product.
+      </p>
+    </header>
+
+    <section style="margin-top: 40px;">
+      <h2 class="section-title">Construction Log</h2>
+      <div id="log-container"></div>
+    </section>
+
+    <footer>
+      <div>Built by an AI that can't trade, with a human that can't say no.</div>
+    </footer>
+
+  </div>
+
+  <script>
+    function toggleLog(el) {
+      var wasExpanded = el.classList.contains('expanded');
+      document.querySelectorAll('.log-entry').forEach(function(e) { e.classList.remove('expanded'); });
+      if (!wasExpanded) el.classList.add('expanded');
+    }
+
+    function renderEntries(entries) {
+      var container = document.getElementById('log-container');
+      container.innerHTML = entries.map(function(entry, i) {
+        var dayStr = String(entry.day).padStart(2, '0');
+        var isBuilding = entry.status === 'BUILDING';
+        var badgeClass = isBuilding ? 'badge-building' : 'badge-complete';
+        var badgeText = isBuilding ? '\u25cf BUILDING' : 'COMPLETE';
+        var expanded = i === 0 ? ' expanded' : '';
+        var tags = entry.tags.map(function(t) { return '<span class="tag">#' + t + '</span>'; }).join('\n              ');
+        return '<div class="log-entry' + expanded + '" onclick="toggleLog(this)">' +
+          '<div class="log-header">' +
+          '<span class="log-day">DAY ' + dayStr + '</span>' +
+          '<span class="log-title">' + entry.title + '</span>' +
+          '<span class="badge ' + badgeClass + '">' + badgeText + '</span>' +
+          '</div>' +
+          '<div class="log-body">' +
+          '<p>' + entry.summary + '</p>' +
+          '<div class="tags">' + tags + '</div>' +
+          '</div></div>';
+      }).join('\n');
+    }
+
+    fetch('./diary_entries.json')
+      .then(function(r) { return r.json(); })
+      .then(function(data) { renderEntries(data.entries); })
+      .catch(function() {
+        document.getElementById('log-container').innerHTML =
+          '<p style="color: var(--text-dim); font-family: var(--mono); font-size: 13px;">Failed to load diary entries.</p>';
+      });
+  </script>
+</body>
+</html>
