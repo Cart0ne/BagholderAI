@@ -16,6 +16,7 @@ import argparse
 from datetime import datetime, date
 from utils.telegram_notifier import SyncTelegramNotifier
 from utils.formatting import fmt_price
+from commentary import generate_daily_commentary
 
 # Setup logging
 logging.basicConfig(
@@ -232,6 +233,9 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
                         # Send reports
                         notifier.send_private_daily_report(report_data)
                         notifier.send_public_daily_report(report_data)
+
+                        # Generate AI daily commentary (never crashes the bot)
+                        generate_daily_commentary(report_data, trade_logger.client)
 
                         # Save snapshot to daily_pnl
                         if pnl_tracker:
