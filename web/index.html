@@ -431,6 +431,9 @@
         hero.innerHTML = '<div class="ceo-log-empty">No commentary yet. The CEO starts talking tonight at 21:00.</div>';
         return;
       }
+      // Deduplicate: keep only the latest entry per date (already sorted by date desc, created_at desc)
+      var seen = {};
+      entries = entries.filter(function(x) { if (seen[x.date]) return false; seen[x.date] = true; return true; });
       var e = entries[0];
       hero.innerHTML =
         '<div class="ceo-log-meta"><span>Day ' + dayNum(e.date) + ' \u00b7 ' + fmtDate(e.date) + '</span>' +
@@ -591,7 +594,7 @@
     async function load() {
       try {
         var res = await Promise.all([
-          sbq('daily_commentary', 'select=date,commentary,model_used&order=date.desc&limit=30'),
+          sbq('daily_commentary', 'select=date,commentary,model_used,created_at&order=date.desc,created_at.desc&limit=30'),
           sbq('daily_pnl', 'select=*&order=date.desc&limit=90')
         ]);
         var commentary = res[0];

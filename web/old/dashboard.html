@@ -557,7 +557,7 @@
       try {
         // Fetch data in parallel
         const [commentary, pnl] = await Promise.all([
-          supabaseQuery('daily_commentary', 'select=date,commentary,model_used&order=date.desc&limit=30'),
+          supabaseQuery('daily_commentary', 'select=date,commentary,model_used,created_at&order=date.desc,created_at.desc&limit=30'),
           supabaseQuery('daily_pnl', 'select=*&order=date.desc&limit=90')
         ]);
 

@@ -13,51 +13,39 @@ from config.settings import DatabaseConfig
 from db.client import get_client
 from commentary import generate_daily_commentary
 
-# Fake portfolio data (mirrors what grid_runner builds)
+# Real portfolio data for 2026-03-31 (Day 2)
 fake_portfolio_data = {
-    "total_value": 499.60,
-    "cash": 450.55,
-    "holdings_value": 49.05,
+    "total_value": 500.51,
+    "cash": 444.75,
+    "holdings_value": 55.76,
     "initial_capital": 500.00,
-    "total_pnl": -0.40,
+    "total_pnl": 0.51,
     "positions": [
         {
             "symbol": "BTC/USDT",
-            "holdings": 0.0003,
-            "value": 24.85,
-            "avg_buy_price": 83500.0,
-            "unrealized_pnl": -0.12,
-            "unrealized_pnl_pct": -0.49,
-            "realized_pnl": 0.0,
-            "live_price": 82833.0,
+            "value": 12.65,
+            "unrealized_pnl": 0.16,
+            "unrealized_pnl_pct": 1.32,
         },
         {
             "symbol": "SOL/USDT",
-            "holdings": 0.095,
-            "value": 12.32,
-            "avg_buy_price": 131.0,
-            "unrealized_pnl": -0.16,
-            "unrealized_pnl_pct": -1.25,
-            "realized_pnl": 0.0,
-            "live_price": 129.7,
+            "value": 24.93,
+            "unrealized_pnl": -0.04,
+            "unrealized_pnl_pct": -0.16,
         },
         {
             "symbol": "BONK/USDT",
-            "holdings": 700.0,
-            "value": 11.87,
-            "avg_buy_price": 0.0000172,
-            "unrealized_pnl": -0.12,
-            "unrealized_pnl_pct": -1.03,
-            "realized_pnl": 0.0,
-            "live_price": 0.00001696,
+            "value": 18.18,
+            "unrealized_pnl": 0.19,
+            "unrealized_pnl_pct": 1.04,
         },
     ],
     "day_number": 2,
-    "today_trades_count": 4,
-    "today_buys": 4,
-    "today_sells": 0,
-    "today_fees": 0.02,
-    "today_realized": 0.00,
+    "today_trades_count": 2,
+    "today_buys": 0,
+    "today_sells": 2,
+    "today_fees": 0.0,
+    "today_realized": 0.18,
 }
 
 
@@ -92,6 +80,8 @@ def main():
             supabase.table("daily_commentary")
             .select("*")
             .eq("date", str(date.today()))
+            .order("created_at", desc=True)
+            .limit(1)
             .execute()
         )
         if check.data:

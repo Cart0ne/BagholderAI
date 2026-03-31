@@ -260,7 +260,7 @@ class TelegramNotifier:
                 else:
                     text += f"  Today: no trades\n"
 
-        text += f"\n🤖 <i>Grid bot v2 · bagholder.lol</i>"
+        text += f"\n🤖 <i>Grid bot v3 · bagholder.lol</i>"
         return await self.send_message(text)
 
     async def send_public_daily_report(self, data: dict) -> bool:

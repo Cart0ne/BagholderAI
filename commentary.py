@@ -40,6 +40,7 @@ def get_yesterday_commentary(supabase_client):
             supabase_client.table("daily_commentary")
             .select("commentary")
             .eq("date", yesterday)
+            .order("created_at", desc=True)
             .limit(1)
             .execute()
         )
@@ -133,15 +134,14 @@ def generate_daily_commentary(portfolio_data, supabase_client):
         )
         commentary_text = response.content[0].text
 
-        # Upsert to Supabase (on_conflict="date" for the unique constraint)
-        supabase_client.table("daily_commentary").upsert(
+        # Insert to Supabase (multiple entries per day allowed)
+        supabase_client.table("daily_commentary").insert(
             {
                 "date": str(date.today()),
                 "commentary": commentary_text,
                 "model_used": "claude-haiku-4-5-20251001",
                 "prompt_data": json.dumps(prompt_data),
-            },
-            on_conflict="date",
+            }
         ).execute()
 
         logger.info(f"Daily commentary saved: {commentary_text[:80]}...")
