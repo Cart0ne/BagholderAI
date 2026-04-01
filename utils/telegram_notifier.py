@@ -46,13 +46,30 @@ class TelegramNotifier:
             return False
 
     async def send_trade_alert(self, trade: dict) -> bool:
-        """Send a single trade notification."""
+        """Send a single trade notification with verification."""
         emoji = "🟢" if trade["side"] == "buy" else "🔴"
         pnl_line = ""
         if trade.get("realized_pnl") is not None:
             pnl_line = f"\n💰 P&L: ${trade['realized_pnl']:.4f}"
 
         cost_label = "Revenue" if trade["side"] == "sell" else "Cost"
+
+        # Verification line
+        verify_line = ""
+        TOLERANCE = 0.01  # 1% tolerance for rounding
+        if trade["side"] == "buy" and "cash_before" in trade:
+            cash = trade["cash_before"]
+            spend = trade["cost"]
+            ok = cash >= spend * (1 - TOLERANCE)
+            icon = "✅" if ok else "⚠️"
+            verify_line = f"\n💵 Cash ${cash:.2f} → Spendo ${spend:.2f} {icon}"
+        elif trade["side"] == "sell" and "holdings_value_before" in trade:
+            have = trade["holdings_value_before"]
+            sell_val = trade["cost"]
+            ok = have >= sell_val * (1 - TOLERANCE)
+            icon = "✅" if ok else "⚠️"
+            verify_line = f"\n🦺 Ho ${have:.2f} → Vendo ${sell_val:.2f} {icon}"
+
         text = (
             f"{emoji} <b>{trade['side'].upper()}</b> {trade['symbol']}\n"
             f"Amount: {trade['amount']:.6f}\n"
@@ -61,6 +78,7 @@ class TelegramNotifier:
             f"Fee: ${trade['fee']:.4f}\n"
             f"Brain: {trade['brain']} | Mode: {trade['mode']}"
             f"{pnl_line}"
+            f"{verify_line}"
         )
         return await self.send_message(text)
 

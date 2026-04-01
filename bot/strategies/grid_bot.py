@@ -304,6 +304,9 @@ class GridBot:
         cost = amount * price
         fee = cost * self.FEE_RATE
 
+        # Snapshot for Telegram verification
+        cash_before = max(0.0, self.capital - self.state.total_invested + self.state.total_received)
+
         # Mark level as filled
         level.filled = True
         level.filled_at = time.time()
@@ -336,6 +339,8 @@ class GridBot:
             "brain": "grid",
             "reason": f"Grid buy at level ${level.price:.2f} (price dropped to ${price:.2f})",
             "mode": self.mode,
+            "cash_before": cash_before,
+            "capital_allocated": self.capital,
         }
 
         # Log to database
@@ -385,6 +390,9 @@ class GridBot:
         revenue = amount * price
         fee = revenue * self.FEE_RATE
 
+        # Snapshot for Telegram verification
+        holdings_value_before = self.state.holdings * price
+
         # Calculate realized P&L for this trade
         cost_basis = amount * self.state.avg_buy_price
         buy_fee = cost_basis * self.FEE_RATE
@@ -423,6 +431,7 @@ class GridBot:
             "reason": f"Grid sell at level ${level.price:.2f} (price rose to ${price:.2f})",
             "mode": self.mode,
             "realized_pnl": realized_pnl,
+            "holdings_value_before": holdings_value_before,
         }
 
         # Log to database
