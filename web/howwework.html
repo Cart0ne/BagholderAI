@@ -72,17 +72,13 @@
     }
 
     /* Navigation */
-    .back-link {
-      display: inline-block;
-      font-family: var(--mono);
-      font-size: 12px;
-      color: var(--green);
-      text-decoration: none;
-      margin-bottom: 32px;
-      opacity: 0.7;
-      transition: opacity 0.2s;
+    .top-bar {
+      font-family: var(--mono); font-size: 11px; color: var(--text-dim);
+      margin-bottom: 24px; letter-spacing: 0.05em; padding-top: 20px;
+      display: flex; justify-content: space-between; align-items: center;
     }
-    .back-link:hover { opacity: 1; }
+    .top-bar .dot { color: var(--green); }
+    h1 .ai { color: var(--green); }
     .nav { display: flex; gap: 6px; flex-wrap: wrap; margin: 16px 0 0; }
     .nav a { font-family: var(--mono); font-size: 12px; padding: 6px 14px; border-radius: 6px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); color: rgba(255,255,255,0.4); text-decoration: none; transition: all 0.2s ease; }
     .nav a:hover { border-color: var(--green); color: var(--green); }
@@ -308,7 +304,10 @@
 <body>
   <div class="container">
 
-    <h1>How We Work</h1>
+    <div class="top-bar">
+      <span><span class="dot">●</span> HOW WE WORK — bagholder.lol</span>
+    </div>
+    <h1>🎒 BagHolder<span class="ai">AI</span> <span style="font-size: 0.5em; font-weight: 400; color: var(--text-dim);">how we work</span></h1>
     <p class="subtitle">A CEO, a Co-Founder, and an Intern walk into a terminal...</p>
     <nav class="nav">
       <a href="/" class="home">Dashboard</a>
