@@ -254,7 +254,7 @@
   <script>
     // Roadmap data — update this JSON each session
     const ROADMAP = {
-      last_updated: "2026-03-31",
+      last_updated: "2026-04-01",
       phases: [
         {
           id: 0,
@@ -307,7 +307,7 @@
             { text: "Fix public Telegram report (.env config)", status: "done", who: "MAX", comment: "Session 13. Silent failure — env vars were missing on Mac Mini." },
             { text: "daily_commentary table for AI CEO voice", status: "done", who: "AI", comment: "Session 13. Haiku writes the CEO's daily log." },
             { text: "config_changes_log table for parameter tracking", status: "done", who: "AI", comment: "Session 13. Feeds Max's changes into the AI narrative." },
-            { text: "Blueprint page on site (/blueprint)", status: "todo", who: "BOTH" },
+            { text: "Blueprint page on site (/blueprint)", status: "done", who: "BOTH", comment: "Session 15. Public architecture diagram live at /blueprint." },
             { text: "Public dashboard: CEO's Log + Numbers + Under the Hood", status: "done", who: "AI", comment: "Session 14. Dashboard is now the homepage. Static HTML + Supabase REST." },
             { text: "Haiku commentary call at 21:00", status: "done", who: "AI", comment: "Session 14. commentary.py integrated into grid_runner.py. First output: 'a shopping spree.'" },
             { text: "Admin dashboard with parameter editing", status: "todo", who: "AI" },
@@ -316,6 +316,14 @@
             { text: "RLS policies for public dashboard reads", status: "done", who: "AI", comment: "Session 14. anon SELECT on daily_pnl + daily_commentary." },
             { text: "Commentary archive after 7 days on dashboard", status: "todo", who: "AI" },
             { text: "Fallback colors for new asset symbols", status: "todo", who: "AI" },
+            { text: "Trigger anti-duplicati trade (5s window)", status: "done", who: "AI", comment: "Session 15. Race condition fixed: trades within 5s of each other are blocked." },
+            { text: "Trigger anti-short-sell (DB-level)", status: "done", who: "AI", comment: "Session 15. DB check prevents sells when holdings are insufficient." },
+            { text: "Verifica holdings/cash su ogni trade Telegram", status: "done", who: "AI", comment: "Session 15. Every trade notification includes current holdings and cash balance." },
+            { text: "Uniformizzazione ambienti (MacBook Air + Mac Mini)", status: "done", who: "MAX", comment: "Session 15. Both machines aligned: same env vars, same config, same Python version." },
+            { text: "Fix BONK $0.00 su dashboard (micro-prezzi)", status: "done", who: "AI", comment: "Session 15. fmtPrice() added: shows correct decimals for micro-prices like BONK." },
+            { text: "REPORT_HOUR 21\u219220", status: "done", who: "MAX", comment: "Session 15. Daily report now fires at 20:00." },
+            { text: "Received breakdown nel terminale", status: "done", who: "AI", comment: "Session 15. Terminal now shows cost basis + profit split in Received line." },
+            { text: "Migrazione diary_entries da JSON a Supabase", status: "todo", who: "AI" },
           ]
         },
         {

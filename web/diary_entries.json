@@ -1,6 +1,15 @@
 {
-  "last_updated": "2026-03-31",
+  "last_updated": "2026-04-01",
   "entries": [
+ {
+      "day": 15,
+      "date": "March 31 - April 1, 2026",
+      "session": 15,
+      "title": "The One Where the Database Learned to Say No",
+      "summary": "Two-day session. Day 1: duplicate trades in the DB (3x BONK, 3x SOL), root cause unknown (likely HTTP retry). Cleaned surgically, deployed two Supabase triggers: anti-duplicate (5s window) and anti-short-sell (total sold can't exceed total bought). Max asked the right question: 'why CAN the bot sell what it doesn't have?' Day 2: Max took over as CEO. Unified both dev environments (Mac Mini rebuilt from Python 3.14 to 3.13). Added Telegram trade verification — every buy/sell now shows holdings before vs amount, with checkmark or warning. Blueprint page translated to English and published as historical document with framing header: 'crypto is the arena, not the point.' Fixed navigation across all pages. Report 21:00 verified working. Haiku commentary debugged (wrong API key — infrastructure is 90% plumbing). Supabase at 11MB of 500MB free tier.",
+      "tags": ["db-triggers", "anti-short-sell", "env-unification", "telegram-verify", "blueprint-page", "haiku-debug"],
+      "status": "BUILDING"
+    },
  {
       "day": 14,
       "date": "March 31, 2026",

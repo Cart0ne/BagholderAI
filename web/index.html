@@ -419,6 +419,7 @@
     }
     function fmt(n, d) { return Number(n).toFixed(d === undefined ? 2 : d); }
     function fmtUsd(n) { return '$' + fmt(n); }
+    function fmtPrice(p) { p = Number(p); if (p === 0) return '$0.00'; if (p >= 1) return '$' + p.toFixed(2); if (p >= 0.01) return '$' + p.toFixed(4); if (p >= 0.0001) return '$' + p.toFixed(6); return '$' + p.toFixed(8); }
     function sign(n) { return Number(n) >= 0 ? '+' : ''; }
     function pcls(n) { return Number(n) >= 0 ? 'positive' : 'negative'; }
     function dayNum(ds) { return Math.max(1, Math.floor((new Date(ds) - V3_START) / 86400000) + 1); }
@@ -521,8 +522,10 @@
           var name = ASSET_SHORT[p.symbol] || p.symbol;
           var uPnl = Number(p.unrealized_pnl);
           var uPct = Number(p.unrealized_pnl_pct);
+          var priceStr = p.avg_buy_price ? '<div class="asset-price">avg ' + fmtPrice(p.avg_buy_price) + '</div>' : '';
           return '<div class="card"><div class="asset-symbol">' + name + '</div>' +
             '<div class="asset-value">' + fmtUsd(p.value) + '</div>' +
+            priceStr +
             '<div class="asset-pnl ' + pcls(uPnl) + '">' + sign(uPnl) + fmtUsd(uPnl) + ' (' + sign(uPct) + fmt(uPct) + '%)</div></div>';
         }).join('');
       }

@@ -138,7 +138,7 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
     logger.info("Press Ctrl+C to stop.\n")
 
     daily_report_sent = None  # Track which date we sent the report
-    REPORT_HOUR = 21  # Send daily report at 21:00
+    REPORT_HOUR = 20  # Send daily report at 20:00
 
     cycle = 0
     while True:
@@ -171,7 +171,7 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
             if cycle % 10 == 0:
                 _print_status(bot)
 
-            # Daily report at 21:00 — only first bot to trigger sends
+            # Daily report at 20:00 — only first bot to trigger sends
             now = datetime.now()
             if now.hour >= REPORT_HOUR and daily_report_sent != date.today():
                 try:
@@ -374,7 +374,8 @@ def _print_status(bot: GridBot):
     logger.info(f"  Avg buy:      {fmt_price(status['avg_buy_price'])}")
     logger.info(f"  Capital:      ${status['capital']:.2f} total | ${status['available_capital']:.2f} available")
     logger.info(f"  Invested:     ${status['invested']:,.2f}")
-    logger.info(f"  Received:     ${status['received']:,.2f}")
+    cost_basis = status['received'] - status.get('realized_pnl', 0)
+    logger.info(f"  Received:     ${status['received']:,.2f} (cost basis: ${cost_basis:.2f} + profit: ${status.get('realized_pnl', 0):.4f})")
     logger.info(f"  Fees:         ${status['fees']:.4f}")
     logger.info(f"  Realized P&L: ${status['realized_pnl']:.4f}")
     logger.info(f"  Unrealz P&L:  ${status['unrealized_pnl']:.4f}")
