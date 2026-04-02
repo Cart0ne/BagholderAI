@@ -97,6 +97,8 @@ class GridBot:
         self._daily_date = date.today()
         self._daily_pnl_date = date.today()
         self._last_buy_time: float = 0.0  # Task 5: timestamp of last buy
+        self.skipped_buys: list = []     # filled each cycle with insufficient-cash skips
+        self.skipped_sells: list = []    # filled each cycle with insufficient-holdings skips
 
     @staticmethod
     def _price_decimals(price: float) -> int:
@@ -261,6 +263,8 @@ class GridBot:
             self._daily_pnl_date = today
 
         trades = []
+        self.skipped_buys = []
+        self.skipped_sells = []
         self.state.last_price = current_price
 
         # Task 5: check if buy cooldown is active
@@ -306,6 +310,20 @@ class GridBot:
 
         # Snapshot for Telegram verification
         cash_before = max(0.0, self.capital - self.state.total_invested + self.state.total_received)
+
+        # Guard: skip buy if insufficient cash
+        if cash_before < cost:
+            logger.warning(
+                f"Insufficient cash for BUY {self.symbol}: "
+                f"need ${cost:.2f}, have ${cash_before:.2f}. Skipping level ${level.price:.4f}."
+            )
+            self.skipped_buys.append({
+                "symbol": self.symbol,
+                "level_price": level.price,
+                "cost": cost,
+                "cash_before": cash_before,
+            })
+            return None
 
         # Mark level as filled
         level.filled = True
@@ -381,10 +399,22 @@ class GridBot:
 
         # Sell the amount that was bought at the corresponding buy level
         amount = level.order_amount
-        if amount <= 0 or amount > self.state.holdings:
-            amount = self.state.holdings  # sell what we have
 
         if amount <= 0:
+            return None
+
+        # Guard: skip sell if insufficient holdings
+        if amount > self.state.holdings:
+            logger.warning(
+                f"Insufficient holdings for SELL {self.symbol}: "
+                f"need {amount:.6f}, have {self.state.holdings:.6f}. Skipping level ${level.price:.4f}."
+            )
+            self.skipped_sells.append({
+                "symbol": self.symbol,
+                "level_price": level.price,
+                "amount_needed": amount,
+                "holdings": self.state.holdings,
+            })
             return None
 
         revenue = amount * price

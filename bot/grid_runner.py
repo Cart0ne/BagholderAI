@@ -167,6 +167,26 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
                     )
                     notifier.send_trade_alert(t)
 
+            # Alert for skipped buys (insufficient cash)
+            for skip in bot.skipped_buys:
+                msg = (
+                    f"⚠️ BUY SKIPPED {skip['symbol']}\n"
+                    f"Level: {fmt_price(skip['level_price'])}\n"
+                    f"Need: ${skip['cost']:.2f} | Have: ${skip['cash_before']:.2f}\n"
+                    f"Motivo: capitale insufficiente"
+                )
+                notifier.send_message(msg)
+
+            # Alert for skipped sells (insufficient holdings)
+            for skip in bot.skipped_sells:
+                msg = (
+                    f"⚠️ SELL SKIPPED {skip['symbol']}\n"
+                    f"Level: {fmt_price(skip['level_price'])}\n"
+                    f"Need: {skip['amount_needed']:.6f} | Have: {skip['holdings']:.6f}\n"
+                    f"Motivo: holdings insufficienti"
+                )
+                notifier.send_message(msg)
+
             # Periodic status update (every 10 cycles)
             if cycle % 10 == 0:
                 _print_status(bot)

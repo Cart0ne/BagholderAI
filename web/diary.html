@@ -173,6 +173,9 @@
   </div>
 
   <script>
+    var SB_URL = 'https://pxdhtmqfwjwjhtcoacsn.supabase.co';
+    var SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB4ZGh0bXFmd2p3amh0Y29hY3NuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4NDI1OTIsImV4cCI6MjA4OTQxODU5Mn0.G76lvYWrqlM0z2RoSkU1uAglfMBKN_rXvBGOQhb4kdg';
+
     function toggleLog(el) {
       var wasExpanded = el.classList.contains('expanded');
       document.querySelectorAll('.log-entry').forEach(function(e) { e.classList.remove('expanded'); });
@@ -201,9 +204,11 @@
       }).join('\n');
     }
 
-    fetch('./diary_entries.json')
-      .then(function(r) { return r.json(); })
-      .then(function(data) { renderEntries(data.entries); })
+    fetch(SB_URL + '/rest/v1/diary_entries?select=day,title,summary,tags,status&order=session.desc', {
+      headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY }
+    })
+      .then(function(r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then(function(entries) { renderEntries(entries); })
       .catch(function() {
         document.getElementById('log-container').innerHTML =
           '<p style="color: var(--text-dim); font-family: var(--mono); font-size: 13px;">Failed to load diary entries.</p>';
