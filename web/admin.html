@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BagHolderAI — Admin</title>
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔒</text></svg>">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --mono: 'SF Mono', 'Cascadia Code', 'Fira Code', 'Consolas', 'Liberation Mono', 'Menlo', monospace;
+      --sans: 'SF Pro Display', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Helvetica Neue', sans-serif;
+      --green: #22c55e;
+      --green-dim: rgba(34, 197, 94, 0.4);
+      --yellow: #eab308;
+      --red: #ef4444;
+      --blue: #378ADD;
+      --teal: #5DCAA5;
+      --amber: #EF9F27;
+      --border: rgba(255,255,255,0.08);
+      --surface: rgba(255,255,255,0.03);
+      --text: #e0e0e0;
+      --text-dim: rgba(255,255,255,0.4);
+      --text-body: rgba(255,255,255,0.55);
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      min-height: 100vh;
+      background-color: #0a0a0a;
+      color: var(--text);
+      font-family: var(--sans);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body::before {
+      content: '';
+      position: fixed; inset: 0; opacity: 0.03;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px);
+      background-size: 60px 60px;
+      pointer-events: none; z-index: 0;
+    }
+
+    .container {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 20px 16px 80px;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Header */
+    .top-bar {
+      font-family: var(--mono); font-size: 11px; color: var(--text-dim);
+      margin-bottom: 16px; letter-spacing: 0.05em; padding-top: 12px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .top-bar .dot { color: var(--red); }
+
+    h1 {
+      font-size: clamp(24px, 6vw, 36px); font-weight: 700; line-height: 1.1;
+      letter-spacing: -0.03em; color: #fff; margin-bottom: 4px;
+    }
+    h1 .ai { color: var(--green); }
+    h1 .admin { color: var(--red); font-size: 0.5em; vertical-align: super; letter-spacing: 0.05em; }
+
+    .section-title {
+      font-size: 12px; font-family: var(--mono); text-transform: uppercase;
+      letter-spacing: 0.1em; color: var(--green); margin-bottom: 12px; margin-top: 32px;
+    }
+
+    section { margin-bottom: 16px; }
+
+    /* Cards */
+    .card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px; padding: 16px; margin-bottom: 8px;
+    }
+
+    /* Auth gate */
+    #auth-gate {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      min-height: 60vh; gap: 16px;
+    }
+    #auth-gate .lock { font-size: 48px; margin-bottom: 8px; }
+    #auth-gate input {
+      font-family: var(--mono); font-size: 16px; padding: 12px 16px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px; color: var(--text); width: 260px; text-align: center;
+      outline: none; transition: border-color 0.2s;
+    }
+    #auth-gate input:focus { border-color: var(--green); }
+    #auth-gate input::placeholder { color: var(--text-dim); }
+    #auth-gate .err { color: var(--red); font-family: var(--mono); font-size: 12px; min-height: 18px; }
+    #auth-gate button {
+      font-family: var(--mono); font-size: 13px; padding: 10px 28px;
+      background: transparent; border: 1px solid var(--green); color: var(--green);
+      border-radius: 6px; cursor: pointer; transition: all 0.2s;
+    }
+    #auth-gate button:hover { background: var(--green); color: #0a0a0a; }
+
+    /* Dashboard */
+    #dashboard { display: none; }
+
+    /* Overview stats */
+    .stats-row {
+      display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px;
+    }
+    .stat-box {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px; padding: 12px;
+    }
+    .stat-label { font-family: var(--mono); font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; }
+    .stat-value { font-size: 20px; font-weight: 700; color: #fff; margin-top: 2px; }
+    .stat-sub { font-family: var(--mono); font-size: 10px; color: var(--text-dim); margin-top: 2px; }
+
+    /* Coin cards */
+    .coin-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px; padding: 16px; margin-bottom: 10px;
+    }
+    .coin-header {
+      display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;
+    }
+    .coin-name { font-size: 16px; font-weight: 700; color: #fff; }
+    .coin-status {
+      font-family: var(--mono); font-size: 11px; padding: 3px 10px;
+      border-radius: 20px; font-weight: 500;
+    }
+    .status-dead { background: rgba(239,68,68,0.15); color: var(--red); }
+    .status-low { background: rgba(234,179,8,0.15); color: var(--yellow); }
+    .status-ok { background: rgba(34,197,94,0.15); color: var(--green); }
+
+    .coin-grid {
+      display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 12px;
+    }
+    .coin-stat .cs-label { font-family: var(--mono); font-size: 10px; color: var(--text-dim); }
+    .coin-stat .cs-value { font-size: 14px; font-weight: 600; color: var(--text); }
+
+    /* Capacity bar */
+    .cap-bar-wrap { margin-bottom: 4px; }
+    .cap-bar-label {
+      display: flex; justify-content: space-between;
+      font-family: var(--mono); font-size: 10px; color: var(--text-dim); margin-bottom: 4px;
+    }
+    .cap-bar {
+      height: 8px; background: rgba(255,255,255,0.06); border-radius: 4px;
+      overflow: hidden;
+    }
+    .cap-bar-fill { height: 100%; border-radius: 4px; transition: width 0.4s ease; }
+
+    /* Config editor */
+    .config-section { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+    .config-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+    }
+    .config-field label {
+      font-family: var(--mono); font-size: 10px; color: var(--text-dim);
+      display: block; margin-bottom: 2px; text-transform: uppercase; letter-spacing: 0.03em;
+    }
+    .config-field input {
+      font-family: var(--mono); font-size: 14px; padding: 8px 10px;
+      background: rgba(255,255,255,0.04); border: 1px solid var(--border);
+      border-radius: 6px; color: #fff; width: 100%; outline: none;
+      transition: border-color 0.2s;
+    }
+    .config-field input:focus { border-color: var(--green); }
+    .config-field input.changed { border-color: var(--yellow); }
+
+    .save-row {
+      display: flex; gap: 8px; margin-top: 12px; align-items: center;
+    }
+    .btn-save {
+      font-family: var(--mono); font-size: 12px; padding: 8px 20px;
+      background: transparent; border: 1px solid var(--green); color: var(--green);
+      border-radius: 6px; cursor: pointer; transition: all 0.2s;
+    }
+    .btn-save:hover { background: var(--green); color: #0a0a0a; }
+    .btn-save:disabled { opacity: 0.3; cursor: default; }
+    .save-status { font-family: var(--mono); font-size: 11px; color: var(--text-dim); }
+
+    /* Recent trades */
+    .trades-table {
+      width: 100%; font-family: var(--mono); font-size: 12px;
+      border-collapse: collapse;
+    }
+    .trades-table th {
+      text-align: left; font-size: 10px; color: var(--text-dim);
+      padding: 6px 8px; border-bottom: 1px solid var(--border);
+      text-transform: uppercase; letter-spacing: 0.05em; font-weight: 400;
+    }
+    .trades-table td {
+      padding: 8px 8px; border-bottom: 1px solid rgba(255,255,255,0.03);
+      color: var(--text-body);
+    }
+    .trades-table .buy-row td:first-child { color: var(--green); }
+    .trades-table .sell-row td:first-child { color: var(--red); }
+
+    /* Alerts */
+    .alert {
+      padding: 12px 16px; border-radius: 8px; margin-bottom: 8px;
+      font-family: var(--mono); font-size: 12px; line-height: 1.5;
+    }
+    .alert-red { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.2); color: #fca5a5; }
+    .alert-yellow { background: rgba(234,179,8,0.1); border: 1px solid rgba(234,179,8,0.2); color: #fde047; }
+    .alert-green { background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.2); color: #86efac; }
+
+    /* Refresh */
+    .refresh-bar {
+      font-family: var(--mono); font-size: 10px; color: var(--text-dim);
+      text-align: center; margin-top: 24px; padding: 8px;
+    }
+    .refresh-bar button {
+      background: transparent; border: 1px solid var(--border); color: var(--text-dim);
+      font-family: var(--mono); font-size: 10px; padding: 4px 12px; border-radius: 4px;
+      cursor: pointer; margin-left: 8px;
+    }
+    .refresh-bar button:hover { border-color: var(--green); color: var(--green); }
+
+    /* Responsive */
+    @media (max-width: 480px) {
+      .stats-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .coin-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .config-grid { grid-template-columns: 1fr; }
+      .stat-value { font-size: 16px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <!-- Auth Gate -->
+    <div id="auth-gate">
+      <div class="lock">🔒</div>
+      <div style="font-family: var(--mono); font-size: 12px; color: var(--text-dim);">BAGHOLDER<span style="color: var(--red);">AI</span> ADMIN</div>
+      <input type="password" id="pw-input" placeholder="password" autocomplete="off">
+      <div class="err" id="pw-err"></div>
+      <button id="pw-btn">Unlock</button>
+    </div>
+
+    <!-- Dashboard (hidden until auth) -->
+    <div id="dashboard">
+
+      <!-- Header -->
+      <div class="top-bar">
+        <span><span class="dot">●</span> ADMIN — private</span>
+        <span id="last-update"></span>
+      </div>
+      <h1>🎒 BagHolder<span class="ai">AI</span> <span class="admin">ADMIN</span></h1>
+
+      <!-- Alerts -->
+      <div id="alerts" style="margin-top: 16px;"></div>
+
+      <!-- Portfolio Overview -->
+      <div class="section-title">Portfolio overview</div>
+      <div class="stats-row" id="overview-stats"></div>
+
+      <!-- Per-Coin Status -->
+      <div class="section-title">Grid status per coin</div>
+      <div id="coin-cards"></div>
+
+      <!-- Recent Trades -->
+      <div class="section-title">Recent trades</div>
+      <div class="card" style="overflow-x: auto;">
+        <table class="trades-table" id="trades-table">
+          <thead>
+            <tr><th>Side</th><th>Coin</th><th>Price</th><th>Cost</th><th>Time</th></tr>
+          </thead>
+          <tbody id="trades-body"></tbody>
+        </table>
+      </div>
+
+      <div class="refresh-bar">
+        Last refresh: <span id="refresh-time">—</span>
+        <button onclick="loadAll()">↻ Refresh</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // === CONFIG ===
+    var SB_URL = 'https://pxdhtmqfwjwjhtcoacsn.supabase.co';
+    var SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB4ZGh0bXFmd2p3amh0Y29hY3NuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4NDI1OTIsImV4cCI6MjA4OTQxODU5Mn0.G76lvYWrqlM0z2RoSkU1uAglfMBKN_rXvBGOQhb4kdg';
+    var ADMIN_HASH = '8a308134250d16e95b79019171e5cb37ed436a14e2800f22b98e0fa20ac6f9eb'; // sha256 of 'password' — CHANGE THIS
+    var COLORS = { 'BTC/USDT': '#378ADD', 'SOL/USDT': '#5DCAA5', 'BONK/USDT': '#EF9F27' };
+    var SHORT = { 'BTC/USDT': 'BTC', 'SOL/USDT': 'SOL', 'BONK/USDT': 'BONK' };
+
+    // === AUTH ===
+    async function sha256(msg) {
+      var buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(msg));
+      return Array.from(new Uint8Array(buf)).map(function(b) { return b.toString(16).padStart(2, '0'); }).join('');
+    }
+
+    async function tryAuth() {
+      var pw = document.getElementById('pw-input').value;
+      var hash = await sha256(pw);
+      if (hash === ADMIN_HASH) {
+        sessionStorage.setItem('bh_admin', '1');
+        showDashboard();
+      } else {
+        document.getElementById('pw-err').textContent = 'wrong password';
+        document.getElementById('pw-input').value = '';
+      }
+    }
+
+    document.getElementById('pw-btn').onclick = tryAuth;
+    document.getElementById('pw-input').addEventListener('keydown', function(e) { if (e.key === 'Enter') tryAuth(); });
+
+    if (sessionStorage.getItem('bh_admin') === '1') showDashboard();
+
+    function showDashboard() {
+      document.getElementById('auth-gate').style.display = 'none';
+      document.getElementById('dashboard').style.display = 'block';
+      loadAll();
+    }
+
+    // === SUPABASE HELPERS ===
+    function sbGet(table, params) {
+      return fetch(SB_URL + '/rest/v1/' + table + '?' + (params || ''), {
+        headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY }
+      }).then(function(r) { if (!r.ok) throw new Error(r.status); return r.json(); });
+    }
+
+    function sbPatch(table, matchCol, matchVal, data) {
+      return fetch(SB_URL + '/rest/v1/' + table + '?' + matchCol + '=eq.' + encodeURIComponent(matchVal), {
+        method: 'PATCH',
+        headers: {
+          'apikey': SB_KEY,
+          'Authorization': 'Bearer ' + SB_KEY,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=representation'
+        },
+        body: JSON.stringify(data)
+      }).then(function(r) { if (!r.ok) throw new Error(r.status); return r.json(); });
+    }
+
+    // === FORMATTERS ===
+    function fmt(n, d) { return Number(n).toFixed(d === undefined ? 2 : d); }
+    function fmtUsd(n) { return '$' + fmt(n); }
+    function fmtPrice(p) {
+      p = Number(p);
+      if (p === 0) return '$0.00';
+      if (p >= 1) return '$' + p.toFixed(2);
+      if (p >= 0.01) return '$' + p.toFixed(4);
+      if (p >= 0.0001) return '$' + p.toFixed(6);
+      return '$' + p.toFixed(8);
+    }
+    function timeAgo(dt) {
+      var ms = Date.now() - new Date(dt).getTime();
+      var m = Math.floor(ms / 60000);
+      if (m < 60) return m + 'm ago';
+      var h = Math.floor(m / 60);
+      if (h < 24) return h + 'h ago';
+      return Math.floor(h / 24) + 'd ago';
+    }
+
+    // === LOAD DATA ===
+    var configData = [];
+    var tradesData = [];
+    var pnlData = [];
+
+    async function loadAll() {
+      try {
+        var results = await Promise.all([
+          sbGet('bot_config', 'order=symbol'),
+          sbGet('trades', 'config_version=eq.v3&order=created_at.desc&limit=50'),
+          sbGet('daily_pnl', 'order=date.desc&limit=10')
+        ]);
+        configData = results[0];
+        tradesData = results[1];
+        pnlData = results[2];
+        render();
+        document.getElementById('refresh-time').textContent = new Date().toLocaleTimeString();
+      } catch (e) {
+        console.error('Load error:', e);
+      }
+    }
+
+    // === RENDER ===
+    function render() {
+      renderAlerts();
+      renderOverview();
+      renderCoinCards();
+      renderTrades();
+    }
+
+    function renderAlerts() {
+      var el = document.getElementById('alerts');
+      var alerts = [];
+
+      // Check unallocated capital
+      var totalAlloc = configData.reduce(function(s, c) { return s + Number(c.capital_allocation); }, 0);
+      var unalloc = 500 - totalAlloc;
+      if (unalloc > 50) {
+        alerts.push({ type: 'yellow', text: '$' + fmt(unalloc, 0) + ' unallocated (' + fmt(unalloc / 5, 0) + '% of portfolio doing nothing)' });
+      }
+
+      // Check per-coin cash
+      configData.forEach(function(cfg) {
+        var sym = cfg.symbol;
+        var analysis = analyzeCoin(sym, cfg);
+        if (analysis.buysLeft === 0) {
+          alerts.push({ type: 'red', text: SHORT[sym] + ' is tapped out — $' + fmt(analysis.cashLeft) + ' cash, needs $' + fmt(Number(cfg.capital_per_trade)) + '/buy' });
+        } else if (analysis.buysLeft === 1) {
+          alerts.push({ type: 'yellow', text: SHORT[sym] + ' has only 1 buy left ($' + fmt(analysis.cashLeft) + ' remaining)' });
+        }
+      });
+
+      if (alerts.length === 0) {
+        alerts.push({ type: 'green', text: 'All systems nominal. Bots have cash to operate.' });
+      }
+
+      el.innerHTML = alerts.map(function(a) {
+        return '<div class="alert alert-' + a.type + '">' + a.text + '</div>';
+      }).join('');
+    }
+
+    function analyzeCoin(symbol, cfg) {
+      var alloc = Number(cfg.capital_allocation);
+      var costPerTrade = Number(cfg.capital_per_trade);
+      var coinTrades = tradesData.filter(function(t) { return t.symbol === symbol; });
+      var totalBought = coinTrades.filter(function(t) { return t.side === 'buy'; }).reduce(function(s, t) { return s + Number(t.cost); }, 0);
+      var totalSold = coinTrades.filter(function(t) { return t.side === 'sell'; }).reduce(function(s, t) { return s + Number(t.cost); }, 0);
+      var realizedPnl = coinTrades.reduce(function(s, t) { return s + Number(t.realized_pnl || 0); }, 0);
+      var netHoldings = coinTrades.reduce(function(s, t) {
+        return s + (t.side === 'buy' ? Number(t.amount) : -Number(t.amount));
+      }, 0);
+      var buyCount = coinTrades.filter(function(t) { return t.side === 'buy'; }).length;
+      var sellCount = coinTrades.filter(function(t) { return t.side === 'sell'; }).length;
+      var netSpent = totalBought - totalSold;
+      var cashLeft = alloc - netSpent;
+      var buysLeft = costPerTrade > 0 ? Math.floor(cashLeft / costPerTrade) : 0;
+      var capacityPct = alloc > 0 ? ((alloc - cashLeft) / alloc) * 100 : 0;
+      var maxCapacity = costPerTrade > 0 ? Math.floor(alloc / costPerTrade) : 0;
+      var lastTrade = coinTrades.length > 0 ? coinTrades[0] : null;
+
+      return {
+        alloc: alloc, costPerTrade: costPerTrade,
+        totalBought: totalBought, totalSold: totalSold,
+        realizedPnl: realizedPnl, netHoldings: netHoldings,
+        buyCount: buyCount, sellCount: sellCount,
+        netSpent: netSpent, cashLeft: cashLeft,
+        buysLeft: buysLeft, capacityPct: Math.min(capacityPct, 100),
+        maxCapacity: maxCapacity, lastTrade: lastTrade
+      };
+    }
+
+    function renderOverview() {
+      var totalAlloc = configData.reduce(function(s, c) { return s + Number(c.capital_allocation); }, 0);
+      var unalloc = 500 - totalAlloc;
+
+      var totalCash = 0;
+      var totalInvested = 0;
+      var totalRealized = 0;
+      configData.forEach(function(cfg) {
+        var a = analyzeCoin(cfg.symbol, cfg);
+        totalCash += a.cashLeft;
+        totalInvested += a.netSpent;
+        totalRealized += a.realizedPnl;
+      });
+
+      var latestPnl = pnlData.length > 0 ? pnlData[0] : null;
+      var portfolioVal = latestPnl ? '$' + fmt(latestPnl.total_value) : '—';
+      var totalPnl = latestPnl ? Number(latestPnl.total_pnl) : 0;
+
+      document.getElementById('overview-stats').innerHTML =
+        '<div class="stat-box">' +
+          '<div class="stat-label">Portfolio</div>' +
+          '<div class="stat-value">' + portfolioVal + '</div>' +
+          '<div class="stat-sub">' + (totalPnl >= 0 ? '+' : '') + fmtUsd(totalPnl) + ' P&L</div>' +
+        '</div>' +
+        '<div class="stat-box">' +
+          '<div class="stat-label">Deployed</div>' +
+          '<div class="stat-value">' + fmtUsd(totalInvested) + '</div>' +
+          '<div class="stat-sub">of $' + fmt(totalAlloc, 0) + ' allocated</div>' +
+        '</div>' +
+        '<div class="stat-box">' +
+          '<div class="stat-label">Idle cash</div>' +
+          '<div class="stat-value">' + fmtUsd(totalCash + unalloc) + '</div>' +
+          '<div class="stat-sub">$' + fmt(totalCash, 0) + ' in bots + $' + fmt(unalloc, 0) + ' unalloc</div>' +
+        '</div>';
+    }
+
+    function renderCoinCards() {
+      var el = document.getElementById('coin-cards');
+      el.innerHTML = configData.map(function(cfg) {
+        var sym = cfg.symbol;
+        var short = SHORT[sym] || sym;
+        var color = COLORS[sym] || '#888';
+        var a = analyzeCoin(sym, cfg);
+
+        var statusClass = a.buysLeft === 0 ? 'status-dead' : a.buysLeft <= 1 ? 'status-low' : 'status-ok';
+        var statusText = a.buysLeft === 0 ? 'TAPPED OUT' : a.buysLeft + ' buys left';
+
+        var barColor = a.buysLeft === 0 ? 'var(--red)' : a.buysLeft <= 1 ? 'var(--yellow)' : color;
+
+        return '<div class="coin-card" id="card-' + short + '">' +
+          '<div class="coin-header">' +
+            '<span class="coin-name" style="color:' + color + ';">' + short + '</span>' +
+            '<span class="coin-status ' + statusClass + '">' + statusText + '</span>' +
+          '</div>' +
+          '<div class="coin-grid">' +
+            '<div class="coin-stat"><div class="cs-label">Cash</div><div class="cs-value">' + fmtUsd(a.cashLeft) + '</div></div>' +
+            '<div class="coin-stat"><div class="cs-label">Invested</div><div class="cs-value">' + fmtUsd(a.netSpent) + '</div></div>' +
+            '<div class="coin-stat"><div class="cs-label">Realized</div><div class="cs-value" style="color:' + (a.realizedPnl >= 0 ? 'var(--green)' : 'var(--red)') + ';">' + (a.realizedPnl >= 0 ? '+' : '') + fmtUsd(a.realizedPnl) + '</div></div>' +
+            '<div class="coin-stat"><div class="cs-label">Buys / Sells</div><div class="cs-value">' + a.buyCount + ' / ' + a.sellCount + '</div></div>' +
+            '<div class="coin-stat"><div class="cs-label">Grid capacity</div><div class="cs-value">' + (a.buyCount - a.sellCount) + ' / ' + a.maxCapacity + ' filled</div></div>' +
+            '<div class="coin-stat"><div class="cs-label">Last trade</div><div class="cs-value">' + (a.lastTrade ? timeAgo(a.lastTrade.created_at) : '—') + '</div></div>' +
+          '</div>' +
+          '<div class="cap-bar-wrap">' +
+            '<div class="cap-bar-label"><span>Capital usage</span><span>' + fmt(a.capacityPct, 0) + '%</span></div>' +
+            '<div class="cap-bar"><div class="cap-bar-fill" style="width:' + a.capacityPct + '%; background:' + barColor + ';"></div></div>' +
+          '</div>' +
+          '<div class="config-section">' +
+            '<div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-bottom:8px;">PARAMETERS</div>' +
+            '<div class="config-grid">' +
+              configField(short, 'capital_allocation', 'Allocation ($)', cfg.capital_allocation) +
+              configField(short, 'grid_levels', 'Grid levels', cfg.grid_levels) +
+              configField(short, 'grid_lower', 'Grid lower', cfg.grid_lower) +
+              configField(short, 'grid_upper', 'Grid upper', cfg.grid_upper) +
+              configField(short, 'capital_per_trade', '$/trade', cfg.capital_per_trade) +
+              configField(short, 'reserve_floor_pct', 'Reserve %', cfg.reserve_floor_pct) +
+            '</div>' +
+            '<div class="save-row">' +
+              '<button class="btn-save" id="save-' + short + '" onclick="saveConfig(\'' + sym + '\', \'' + short + '\')" disabled>Save changes</button>' +
+              '<span class="save-status" id="status-' + short + '"></span>' +
+            '</div>' +
+          '</div>' +
+        '</div>';
+      }).join('');
+
+      // Mark original values
+      configData.forEach(function(cfg) {
+        var short = SHORT[cfg.symbol];
+        ['capital_allocation', 'grid_levels', 'grid_lower', 'grid_upper', 'capital_per_trade', 'reserve_floor_pct'].forEach(function(field) {
+          var input = document.getElementById('cfg-' + short + '-' + field);
+          if (input) {
+            input.dataset.original = input.value;
+            input.addEventListener('input', function() {
+              var changed = this.value !== this.dataset.original;
+              this.classList.toggle('changed', changed);
+              checkChanges(short);
+            });
+          }
+        });
+      });
+    }
+
+    function configField(short, field, label, value) {
+      return '<div class="config-field">' +
+        '<label>' + label + '</label>' +
+        '<input type="text" inputmode="decimal" id="cfg-' + short + '-' + field + '" value="' + value + '">' +
+      '</div>';
+    }
+
+    function checkChanges(short) {
+      var fields = ['capital_allocation', 'grid_levels', 'grid_lower', 'grid_upper', 'capital_per_trade', 'reserve_floor_pct'];
+      var hasChanges = fields.some(function(f) {
+        var input = document.getElementById('cfg-' + short + '-' + f);
+        return input && input.value !== input.dataset.original;
+      });
+      var btn = document.getElementById('save-' + short);
+      if (btn) btn.disabled = !hasChanges;
+    }
+
+    async function saveConfig(symbol, short) {
+      var btn = document.getElementById('save-' + short);
+      var status = document.getElementById('status-' + short);
+      btn.disabled = true;
+      status.textContent = 'Saving...';
+      status.style.color = 'var(--yellow)';
+
+      var data = {};
+      ['capital_allocation', 'grid_levels', 'grid_lower', 'grid_upper', 'capital_per_trade', 'reserve_floor_pct'].forEach(function(f) {
+        var input = document.getElementById('cfg-' + short + '-' + f);
+        if (input) {
+          data[f] = f === 'grid_levels' ? parseInt(input.value) : parseFloat(input.value);
+        }
+      });
+
+      try {
+        await sbPatch('bot_config', 'symbol', symbol, data);
+        status.textContent = 'Saved ✓';
+        status.style.color = 'var(--green)';
+        // Update originals
+        Object.keys(data).forEach(function(f) {
+          var input = document.getElementById('cfg-' + short + '-' + f);
+          if (input) {
+            input.dataset.original = input.value;
+            input.classList.remove('changed');
+          }
+        });
+        // Reload after save
+        setTimeout(function() { loadAll(); }, 1000);
+      } catch (e) {
+        status.textContent = 'Error — ' + e.message;
+        status.style.color = 'var(--red)';
+        btn.disabled = false;
+      }
+    }
+
+    function renderTrades() {
+      var body = document.getElementById('trades-body');
+      var recent = tradesData.slice(0, 20);
+      body.innerHTML = recent.map(function(t) {
+        var cls = t.side === 'buy' ? 'buy-row' : 'sell-row';
+        var dt = new Date(t.created_at);
+        var timeStr = dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' ' + dt.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+        return '<tr class="' + cls + '">' +
+          '<td>' + t.side.toUpperCase() + '</td>' +
+          '<td>' + (SHORT[t.symbol] || t.symbol) + '</td>' +
+          '<td>' + fmtPrice(t.price) + '</td>' +
+          '<td>' + fmtUsd(t.cost) + '</td>' +
+          '<td>' + timeStr + '</td>' +
+        '</tr>';
+      }).join('');
+    }
+  </script>
+</body>
+</html>
