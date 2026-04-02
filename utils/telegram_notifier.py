@@ -57,18 +57,19 @@ class TelegramNotifier:
         # Verification line
         verify_line = ""
         TOLERANCE = 0.01  # 1% tolerance for rounding
+        base = trade["symbol"].split("/")[0] if "/" in trade["symbol"] else trade["symbol"]
         if trade["side"] == "buy" and "cash_before" in trade:
             cash = trade["cash_before"]
             spend = trade["cost"]
             ok = cash >= spend * (1 - TOLERANCE)
             icon = "✅" if ok else "⚠️"
-            verify_line = f"\n💵 Cash ${cash:.2f} → Spendo ${spend:.2f} {icon}"
+            verify_line = f"\n💵 Cash {base}: ${cash:.2f} → Spendo ${spend:.2f} {icon}"
         elif trade["side"] == "sell" and "holdings_value_before" in trade:
             have = trade["holdings_value_before"]
             sell_val = trade["cost"]
             ok = have >= sell_val * (1 - TOLERANCE)
             icon = "✅" if ok else "⚠️"
-            verify_line = f"\n🦺 Ho ${have:.2f} → Vendo ${sell_val:.2f} {icon}"
+            verify_line = f"\n🦺 Ho {base}: ${have:.2f} → Vendo ${sell_val:.2f} {icon}"
 
         text = (
             f"{emoji} <b>{trade['side'].upper()}</b> {trade['symbol']}\n"

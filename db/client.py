@@ -40,6 +40,9 @@ class TradeLogger:
         buy_trade_id: Optional[str] = None,
         cost: Optional[float] = None,
         config_version: str = "v3",
+        cash_before: Optional[float] = None,
+        capital_allocated: Optional[float] = None,
+        holdings_value_before: Optional[float] = None,
     ) -> dict:
         """Log a trade to the database."""
         data = {

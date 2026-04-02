@@ -169,10 +169,11 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
 
             # Alert for skipped buys (insufficient cash)
             for skip in bot.skipped_buys:
+                base = skip['symbol'].split("/")[0] if "/" in skip['symbol'] else skip['symbol']
                 msg = (
                     f"⚠️ BUY SKIPPED {skip['symbol']}\n"
                     f"Level: {fmt_price(skip['level_price'])}\n"
-                    f"Need: ${skip['cost']:.2f} | Have: ${skip['cash_before']:.2f}\n"
+                    f"💵 Cash {base}: ${skip['cash_before']:.2f} → Servono ${skip['cost']:.2f} ❌ SKIPPED\n"
                     f"Motivo: capitale insufficiente"
                 )
                 notifier.send_message(msg)
