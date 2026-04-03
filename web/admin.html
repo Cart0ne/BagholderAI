@@ -223,6 +223,31 @@
     }
     .refresh-bar button:hover { border-color: var(--green); color: var(--green); }
 
+    /* Config select (grid_mode dropdown) */
+    .config-field select {
+      font-family: var(--mono); font-size: 14px; padding: 8px 10px;
+      background: rgba(255,255,255,0.04); border: 1px solid var(--border);
+      border-radius: 6px; color: #fff; width: 100%; outline: none;
+      transition: border-color 0.2s; cursor: pointer;
+      -webkit-appearance: none; appearance: none;
+    }
+    .config-field select:focus { border-color: var(--green); }
+    .config-field select.changed { border-color: var(--yellow); }
+    .config-field select option { background: #1a1a1a; color: #fff; }
+
+    /* Parameter group label */
+    .param-group-label {
+      font-family: var(--mono); font-size: 9px; letter-spacing: 0.1em;
+      text-transform: uppercase; color: var(--text-dim);
+      margin: 10px 0 6px; padding-bottom: 4px;
+      border-bottom: 1px solid var(--border);
+    }
+    .param-group-label.pct-label { color: var(--teal); }
+
+    /* Fixed grid fields: dim when pct mode is active */
+    .fixed-grid-fields { transition: opacity 0.3s; }
+    .fixed-grid-fields.dimmed { opacity: 0.3; pointer-events: none; }
+
     /* Responsive */
     @media (max-width: 480px) {
       .stats-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -325,6 +350,17 @@
       return fetch(SB_URL + '/rest/v1/' + table + '?' + (params || ''), {
         headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY }
       }).then(function(r) { if (!r.ok) throw new Error(r.status); return r.json(); });
+    }
+
+    function sbInsert(table, data) {
+      return fetch(SB_URL + '/rest/v1/' + table, {
+        method: 'POST',
+        headers: {
+          'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY,
+          'Content-Type': 'application/json', 'Prefer': 'return=minimal'
+        },
+        body: JSON.stringify(data)
+      }).then(function(r) { if (!r.ok) throw new Error(r.status); });
     }
 
     function sbPatch(table, matchCol, matchVal, data) {
@@ -519,13 +555,22 @@
           '</div>' +
           '<div class="config-section">' +
             '<div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-bottom:8px;">PARAMETERS</div>' +
+            '<div class="param-group-label pct-label">Percentage Grid</div>' +
             '<div class="config-grid">' +
-              configField(short, 'capital_allocation', 'Allocation ($)', cfg.capital_allocation) +
-              configField(short, 'grid_levels', 'Grid levels', cfg.grid_levels) +
-              configField(short, 'grid_lower', 'Grid lower', cfg.grid_lower) +
-              configField(short, 'grid_upper', 'Grid upper', cfg.grid_upper) +
-              configField(short, 'capital_per_trade', '$/trade', cfg.capital_per_trade) +
-              configField(short, 'reserve_floor_pct', 'Reserve %', cfg.reserve_floor_pct) +
+              configFieldSelect(short, 'grid_mode', 'Grid mode', cfg.grid_mode, ['fixed', 'percentage']) +
+              configField(short, 'buy_pct', 'Buy %', cfg.buy_pct) +
+              configField(short, 'sell_pct', 'Sell %', cfg.sell_pct) +
+            '</div>' +
+            '<div class="param-group-label" id="fixed-label-' + short + '">Fixed Grid</div>' +
+            '<div class="fixed-grid-fields' + (cfg.grid_mode === 'percentage' ? ' dimmed' : '') + '" id="fixed-fields-' + short + '">' +
+              '<div class="config-grid">' +
+                configField(short, 'capital_allocation', 'Allocation ($)', cfg.capital_allocation) +
+                configField(short, 'capital_per_trade', '$/trade', cfg.capital_per_trade) +
+                configField(short, 'grid_levels', 'Grid levels', cfg.grid_levels) +
+                configField(short, 'grid_lower', 'Grid lower', cfg.grid_lower) +
+                configField(short, 'grid_upper', 'Grid upper', cfg.grid_upper) +
+                configField(short, 'reserve_floor_pct', 'Reserve %', cfg.reserve_floor_pct) +
+              '</div>' +
             '</div>' +
             '<div class="save-row">' +
               '<button class="btn-save" id="save-' + short + '" onclick="saveConfig(\'' + sym + '\', \'' + short + '\')" disabled>Save changes</button>' +
@@ -535,17 +580,22 @@
         '</div>';
       }).join('');
 
-      // Mark original values
+      // Mark original values and attach change listeners
       configData.forEach(function(cfg) {
         var short = SHORT[cfg.symbol];
-        ['capital_allocation', 'grid_levels', 'grid_lower', 'grid_upper', 'capital_per_trade', 'reserve_floor_pct'].forEach(function(field) {
+        var allFields = ['grid_mode', 'buy_pct', 'sell_pct',
+          'capital_allocation', 'grid_levels', 'grid_lower', 'grid_upper',
+          'capital_per_trade', 'reserve_floor_pct'];
+        allFields.forEach(function(field) {
           var input = document.getElementById('cfg-' + short + '-' + field);
           if (input) {
             input.dataset.original = input.value;
-            input.addEventListener('input', function() {
+            var eventName = input.tagName === 'SELECT' ? 'change' : 'input';
+            input.addEventListener(eventName, function() {
               var changed = this.value !== this.dataset.original;
               this.classList.toggle('changed', changed);
               checkChanges(short);
+              if (field === 'grid_mode') updateFixedGridDimming(short, this.value);
             });
           }
         });
@@ -555,12 +605,29 @@
     function configField(short, field, label, value) {
       return '<div class="config-field">' +
         '<label>' + label + '</label>' +
-        '<input type="text" inputmode="decimal" id="cfg-' + short + '-' + field + '" value="' + value + '">' +
+        '<input type="text" inputmode="decimal" id="cfg-' + short + '-' + field + '" value="' + (value != null ? value : '') + '">' +
       '</div>';
     }
 
+    function configFieldSelect(short, field, label, value, options) {
+      var opts = options.map(function(o) {
+        return '<option value="' + o + '"' + (o === value ? ' selected' : '') + '>' + o + '</option>';
+      }).join('');
+      return '<div class="config-field">' +
+        '<label>' + label + '</label>' +
+        '<select id="cfg-' + short + '-' + field + '">' + opts + '</select>' +
+      '</div>';
+    }
+
+    function updateFixedGridDimming(short, mode) {
+      var el = document.getElementById('fixed-fields-' + short);
+      if (el) el.classList.toggle('dimmed', mode === 'percentage');
+    }
+
     function checkChanges(short) {
-      var fields = ['capital_allocation', 'grid_levels', 'grid_lower', 'grid_upper', 'capital_per_trade', 'reserve_floor_pct'];
+      var fields = ['grid_mode', 'buy_pct', 'sell_pct',
+        'capital_allocation', 'grid_levels', 'grid_lower', 'grid_upper',
+        'capital_per_trade', 'reserve_floor_pct'];
       var hasChanges = fields.some(function(f) {
         var input = document.getElementById('cfg-' + short + '-' + f);
         return input && input.value !== input.dataset.original;
@@ -576,27 +643,42 @@
       status.textContent = 'Saving...';
       status.style.color = 'var(--yellow)';
 
+      var allFields = ['grid_mode', 'buy_pct', 'sell_pct',
+        'capital_allocation', 'grid_levels', 'grid_lower', 'grid_upper',
+        'capital_per_trade', 'reserve_floor_pct'];
+
       var data = {};
-      ['capital_allocation', 'grid_levels', 'grid_lower', 'grid_upper', 'capital_per_trade', 'reserve_floor_pct'].forEach(function(f) {
+      var changes = [];
+      allFields.forEach(function(f) {
         var input = document.getElementById('cfg-' + short + '-' + f);
-        if (input) {
-          data[f] = f === 'grid_levels' ? parseInt(input.value) : parseFloat(input.value);
+        if (!input) return;
+        var newVal = f === 'grid_mode' ? input.value
+          : f === 'grid_levels' ? parseInt(input.value)
+          : parseFloat(input.value);
+        data[f] = newVal;
+        if (input.value !== input.dataset.original) {
+          changes.push({ symbol: symbol, field: f, old_value: input.dataset.original, new_value: input.value, changed_by: 'manual-ceo' });
         }
       });
 
       try {
         await sbPatch('bot_config', 'symbol', symbol, data);
+
+        // Log each changed field to config_changes_log (best-effort)
+        if (changes.length > 0) {
+          try {
+            await Promise.all(changes.map(function(c) { return sbInsert('config_changes_log', c); }));
+          } catch (logErr) {
+            console.warn('config_changes_log write failed:', logErr);
+          }
+        }
+
         status.textContent = 'Saved ✓';
         status.style.color = 'var(--green)';
-        // Update originals
-        Object.keys(data).forEach(function(f) {
+        allFields.forEach(function(f) {
           var input = document.getElementById('cfg-' + short + '-' + f);
-          if (input) {
-            input.dataset.original = input.value;
-            input.classList.remove('changed');
-          }
+          if (input) { input.dataset.original = input.value; input.classList.remove('changed'); }
         });
-        // Reload after save
         setTimeout(function() { loadAll(); }, 1000);
       } catch (e) {
         status.textContent = 'Error — ' + e.message;
