@@ -89,6 +89,13 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
                 cfg.sell_pct = float(sb_cfg["sell_pct"])
             if sb_cfg.get("grid_mode") is not None:
                 cfg.grid_mode = sb_cfg["grid_mode"]
+            gl = sb_cfg.get("grid_lower")
+            gu = sb_cfg.get("grid_upper")
+            if gl is not None and gu is not None:
+                gl, gu = float(gl), float(gu)
+                if gu > gl > 0:
+                    center = (gl + gu) / 2
+                    cfg.grid_range_pct = (gu - gl) / center
     except Exception as e:
         logger.warning(f"Could not load Supabase config, using local defaults: {e}")
 
@@ -100,8 +107,14 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
     logger.info(f"Symbol: {cfg.symbol}")
     logger.info(f"Capital: ${cfg.capital}")
     logger.info(f"Levels: {cfg.num_levels}")
-    logger.info(f"Range: {cfg.grid_range_pct * 100}%")
-    logger.info(f"Order amount: ${cfg.order_amount}")
+    logger.info(f"Range: {cfg.grid_range_pct * 100:.1f}%")
+    logger.info(f"Grid mode: {cfg.grid_mode}")
+    if cfg.grid_mode == "percentage":
+        logger.info(f"Capital per trade: ${cfg.capital_per_trade}")
+        logger.info(f"Buy pct: {cfg.buy_pct}% / Sell pct: {cfg.sell_pct}%")
+    else:
+        per_level = cfg.capital / max(cfg.num_levels // 2, 1)
+        logger.info(f"Capital per level: ${per_level:.2f} (={cfg.capital} / {cfg.num_levels // 2} buy levels)")
     logger.info(f"Check interval: {cfg.check_interval_seconds}s")
     logger.info(f"Buy cooldown: {cfg.buy_cooldown_seconds}s")
     logger.info("=" * 50)
@@ -169,7 +182,7 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
     logger.info("Grid levels:")
     for level in bot.state.levels:
         marker = "BUY ↓" if level.side == "buy" else "SELL ↑"
-        base = cfg.symbol.split("/")[0]
+        base = cfg.symbol.split("/")[0] if "/" in cfg.symbol else cfg.symbol
         amount_str = f" ({level.order_amount:.6f} {base})" if level.order_amount > 0 else ""
         logger.info(f"  {fmt_price(level.price):>14}  {marker}{amount_str}")
     logger.info(f"  Current price: {fmt_price(price)}")
@@ -444,7 +457,7 @@ def _print_status(bot: GridBot):
     logger.info(f"--- {status['symbol']} Grid Status ---")
     logger.info(f"  Price:        {fmt_price(status['last_price'])}")
     logger.info(f"  Range:        {status['range']}")
-    base = status['symbol'].split("/")[0]
+    base = status['symbol'].split("/")[0] if "/" in status['symbol'] else status['symbol']
     logger.info(f"  Holdings:     {status['holdings']:.6f} {base}")
     logger.info(f"  Avg buy:      {fmt_price(status['avg_buy_price'])}")
     logger.info(f"  Capital:      ${status['capital']:.2f} total | ${status['available_capital']:.2f} available")

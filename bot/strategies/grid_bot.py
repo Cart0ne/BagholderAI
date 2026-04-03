@@ -49,7 +49,7 @@ class GridState:
 
     @property
     def unrealized_pnl(self) -> float:
-        if self.holdings > 0 and self.last_price > 0:
+        if self.holdings > 0 and self.last_price > 0 and self.avg_buy_price > 0:
             return (self.last_price - self.avg_buy_price) * self.holdings
         return 0.0
 
@@ -103,8 +103,8 @@ class GridBot:
         self.capital_per_trade = capital_per_trade
         self.state: Optional[GridState] = None
         self._daily_trade_count = 0
-        self._daily_date = date.today()
-        self._daily_pnl_date = date.today()
+        self._daily_date = datetime.utcnow().date()
+        self._daily_pnl_date = datetime.utcnow().date()
         self._last_buy_time: float = 0.0  # Task 5: timestamp of last buy
         self.skipped_buys: list = []     # filled each cycle with insufficient-cash skips
         self.skipped_sells: list = []    # filled each cycle with insufficient-holdings skips
@@ -322,7 +322,7 @@ class GridBot:
             return self._check_percentage_and_execute(current_price)
 
         # Reset daily counters if new day
-        today = date.today()
+        today = datetime.utcnow().date()
         if today != self._daily_date:
             self._daily_trade_count = 0
             self._daily_date = today
@@ -360,7 +360,7 @@ class GridBot:
                 trade = self._execute_buy(level, current_price)
                 if trade:
                     trades.append(trade)
-                    buy_cooldown_active = self.buy_cooldown_seconds > 0  # block further buys this cycle
+                    buy_cooldown_active = True  # block further buys this cycle regardless of cooldown setting
 
             elif level.side == "sell" and current_price >= level.price:
                 if self.state.holdings > 0:
@@ -471,8 +471,8 @@ class GridBot:
         if amount <= 0:
             return None
 
-        # Guard: skip sell if insufficient holdings
-        if amount > self.state.holdings:
+        # Guard: skip sell if insufficient holdings (1e-10 tolerance for floating-point accumulation)
+        if amount > self.state.holdings + 1e-10:
             logger.warning(
                 f"Insufficient holdings for SELL {self.symbol}: "
                 f"need {amount:.6f}, have {self.state.holdings:.6f}. Skipping level {fmt_price(level.price)}."
@@ -502,7 +502,7 @@ class GridBot:
 
         # Update state — do NOT touch avg_buy_price on sells
         self.state.total_received += revenue
-        self.state.total_fees += fee
+        self.state.total_fees += fee + buy_fee
         self.state.holdings -= amount
         self.state.realized_pnl += realized_pnl
         self.state.daily_realized_pnl += realized_pnl
@@ -557,7 +557,7 @@ class GridBot:
               If no previous buys, buy immediately to establish reference.
         SELL: price rose sell_pct% above avg buy price → sell oldest open lot (FIFO).
         """
-        today = date.today()
+        today = datetime.utcnow().date()
         if today != self._daily_date:
             self._daily_trade_count = 0
             self._daily_date = today
@@ -611,6 +611,9 @@ class GridBot:
 
     def _execute_percentage_buy(self, price: float) -> Optional[dict]:
         """Execute a percentage-mode buy: spend capital_per_trade USDT at current price."""
+        if price <= 0:
+            logger.error(f"Invalid price {price} for {self.symbol}, skipping pct buy")
+            return None
         cost = self.capital_per_trade
         amount = cost / price
         fee = cost * self.FEE_RATE
@@ -685,10 +688,27 @@ class GridBot:
         if not self._pct_open_positions:
             return None
 
+        # Mirror the same guards as _execute_sell
+        if self.min_profit_pct > 0 and self.state.avg_buy_price > 0:
+            min_price = self.state.avg_buy_price * (1 + self.min_profit_pct)
+            if price < min_price:
+                logger.info(
+                    f"SKIP: pct sell at {fmt_price(price)} below min profit target "
+                    f"(need {fmt_price(min_price)}, {self.min_profit_pct * 100:.1f}% above avg buy)"
+                )
+                return None
+
+        if self.strategy == "A" and price < self.state.avg_buy_price:
+            logger.info(
+                f"BLOCKED: Pct sell at {fmt_price(price)} < avg buy {fmt_price(self.state.avg_buy_price)}. "
+                f"Strategy A never sells at loss."
+            )
+            return None
+
         lot = self._pct_open_positions[0]
         amount = lot["amount"]
 
-        if amount > self.state.holdings:
+        if amount > self.state.holdings + 1e-10:
             logger.warning(
                 f"Insufficient holdings for SELL {self.symbol}: "
                 f"need {amount:.6f}, have {self.state.holdings:.6f}. Skipping pct sell."
@@ -711,7 +731,7 @@ class GridBot:
 
         self._pct_open_positions.pop(0)
         self.state.total_received += revenue
-        self.state.total_fees += fee
+        self.state.total_fees += fee + buy_fee
         self.state.holdings -= amount
         self.state.realized_pnl += realized_pnl
         self.state.daily_realized_pnl += realized_pnl
