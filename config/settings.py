@@ -126,39 +126,56 @@ class GridInstanceConfig:
     check_interval_seconds: int = 60   # Task 6: per-asset check interval
     buy_cooldown_seconds: int = 0      # Task 5: min seconds between consecutive buys
     min_profit_pct: float = 0.0        # Task 10: min gross margin to allow a sell (e.g. 0.01 = 1%)
+    # Percentage mode (Session 18)
+    grid_mode: str = "fixed"           # "fixed" or "percentage"
+    buy_pct: float = 0.0               # % drop from last buy to trigger next buy
+    sell_pct: float = 0.0              # % rise from avg buy to trigger sell
+    capital_per_trade: float = 0.0     # USDT to spend per buy in percentage mode
 
 
 # Pre-configured grid instances (Task 8: updated params — wider grids, less frequent buys)
 GRID_INSTANCES = [
     GridInstanceConfig(
         symbol="BTC/USDT",
-        capital=100.0,
+        capital=200.0,
         num_levels=8,
         grid_range_pct=0.15,
         order_amount=20.0,
         check_interval_seconds=60,     # check ogni 1 min
         buy_cooldown_seconds=1800,     # cooldown 30 min tra buy
         min_profit_pct=0.01,           # 1% min profit before selling
+        grid_mode="fixed",
+        buy_pct=1.80,
+        sell_pct=1.00,
+        capital_per_trade=25.00,
     ),
     GridInstanceConfig(
         symbol="SOL/USDT",
-        capital=50.0,
+        capital=150.0,
         num_levels=8,
         grid_range_pct=0.12,
         order_amount=10.0,
         check_interval_seconds=45,     # check ogni 45 sec
         buy_cooldown_seconds=900,      # cooldown 15 min tra buy
         min_profit_pct=0.015,          # 1.5% min profit before selling
+        grid_mode="fixed",
+        buy_pct=1.50,
+        sell_pct=1.00,
+        capital_per_trade=12.50,
     ),
     GridInstanceConfig(
         symbol="BONK/USDT",
-        capital=30.0,
+        capital=150.0,
         num_levels=10,
         grid_range_pct=0.10,
         order_amount=5.0,
         check_interval_seconds=20,     # check ogni 20 sec
         buy_cooldown_seconds=300,      # cooldown 5 min tra buy
         min_profit_pct=0.02,           # 2% min profit before selling
+        grid_mode="fixed",
+        buy_pct=1.00,
+        sell_pct=1.00,
+        capital_per_trade=6.00,
     ),
 ]
 

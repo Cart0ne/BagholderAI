@@ -11,6 +11,7 @@ import logging
 from typing import Optional
 from dataclasses import dataclass, field
 from datetime import datetime, date
+from utils.formatting import fmt_price
 
 logger = logging.getLogger("bagholderai.grid")
 
@@ -79,6 +80,10 @@ class GridBot:
         mode: str = "paper",
         buy_cooldown_seconds: int = 0,  # Task 5: min seconds between buys
         min_profit_pct: float = 0.0,    # Task 10: min gross margin to allow a sell (e.g. 0.01 = 1%)
+        grid_mode: str = "fixed",       # "fixed" or "percentage"
+        buy_pct: float = 0.0,           # % drop from last buy to trigger next buy
+        sell_pct: float = 0.0,          # % rise from avg buy to trigger sell
+        capital_per_trade: float = 0.0, # USDT to spend per buy in percentage mode
     ):
         self.exchange = exchange
         self.trade_logger = trade_logger
@@ -92,6 +97,10 @@ class GridBot:
         self.mode = mode
         self.buy_cooldown_seconds = buy_cooldown_seconds
         self.min_profit_pct = min_profit_pct
+        self.grid_mode = grid_mode
+        self.buy_pct = buy_pct
+        self.sell_pct = sell_pct
+        self.capital_per_trade = capital_per_trade
         self.state: Optional[GridState] = None
         self._daily_trade_count = 0
         self._daily_date = date.today()
@@ -99,6 +108,9 @@ class GridBot:
         self._last_buy_time: float = 0.0  # Task 5: timestamp of last buy
         self.skipped_buys: list = []     # filled each cycle with insufficient-cash skips
         self.skipped_sells: list = []    # filled each cycle with insufficient-holdings skips
+        # Percentage mode state
+        self._pct_last_buy_price: float = 0.0
+        self._pct_open_positions: list = []  # FIFO: [{"amount": float, "price": float}, ...]
 
     @staticmethod
     def _price_decimals(price: float) -> int:
@@ -200,8 +212,8 @@ class GridBot:
         is_reset = "RESET" if old_state is not None else "NEW"
         logger.info(
             f"Grid {is_reset}: {self.symbol} | "
-            f"Center: ${current_price:.2f} | "
-            f"Range: ${lower:.2f} - ${upper:.2f} | "
+            f"Center: {fmt_price(current_price)} | "
+            f"Range: {fmt_price(lower)} - {fmt_price(upper)} | "
             f"Levels: {self.num_levels} | "
             f"Available capital: ${available_capital:.2f}"
         )
@@ -237,9 +249,62 @@ class GridBot:
 
         logger.info(
             f"Restored from DB: {pos['holdings']:.6f} {self.symbol} "
-            f"@ avg ${pos['avg_buy_price']:.2f} | "
+            f"@ avg {fmt_price(pos['avg_buy_price'])} | "
             f"Realized P&L: ${pos['realized_pnl']:.4f}"
         )
+
+    def init_percentage_state_from_db(self):
+        """
+        Restore percentage mode state from DB on startup.
+        Reconstructs the FIFO open-positions queue and last buy price
+        by replaying all v3 trades for this symbol chronologically.
+        """
+        if not self.trade_logger:
+            return
+        try:
+            result = (
+                self.trade_logger.client.table("trades")
+                .select("side,amount,price,created_at")
+                .eq("symbol", self.symbol)
+                .eq("config_version", "v3")
+                .order("created_at", desc=False)
+                .execute()
+            )
+            trades = result.data or []
+        except Exception as e:
+            logger.warning(f"[{self.symbol}] Could not load pct state from DB: {e}")
+            return
+
+        open_positions = []
+        last_buy_price = 0.0
+
+        for t in trades:
+            side = t.get("side")
+            amount = float(t.get("amount", 0))
+            price = float(t.get("price", 0))
+            if side == "buy":
+                open_positions.append({"amount": amount, "price": price})
+                last_buy_price = price
+            elif side == "sell" and open_positions:
+                # FIFO: consume oldest lot(s) to match sell amount
+                remaining = amount
+                while remaining > 1e-12 and open_positions:
+                    oldest = open_positions[0]
+                    if oldest["amount"] <= remaining + 1e-12:
+                        remaining -= oldest["amount"]
+                        open_positions.pop(0)
+                    else:
+                        oldest["amount"] -= remaining
+                        remaining = 0
+
+        self._pct_open_positions = open_positions
+        self._pct_last_buy_price = last_buy_price
+
+        if last_buy_price > 0:
+            logger.info(
+                f"[{self.symbol}] Pct mode restored: {len(open_positions)} open lots, "
+                f"last buy {fmt_price(last_buy_price)}"
+            )
 
     def check_price_and_execute(self, current_price: float) -> list:
         """
@@ -252,6 +317,9 @@ class GridBot:
         """
         if not self.state:
             raise RuntimeError("Grid not initialized. Call setup_grid() first.")
+
+        if self.grid_mode == "percentage":
+            return self._check_percentage_and_execute(current_price)
 
         # Reset daily counters if new day
         today = date.today()
@@ -315,7 +383,7 @@ class GridBot:
         if cash_before < cost:
             logger.warning(
                 f"Insufficient cash for BUY {self.symbol}: "
-                f"need ${cost:.2f}, have ${cash_before:.2f}. Skipping level ${level.price:.4f}."
+                f"need ${cost:.2f}, have ${cash_before:.2f}. Skipping level {fmt_price(level.price)}."
             )
             self.skipped_buys.append({
                 "symbol": self.symbol,
@@ -355,7 +423,7 @@ class GridBot:
             "fee": fee,
             "strategy": self.strategy,
             "brain": "grid",
-            "reason": f"Grid buy at level ${level.price:.2f} (price dropped to ${price:.2f})",
+            "reason": f"Grid buy at level {fmt_price(level.price)} (price dropped to {fmt_price(price)})",
             "mode": self.mode,
             "cash_before": cash_before,
             "capital_allocated": self.capital,
@@ -368,7 +436,7 @@ class GridBot:
             logger.error(f"Failed to log trade: {e}")
 
         logger.info(
-            f"BUY {amount:.6f} {self.symbol} @ ${price:.2f} "
+            f"BUY {amount:.6f} {self.symbol} @ {fmt_price(price)} "
             f"(cost: ${cost:.2f}, fee: ${fee:.4f})"
         )
 
@@ -385,14 +453,14 @@ class GridBot:
             min_price = self.state.avg_buy_price * (1 + self.min_profit_pct)
             if price < min_price:
                 logger.info(
-                    f"SKIP: sell at ${price:.2f} below min profit target "
-                    f"(need ${min_price:.2f}, {self.min_profit_pct * 100:.1f}% above avg buy)"
+                    f"SKIP: sell at {fmt_price(price)} below min profit target "
+                    f"(need {fmt_price(min_price)}, {self.min_profit_pct * 100:.1f}% above avg buy)"
                 )
                 return None
 
         if self.strategy == "A" and price < self.state.avg_buy_price:
             logger.info(
-                f"BLOCKED: Sell at ${price:.2f} < avg buy ${self.state.avg_buy_price:.2f}. "
+                f"BLOCKED: Sell at {fmt_price(price)} < avg buy {fmt_price(self.state.avg_buy_price)}. "
                 f"Strategy A never sells at loss."
             )
             return None
@@ -407,7 +475,7 @@ class GridBot:
         if amount > self.state.holdings:
             logger.warning(
                 f"Insufficient holdings for SELL {self.symbol}: "
-                f"need {amount:.6f}, have {self.state.holdings:.6f}. Skipping level ${level.price:.4f}."
+                f"need {amount:.6f}, have {self.state.holdings:.6f}. Skipping level {fmt_price(level.price)}."
             )
             self.skipped_sells.append({
                 "symbol": self.symbol,
@@ -458,7 +526,7 @@ class GridBot:
             "fee": fee,
             "strategy": self.strategy,
             "brain": "grid",
-            "reason": f"Grid sell at level ${level.price:.2f} (price rose to ${price:.2f})",
+            "reason": f"Grid sell at level {fmt_price(level.price)} (price rose to {fmt_price(price)})",
             "mode": self.mode,
             "realized_pnl": realized_pnl,
             "holdings_value_before": holdings_value_before,
@@ -471,10 +539,216 @@ class GridBot:
             logger.error(f"Failed to log trade: {e}")
 
         logger.info(
-            f"SELL {amount:.6f} {self.symbol} @ ${price:.2f} "
+            f"SELL {amount:.6f} {self.symbol} @ {fmt_price(price)} "
             f"(revenue: ${revenue:.2f}, fee: ${fee:.4f}, pnl: ${realized_pnl:.4f})"
         )
 
+        return trade_data
+
+    # ------------------------------------------------------------------
+    # Percentage mode methods
+    # ------------------------------------------------------------------
+
+    def _check_percentage_and_execute(self, current_price: float) -> list:
+        """
+        Percentage-based buy/sell logic (grid_mode = 'percentage').
+
+        BUY:  price dropped buy_pct% below last buy price → buy capital_per_trade USDT
+              If no previous buys, buy immediately to establish reference.
+        SELL: price rose sell_pct% above avg buy price → sell oldest open lot (FIFO).
+        """
+        today = date.today()
+        if today != self._daily_date:
+            self._daily_trade_count = 0
+            self._daily_date = today
+        if today != self._daily_pnl_date:
+            self.state.daily_realized_pnl = 0.0
+            self._daily_pnl_date = today
+
+        trades = []
+        self.skipped_buys = []
+        self.skipped_sells = []
+        self.state.last_price = current_price
+
+        if self._daily_trade_count >= 50:
+            logger.warning("Daily operation limit reached (50). Stopping.")
+            return trades
+
+        # --- SELL CHECK ---
+        if (
+            self.state.holdings > 0
+            and self.state.avg_buy_price > 0
+            and self._pct_open_positions
+        ):
+            sell_trigger = self.state.avg_buy_price * (1 + self.sell_pct / 100)
+            if current_price >= sell_trigger:
+                trade = self._execute_percentage_sell(current_price)
+                if trade:
+                    trades.append(trade)
+
+        # --- BUY CHECK ---
+        now = time.time()
+        buy_cooldown_active = (
+            self.buy_cooldown_seconds > 0
+            and self._pct_last_buy_price != 0  # cooldown doesn't block the very first buy
+            and (now - self._last_buy_time) < self.buy_cooldown_seconds
+        )
+
+        if not buy_cooldown_active:
+            if self._pct_last_buy_price == 0:
+                # No previous buy — establish reference immediately
+                trade = self._execute_percentage_buy(current_price)
+                if trade:
+                    trades.append(trade)
+            else:
+                buy_trigger = self._pct_last_buy_price * (1 - self.buy_pct / 100)
+                if current_price <= buy_trigger:
+                    trade = self._execute_percentage_buy(current_price)
+                    if trade:
+                        trades.append(trade)
+
+        return trades
+
+    def _execute_percentage_buy(self, price: float) -> Optional[dict]:
+        """Execute a percentage-mode buy: spend capital_per_trade USDT at current price."""
+        cost = self.capital_per_trade
+        amount = cost / price
+        fee = cost * self.FEE_RATE
+
+        cash_before = max(0.0, self.capital - self.state.total_invested + self.state.total_received)
+
+        if cash_before < cost:
+            logger.warning(
+                f"Insufficient cash for BUY {self.symbol}: "
+                f"need ${cost:.2f}, have ${cash_before:.2f}. Skipping pct buy."
+            )
+            self.skipped_buys.append({
+                "symbol": self.symbol,
+                "level_price": price,
+                "cost": cost,
+                "cash_before": cash_before,
+            })
+            return None
+
+        old_last_buy = self._pct_last_buy_price
+        old_holdings = self.state.holdings
+        old_avg = self.state.avg_buy_price
+
+        self.state.total_invested += cost
+        self.state.total_fees += fee
+        self.state.holdings += amount
+
+        if self.state.holdings > 0:
+            self.state.avg_buy_price = (old_avg * old_holdings + price * amount) / self.state.holdings
+
+        self._pct_last_buy_price = price
+        self._pct_open_positions.append({"amount": amount, "price": price})
+        self._daily_trade_count += 1
+        self._last_buy_time = time.time()
+
+        if old_last_buy == 0:
+            reason = f"Pct buy: first buy at market {fmt_price(price)} (reference established)"
+        else:
+            reason = (
+                f"Pct buy: price {fmt_price(price)} dropped {self.buy_pct}% "
+                f"below last buy {fmt_price(old_last_buy)}"
+            )
+
+        trade_data = {
+            "symbol": self.symbol,
+            "side": "buy",
+            "amount": amount,
+            "price": price,
+            "cost": cost,
+            "fee": fee,
+            "strategy": self.strategy,
+            "brain": "grid",
+            "reason": reason,
+            "mode": self.mode,
+            "cash_before": cash_before,
+            "capital_allocated": self.capital,
+        }
+
+        try:
+            self.trade_logger.log_trade(**trade_data)
+        except Exception as e:
+            logger.error(f"Failed to log trade: {e}")
+
+        logger.info(
+            f"BUY {amount:.6f} {self.symbol} @ {fmt_price(price)} "
+            f"(cost: ${cost:.2f}, fee: ${fee:.4f}) [pct mode]"
+        )
+        return trade_data
+
+    def _execute_percentage_sell(self, price: float) -> Optional[dict]:
+        """Execute a percentage-mode sell: sell oldest open lot (FIFO)."""
+        if not self._pct_open_positions:
+            return None
+
+        lot = self._pct_open_positions[0]
+        amount = lot["amount"]
+
+        if amount > self.state.holdings:
+            logger.warning(
+                f"Insufficient holdings for SELL {self.symbol}: "
+                f"need {amount:.6f}, have {self.state.holdings:.6f}. Skipping pct sell."
+            )
+            self.skipped_sells.append({
+                "symbol": self.symbol,
+                "level_price": price,
+                "amount_needed": amount,
+                "holdings": self.state.holdings,
+            })
+            return None
+
+        avg_buy_snapshot = self.state.avg_buy_price
+        revenue = amount * price
+        fee = revenue * self.FEE_RATE
+        holdings_value_before = self.state.holdings * price
+        cost_basis = amount * avg_buy_snapshot
+        buy_fee = cost_basis * self.FEE_RATE
+        realized_pnl = revenue - cost_basis - fee - buy_fee
+
+        self._pct_open_positions.pop(0)
+        self.state.total_received += revenue
+        self.state.total_fees += fee
+        self.state.holdings -= amount
+        self.state.realized_pnl += realized_pnl
+        self.state.daily_realized_pnl += realized_pnl
+
+        if self.state.holdings <= 0:
+            self.state.holdings = 0
+            self.state.avg_buy_price = 0
+
+        self._daily_trade_count += 1
+
+        trade_data = {
+            "symbol": self.symbol,
+            "side": "sell",
+            "amount": amount,
+            "price": price,
+            "cost": revenue,
+            "fee": fee,
+            "strategy": self.strategy,
+            "brain": "grid",
+            "reason": (
+                f"Pct sell: price {fmt_price(price)} is {self.sell_pct}% "
+                f"above avg buy {fmt_price(avg_buy_snapshot)}"
+            ),
+            "mode": self.mode,
+            "realized_pnl": realized_pnl,
+            "holdings_value_before": holdings_value_before,
+        }
+
+        try:
+            self.trade_logger.log_trade(**trade_data)
+        except Exception as e:
+            logger.error(f"Failed to log trade: {e}")
+
+        logger.info(
+            f"SELL {amount:.6f} {self.symbol} @ {fmt_price(price)} "
+            f"(revenue: ${revenue:.2f}, fee: ${fee:.4f}, pnl: ${realized_pnl:.4f}) [pct mode]"
+        )
         return trade_data
 
     def _activate_sell_level(self, buy_level: GridLevel, amount: float):
@@ -541,9 +815,13 @@ class GridBot:
         """
         Check if the price has moved too far from the grid center.
         If price is outside the grid range, we should create a new grid.
+        In percentage mode there is no fixed range, so never reset.
         """
         if not self.state:
             return True
+
+        if self.grid_mode == "percentage":
+            return False
 
         margin = (self.state.upper_bound - self.state.lower_bound) * 0.1
         return (

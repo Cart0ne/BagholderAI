@@ -31,6 +31,7 @@ from config.settings import (
     TradingMode, HardcodedRules, GridConfig, ExchangeConfig, get_grid_config,
     GRID_INSTANCES,
 )
+from config.supabase_config import SupabaseConfigReader
 from bot.exchange import create_exchange
 from bot.strategies.grid_bot import GridBot
 from db.client import TradeLogger, PortfolioManager, DailyPnLTracker
@@ -45,11 +46,53 @@ def fetch_price(exchange, symbol: str) -> float:
     return ticker["last"]
 
 
+def _sync_config_to_bot(reader: "SupabaseConfigReader", bot: "GridBot", symbol: str):
+    """
+    Apply the latest Supabase config values to the running bot.
+    Only updates fields that are safe to change mid-run without a restart.
+    """
+    sb_cfg = reader.get_config(symbol)
+    if not sb_cfg:
+        return
+    if "buy_pct" in sb_cfg and sb_cfg["buy_pct"] is not None:
+        bot.buy_pct = float(sb_cfg["buy_pct"])
+    if "sell_pct" in sb_cfg and sb_cfg["sell_pct"] is not None:
+        bot.sell_pct = float(sb_cfg["sell_pct"])
+    if "capital_per_trade" in sb_cfg and sb_cfg["capital_per_trade"] is not None:
+        bot.capital_per_trade = float(sb_cfg["capital_per_trade"])
+    if "grid_mode" in sb_cfg and sb_cfg["grid_mode"] is not None:
+        bot.grid_mode = sb_cfg["grid_mode"]
+
+
 def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = False):
     """Main loop."""
 
-    # Load config for this symbol
+    # Load local config for this symbol (fallback / initial values)
     cfg = get_grid_config(symbol)
+
+    # --- Read config from Supabase (Task 2) ---
+    config_reader = SupabaseConfigReader()
+    try:
+        config_reader.load_initial()
+        sb_cfg = config_reader.get_config(symbol)
+        if sb_cfg:
+            # Override local config with Supabase values
+            if sb_cfg.get("capital_allocation") is not None:
+                cfg.capital = float(sb_cfg["capital_allocation"])
+            if sb_cfg.get("grid_levels") is not None:
+                cfg.num_levels = int(sb_cfg["grid_levels"])
+            if sb_cfg.get("capital_per_trade") is not None:
+                cfg.capital_per_trade = float(sb_cfg["capital_per_trade"])
+            if sb_cfg.get("buy_pct") is not None:
+                cfg.buy_pct = float(sb_cfg["buy_pct"])
+            if sb_cfg.get("sell_pct") is not None:
+                cfg.sell_pct = float(sb_cfg["sell_pct"])
+            if sb_cfg.get("grid_mode") is not None:
+                cfg.grid_mode = sb_cfg["grid_mode"]
+    except Exception as e:
+        logger.warning(f"Could not load Supabase config, using local defaults: {e}")
+
+    config_reader.start_refresh_loop()
 
     logger.info("=" * 50)
     logger.info("BagHolderAI Grid Bot starting...")
@@ -102,6 +145,10 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
         mode="paper",
         buy_cooldown_seconds=cfg.buy_cooldown_seconds,
         min_profit_pct=cfg.min_profit_pct,
+        grid_mode=cfg.grid_mode,
+        buy_pct=cfg.buy_pct,
+        sell_pct=cfg.sell_pct,
+        capital_per_trade=cfg.capital_per_trade,
     )
 
     # Fetch initial price and setup grid
@@ -113,7 +160,10 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
         return
 
     bot.setup_grid(price)
-    bot.restore_state_from_db()
+    if cfg.grid_mode == "percentage":
+        bot.init_percentage_state_from_db()
+    else:
+        bot.restore_state_from_db()
 
     # Print initial grid
     logger.info("Grid levels:")
@@ -144,6 +194,10 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
     while True:
         try:
             cycle += 1
+
+            # Sync dynamic config fields from Supabase reader to bot
+            _sync_config_to_bot(config_reader, bot, cfg.symbol)
+
             price = fetch_price(exchange, cfg.symbol)
 
             # Check if grid needs reset (price moved too far)
