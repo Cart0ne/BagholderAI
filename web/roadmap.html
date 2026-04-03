@@ -254,7 +254,7 @@
   <script>
     // Roadmap data — update this JSON each session
     const ROADMAP = {
-      last_updated: "2026-04-01",
+      last_updated: "2026-04-03",
       phases: [
         {
           id: 0,
@@ -285,7 +285,7 @@
             { text: "Grid Bot engine (paper trading)", status: "done", who: "AI", comment: "5/5 tests passed. Fought Python versions for an hour." },
             { text: "Logging trades to Supabase", status: "done", who: "AI", comment: "Session 07. The filo was already there." },
             { text: "Telegram notifications (trade alerts + daily report)", status: "done", who: "AI", comment: "Session 07. First message: 🚀 BagHolderAI started." },
-            { text: "Admin dashboard (private, for Max) with parameter editing", status: "todo", who: "AI" },
+            { text: "Admin dashboard (private, for Max) with parameter editing", status: "done", who: "AI", comment: "Sessions 18/18b. Full param editing + buy_pct/sell_pct/grid_mode fields added." },
             { text: "Public dashboard v1", status: "done", who: "AI", comment: "Session 14. Dashboard is now the homepage." },
             { text: "Landing page with diary updates", status: "done", who: "BOTH" },
             { text: "First diary post on dashboard", status: "done", who: "BOTH", comment: "Session 14. CEO's Log with Haiku commentary." },
@@ -310,6 +310,7 @@
             { text: "Blueprint page on site (/blueprint)", status: "done", who: "BOTH", comment: "Session 15. Public architecture diagram live at /blueprint." },
             { text: "Public dashboard: CEO's Log + Numbers + Under the Hood", status: "done", who: "AI", comment: "Session 14. Dashboard is now the homepage. Static HTML + Supabase REST." },
             { text: "Haiku commentary call at 21:00", status: "done", who: "AI", comment: "Session 14. commentary.py integrated into grid_runner.py. First output: 'a shopping spree.'" },
+            { text: "Logger.warning on silent Telegram failures", status: "todo", who: "AI" },
             { text: "Dashboard becomes homepage, /diary for construction log", status: "done", who: "BOTH", comment: "Session 14. Visitors see data first, not a 'coming soon' page." },
             { text: "Nav bar on all site pages", status: "done", who: "AI", comment: "Session 14. Diary, Roadmap, How We Work on every page." },
             { text: "RLS policies for public dashboard reads", status: "done", who: "AI", comment: "Session 14. anon SELECT on daily_pnl + daily_commentary." },
@@ -323,6 +324,19 @@
             { text: "REPORT_HOUR 21\u219220", status: "done", who: "MAX", comment: "Session 15. Daily report now fires at 20:00." },
             { text: "Received breakdown nel terminale", status: "done", who: "AI", comment: "Session 15. Terminal now shows cost basis + profit split in Received line." },
             { text: "Migration diary_entries from JSON to Supabase", status: "done", who: "AI" },
+            { text: "diary.html reads from Supabase REST API", status: "done", who: "AI", comment: "Session 16. Diary page fully dynamic — no more static JSON." },
+            { text: "Guard buy without funds (block trade + Telegram alert)", status: "done", who: "AI", comment: "Session 16. Cash guard blocks the order before it fires." },
+            { text: "Guard sell without holdings (block trade + Telegram alert)", status: "done", who: "AI", comment: "Session 16. Holdings guard prevents ghost sells." },
+            { text: "Fix Haiku Day 3 commentary (stale data from test_commentary.py)", status: "done", who: "AI", comment: "Session 16. Test script was polluting production commentary table." },
+            { text: "Cleanup duplicate daily_commentary entries (31/03)", status: "done", who: "AI", comment: "Session 16. Manual dedup of entries created during early testing." },
+            { text: "Footer Telegram v2→v3", status: "done", who: "AI", comment: "Session 16. Report footer now correctly references v3 config." },
+            { text: "Grid parameter re-evaluation post cash-zero", status: "done", who: "BOTH", comment: "Session 17. BTC 200 / SOL 150 / BONK 150 — wider allocation, same strategy." },
+            { text: "Percentage grid: buy_pct / sell_pct / grid_mode in bot_config", status: "done", who: "AI", comment: "Session 18. New mode: buy on X% dip from last buy, sell on Y% above avg." },
+            { text: "Bot reads config from Supabase (refresh every 5 min)", status: "done", who: "AI", comment: "Session 18. config/supabase_config.py — live param updates without restart." },
+            { text: "Fix BONK $0.00 in terminal logs (dynamic format)", status: "done", who: "AI", comment: "Session 18. fmt_price() now used in grid_bot.py log messages." },
+            { text: "Capital redistribution: BTC 200 / SOL 150 / BONK 150", status: "done", who: "BOTH", comment: "Session 18. Aligned code (settings.py) with new allocation decision." },
+            { text: "Admin dashboard: buy_pct / sell_pct / grid_mode fields", status: "done", who: "AI", comment: "Session 18b. Fixed fields dim when mode=percentage. Changes logged to config_changes_log." },
+            { text: "Activate grid_mode=percentage and beta test", status: "todo", who: "BOTH" },
           ]
         },
         {
@@ -336,6 +350,7 @@
             { text: "Trend Follower ↔ Grid Bot interaction", status: "todo", who: "AI" },
             { text: "Parameter calibration from data", status: "todo", who: "BOTH" },
             { text: "Dashboard: Trend Follower status", status: "todo", who: "AI" },
+            { text: "Human cooldown override on bot_config (architecture)", status: "todo", who: "BOTH" },
           ]
         },
         {
@@ -369,6 +384,7 @@
             { text: "Donation button", status: "todo", who: "AI" },
             { text: "Telegram bot (reports only, never signals)", status: "done", who: "BOTH", comment: "MiFID II compliance. Transparency, not advice." },
             { text: "Site analytics (Umami Cloud)", status: "done", who: "BOTH", comment: "2h the hard way, 5min the right way." },
+            { text: "Phase dispenses (diary packaged as sellable content)", status: "todo", who: "BOTH" },
           ]
         },
         {
