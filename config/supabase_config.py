@@ -41,6 +41,7 @@ class SupabaseConfigReader:
         self._lock = threading.Lock()
         self._client = None
         self._stop_event = threading.Event()
+        self._notifier = None      # lazy-loaded SyncTelegramNotifier
 
     def _get_client(self):
         if self._client is None:
@@ -80,9 +81,36 @@ class SupabaseConfigReader:
         with self._lock:
             return {s: dict(c) for s, c in self._configs.items()}
 
+    def _get_notifier(self):
+        """Lazy-load SyncTelegramNotifier (avoids import at module level)."""
+        if self._notifier is None:
+            try:
+                from utils.telegram_notifier import SyncTelegramNotifier
+                self._notifier = SyncTelegramNotifier()
+            except Exception as e:
+                logger.warning(f"[bagholderai.config] Could not init Telegram notifier: {e}")
+        return self._notifier
+
+    def _send_config_alert(self, symbol: str, param: str, old_val, new_val):
+        """Send a Telegram alert for a single changed config parameter."""
+        notifier = self._get_notifier()
+        if not notifier:
+            return
+        text = (
+            f"⚙️ <b>CONFIG UPDATED — {symbol}</b>\n"
+            f"Parameter: {param}\n"
+            f"Old: {old_val}\n"
+            f"New: {new_val}\n"
+            f"Source: dashboard"
+        )
+        try:
+            notifier.send_message(text)
+        except Exception as e:
+            logger.warning(f"[bagholderai.config] Telegram alert failed: {e}")
+
     def refresh(self):
         """
-        Re-read config from Supabase. Log any changed values.
+        Re-read config from Supabase. Log any changed values and send Telegram alerts.
         On error: log warning and keep last known config.
         """
         try:
@@ -95,6 +123,7 @@ class SupabaseConfigReader:
             return
 
         new_configs = {row["symbol"]: row for row in rows}
+        changes = []  # collect before acquiring lock to send outside lock
 
         with self._lock:
             for symbol, new_cfg in new_configs.items():
@@ -106,7 +135,12 @@ class SupabaseConfigReader:
                             f"[bagholderai.config] Config updated for {symbol}: "
                             f"{key} {old_val} → {new_val}"
                         )
+                        changes.append((symbol, key, old_val, new_val))
             self._configs = new_configs
+
+        # Send Telegram alerts outside the lock (network call)
+        for symbol, key, old_val, new_val in changes:
+            self._send_config_alert(symbol, key, old_val, new_val)
 
     def _refresh_loop(self):
         """Background thread: refresh config every CONFIG_REFRESH_INTERVAL seconds."""
