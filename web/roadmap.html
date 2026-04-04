@@ -183,14 +183,29 @@
     .task.killed { color: rgba(255,255,255,0.2); }
     .task.killed .task-text { text-decoration: line-through; }
 
-    /* Section headers inside Phase 8 */
-    .task-section {
+    /* Collapsible subsections inside phases */
+    .subsection { margin: 8px 0; }
+    .subsection-header {
+      display: flex; align-items: center; gap: 8px;
       font-family: var(--mono); font-size: 10px; color: var(--green);
       letter-spacing: 0.08em; text-transform: uppercase;
-      padding: 14px 0 4px; margin-top: 4px;
+      padding: 8px 0 6px;
       border-top: 1px solid rgba(255,255,255,0.06);
+      cursor: pointer; user-select: none;
     }
-    .task-section:first-child { border-top: none; padding-top: 4px; }
+    .subsection:first-child .subsection-header { border-top: none; }
+    .subsection-header:hover { color: #fff; }
+    .subsection-arrow {
+      font-size: 9px; color: var(--text-dim); transition: transform 0.2s; flex-shrink: 0;
+    }
+    .subsection.expanded .subsection-arrow { transform: rotate(90deg); }
+    .subsection-meta { color: var(--text-dim); margin-left: auto; font-size: 10px; letter-spacing: 0; text-transform: none; }
+    .subsection-body { display: none; padding-left: 4px; }
+    .subsection.expanded .subsection-body { display: block; }
+    .subsection-empty {
+      font-family: var(--mono); font-size: 11px; color: var(--text-dim);
+      padding: 8px 0; font-style: italic;
+    }
 
     /* Arrow toggle */
     .phase-arrow {
@@ -452,6 +467,8 @@
             { text: "\"Last shot\" buy (use remaining cash below capital_per_trade)", status: "done", who: "AI", comment: "Session 19. If cash > $5 but < standard buy, spend it all." },
             { text: "Binance API retry with exponential backoff", status: "done", who: "AI", comment: "Session 19. 3 retries (2s/4s/8s) before propagating error." },
             { text: "Proactive Telegram alerts (capital exhausted + loop errors)", status: "done", who: "AI", comment: "Session 19. Max's idea. Bot now tells you when it's sick." },
+            { section: "Phase 2 — Trend Follower" },
+            { section: "Phase 3 — AI Sentinel" },
             { section: "Phase 4 — Dashboard & Monetization" },
             { text: "Site analytics (Umami Cloud)", status: "done", who: "BOTH", comment: "2h the hard way, 5min the right way." },
             { section: "Phase 7 — Marketing & Growth" },
@@ -461,6 +478,8 @@
             { text: "How We Work page on site", status: "done", who: "BOTH", comment: "Session 12. The process is the product." },
             { text: "Public Telegram channel (@BagHolderAI_report)", status: "done", who: "BOTH", comment: "Session 12. Daily reports for followers." },
             { text: "Diary page on site (/diary)", status: "done", who: "BOTH", comment: "Session 14. Construction log has its own page." },
+            { section: "Phase 5 — Extended Paper Trading" },
+            { section: "Phase 6 — Go Live" },
             { section: "Open backlog" },
             { text: "Commentary archive after 7 days on dashboard", status: "todo", who: "AI", comment: "Not urgent until 20-30 entries accumulate." },
             { text: "Business plan: monthly running costs vs micro-profits", status: "todo", who: "BOTH", comment: "Deferred until project is stable." },
@@ -520,19 +539,58 @@
         const badgeText = phase.status === 'done' ? 'COMPLETE' : phase.status === 'active' ? '● ACTIVE' : 'PLANNED';
         const expanded = phase.status === 'active' ? ' expanded' : '';
 
-        const tasks = phase.tasks.map(task => {
-          if (task.section) {
-            return `<div class="task-section">${task.section}</div>`;
+        const hasSections = phase.tasks.some(t => t.section);
+        let tasks;
+        if (hasSections) {
+          // Group tasks by section and render as collapsible subsections
+          const groups = [];
+          let current = null;
+          for (const t of phase.tasks) {
+            if (t.section) {
+              if (current) groups.push(current);
+              current = { title: t.section, tasks: [] };
+            } else if (current) {
+              current.tasks.push(t);
+            }
           }
-          const statusClass = task.status === 'done' ? 'done' : task.status === 'killed' ? 'killed' : '';
-          const comment = task.comment ? `<span class="task-comment">${task.comment}</span>` : '';
-          return `
-            <div class="task ${statusClass}">
-              <span class="task-icon">${getStatusIcon(task.status)}</span>
-              <span class="task-text">${task.text}${comment}</span>
-              <span class="task-who">${task.who}</span>
-            </div>`;
-        }).join('');
+          if (current) groups.push(current);
+
+          tasks = groups.map(g => {
+            const done = g.tasks.filter(t => t.status === 'done').length;
+            const total = g.tasks.length;
+            const inner = total === 0
+              ? '<div class="subsection-empty">No extras yet.</div>'
+              : g.tasks.map(t => {
+                  const sc = t.status === 'done' ? 'done' : t.status === 'killed' ? 'killed' : '';
+                  const cm = t.comment ? `<span class="task-comment">${t.comment}</span>` : '';
+                  return `<div class="task ${sc}">
+                    <span class="task-icon">${getStatusIcon(t.status)}</span>
+                    <span class="task-text">${t.text}${cm}</span>
+                    <span class="task-who">${t.who}</span>
+                  </div>`;
+                }).join('');
+            return `
+              <div class="subsection expanded">
+                <div class="subsection-header" onclick="toggleSubsection(this.parentElement)">
+                  <span class="subsection-arrow">▶</span>
+                  ${g.title}
+                  <span class="subsection-meta">${done}/${total}</span>
+                </div>
+                <div class="subsection-body">${inner}</div>
+              </div>`;
+          }).join('');
+        } else {
+          tasks = phase.tasks.map(task => {
+            const statusClass = task.status === 'done' ? 'done' : task.status === 'killed' ? 'killed' : '';
+            const comment = task.comment ? `<span class="task-comment">${task.comment}</span>` : '';
+            return `
+              <div class="task ${statusClass}">
+                <span class="task-icon">${getStatusIcon(task.status)}</span>
+                <span class="task-text">${task.text}${comment}</span>
+                <span class="task-who">${task.who}</span>
+              </div>`;
+          }).join('');
+        }
 
         return `
           <div class="phase${expanded}" onclick="togglePhase(this)">
@@ -554,6 +612,10 @@
     }
 
     function togglePhase(el) {
+      el.classList.toggle('expanded');
+    }
+
+    function toggleSubsection(el) {
       el.classList.toggle('expanded');
     }
 
