@@ -183,6 +183,15 @@
     .task.killed { color: rgba(255,255,255,0.2); }
     .task.killed .task-text { text-decoration: line-through; }
 
+    /* Section headers inside Phase 8 */
+    .task-section {
+      font-family: var(--mono); font-size: 10px; color: var(--green);
+      letter-spacing: 0.08em; text-transform: uppercase;
+      padding: 14px 0 4px; margin-top: 4px;
+      border-top: 1px solid rgba(255,255,255,0.06);
+    }
+    .task-section:first-child { border-top: none; padding-top: 4px; }
+
     /* Arrow toggle */
     .phase-arrow {
       color: var(--text-dim); font-size: 10px; transition: transform 0.2s;
@@ -290,54 +299,13 @@
             { text: "Landing page with diary updates", status: "done", who: "BOTH" },
             { text: "First diary post on dashboard", status: "done", who: "BOTH", comment: "Session 14. CEO's Log with Haiku commentary." },
             { text: "Test 2-3 different tokens (BTC, SOL, BONK)", status: "done", who: "BOTH", comment: "Session 09. Three grids running in parallel." },
-            { text: "Fix accounting: avg_buy_price, grid reset, daily P&L", status: "done", who: "AI", comment: "Session 09. 5 bugs found, 5 bugs fixed." },
             { text: "Multi-token support (--symbol parameter)", status: "done", who: "AI", comment: "Session 09. Dynamic config per asset." },
-            { text: "BONK micro-price formatting ($0.00 fix)", status: "done", who: "AI", comment: "Session 15. fmtPrice() for micro-prices like BONK." },
-            { text: "Per-asset Telegram reports (symbol + config filter)", status: "done", who: "AI", comment: "Session 10. Each bot reports its own trades." },
-            { text: "Wide grids + buy cooldown + min profit target", status: "done", who: "AI", comment: "Session 10. Philosophy: holder, not scalper." },
-            { text: "Available capital in grid reset logic", status: "done", who: "AI", comment: "Session 10. Prevents overspending." },
-            { text: "Data versioning (config_version v1/v2/v3)", status: "done", who: "AI", comment: "Session 10+13. v3 reset: clean slate, no inherited positions." },
-            { text: "Supabase connector for direct CEO data access", status: "done", who: "MAX", comment: "Session 11. The CEO finally has eyes." },
-            { text: "Fix symbol filter bug in daily report", status: "done", who: "AI", comment: "Session 16." },
-            { text: "Fix restore_state_from_db: config_version filter", status: "done", who: "AI", comment: "Session 13. v1/v2 cross-contamination fixed." },
-            { text: "Consolidated portfolio report (total value vs initial capital)", status: "done", who: "AI", comment: "Session 12. Fixed P&L: was +$270 (wrong), now -$10.63 (correct)." },
-            { text: "Daily snapshot saved to daily_pnl table", status: "done", who: "AI", comment: "Session 12. Dashboard-ready with JSONB positions." },
-            { text: "Rename 'Cost' to 'Revenue' on sell notifications", status: "done", who: "AI" },
-            { text: "Private daily report redesign (per-asset cards)", status: "done", who: "AI", comment: "Session 12. Full portfolio + technical cards." },
-            { text: "Public daily report for Telegram channel", status: "done", who: "AI", comment: "Session 12. Zero jargon, readable by anyone." },
-            { text: "Fix public Telegram report (.env config)", status: "done", who: "MAX", comment: "Session 13. Silent failure — env vars missing on Mac Mini." },
-            { text: "daily_commentary table for AI CEO voice", status: "done", who: "AI", comment: "Session 13. Haiku writes the CEO's daily log." },
-            { text: "config_changes_log table for parameter tracking", status: "done", who: "AI", comment: "Session 13. Feeds Max's changes into the AI narrative." },
-            { text: "Blueprint page on site (/blueprint)", status: "done", who: "BOTH", comment: "Session 15." },
             { text: "Public dashboard: CEO's Log + Numbers + Under the Hood", status: "done", who: "AI", comment: "Session 14. Static HTML + Supabase REST." },
-            { text: "Haiku commentary call at 21:00", status: "done", who: "AI", comment: "Session 14. First output: 'a shopping spree.'" },
             { text: "Admin dashboard with parameter editing", status: "done", who: "AI", comment: "Session 17. SHA-256 auth, live config updates." },
-            { text: "Dashboard becomes homepage, /diary for construction log", status: "done", who: "BOTH", comment: "Session 14. Visitors see data first." },
-            { text: "Nav bar on all site pages", status: "done", who: "AI", comment: "Session 14." },
-            { text: "Telegram silent failure logging (warnings)", status: "done", who: "AI", comment: "Session 19. All 8 sync methods now wrapped." },
-            { text: "Fallback colors for new asset symbols on dashboard", status: "done", who: "AI", comment: "Session 19. Already implemented, confirmed." },
-            { text: "RLS policies for public dashboard reads", status: "done", who: "AI", comment: "Session 14+17. anon SELECT on all public tables." },
-            { text: "Anti-duplicate trade trigger (5s window)", status: "done", who: "AI", comment: "Session 15. DB-level race condition prevention." },
-            { text: "Anti-short-sell trigger (DB-level)", status: "done", who: "AI", comment: "Session 15. Blocks sells when holdings insufficient." },
-            { text: "Holdings/cash verification on every trade notification", status: "done", who: "AI", comment: "Session 15." },
-            { text: "Environment alignment (MacBook Air + Mac Mini)", status: "done", who: "MAX", comment: "Session 15. Same env vars, config, Python version." },
-            { text: "REPORT_HOUR 21→20 (more time to react)", status: "done", who: "MAX", comment: "Session 15." },
-            { text: "Received breakdown in terminal (cost basis + profit)", status: "done", who: "AI", comment: "Session 15." },
-            { text: "Diary entries migration from JSON to Supabase", status: "done", who: "AI", comment: "Session 16. diary.html reads from Supabase REST API." },
-            { text: "No-funds buy guard (block trade + Telegram alert)", status: "done", who: "AI", comment: "Session 16." },
-            { text: "No-holdings sell guard (block trade + Telegram alert)", status: "done", who: "AI", comment: "Session 16." },
-            { text: "Haiku Day 3 stale data fix", status: "done", who: "AI", comment: "Session 16. test_commentary.py was using cached data." },
-            { text: "Telegram footer v2→v3", status: "done", who: "AI", comment: "Session 16." },
-            { text: "Grid parameter evaluation post cash-zero", status: "done", who: "BOTH", comment: "Session 17. Data-driven recalibration." },
             { text: "Percentage grid: buy_pct / sell_pct in bot_config", status: "done", who: "AI", comment: "Session 18. BTC 1.8/1.0, SOL 1.5/1.0, BONK 1.0/1.0." },
             { text: "Bot reads config from Supabase (refresh every 5 min)", status: "done", who: "AI", comment: "Session 18. No more code changes to tweak parameters." },
-            { text: "BONK $0.00 fix in terminal logs", status: "done", who: "AI", comment: "Session 18. Dynamic decimal formatting." },
-            { text: "Capital redistribution: BTC $200 / SOL $150 / BONK $150", status: "done", who: "BOTH", comment: "Session 18. Up from $100/$50/$30 with $320 idle." },
             { text: "Admin dashboard: buy_pct / sell_pct / grid_mode fields", status: "done", who: "AI", comment: "Session 19. Confirmed working." },
             { text: "Activate grid_mode=percentage and beta test", status: "todo", who: "BOTH" },
-            { text: "\"Last shot\" buy (use remaining cash below capital_per_trade)", status: "done", who: "AI", comment: "Session 19. If cash > $5 but < standard buy, spend it all." },
-            { text: "Binance API retry with exponential backoff", status: "done", who: "AI", comment: "Session 19. 3 retries (2s/4s/8s) before propagating error." },
-            { text: "Proactive Telegram alerts (capital exhausted + loop errors)", status: "done", who: "AI", comment: "Session 19. Max's idea. Bot now tells you when it's sick." },
           ]
         },
         {
@@ -384,7 +352,6 @@
             { text: "Crypto-native ads (A-Ads live, upgrade later)", status: "done", who: "MAX", comment: "Register first, customers second." },
             { text: "Donation button", status: "todo", who: "AI" },
             { text: "Telegram bot (reports only, never signals)", status: "done", who: "BOTH", comment: "MiFID II compliance. Transparency, not advice." },
-            { text: "Site analytics (Umami Cloud)", status: "done", who: "BOTH", comment: "2h the hard way, 5min the right way." },
             { text: "Per-phase sellable guides (diary packaged as paid content)", status: "todo", who: "BOTH" },
           ]
         },
@@ -426,8 +393,6 @@
           status: "active",
           description: "We don't promote. We document. The audience finds us.",
           tasks: [
-            { text: "Posting Strategy defined", status: "done", who: "AI", comment: "4 content pillars. 10 ready-to-publish posts." },
-            { text: "Posting Strategy v1.1: variable reinforcement + flag-it-when-it-happens", status: "done", who: "AI", comment: "Session 11. No calendar. Publish when it matters." },
             { text: "First posts on X (@BagHolderAI)", status: "done", who: "BOTH", comment: "Session 08. Thread pinned. One post per day." },
             { text: "Contact AI community influencers", status: "todo", who: "BOTH" },
             { text: "Reddit (r/algotrading, r/cryptocurrency)", status: "todo", who: "BOTH" },
@@ -435,10 +400,6 @@
             { text: "Guide: 'How I built an AI trading agent'", status: "todo", who: "BOTH" },
             { text: "Development diary as sellable content", status: "todo", who: "BOTH" },
             { text: "MiFID II verification for future copy-trading", status: "todo", who: "MAX" },
-            { text: "Public roadmap page on site", status: "done", who: "BOTH", comment: "You're looking at it." },
-            { text: "How We Work page on site", status: "done", who: "BOTH", comment: "Session 12. The process is the product." },
-            { text: "Public Telegram channel (@BagHolderAI_report)", status: "done", who: "BOTH", comment: "Session 12. Daily reports for followers." },
-            { text: "Diary page on site (/diary)", status: "done", who: "BOTH", comment: "Session 14. Construction log has its own page." },
             { text: "Free guide for influencer outreach", status: "todo", who: "BOTH" },
           ]
         },
@@ -446,10 +407,62 @@
           id: 8,
           title: "Backlog — Polish & Improvements",
           timeframe: "Ongoing",
-          status: "planned",
-          description: "Small improvements that don't block anything but shouldn't be forgotten.",
+          status: "active",
+          description: "Everything we built beyond the blueprint — fixes, improvements, and features discovered in the field. Published alongside v1.1 to show what building really looks like.",
           tasks: [
-            { text: "Commentary archive after 7 days on dashboard", status: "todo", who: "AI", comment: "Moved from Phase 1. Not urgent until 20-30 entries accumulate." },
+            { section: "Phase 1 — Grid Bot & Paper Trading" },
+            { text: "Fix accounting: avg_buy_price, grid reset, daily P&L", status: "done", who: "AI", comment: "Session 09. 5 bugs found, 5 bugs fixed." },
+            { text: "Per-asset Telegram reports (symbol + config filter)", status: "done", who: "AI", comment: "Session 10. Each bot reports its own trades." },
+            { text: "Wide grids + buy cooldown + min profit target", status: "done", who: "AI", comment: "Session 10. Philosophy: holder, not scalper." },
+            { text: "Available capital in grid reset logic", status: "done", who: "AI", comment: "Session 10. Prevents overspending." },
+            { text: "Data versioning (config_version v1/v2/v3)", status: "done", who: "AI", comment: "Session 10+13. v3 reset: clean slate, no inherited positions." },
+            { text: "Supabase connector for direct CEO data access", status: "done", who: "MAX", comment: "Session 11. The CEO finally has eyes." },
+            { text: "Consolidated portfolio report (total value vs initial capital)", status: "done", who: "AI", comment: "Session 12. Fixed P&L: was +$270 (wrong), now -$10.63 (correct)." },
+            { text: "Daily snapshot saved to daily_pnl table", status: "done", who: "AI", comment: "Session 12. Dashboard-ready with JSONB positions." },
+            { text: "Private daily report redesign (per-asset cards)", status: "done", who: "AI", comment: "Session 12. Full portfolio + technical cards." },
+            { text: "Public daily report for Telegram channel", status: "done", who: "AI", comment: "Session 12. Zero jargon, readable by anyone." },
+            { text: "Rename 'Cost' to 'Revenue' on sell notifications", status: "done", who: "AI" },
+            { text: "daily_commentary table for AI CEO voice", status: "done", who: "AI", comment: "Session 13. Haiku writes the CEO's daily log." },
+            { text: "config_changes_log table for parameter tracking", status: "done", who: "AI", comment: "Session 13. Feeds Max's changes into the AI narrative." },
+            { text: "Fix restore_state_from_db: config_version filter", status: "done", who: "AI", comment: "Session 13. v1/v2 cross-contamination fixed." },
+            { text: "Fix public Telegram report (.env config)", status: "done", who: "MAX", comment: "Session 13. Silent failure — env vars missing on Mac Mini." },
+            { text: "Dashboard becomes homepage, /diary for construction log", status: "done", who: "BOTH", comment: "Session 14. Visitors see data first." },
+            { text: "Nav bar on all site pages", status: "done", who: "AI", comment: "Session 14." },
+            { text: "Haiku commentary call at 21:00", status: "done", who: "AI", comment: "Session 14. First output: 'a shopping spree.'" },
+            { text: "RLS policies for public dashboard reads", status: "done", who: "AI", comment: "Session 14+17. anon SELECT on all public tables." },
+            { text: "Blueprint page on site (/blueprint)", status: "done", who: "BOTH", comment: "Session 15." },
+            { text: "BONK micro-price formatting ($0.00 fix)", status: "done", who: "AI", comment: "Session 15. fmtPrice() for micro-prices like BONK." },
+            { text: "Anti-duplicate trade trigger (5s window)", status: "done", who: "AI", comment: "Session 15. DB-level race condition prevention." },
+            { text: "Anti-short-sell trigger (DB-level)", status: "done", who: "AI", comment: "Session 15. Blocks sells when holdings insufficient." },
+            { text: "Holdings/cash verification on every trade notification", status: "done", who: "AI", comment: "Session 15." },
+            { text: "Environment alignment (MacBook Air + Mac Mini)", status: "done", who: "MAX", comment: "Session 15. Same env vars, config, Python version." },
+            { text: "REPORT_HOUR 21→20 (more time to react)", status: "done", who: "MAX", comment: "Session 15." },
+            { text: "Received breakdown in terminal (cost basis + profit)", status: "done", who: "AI", comment: "Session 15." },
+            { text: "Fix symbol filter bug in daily report", status: "done", who: "AI", comment: "Session 16." },
+            { text: "Diary entries migration from JSON to Supabase", status: "done", who: "AI", comment: "Session 16. diary.html reads from Supabase REST API." },
+            { text: "No-funds buy guard (block trade + Telegram alert)", status: "done", who: "AI", comment: "Session 16." },
+            { text: "No-holdings sell guard (block trade + Telegram alert)", status: "done", who: "AI", comment: "Session 16." },
+            { text: "Haiku Day 3 stale data fix", status: "done", who: "AI", comment: "Session 16. test_commentary.py was using cached data." },
+            { text: "Telegram footer v2→v3", status: "done", who: "AI", comment: "Session 16." },
+            { text: "Grid parameter evaluation post cash-zero", status: "done", who: "BOTH", comment: "Session 17. Data-driven recalibration." },
+            { text: "BONK $0.00 fix in terminal logs", status: "done", who: "AI", comment: "Session 18. Dynamic decimal formatting." },
+            { text: "Capital redistribution: BTC $200 / SOL $150 / BONK $150", status: "done", who: "BOTH", comment: "Session 18. Up from $100/$50/$30 with $320 idle." },
+            { text: "Telegram silent failure logging (warnings)", status: "done", who: "AI", comment: "Session 19. All 8 sync methods now wrapped." },
+            { text: "Fallback colors for new asset symbols on dashboard", status: "done", who: "AI", comment: "Session 19. Already implemented, confirmed." },
+            { text: "\"Last shot\" buy (use remaining cash below capital_per_trade)", status: "done", who: "AI", comment: "Session 19. If cash > $5 but < standard buy, spend it all." },
+            { text: "Binance API retry with exponential backoff", status: "done", who: "AI", comment: "Session 19. 3 retries (2s/4s/8s) before propagating error." },
+            { text: "Proactive Telegram alerts (capital exhausted + loop errors)", status: "done", who: "AI", comment: "Session 19. Max's idea. Bot now tells you when it's sick." },
+            { section: "Phase 4 — Dashboard & Monetization" },
+            { text: "Site analytics (Umami Cloud)", status: "done", who: "BOTH", comment: "2h the hard way, 5min the right way." },
+            { section: "Phase 7 — Marketing & Growth" },
+            { text: "Posting Strategy defined", status: "done", who: "AI", comment: "4 content pillars. 10 ready-to-publish posts." },
+            { text: "Posting Strategy v1.1: variable reinforcement + flag-it-when-it-happens", status: "done", who: "AI", comment: "Session 11. No calendar. Publish when it matters." },
+            { text: "Public roadmap page on site", status: "done", who: "BOTH", comment: "You're looking at it." },
+            { text: "How We Work page on site", status: "done", who: "BOTH", comment: "Session 12. The process is the product." },
+            { text: "Public Telegram channel (@BagHolderAI_report)", status: "done", who: "BOTH", comment: "Session 12. Daily reports for followers." },
+            { text: "Diary page on site (/diary)", status: "done", who: "BOTH", comment: "Session 14. Construction log has its own page." },
+            { section: "Open backlog" },
+            { text: "Commentary archive after 7 days on dashboard", status: "todo", who: "AI", comment: "Not urgent until 20-30 entries accumulate." },
             { text: "Business plan: monthly running costs vs micro-profits", status: "todo", who: "BOTH", comment: "Deferred until project is stable." },
           ]
         },
@@ -467,8 +480,9 @@
     }
 
     function getPhaseProgress(phase) {
-      const total = phase.tasks.length;
-      const done = phase.tasks.filter(t => t.status === 'done').length;
+      const realTasks = phase.tasks.filter(t => !t.section);
+      const total = realTasks.length;
+      const done = realTasks.filter(t => t.status === 'done').length;
       return { done, total };
     }
 
@@ -507,6 +521,9 @@
         const expanded = phase.status === 'active' ? ' expanded' : '';
 
         const tasks = phase.tasks.map(task => {
+          if (task.section) {
+            return `<div class="task-section">${task.section}</div>`;
+          }
           const statusClass = task.status === 'done' ? 'done' : task.status === 'killed' ? 'killed' : '';
           const comment = task.comment ? `<span class="task-comment">${task.comment}</span>` : '';
           return `
