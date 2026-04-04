@@ -40,10 +40,22 @@ from db.client import TradeLogger, PortfolioManager, DailyPnLTracker
 STRATEGY = "A"
 
 
-def fetch_price(exchange, symbol: str) -> float:
-    """Fetch current price from exchange."""
-    ticker = exchange.fetch_ticker(symbol)
-    return ticker["last"]
+def fetch_price(exchange, symbol: str, max_retries: int = 3) -> float:
+    """Fetch current price with retry logic for transient Binance errors."""
+    for attempt in range(max_retries):
+        try:
+            ticker = exchange.fetch_ticker(symbol)
+            return ticker["last"]
+        except Exception as e:
+            if attempt < max_retries - 1:
+                wait = 2 ** (attempt + 1)  # 2s, 4s, 8s
+                logger.warning(
+                    f"Price fetch failed (attempt {attempt + 1}/{max_retries}): {e}. "
+                    f"Retrying in {wait}s..."
+                )
+                time.sleep(wait)
+            else:
+                raise
 
 
 def _sync_config_to_bot(reader: "SupabaseConfigReader", bot: "GridBot", symbol: str):
@@ -203,6 +215,12 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
     daily_report_sent = None  # Track which date we sent the report
     REPORT_HOUR = 20  # Send daily report at 20:00
 
+    # Proactive alert state
+    _capital_exhausted = False
+    _error_count = 0
+    _error_last_alert = 0.0
+    ERROR_ALERT_COOLDOWN = 30 * 60  # 30 minutes between repeated error alerts
+
     cycle = 0
     while True:
         try:
@@ -254,6 +272,34 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
                     f"Motivo: holdings insufficienti"
                 )
                 notifier.send_message(msg)
+
+            # Alert: capital exhausted / recovered
+            available = bot.get_status()["available_capital"]
+            if available < HardcodedRules.MIN_LAST_SHOT_USD and not _capital_exhausted:
+                _capital_exhausted = True
+                notifier.send_message(
+                    f"⚠️ <b>{cfg.symbol}: Capitale esaurito</b>\n"
+                    f"Cash disponibile: ${available:.2f}\n"
+                    f"Tutte le posizioni sono deployed.\n"
+                    f"Il bot attende un sell per ricominciare a comprare."
+                )
+            elif available >= HardcodedRules.MIN_LAST_SHOT_USD and _capital_exhausted:
+                _capital_exhausted = False
+                notifier.send_message(
+                    f"✅ <b>{cfg.symbol}: Capitale ripristinato</b>\n"
+                    f"Cash disponibile: ${available:.2f}\n"
+                    f"Il bot può tornare a comprare."
+                )
+
+            # Error recovery: cycle succeeded after consecutive failures
+            if _error_count > 0:
+                notifier.send_message(
+                    f"✅ <b>{cfg.symbol}: Loop ripristinato</b>\n"
+                    f"Errori consecutivi risolti: {_error_count}\n"
+                    f"Bot operativo."
+                )
+                _error_count = 0
+                _error_last_alert = 0.0
 
             # Periodic status update (every 10 cycles)
             if cycle % 10 == 0:
@@ -372,7 +418,18 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
             logger.info("\nStopping grid bot (Ctrl+C)...")
             break
         except Exception as e:
+            _error_count += 1
             logger.error(f"Error in main loop: {e}")
+            now_ts = time.time()
+            if now_ts - _error_last_alert >= ERROR_ALERT_COOLDOWN:
+                _error_last_alert = now_ts
+                repeat_note = f"\nProssimo alert tra 30min se persiste." if _error_count > 1 else ""
+                notifier.send_message(
+                    f"🔴 <b>{cfg.symbol}: Errore nel loop</b>\n"
+                    f"<code>{str(e)[:300]}</code>\n"
+                    f"Errori consecutivi: {_error_count}"
+                    f"{repeat_note}"
+                )
             time.sleep(check_interval)  # wait and retry
 
     notifier.send_bot_stopped(bot.get_status(), reason="manual")

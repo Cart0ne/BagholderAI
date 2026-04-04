@@ -385,25 +385,81 @@ class SyncTelegramNotifier:
         self._async = TelegramNotifier()
 
     def send_message(self, text: str) -> bool:
-        return _run_async(self._async.send_message(text))
+        try:
+            result = _run_async(self._async.send_message(text))
+            if not result:
+                logger.warning("Telegram send_message failed silently")
+            return result
+        except Exception as e:
+            logger.warning(f"Telegram send_message exception: {e}")
+            return False
 
     def send_trade_alert(self, trade: dict) -> bool:
-        return _run_async(self._async.send_trade_alert(trade))
+        try:
+            result = _run_async(self._async.send_trade_alert(trade))
+            if not result:
+                logger.warning(f"Telegram trade alert failed silently for {trade.get('symbol', '?')}")
+            return result
+        except Exception as e:
+            logger.warning(f"Telegram trade alert exception: {e}")
+            return False
 
     def send_daily_report(self, trades: list, status: dict, portfolio_summary: dict = None) -> bool:
-        return _run_async(self._async.send_daily_report(trades, status, portfolio_summary))
+        try:
+            result = _run_async(self._async.send_daily_report(trades, status, portfolio_summary))
+            if not result:
+                logger.warning(f"Telegram daily report failed silently for {status.get('symbol', '?')}")
+            return result
+        except Exception as e:
+            logger.warning(f"Telegram daily report exception: {e}")
+            return False
 
     def send_bot_started(self, status: dict) -> bool:
-        return _run_async(self._async.send_bot_started(status))
+        try:
+            result = _run_async(self._async.send_bot_started(status))
+            if not result:
+                logger.warning(f"Telegram bot_started failed silently for {status.get('symbol', '?')}")
+            return result
+        except Exception as e:
+            logger.warning(f"Telegram bot_started exception: {e}")
+            return False
 
     def send_bot_stopped(self, status: dict, reason: str = "manual") -> bool:
-        return _run_async(self._async.send_bot_stopped(status, reason))
+        try:
+            result = _run_async(self._async.send_bot_stopped(status, reason))
+            if not result:
+                logger.warning(f"Telegram bot_stopped failed silently for {status.get('symbol', '?')}")
+            return result
+        except Exception as e:
+            logger.warning(f"Telegram bot_stopped exception: {e}")
+            return False
 
     def send_grid_reset(self, old_range: str, new_range: str, price: float) -> bool:
-        return _run_async(self._async.send_grid_reset(old_range, new_range, price))
+        try:
+            result = _run_async(self._async.send_grid_reset(old_range, new_range, price))
+            if not result:
+                logger.warning(f"Telegram grid_reset failed silently (price={price})")
+            return result
+        except Exception as e:
+            logger.warning(f"Telegram grid_reset exception: {e}")
+            return False
 
     def send_private_daily_report(self, data: dict) -> bool:
-        return _run_async(self._async.send_private_daily_report(data))
+        try:
+            result = _run_async(self._async.send_private_daily_report(data))
+            if not result:
+                logger.warning("Telegram private daily report failed silently")
+            return result
+        except Exception as e:
+            logger.warning(f"Telegram private daily report exception: {e}")
+            return False
 
     def send_public_daily_report(self, data: dict) -> bool:
-        return _run_async(self._async.send_public_daily_report(data))
+        try:
+            result = _run_async(self._async.send_public_daily_report(data))
+            if not result:
+                logger.warning("Telegram public daily report failed silently")
+            return result
+        except Exception as e:
+            logger.warning(f"Telegram public daily report exception: {e}")
+            return False

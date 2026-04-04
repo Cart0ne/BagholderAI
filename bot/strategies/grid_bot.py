@@ -12,6 +12,7 @@ from typing import Optional
 from dataclasses import dataclass, field
 from datetime import datetime, date
 from utils.formatting import fmt_price
+from config.settings import HardcodedRules
 
 logger = logging.getLogger("bagholderai.grid")
 
@@ -372,26 +373,38 @@ class GridBot:
 
     def _execute_buy(self, level: GridLevel, price: float) -> Optional[dict]:
         """Execute a buy at a grid level."""
-        amount = level.order_amount
-        cost = amount * price
-        fee = cost * self.FEE_RATE
+        standard_cost = level.order_amount * price
 
         # Snapshot for Telegram verification
         cash_before = max(0.0, self.capital - self.state.total_invested + self.state.total_received)
 
-        # Guard: skip buy if insufficient cash
-        if cash_before < cost:
+        # Last-shot logic: use remaining cash if below standard cost but above minimum
+        if cash_before >= standard_cost:
+            actual_cost = standard_cost
+            last_shot = False
+        elif cash_before >= HardcodedRules.MIN_LAST_SHOT_USD:
+            actual_cost = cash_before
+            last_shot = True
+            logger.info(
+                f"LAST SHOT: buying with remaining ${cash_before:.2f} "
+                f"(reduced from standard ${standard_cost:.2f}) for {self.symbol}"
+            )
+        else:
             logger.warning(
                 f"Insufficient cash for BUY {self.symbol}: "
-                f"need ${cost:.2f}, have ${cash_before:.2f}. Skipping level {fmt_price(level.price)}."
+                f"need ${standard_cost:.2f}, have ${cash_before:.2f}. Skipping level {fmt_price(level.price)}."
             )
             self.skipped_buys.append({
                 "symbol": self.symbol,
                 "level_price": level.price,
-                "cost": cost,
+                "cost": standard_cost,
                 "cash_before": cash_before,
             })
             return None
+
+        amount = actual_cost / price
+        cost = actual_cost
+        fee = cost * self.FEE_RATE
 
         # Mark level as filled
         level.filled = True
@@ -414,6 +427,10 @@ class GridBot:
         self._daily_trade_count += 1
         self._last_buy_time = time.time()  # Task 5: record buy timestamp
 
+        reason = f"Grid buy at level {fmt_price(level.price)} (price dropped to {fmt_price(price)})"
+        if last_shot:
+            reason = f"LAST SHOT: {reason} — spent remaining ${cost:.2f}"
+
         trade_data = {
             "symbol": self.symbol,
             "side": "buy",
@@ -423,7 +440,7 @@ class GridBot:
             "fee": fee,
             "strategy": self.strategy,
             "brain": "grid",
-            "reason": f"Grid buy at level {fmt_price(level.price)} (price dropped to {fmt_price(price)})",
+            "reason": reason,
             "mode": self.mode,
             "cash_before": cash_before,
             "capital_allocated": self.capital,
@@ -614,24 +631,36 @@ class GridBot:
         if price <= 0:
             logger.error(f"Invalid price {price} for {self.symbol}, skipping pct buy")
             return None
-        cost = self.capital_per_trade
-        amount = cost / price
-        fee = cost * self.FEE_RATE
 
+        standard_cost = self.capital_per_trade
         cash_before = max(0.0, self.capital - self.state.total_invested + self.state.total_received)
 
-        if cash_before < cost:
+        # Last-shot logic: use remaining cash if below standard cost but above minimum
+        if cash_before >= standard_cost:
+            cost = standard_cost
+            last_shot = False
+        elif cash_before >= HardcodedRules.MIN_LAST_SHOT_USD:
+            cost = cash_before
+            last_shot = True
+            logger.info(
+                f"LAST SHOT: buying with remaining ${cash_before:.2f} "
+                f"(reduced from standard ${standard_cost:.2f}) for {self.symbol}"
+            )
+        else:
             logger.warning(
                 f"Insufficient cash for BUY {self.symbol}: "
-                f"need ${cost:.2f}, have ${cash_before:.2f}. Skipping pct buy."
+                f"need ${standard_cost:.2f}, have ${cash_before:.2f}. Skipping pct buy."
             )
             self.skipped_buys.append({
                 "symbol": self.symbol,
                 "level_price": price,
-                "cost": cost,
+                "cost": standard_cost,
                 "cash_before": cash_before,
             })
             return None
+
+        amount = cost / price
+        fee = cost * self.FEE_RATE
 
         old_last_buy = self._pct_last_buy_price
         old_holdings = self.state.holdings
@@ -656,6 +685,8 @@ class GridBot:
                 f"Pct buy: price {fmt_price(price)} dropped {self.buy_pct}% "
                 f"below last buy {fmt_price(old_last_buy)}"
             )
+        if last_shot:
+            reason = f"LAST SHOT: {reason} — spent remaining ${cost:.2f}"
 
         trade_data = {
             "symbol": self.symbol,

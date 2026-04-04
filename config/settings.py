@@ -94,6 +94,9 @@ class HardcodedRules:
     
     # Global limits
     MAX_DAILY_OPERATIONS = 50  # Prevent infinite loops
+
+    # Last Shot Buy (task 1.57)
+    MIN_LAST_SHOT_USD = 5.0  # Min remaining cash to trigger a last-shot buy
     
     # Take profit levels (Strategy A)
     TAKE_PROFIT_LEVELS = [
