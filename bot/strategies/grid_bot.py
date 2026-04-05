@@ -277,15 +277,16 @@ class GridBot:
     def init_percentage_state_from_db(self):
         """
         Restore percentage mode state from DB on startup.
-        Reconstructs the FIFO open-positions queue and last buy price
-        by replaying all v3 trades for this symbol chronologically.
+        Reconstructs the FIFO open-positions queue, last buy price,
+        and cash accounting (total_invested / total_received) by replaying
+        all v3 trades for this symbol chronologically.
         """
         if not self.trade_logger:
             return
         try:
             result = (
                 self.trade_logger.client.table("trades")
-                .select("side,amount,price,created_at")
+                .select("side,amount,price,cost,created_at")
                 .eq("symbol", self.symbol)
                 .eq("config_version", "v3")
                 .order("created_at", desc=False)
@@ -298,34 +299,63 @@ class GridBot:
 
         open_positions = []
         last_buy_price = 0.0
+        total_invested = 0.0
+        total_received = 0.0
 
         for t in trades:
             side = t.get("side")
             amount = float(t.get("amount", 0))
             price = float(t.get("price", 0))
+            cost = float(t.get("cost") or (amount * price))
             if side == "buy":
+                total_invested += cost
                 open_positions.append({"amount": amount, "price": price})
                 last_buy_price = price
-            elif side == "sell" and open_positions:
-                # FIFO: consume oldest lot(s) to match sell amount
-                remaining = amount
-                while remaining > 1e-12 and open_positions:
-                    oldest = open_positions[0]
-                    if oldest["amount"] <= remaining + 1e-12:
-                        remaining -= oldest["amount"]
-                        open_positions.pop(0)
-                    else:
-                        oldest["amount"] -= remaining
-                        remaining = 0
+            elif side == "sell":
+                revenue = amount * price
+                total_received += revenue
+                if open_positions:
+                    # FIFO: consume oldest lot(s) to match sell amount
+                    remaining = amount
+                    while remaining > 1e-12 and open_positions:
+                        oldest = open_positions[0]
+                        if oldest["amount"] <= remaining + 1e-12:
+                            remaining -= oldest["amount"]
+                            open_positions.pop(0)
+                        else:
+                            oldest["amount"] -= remaining
+                            remaining = 0
 
         self._pct_open_positions = open_positions
         self._pct_last_buy_price = last_buy_price
 
-        if last_buy_price > 0:
-            logger.info(
-                f"[{self.symbol}] Pct mode restored: {len(open_positions)} open lots, "
-                f"last buy {fmt_price(last_buy_price)}"
-            )
+        # Reconstruct cash accounting so _available_cash() is correct immediately
+        if self.state:
+            self.state.total_invested = total_invested
+            self.state.total_received = total_received
+
+        available = self.capital - total_invested + total_received
+        reserve_str = ""
+        if self.reserve_ledger:
+            try:
+                reserve = self.reserve_ledger.get_reserve_total(self.symbol)
+                if reserve > 0:
+                    available -= reserve
+                    reserve_str = f" - ${reserve:.2f} reserve"
+            except Exception as e:
+                logger.warning(f"[{self.symbol}] Could not fetch reserve total for cash log: {e}")
+
+        logger.info(
+            f"[{self.symbol}] Pct mode restored: {len(open_positions)} open lots, "
+            f"last buy {fmt_price(last_buy_price)}"
+        )
+        logger.info(
+            f"[{self.symbol}] Cash restored: ${self.capital:.2f} allocated"
+            f" - ${total_invested:.2f} invested"
+            f" + ${total_received:.2f} sold"
+            f"{reserve_str}"
+            f" = ${available:.2f} available"
+        )
 
     def check_price_and_execute(self, current_price: float) -> list:
         """
