@@ -368,6 +368,10 @@
             <div class="stat-value" id="st-buysells">—</div>
           </div>
           <div class="card stat-card">
+            <div class="stat-label">Skim allocato</div>
+            <div class="stat-value positive" id="st-skim">—</div>
+          </div>
+          <div class="card stat-card">
             <div class="stat-label">Cumul. realized</div>
             <div class="stat-value" id="st-realized">—</div>
           </div>
@@ -620,10 +624,13 @@
       try {
         var res = await Promise.all([
           sbq('daily_commentary', 'select=date,commentary,model_used,created_at&order=date.desc,created_at.desc&limit=30'),
-          sbq('daily_pnl', 'select=*&order=date.desc&limit=90')
+          sbq('daily_pnl', 'select=*&order=date.desc&limit=90'),
+          sbq('v_reserve_totals', 'select=total_reserve&config_version=eq.v3')
         ]);
         var commentary = res[0];
         var pnl = res[1].filter(function(d) { return d.date >= '2026-03-30'; });
+        var skimTotal = res[2].reduce(function(acc, r) { return acc + Number(r.total_reserve || 0); }, 0);
+        document.getElementById('st-skim').textContent = '$' + skimTotal.toFixed(4);
 
         renderCommentary(commentary);
         renderPortfolio(pnl);

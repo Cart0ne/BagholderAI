@@ -261,20 +261,22 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
                     notifier.send_trade_alert(t)
 
             # Alert for skipped buys (insufficient cash) — deduplicated
-            for skip in bot.skipped_buys:
-                sym = skip['symbol']
-                dedup_key = (round(skip['level_price'], 8), round(skip['cash_before'], 2))
-                if _last_skip_notification.get(sym) == dedup_key:
-                    continue  # same level + same cash balance — already notified
-                _last_skip_notification[sym] = dedup_key
-                base = sym.split("/")[0] if "/" in sym else sym
-                msg = (
-                    f"⚠️ BUY SKIPPED {sym}\n"
-                    f"Level: {fmt_price(skip['level_price'])}\n"
-                    f"💵 Cash {base}: ${skip['cash_before']:.2f} → Servono ${skip['cost']:.2f} ❌ SKIPPED\n"
-                    f"Motivo: capitale insufficiente"
-                )
-                notifier.send_message(msg)
+            # Se il capitale è già esaurito, non spammare: l'utente è già stato avvisato
+            if not _capital_exhausted:
+                for skip in bot.skipped_buys:
+                    sym = skip['symbol']
+                    dedup_key = (round(skip['level_price'], 8), round(skip['cash_before'], 2))
+                    if _last_skip_notification.get(sym) == dedup_key:
+                        continue  # same level + same cash balance — already notified
+                    _last_skip_notification[sym] = dedup_key
+                    base = sym.split("/")[0] if "/" in sym else sym
+                    msg = (
+                        f"⚠️ BUY SKIPPED {sym}\n"
+                        f"Level: {fmt_price(skip['level_price'])}\n"
+                        f"💵 Cash {base}: ${skip['cash_before']:.2f} → Servono ${skip['cost']:.2f} ❌ SKIPPED\n"
+                        f"Motivo: capitale insufficiente"
+                    )
+                    notifier.send_message(msg)
 
             # Alert for skipped sells (insufficient holdings)
             for skip in bot.skipped_sells:
