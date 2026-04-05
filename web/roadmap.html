@@ -278,7 +278,7 @@
   <script>
     // Roadmap data — update this JSON each session
     const ROADMAP = {
-      last_updated: "2026-04-04",
+      last_updated: "2026-04-05",
       phases: [
         {
           id: 0,
@@ -303,8 +303,8 @@
           id: 1,
           title: "Grid Bot + Paper Trading",
           timeframe: "Weeks 2-3",
-          status: "active",
-          description: "The heart of the system. Target: close by Monday April 7.",
+          status: "done",
+          description: "The heart of the system. Closed Session 20, April 5 2026.",
           tasks: [
             { text: "Grid Bot engine (paper trading)", status: "done", who: "AI", comment: "5/5 tests passed. Fought Python versions for an hour." },
             { text: "Logging trades to Supabase", status: "done", who: "AI", comment: "Session 07. The filo was already there." },
@@ -320,14 +320,14 @@
             { text: "Percentage grid: buy_pct / sell_pct in bot_config", status: "done", who: "AI", comment: "Session 18. BTC 1.8/1.0, SOL 1.5/1.0, BONK 1.0/1.0." },
             { text: "Bot reads config from Supabase (refresh every 5 min)", status: "done", who: "AI", comment: "Session 18. No more code changes to tweak parameters." },
             { text: "Admin dashboard: buy_pct / sell_pct / grid_mode fields", status: "done", who: "AI", comment: "Session 19. Confirmed working." },
-            { text: "Activate grid_mode=percentage and beta test", status: "todo", who: "BOTH" },
+            { text: "Activate grid_mode=percentage and beta test", status: "done", who: "BOTH", comment: "Session 20. Activated with a side of phantom money." },
           ]
         },
         {
           id: 2,
           title: "Trend Follower",
           timeframe: "Weeks 3-4",
-          status: "planned",
+          status: "active",
           description: "Adds directional intelligence. Adjusts the grid based on market trend.",
           tasks: [
             { text: "EMA, RSI, Volume indicators", status: "todo", who: "AI" },
@@ -467,6 +467,18 @@
             { text: "\"Last shot\" buy (use remaining cash below capital_per_trade)", status: "done", who: "AI", comment: "Session 19. If cash > $5 but < standard buy, spend it all." },
             { text: "Binance API retry with exponential backoff", status: "done", who: "AI", comment: "Session 19. 3 retries (2s/4s/8s) before propagating error." },
             { text: "Proactive Telegram alerts (capital exhausted + loop errors)", status: "done", who: "AI", comment: "Session 19. Max's idea. Bot now tells you when it's sick." },
+            { text: "Fix sell_pct in percentage mode (lot price vs avg)", status: "done", who: "AI", comment: "Session 20. Was selling in loss thinking it was profit." },
+            { text: "Config change notification filtered by symbol (9→3)", status: "done", who: "AI", comment: "Session 20. Each bot notifies only its own coin." },
+            { text: "Config change shows old → new parameter values", status: "done", who: "AI", comment: "Session 20." },
+            { text: "Anti-duplicate daily report guard", status: "done", who: "AI", comment: "Session 20. Flag set at entry, not exit." },
+            { text: "Trade P&L per single sell in Telegram notifications", status: "done", who: "AI", comment: "Session 20. Individual + portfolio P&L." },
+            { text: "KeyboardInterrupt during error sleep sends stop message", status: "done", who: "AI", comment: "Session 20." },
+            { text: "Skip first buy on mode switch if holdings exist", status: "done", who: "AI", comment: "Session 20. No phantom first buy." },
+            { text: "Buy skipped spam throttle (once per level/cash)", status: "done", who: "AI", comment: "Session 20." },
+            { text: "Profit skimming (reserve_ledger + skim_pct)", status: "done", who: "AI", comment: "Session 20. Micro-profit reserve. Default 0, ready to activate." },
+            { text: "Cash reconstruction from DB on restore", status: "done", who: "AI", comment: "Session 20. Phantom money bug killed. Bot replays trade history." },
+            { text: "Cash audit script (scripts/cash_audit.py)", status: "done", who: "AI", comment: "Session 20. Read-only verification of all coin positions." },
+            { text: "Admin UI: capital_per_trade and skim_pct as common params", status: "done", who: "AI", comment: "Session 20. Visible in both grid modes." },
             { section: "Phase 2 — Trend Follower" },
             { section: "Phase 3 — AI Sentinel" },
             { section: "Phase 4 — Dashboard & Monetization" },
@@ -483,6 +495,7 @@
             { section: "Open backlog" },
             { text: "Commentary archive after 7 days on dashboard", status: "todo", who: "AI", comment: "Not urgent until 20-30 entries accumulate." },
             { text: "Business plan: monthly running costs vs micro-profits", status: "todo", who: "BOTH", comment: "Deferred until project is stable." },
+            { text: "Activate skim_pct on one coin as test", status: "todo", who: "BOTH", comment: "Pre-Phase 6. Test reserve accumulation in paper mode." },
           ]
         },
       ]
