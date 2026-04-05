@@ -134,6 +134,8 @@ class GridInstanceConfig:
     buy_pct: float = 0.0               # % drop from last buy to trigger next buy
     sell_pct: float = 0.0              # % rise from avg buy to trigger sell
     capital_per_trade: float = 0.0     # USDT to spend per buy in percentage mode
+    # Profit skimming (Session 20b)
+    skim_pct: float = 0.0              # % of each sell profit to set aside as reserve
 
 
 # Pre-configured grid instances (Task 8: updated params — wider grids, less frequent buys)

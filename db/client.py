@@ -282,6 +282,55 @@ class DailyPnLTracker:
         return 0.0
 
 
+class ReserveLedger:
+    """
+    Tracks accumulated profit reserve (skimmed from sell profits).
+
+    Each entry = one skim event from one sell trade.
+    Cache TTL = 5 minutes — refreshed on config reload cycles.
+    """
+
+    CACHE_TTL = 300  # seconds
+
+    def __init__(self):
+        self.client = get_client()
+        self._cache: dict = {}  # symbol -> {"total": float, "ts": float}
+
+    def log_skim(self, symbol: str, amount: float, trade_id: str = None,
+                 config_version: str = "v3") -> dict:
+        """Insert one skim entry and invalidate the cache for this symbol."""
+        data = {
+            "symbol": symbol,
+            "amount": round(amount, 8),
+            "trade_id": trade_id,
+            "config_version": config_version,
+        }
+        result = self.client.table("reserve_ledger").insert(data).execute()
+        # Invalidate so next call queries fresh
+        self._cache.pop(symbol, None)
+        return result.data[0] if result.data else {}
+
+    def get_reserve_total(self, symbol: str, config_version: str = "v3",
+                          force_refresh: bool = False) -> float:
+        """Return total reserve for a symbol. Cached for CACHE_TTL seconds."""
+        import time
+        now = time.time()
+        cached = self._cache.get(symbol)
+        if not force_refresh and cached and (now - cached["ts"]) < self.CACHE_TTL:
+            return cached["total"]
+
+        result = (
+            self.client.table("reserve_ledger")
+            .select("amount")
+            .eq("symbol", symbol)
+            .eq("config_version", config_version)
+            .execute()
+        )
+        total = sum(float(r["amount"]) for r in (result.data or []))
+        self._cache[symbol] = {"total": total, "ts": now}
+        return total
+
+
 class SentinelLogger:
     """Logs AI Sentinel analyses."""
     

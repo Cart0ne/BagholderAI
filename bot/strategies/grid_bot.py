@@ -85,6 +85,8 @@ class GridBot:
         buy_pct: float = 0.0,           # % drop from last buy to trigger next buy
         sell_pct: float = 0.0,          # % rise from avg buy to trigger sell
         capital_per_trade: float = 0.0, # USDT to spend per buy in percentage mode
+        reserve_ledger=None,            # ReserveLedger instance (Session 20b)
+        skim_pct: float = 0.0,          # % of sell profit to skim into reserve
     ):
         self.exchange = exchange
         self.trade_logger = trade_logger
@@ -102,6 +104,8 @@ class GridBot:
         self.buy_pct = buy_pct
         self.sell_pct = sell_pct
         self.capital_per_trade = capital_per_trade
+        self.reserve_ledger = reserve_ledger
+        self.skim_pct = skim_pct
         self.state: Optional[GridState] = None
         self._daily_trade_count = 0
         self._daily_date = datetime.utcnow().date()
@@ -112,6 +116,22 @@ class GridBot:
         # Percentage mode state
         self._pct_last_buy_price: float = 0.0
         self._pct_open_positions: list = []  # FIFO: [{"amount": float, "price": float}, ...]
+
+    def _available_cash(self) -> float:
+        """
+        Available cash = capital - invested + received - reserve.
+        The reserve is subtracted so the bot never buys with skimmed profit.
+        """
+        if not self.state:
+            return self.capital
+        base = max(0.0, self.capital - self.state.total_invested + self.state.total_received)
+        if self.reserve_ledger:
+            try:
+                reserve = self.reserve_ledger.get_reserve_total(self.symbol)
+                base = max(0.0, base - reserve)
+            except Exception as e:
+                logger.warning(f"[{self.symbol}] Could not fetch reserve total: {e}")
+        return base
 
     @staticmethod
     def _price_decimals(price: float) -> int:
@@ -375,8 +395,8 @@ class GridBot:
         """Execute a buy at a grid level."""
         standard_cost = level.order_amount * price
 
-        # Snapshot for Telegram verification
-        cash_before = max(0.0, self.capital - self.state.total_invested + self.state.total_received)
+        # Snapshot for Telegram verification (reserve-aware)
+        cash_before = self._available_cash()
 
         # Last-shot logic: use remaining cash if below standard cost but above minimum
         if cash_before >= standard_cost:
@@ -592,12 +612,11 @@ class GridBot:
             return trades
 
         # --- SELL CHECK ---
-        if (
-            self.state.holdings > 0
-            and self.state.avg_buy_price > 0
-            and self._pct_open_positions
-        ):
-            sell_trigger = self.state.avg_buy_price * (1 + self.sell_pct / 100)
+        # Use the oldest FIFO lot's buy price as the sell trigger reference,
+        # not avg_buy_price — otherwise we'd sell the first lot at a loss
+        # when subsequent cheaper buys have pulled the average below it.
+        if self.state.holdings > 0 and self._pct_open_positions:
+            sell_trigger = self._pct_open_positions[0]["price"] * (1 + self.sell_pct / 100)
             if current_price >= sell_trigger:
                 trade = self._execute_percentage_sell(current_price)
                 if trade:
@@ -613,10 +632,24 @@ class GridBot:
 
         if not buy_cooldown_active:
             if self._pct_last_buy_price == 0:
-                # No previous buy — establish reference immediately
-                trade = self._execute_percentage_buy(current_price)
-                if trade:
-                    trades.append(trade)
+                if self.state.holdings > 0:
+                    # Already have positions (e.g. switched from fixed mode mid-run).
+                    # Skip the first buy and use avg_buy_price as the reference.
+                    self._pct_last_buy_price = self.state.avg_buy_price
+                    if not self._pct_open_positions:
+                        self._pct_open_positions.append({
+                            "amount": self.state.holdings,
+                            "price": self.state.avg_buy_price,
+                        })
+                    logger.info(
+                        f"[{self.symbol}] Pct mode: existing holdings found, skipping first buy. "
+                        f"Ref price set to avg buy {fmt_price(self.state.avg_buy_price)}"
+                    )
+                else:
+                    # No holdings — establish reference with first buy
+                    trade = self._execute_percentage_buy(current_price)
+                    if trade:
+                        trades.append(trade)
             else:
                 buy_trigger = self._pct_last_buy_price * (1 - self.buy_pct / 100)
                 if current_price <= buy_trigger:
@@ -633,7 +666,7 @@ class GridBot:
             return None
 
         standard_cost = self.capital_per_trade
-        cash_before = max(0.0, self.capital - self.state.total_invested + self.state.total_received)
+        cash_before = self._available_cash()
 
         # Last-shot logic: use remaining cash if below standard cost but above minimum
         if cash_before >= standard_cost:
@@ -719,6 +752,11 @@ class GridBot:
         if not self._pct_open_positions:
             return None
 
+        # Resolve the lot first so guards can reference the actual lot price
+        lot = self._pct_open_positions[0]
+        lot_buy_price = lot["price"]
+        amount = lot["amount"]
+
         # Mirror the same guards as _execute_sell
         if self.min_profit_pct > 0 and self.state.avg_buy_price > 0:
             min_price = self.state.avg_buy_price * (1 + self.min_profit_pct)
@@ -729,15 +767,13 @@ class GridBot:
                 )
                 return None
 
-        if self.strategy == "A" and price < self.state.avg_buy_price:
+        # Strategy A never sells at a loss on the specific lot being sold
+        if self.strategy == "A" and price < lot_buy_price:
             logger.info(
-                f"BLOCKED: Pct sell at {fmt_price(price)} < avg buy {fmt_price(self.state.avg_buy_price)}. "
+                f"BLOCKED: Pct sell at {fmt_price(price)} < lot buy {fmt_price(lot_buy_price)}. "
                 f"Strategy A never sells at loss."
             )
             return None
-
-        lot = self._pct_open_positions[0]
-        amount = lot["amount"]
 
         if amount > self.state.holdings + 1e-10:
             logger.warning(
@@ -752,11 +788,11 @@ class GridBot:
             })
             return None
 
-        avg_buy_snapshot = self.state.avg_buy_price
         revenue = amount * price
         fee = revenue * self.FEE_RATE
         holdings_value_before = self.state.holdings * price
-        cost_basis = amount * avg_buy_snapshot
+        # Use the specific lot's buy price for cost basis — gives correct per-trade P&L
+        cost_basis = amount * lot_buy_price
         buy_fee = cost_basis * self.FEE_RATE
         realized_pnl = revenue - cost_basis - fee - buy_fee
 
@@ -773,6 +809,9 @@ class GridBot:
 
         self._daily_trade_count += 1
 
+        trade_pnl_pct = (realized_pnl / cost_basis * 100) if cost_basis > 0 else 0
+        portfolio_pnl_pct = (self.state.realized_pnl / self.capital * 100) if self.capital > 0 else 0
+
         trade_data = {
             "symbol": self.symbol,
             "side": "sell",
@@ -784,17 +823,39 @@ class GridBot:
             "brain": "grid",
             "reason": (
                 f"Pct sell: price {fmt_price(price)} is {self.sell_pct}% "
-                f"above avg buy {fmt_price(avg_buy_snapshot)}"
+                f"above lot buy {fmt_price(lot_buy_price)}"
             ),
             "mode": self.mode,
             "realized_pnl": realized_pnl,
+            "trade_pnl_pct": trade_pnl_pct,
+            "portfolio_realized_pnl": self.state.realized_pnl,
+            "portfolio_pnl_pct": portfolio_pnl_pct,
+            "capital_allocated": self.capital,
             "holdings_value_before": holdings_value_before,
         }
 
+        trade_db_row = {}
         try:
-            self.trade_logger.log_trade(**trade_data)
+            trade_db_row = self.trade_logger.log_trade(**trade_data)
         except Exception as e:
             logger.error(f"Failed to log trade: {e}")
+
+        # Profit skimming: set aside skim_pct% of positive profit into reserve
+        if self.skim_pct > 0 and realized_pnl > 0 and self.reserve_ledger:
+            skim_amount = realized_pnl * (self.skim_pct / 100)
+            try:
+                trade_id = trade_db_row.get("id")
+                self.reserve_ledger.log_skim(self.symbol, skim_amount, trade_id=trade_id)
+                reserve_total = self.reserve_ledger.get_reserve_total(
+                    self.symbol, force_refresh=True
+                )
+                trade_data["skim_amount"] = skim_amount
+                trade_data["reserve_total"] = reserve_total
+                logger.info(
+                    f"SKIM ${skim_amount:.4f} → reserve total ${reserve_total:.2f} [{self.symbol}]"
+                )
+            except Exception as e:
+                logger.warning(f"Failed to log skim for {self.symbol}: {e}")
 
         logger.info(
             f"SELL {amount:.6f} {self.symbol} @ {fmt_price(price)} "
@@ -833,8 +894,8 @@ class GridBot:
         active_buys = sum(1 for l in self.state.levels if l.side == "buy" and not l.filled)
         active_sells = sum(1 for l in self.state.levels if l.side == "sell" and not l.filled and l.order_amount > 0)
 
-        # Task 3: available_capital = allocated - invested + received
-        available_capital = max(0.0, self.capital - self.state.total_invested + self.state.total_received)
+        # available_capital = allocated - invested + received - reserve
+        available_capital = self._available_cash()
 
         return {
             "symbol": self.symbol,

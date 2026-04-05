@@ -34,7 +34,7 @@ from config.settings import (
 from config.supabase_config import SupabaseConfigReader
 from bot.exchange import create_exchange
 from bot.strategies.grid_bot import GridBot
-from db.client import TradeLogger, PortfolioManager, DailyPnLTracker
+from db.client import TradeLogger, PortfolioManager, DailyPnLTracker, ReserveLedger
 
 
 STRATEGY = "A"
@@ -74,6 +74,8 @@ def _sync_config_to_bot(reader: "SupabaseConfigReader", bot: "GridBot", symbol: 
         bot.capital_per_trade = float(sb_cfg["capital_per_trade"])
     if "grid_mode" in sb_cfg and sb_cfg["grid_mode"] is not None:
         bot.grid_mode = sb_cfg["grid_mode"]
+    if "skim_pct" in sb_cfg and sb_cfg["skim_pct"] is not None:
+        bot.skim_pct = float(sb_cfg["skim_pct"])
 
 
 def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = False):
@@ -83,7 +85,7 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
     cfg = get_grid_config(symbol)
 
     # --- Read config from Supabase (Task 2) ---
-    config_reader = SupabaseConfigReader()
+    config_reader = SupabaseConfigReader(own_symbol=cfg.symbol)
     try:
         config_reader.load_initial()
         sb_cfg = config_reader.get_config(symbol)
@@ -147,11 +149,13 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
         trade_logger = None
         portfolio_manager = None
         pnl_tracker = None
+        reserve_ledger = None
         logger.info("DRY RUN — trades will NOT be logged to database")
     else:
         trade_logger = TradeLogger()
         portfolio_manager = PortfolioManager()
         pnl_tracker = DailyPnLTracker()
+        reserve_ledger = ReserveLedger()
 
     # Initialize Telegram
     notifier = SyncTelegramNotifier()
@@ -174,6 +178,8 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
         buy_pct=cfg.buy_pct,
         sell_pct=cfg.sell_pct,
         capital_per_trade=cfg.capital_per_trade,
+        reserve_ledger=reserve_ledger,
+        skim_pct=cfg.skim_pct,
     )
 
     # Fetch initial price and setup grid
@@ -220,6 +226,8 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
     _error_count = 0
     _error_last_alert = 0.0
     ERROR_ALERT_COOLDOWN = 30 * 60  # 30 minutes between repeated error alerts
+    # Skip-notification dedup: symbol -> (level_price_rounded, cash_rounded)
+    _last_skip_notification: dict = {}
 
     cycle = 0
     while True:
@@ -252,11 +260,16 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
                     )
                     notifier.send_trade_alert(t)
 
-            # Alert for skipped buys (insufficient cash)
+            # Alert for skipped buys (insufficient cash) — deduplicated
             for skip in bot.skipped_buys:
-                base = skip['symbol'].split("/")[0] if "/" in skip['symbol'] else skip['symbol']
+                sym = skip['symbol']
+                dedup_key = (round(skip['level_price'], 8), round(skip['cash_before'], 2))
+                if _last_skip_notification.get(sym) == dedup_key:
+                    continue  # same level + same cash balance — already notified
+                _last_skip_notification[sym] = dedup_key
+                base = sym.split("/")[0] if "/" in sym else sym
                 msg = (
-                    f"⚠️ BUY SKIPPED {skip['symbol']}\n"
+                    f"⚠️ BUY SKIPPED {sym}\n"
                     f"Level: {fmt_price(skip['level_price'])}\n"
                     f"💵 Cash {base}: ${skip['cash_before']:.2f} → Servono ${skip['cost']:.2f} ❌ SKIPPED\n"
                     f"Motivo: capitale insufficiente"
@@ -308,10 +321,11 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
             # Daily report at 20:00 — only first bot to trigger sends
             now = datetime.now()
             if now.hour >= REPORT_HOUR and daily_report_sent != date.today():
+                # Set flag immediately so even if the send fails we don't send twice
+                daily_report_sent = date.today()
                 try:
                     # Check if another bot already sent today's report
                     if pnl_tracker and pnl_tracker.has_today_snapshot():
-                        daily_report_sent = date.today()
                         logger.info("Daily snapshot already exists. Skipping report.")
                     else:
                         # Build consolidated portfolio from DB + live prices
@@ -353,6 +367,17 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
                         except Exception:
                             pass
 
+                        # Fetch reserve totals for all symbols (fresh for daily report)
+                        reserves = {}
+                        if reserve_ledger:
+                            for inst in GRID_INSTANCES:
+                                try:
+                                    reserves[inst.symbol] = reserve_ledger.get_reserve_total(
+                                        inst.symbol, force_refresh=True
+                                    )
+                                except Exception:
+                                    reserves[inst.symbol] = 0.0
+
                         # Bundle all report data
                         report_data = {
                             **portfolio_summary,
@@ -362,6 +387,7 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
                             "today_sells": today_sells,
                             "today_fees": day_fees,
                             "today_realized": day_realized,
+                            "reserves": reserves,
                         }
 
                         # Send reports
@@ -399,7 +425,6 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
                             )
                             logger.info("Daily P&L snapshot saved to database.")
 
-                        daily_report_sent = date.today()
                         logger.info("Daily report sent via Telegram.")
                 except Exception as e:
                     logger.error(f"Failed to send daily report: {e}")
@@ -430,7 +455,11 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
                     f"Errori consecutivi: {_error_count}"
                     f"{repeat_note}"
                 )
-            time.sleep(check_interval)  # wait and retry
+            try:
+                time.sleep(check_interval)  # wait and retry
+            except KeyboardInterrupt:
+                logger.info("\nStopping grid bot (Ctrl+C during error sleep)...")
+                break
 
     notifier.send_bot_stopped(bot.get_status(), reason="manual")
 

@@ -560,6 +560,7 @@
               configFieldSelect(short, 'grid_mode', 'Grid mode', cfg.grid_mode, ['fixed', 'percentage']) +
               configField(short, 'buy_pct', 'Buy %', cfg.buy_pct) +
               configField(short, 'sell_pct', 'Sell %', cfg.sell_pct) +
+              configField(short, 'skim_pct', 'Skim % (profit reserve)', cfg.skim_pct) +
             '</div>' +
             '<div class="param-group-label" id="fixed-label-' + short + '">Fixed Grid</div>' +
             '<div class="fixed-grid-fields' + (cfg.grid_mode === 'percentage' ? ' dimmed' : '') + '" id="fixed-fields-' + short + '">' +
@@ -583,7 +584,7 @@
       // Mark original values and attach change listeners
       configData.forEach(function(cfg) {
         var short = SHORT[cfg.symbol];
-        var allFields = ['grid_mode', 'buy_pct', 'sell_pct',
+        var allFields = ['grid_mode', 'buy_pct', 'sell_pct', 'skim_pct',
           'capital_allocation', 'grid_levels', 'grid_lower', 'grid_upper',
           'capital_per_trade', 'reserve_floor_pct'];
         allFields.forEach(function(field) {

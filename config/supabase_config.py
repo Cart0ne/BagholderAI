@@ -20,7 +20,7 @@ CONFIG_REFRESH_INTERVAL = 300  # seconds between config refreshes
 _CONFIG_FIELDS = (
     "symbol,capital_allocation,grid_levels,grid_lower,grid_upper,"
     "profit_target_pct,reserve_floor_pct,capital_per_trade,"
-    "is_active,buy_pct,sell_pct,grid_mode"
+    "is_active,buy_pct,sell_pct,grid_mode,skim_pct"
 )
 
 
@@ -36,12 +36,13 @@ class SupabaseConfigReader:
         cfg = reader.get_config("BTC/USDT")  # returns dict or None
     """
 
-    def __init__(self):
+    def __init__(self, own_symbol: str = None):
         self._configs: dict = {}   # symbol -> raw row dict from bot_config
         self._lock = threading.Lock()
         self._client = None
         self._stop_event = threading.Event()
         self._notifier = None      # lazy-loaded SyncTelegramNotifier
+        self._own_symbol = own_symbol  # only alert for this symbol (Bug 2)
 
     def _get_client(self):
         if self._client is None:
@@ -91,18 +92,18 @@ class SupabaseConfigReader:
                 logger.warning(f"[bagholderai.config] Could not init Telegram notifier: {e}")
         return self._notifier
 
-    def _send_config_alert(self, symbol: str, param: str, old_val, new_val):
-        """Send a Telegram alert for a single changed config parameter."""
+    def _send_config_changes(self, symbol: str, changes: list):
+        """Send a consolidated Telegram alert for all changed params of a symbol.
+
+        changes: list of (key, old_val, new_val)
+        """
         notifier = self._get_notifier()
         if not notifier:
             return
-        text = (
-            f"⚙️ <b>CONFIG UPDATED — {symbol}</b>\n"
-            f"Parameter: {param}\n"
-            f"Old: {old_val}\n"
-            f"New: {new_val}\n"
-            f"Source: dashboard"
-        )
+        lines = [f"⚙️ <b>CONFIG CHANGE DETECTED — {symbol}</b>"]
+        for key, old_val, new_val in changes:
+            lines.append(f"{key}: {old_val} → {new_val}")
+        text = "\n".join(lines)
         try:
             notifier.send_message(text)
         except Exception as e:
@@ -123,7 +124,8 @@ class SupabaseConfigReader:
             return
 
         new_configs = {row["symbol"]: row for row in rows}
-        changes = []  # collect before acquiring lock to send outside lock
+        # by_symbol: symbol -> [(key, old_val, new_val), ...]
+        by_symbol: dict = {}
 
         with self._lock:
             for symbol, new_cfg in new_configs.items():
@@ -135,12 +137,14 @@ class SupabaseConfigReader:
                             f"[bagholderai.config] Config updated for {symbol}: "
                             f"{key} {old_val} → {new_val}"
                         )
-                        changes.append((symbol, key, old_val, new_val))
+                        # Only alert for own symbol (Bug 2)
+                        if self._own_symbol is None or symbol == self._own_symbol:
+                            by_symbol.setdefault(symbol, []).append((key, old_val, new_val))
             self._configs = new_configs
 
-        # Send Telegram alerts outside the lock (network call)
-        for symbol, key, old_val, new_val in changes:
-            self._send_config_alert(symbol, key, old_val, new_val)
+        # Send one consolidated Telegram alert per symbol (Bug 3), outside lock
+        for symbol, param_changes in by_symbol.items():
+            self._send_config_changes(symbol, param_changes)
 
     def _refresh_loop(self):
         """Background thread: refresh config every CONFIG_REFRESH_INTERVAL seconds."""

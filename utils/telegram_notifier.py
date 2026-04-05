@@ -49,7 +49,18 @@ class TelegramNotifier:
         """Send a single trade notification with verification."""
         emoji = "🟢" if trade["side"] == "buy" else "🔴"
         pnl_line = ""
-        if trade.get("realized_pnl") is not None:
+        if trade["side"] == "sell":
+            if trade.get("realized_pnl") is not None:
+                pnl = trade["realized_pnl"]
+                pct = trade.get("trade_pnl_pct", 0)
+                sign = "+" if pnl >= 0 else ""
+                pnl_line = f"\n💰 Trade P&L: {sign}${pnl:.4f} ({sign}{pct:.2f}%)"
+            if trade.get("portfolio_realized_pnl") is not None:
+                port_pnl = trade["portfolio_realized_pnl"]
+                port_pct = trade.get("portfolio_pnl_pct", 0)
+                sign = "+" if port_pnl >= 0 else ""
+                pnl_line += f"\n📊 Portfolio P&L: {sign}${port_pnl:.4f} ({sign}{port_pct:.2f}%)"
+        elif trade.get("realized_pnl") is not None:
             pnl_line = f"\n💰 P&L: ${trade['realized_pnl']:.4f}"
 
         cost_label = "Revenue" if trade["side"] == "sell" else "Cost"
@@ -71,6 +82,12 @@ class TelegramNotifier:
             icon = "✅" if ok else "⚠️"
             verify_line = f"\n🦺 Ho {base}: ${have:.2f} → Vendo ${sell_val:.2f} {icon}"
 
+        skim_line = ""
+        if trade["side"] == "sell" and trade.get("skim_amount") is not None:
+            skim_amount = trade["skim_amount"]
+            reserve_total = trade.get("reserve_total", 0)
+            skim_line = f"\n🏦 Reserve: +${skim_amount:.4f} (→ total ${reserve_total:.2f})"
+
         text = (
             f"{emoji} <b>{trade['side'].upper()}</b> {trade['symbol']}\n"
             f"Amount: {trade['amount']:.6f}\n"
@@ -79,6 +96,7 @@ class TelegramNotifier:
             f"Fee: ${trade['fee']:.4f}\n"
             f"Brain: {trade['brain']} | Mode: {trade['mode']}"
             f"{pnl_line}"
+            f"{skim_line}"
             f"{verify_line}"
         )
         return await self.send_message(text)
@@ -278,6 +296,17 @@ class TelegramNotifier:
                     text += f"  Today: {pt} trades ({pb}B {ps}S)\n"
                 else:
                     text += f"  Today: no trades\n"
+
+        # Reserve summary
+        reserves = data.get("reserves", {})
+        if reserves and any(v > 0 for v in reserves.values()):
+            total_reserve = sum(reserves.values())
+            text += f"\n{'─' * 28}\n🏦 <b>Reserve Accumulata</b>\n"
+            for sym, amt in reserves.items():
+                if amt > 0:
+                    base = sym.split("/")[0] if "/" in sym else sym
+                    text += f"  💰 Reserve {base}: ${amt:.2f}\n"
+            text += f"  📊 Totale: ${total_reserve:.2f}\n"
 
         text += f"\n🤖 <i>Grid bot v3 · bagholder.lol</i>"
         return await self.send_message(text)
