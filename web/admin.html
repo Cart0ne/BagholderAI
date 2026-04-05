@@ -555,18 +555,21 @@
           '</div>' +
           '<div class="config-section">' +
             '<div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-bottom:8px;">PARAMETERS</div>' +
+            '<div class="param-group-label">Trading Parameters</div>' +
+            '<div class="config-grid">' +
+              configField(short, 'capital_per_trade', '$/Trade', cfg.capital_per_trade) +
+              configField(short, 'skim_pct', 'Skim % (profit reserve)', cfg.skim_pct) +
+            '</div>' +
             '<div class="param-group-label pct-label">Percentage Grid</div>' +
             '<div class="config-grid">' +
               configFieldSelect(short, 'grid_mode', 'Grid mode', cfg.grid_mode, ['fixed', 'percentage']) +
               configField(short, 'buy_pct', 'Buy %', cfg.buy_pct) +
               configField(short, 'sell_pct', 'Sell %', cfg.sell_pct) +
-              configField(short, 'skim_pct', 'Skim % (profit reserve)', cfg.skim_pct) +
             '</div>' +
             '<div class="param-group-label" id="fixed-label-' + short + '">Fixed Grid</div>' +
             '<div class="fixed-grid-fields' + (cfg.grid_mode === 'percentage' ? ' dimmed' : '') + '" id="fixed-fields-' + short + '">' +
               '<div class="config-grid">' +
                 configField(short, 'capital_allocation', 'Allocation ($)', cfg.capital_allocation) +
-                configField(short, 'capital_per_trade', '$/trade (only % mode)', cfg.capital_per_trade) +
                 configField(short, 'grid_levels', 'Grid levels', cfg.grid_levels) +
                 configField(short, 'grid_lower', 'Grid lower', cfg.grid_lower) +
                 configField(short, 'grid_upper', 'Grid upper', cfg.grid_upper) +
@@ -626,7 +629,7 @@
     }
 
     function checkChanges(short) {
-      var fields = ['grid_mode', 'buy_pct', 'sell_pct',
+      var fields = ['grid_mode', 'buy_pct', 'sell_pct', 'skim_pct',
         'capital_allocation', 'grid_levels', 'grid_lower', 'grid_upper',
         'capital_per_trade', 'reserve_floor_pct'];
       var hasChanges = fields.some(function(f) {
@@ -644,7 +647,7 @@
       status.textContent = 'Saving...';
       status.style.color = 'var(--yellow)';
 
-      var allFields = ['grid_mode', 'buy_pct', 'sell_pct',
+      var allFields = ['grid_mode', 'buy_pct', 'sell_pct', 'skim_pct',
         'capital_allocation', 'grid_levels', 'grid_lower', 'grid_upper',
         'capital_per_trade', 'reserve_floor_pct'];
 
