@@ -413,7 +413,7 @@
           sbGet('trades', 'config_version=eq.v3&order=created_at.desc&limit=50'),
           sbGet('daily_pnl', 'order=date.desc&limit=10'),
           sbGet('trades', 'config_version=eq.v3&side=eq.sell&select=realized_pnl'),
-          sbGet('reserve_ledger', 'config_version=eq.v3&select=amount')
+          sbGet('reserve_ledger', 'select=amount&config_version=eq.v3')
         ]);
         configData = results[0];
         tradesData = results[1];
@@ -517,6 +517,12 @@
       if (latestPnl && latestPnl.positions) {
         var positions = typeof latestPnl.positions === 'string' ? JSON.parse(latestPnl.positions) : latestPnl.positions;
         positions.forEach(function(p) {
+          // Skip coins with closed positions — snapshot unrealized is stale
+          var coinCfg = configData.find(function(c) { return c.symbol === p.symbol; });
+          if (coinCfg) {
+            var a = analyzeCoin(p.symbol, coinCfg);
+            if (a.netHoldings <= 0.000001) return;
+          }
           var u = Number(p.unrealized_pnl || 0);
           totalUnrealized += u;
           unrealizedBySymbol.push({ sym: (p.symbol || '').split('/')[0], val: u });
@@ -531,8 +537,8 @@
       var unrSign = totalUnrealized >= 0 ? '+' : '';
 
       var unrBreakdown = unrealizedBySymbol.map(function(x) {
-        var s = x.val >= 0 ? '+' : '';
-        return x.sym + ': ' + s + '$' + Math.abs(x.val).toFixed(2);
+        var s = x.val >= 0 ? '+$' : '-$';
+        return x.sym + ': ' + s + Math.abs(x.val).toFixed(2);
       }).join(' · ');
 
       var unrColor = totalUnrealized >= 0 ? 'var(--green)' : 'var(--red)';
