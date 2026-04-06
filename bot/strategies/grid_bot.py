@@ -853,9 +853,6 @@ class GridBot:
 
         self._daily_trade_count += 1
 
-        trade_pnl_pct = (realized_pnl / cost_basis * 100) if cost_basis > 0 else 0
-        portfolio_pnl_pct = (self.state.realized_pnl / self.capital * 100) if self.capital > 0 else 0
-
         trade_data = {
             "symbol": self.symbol,
             "side": "sell",
@@ -871,9 +868,6 @@ class GridBot:
             ),
             "mode": self.mode,
             "realized_pnl": realized_pnl,
-            "trade_pnl_pct": trade_pnl_pct,
-            "portfolio_realized_pnl": self.state.realized_pnl,
-            "portfolio_pnl_pct": portfolio_pnl_pct,
             "capital_allocated": self.capital,
             "holdings_value_before": holdings_value_before,
         }
