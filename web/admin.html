@@ -304,7 +304,7 @@
       </div>
 
       <div class="refresh-bar">
-        Last refresh: <span id="refresh-time">—</span> · auto every 30s
+        Last refresh: <span id="refresh-time">—</span> · <span id="refresh-status">auto ogni 10s</span>
         <button onclick="loadAll()">↻ Refresh</button>
       </div>
     </div>
@@ -345,7 +345,7 @@
       document.getElementById('auth-gate').style.display = 'none';
       document.getElementById('dashboard').style.display = 'block';
       loadAll();
-      setInterval(function() { loadAll(); }, 30000);
+      setInterval(function() { loadAll(); }, 10000);
     }
 
     // === SUPABASE HELPERS ===
@@ -424,31 +424,40 @@
     }
 
     async function loadAll() {
-      try {
-        var results = await Promise.all([
-          sbGet('bot_config', 'order=symbol'),
-          sbGet('trades', 'select=symbol,side,amount,price,cost,realized_pnl,created_at&config_version=eq.v3&order=created_at.desc'),
-          sbGet('daily_pnl', 'order=date.desc&limit=10'),
-          sbGet('reserve_ledger', 'select=symbol,amount&config_version=eq.v3'),
-          fetchLivePrices()
-        ]);
-        configData = results[0];
-        tradesData = results[1];
-        pnlData = results[2];
-        var skimRows = results[3];
-        skimReserveTotal = skimRows.reduce(function(s, r) { return s + Number(r.amount || 0); }, 0);
-        skimBySymbol = {};
-        skimRows.forEach(function(r) {
-          if (r.symbol) skimBySymbol[r.symbol] = (skimBySymbol[r.symbol] || 0) + Number(r.amount || 0);
-        });
-        totalRealizedAll = tradesData
-          .filter(function(t) { return t.side === 'sell'; })
-          .reduce(function(s, r) { return s + Number(r.realized_pnl || 0); }, 0);
-        render();
-        document.getElementById('refresh-time').textContent = new Date().toLocaleTimeString();
-      } catch (e) {
-        console.error('Load error:', e);
+      var settled = await Promise.allSettled([
+        sbGet('bot_config', 'order=symbol'),
+        sbGet('trades', 'select=symbol,side,amount,price,cost,realized_pnl,created_at&config_version=eq.v3&order=created_at.desc'),
+        sbGet('daily_pnl', 'order=date.desc&limit=10'),
+        sbGet('reserve_ledger', 'select=symbol,amount&config_version=eq.v3'),
+        fetchLivePrices()
+      ]);
+
+      var failed = settled.filter(function(r) { return r.status === 'rejected'; });
+      if (failed.length > 0) {
+        console.error('Load partial failure:', failed.map(function(r) { return r.reason; }));
+        document.getElementById('refresh-status').textContent = '⚠ errore caricamento — riprovo';
+        document.getElementById('refresh-status').style.color = 'var(--red, #e74c3c)';
+        // Retry after 5s if there were failures
+        setTimeout(loadAll, 5000);
+        return;
       }
+
+      configData = settled[0].value;
+      tradesData = settled[1].value;
+      pnlData = settled[2].value;
+      var skimRows = settled[3].value;
+      skimReserveTotal = skimRows.reduce(function(s, r) { return s + Number(r.amount || 0); }, 0);
+      skimBySymbol = {};
+      skimRows.forEach(function(r) {
+        if (r.symbol) skimBySymbol[r.symbol] = (skimBySymbol[r.symbol] || 0) + Number(r.amount || 0);
+      });
+      totalRealizedAll = tradesData
+        .filter(function(t) { return t.side === 'sell'; })
+        .reduce(function(s, r) { return s + Number(r.realized_pnl || 0); }, 0);
+      render();
+      document.getElementById('refresh-time').textContent = new Date().toLocaleTimeString();
+      document.getElementById('refresh-status').textContent = 'auto ogni 10s';
+      document.getElementById('refresh-status').style.color = '';
     }
 
     // === RENDER ===

@@ -675,6 +675,15 @@ class GridBot:
         # Iterate ALL open lots; sell any whose trigger is hit.
         # FIFO order: among triggered lots, sell oldest first.
         # A lot can sell even if an older lot hasn't triggered yet.
+        if self.state.holdings > 0 and not self._pct_open_positions:
+            # Self-heal: holdings exist but open-positions queue is empty → state diverged.
+            # Re-init from DB so the sell check can fire correctly.
+            logger.warning(
+                f"[{self.symbol}] WARN: holdings={self.state.holdings:.6f} ma _pct_open_positions è vuota. "
+                f"Re-init dal DB..."
+            )
+            self.init_percentage_state_from_db()
+
         if self.state.holdings > 0 and self._pct_open_positions:
             lots_to_sell = [
                 lot for lot in self._pct_open_positions
@@ -689,6 +698,16 @@ class GridBot:
                     trade = self._execute_percentage_sell(current_price)
                     if trade:
                         trades.append(trade)
+            else:
+                nearest_trigger = min(
+                    lot["price"] * (1 + self.sell_pct / 100)
+                    for lot in self._pct_open_positions
+                )
+                logger.debug(
+                    f"[{self.symbol}] Nessuna sell: prezzo {fmt_price(current_price)} < "
+                    f"trigger più vicino {fmt_price(nearest_trigger)} "
+                    f"(sell_pct={self.sell_pct}%, {len(self._pct_open_positions)} lotti)"
+                )
 
         # --- BUY CHECK ---
         now = time.time()
