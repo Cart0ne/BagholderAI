@@ -472,8 +472,9 @@
     }
 
     // === RENDER PORTFOLIO ===
-    function renderPortfolio(data, skimTotal) {
+    function renderPortfolio(data, skimTotal, totalInvested) {
       skimTotal = skimTotal || 0;
+      totalInvested = totalInvested || 0;
       if (!data || !data.length) {
         document.getElementById('pv').textContent = 'Waiting for data';
         return;
@@ -639,7 +640,7 @@
         } catch (e) { /* skim/invested non disponibile, mostra 0 */ }
 
         renderCommentary(commentary);
-        renderPortfolio(pnl, skimTotal);
+        renderPortfolio(pnl, skimTotal, totalInvested);
         renderCharts(pnl);
 
         document.getElementById('loading').style.display = 'none';
