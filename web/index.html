@@ -521,7 +521,7 @@
         '<div class="value negative">-' + fmtUsd(Math.abs(cumFees)) + '</div>' +
         '<div class="sub">cost of doing biz</div></div>' +
         '<div class="breakdown-item"><div class="label">Skim reserved</div>' +
-        '<div class="value positive">+$' + skimTotal.toFixed(4) + '</div>' +
+        '<div class="value positive">+$' + skimTotal.toFixed(4) + (totalInvested > 0 ? ' (' + (skimTotal / totalInvested * 100).toFixed(2) + '% of invested)' : '') + '</div>' +
         '<div class="sub">set aside</div></div>';
 
       // Cash allocation bar
@@ -630,10 +630,13 @@
         var pnl = res[1].filter(function(d) { return d.date >= '2026-03-30'; });
 
         var skimTotal = 0;
+        var totalInvested = 0;
         try {
           var skimRes = await sbq('reserve_ledger', 'select=amount&config_version=eq.v3');
           skimTotal = skimRes.reduce(function(acc, r) { return acc + Number(r.amount || 0); }, 0);
-        } catch (e) { /* skim non disponibile, mostra 0 */ }
+          var investedRes = await sbq('trades', 'select=cost&config_version=eq.v3&side=eq.buy');
+          totalInvested = investedRes.reduce(function(acc, r) { return acc + Number(r.cost || 0); }, 0);
+        } catch (e) { /* skim/invested non disponibile, mostra 0 */ }
 
         renderCommentary(commentary);
         renderPortfolio(pnl, skimTotal);
