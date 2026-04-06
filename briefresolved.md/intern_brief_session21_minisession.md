@@ -13,14 +13,14 @@
 
 ---
 
-## Fix 2 — Card "Skim allocato" nella homepage
+## Fix 2 — "Skim reserved" nel P&L Breakdown della homepage
 
-**Richiesta:** Aggiungere un rettangolo nella stats-grid di `web/index.html` (riga con Total trades / Buys/Sells) che mostri il totale dello skim accumulato.
+**Richiesta:** Mostrare il totale dello skim accumulato nella sezione P&L Breakdown di `web/index.html`, dopo "Fees paid" (non nella stats-grid).
 
 **Implementazione:**
-- Aggiunta card HTML `#st-skim` nella `stats-grid`, stilizzata come `positive`
 - Aggiunta query a `v_reserve_totals` (vista Supabase) con filtro `config_version=eq.v3` nel `Promise.all` del `load()`
-- Somma di tutti i simboli in JS, visualizzata come `$X.XXXX` (4 decimali per gestire i micro-valori di BONK)
+- Somma di tutti i simboli in JS (`skimTotal`)
+- Aggiunto item "Skim reserved / set aside" nel breakdown, in verde, formato `+$X.XXXX` (4 decimali per gestire i micro-valori di BONK)
 
 ---
 

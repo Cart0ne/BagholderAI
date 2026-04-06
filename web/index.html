@@ -368,10 +368,6 @@
             <div class="stat-value" id="st-buysells">—</div>
           </div>
           <div class="card stat-card">
-            <div class="stat-label">Skim allocato</div>
-            <div class="stat-value positive" id="st-skim">—</div>
-          </div>
-          <div class="card stat-card">
             <div class="stat-label">Cumul. realized</div>
             <div class="stat-value" id="st-realized">—</div>
           </div>
@@ -522,7 +518,10 @@
         '<div class="sub">still on paper</div></div>' +
         '<div class="breakdown-item"><div class="label">Fees paid</div>' +
         '<div class="value negative">-' + fmtUsd(Math.abs(cumFees)) + '</div>' +
-        '<div class="sub">cost of doing biz</div></div>';
+        '<div class="sub">cost of doing biz</div></div>' +
+        '<div class="breakdown-item"><div class="label">Skim reserved</div>' +
+        '<div class="value positive">+$' + skimTotal.toFixed(4) + '</div>' +
+        '<div class="sub">set aside</div></div>';
 
       // Cash allocation bar
       document.getElementById('cash-pct-label').textContent = fmt(cashPct, 0) + '% cash';
