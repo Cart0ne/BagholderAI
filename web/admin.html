@@ -702,7 +702,7 @@
         var short = SHORT[cfg.symbol];
         var allFields = ['grid_mode', 'buy_pct', 'sell_pct', 'skim_pct',
           'capital_allocation', 'grid_levels', 'grid_lower', 'grid_upper',
-          'capital_per_trade', 'reserve_floor_pct'];
+          'capital_per_trade', 'reserve_floor_pct', 'idle_reentry_hours'];
         allFields.forEach(function(field) {
           var input = document.getElementById('cfg-' + short + '-' + field);
           if (input) {
