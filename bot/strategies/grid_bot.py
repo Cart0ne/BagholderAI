@@ -329,10 +329,22 @@ class GridBot:
         self._pct_open_positions = open_positions
         self._pct_last_buy_price = last_buy_price
 
-        # Reconstruct cash accounting so _available_cash() is correct immediately
+        # Reconstruct cash accounting + holdings so sell logic fires correctly
         if self.state:
             self.state.total_invested = total_invested
             self.state.total_received = total_received
+
+            # Rebuild state.holdings and state.avg_buy_price from open lots.
+            # Without this, _check_percentage_and_execute() sees holdings=0
+            # and never triggers sells even when _pct_open_positions is populated.
+            if open_positions:
+                total_amount = sum(lot["amount"] for lot in open_positions)
+                weighted_cost = sum(lot["amount"] * lot["price"] for lot in open_positions)
+                self.state.holdings = total_amount
+                self.state.avg_buy_price = weighted_cost / total_amount if total_amount > 0 else 0.0
+            else:
+                self.state.holdings = 0.0
+                self.state.avg_buy_price = 0.0
 
         available = self.capital - total_invested + total_received
         reserve_str = ""
@@ -347,6 +359,8 @@ class GridBot:
 
         logger.info(
             f"[{self.symbol}] Pct mode restored: {len(open_positions)} open lots, "
+            f"holdings={self.state.holdings:.6f}, "
+            f"avg_buy={fmt_price(self.state.avg_buy_price)}, "
             f"last buy {fmt_price(last_buy_price)}"
         )
         logger.info(
