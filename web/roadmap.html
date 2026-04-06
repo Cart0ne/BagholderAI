@@ -278,7 +278,7 @@
   <script>
     // Roadmap data — update this JSON each session
     const ROADMAP = {
-      last_updated: "2026-04-05",
+      last_updated: "2026-04-06",
       phases: [
         {
           id: 0,
@@ -479,6 +479,22 @@
             { text: "Cash reconstruction from DB on restore", status: "done", who: "AI", comment: "Session 20. Phantom money bug killed. Bot replays trade history." },
             { text: "Cash audit script (scripts/cash_audit.py)", status: "done", who: "AI", comment: "Session 20. Read-only verification of all coin positions." },
             { text: "Admin UI: capital_per_trade and skim_pct as common params", status: "done", who: "AI", comment: "Session 20. Visible in both grid modes." },
+            { text: "Skim reserve display in P&L Breakdown on homepage", status: "done", who: "AI", comment: "Session 21. Reserve accantonato visible alongside realized + unrealized." },
+            { text: "Fix TradeLogger crash (trade_pnl_pct parameter)", status: "done", who: "AI", comment: "Session 21." },
+            { text: "Remove hardcoded 2% min profit target", status: "done", who: "AI", comment: "Session 21. Min profit is now a configurable parameter, default 0." },
+            { text: "Fix P&L % in Telegram messages (was showing 0.00%)", status: "done", who: "AI", comment: "Session 21." },
+            { text: "Per-coin reserve label in Telegram messages", status: "done", who: "AI", comment: "Session 21. Each notification shows its own skim reserve total." },
+            { text: "Race condition daily report: INSERT ON CONFLICT DO NOTHING", status: "done", who: "AI", comment: "Session 21. Only first bot to write wins — others skip silently." },
+            { text: "SELL SKIPPED spam dedup (same pattern as BUY SKIPPED)", status: "done", who: "AI", comment: "Session 21. Dedup by level_price + holdings, same logic as buy." },
+            { text: "Admin dashboard: live portfolio value from Binance prices", status: "done", who: "AI", comment: "Session 22. Real-time prices replace stale DB avg." },
+            { text: "Admin dashboard: full trades history + CLOSED position display", status: "done", who: "AI", comment: "Session 22. CLOSED badge, all historical trades visible." },
+            { text: "Admin dashboard: auto-refresh every 30s", status: "done", who: "AI", comment: "Session 22." },
+            { text: "Admin Portfolio Overview: 2-row 6-card layout (value/P&L/skim + cash/deployed/unrealized)", status: "done", who: "AI", comment: "Session 22. One glance = full picture." },
+            { text: "Fix FIFO sell blocking: all triggered lots sell independently", status: "done", who: "AI", comment: "Session 22b. Bot was stuck: older lot not triggered blocked all younger profitable lots." },
+            { text: "Grid mode hot-reload without restart", status: "done", who: "AI", comment: "Session 22b. Changing grid_mode in Supabase now re-initializes state mid-run." },
+            { text: "Dashboard: cashLeft for closed positions = alloc + realized P&L − skim", status: "done", who: "AI", comment: "Session 22b. Portfolio Value was underestimating closed positions." },
+            { text: "Dashboard: Unrealized P&L rebuilt from FIFO open lots (not historical avg)", status: "done", who: "AI", comment: "Session 22b. Avg buy price now uses only open lots, not all-time buys." },
+            { text: "Idle re-entry after N idle hours (holdings=0, no drop)", status: "done", who: "AI", comment: "Session 22c. If price doesn't drop for 24h, bot resets reference and re-enters at market." },
             { section: "Phase 2 — Trend Follower" },
             { section: "Phase 3 — AI Sentinel" },
             { section: "Phase 4 — Dashboard & Monetization" },
@@ -493,6 +509,7 @@
             { section: "Phase 5 — Extended Paper Trading" },
             { section: "Phase 6 — Go Live" },
             { section: "Open backlog" },
+            { text: "Smart last-lot logic: sell all remaining / buy all in + reset reference", status: "todo", who: "AI", comment: "Edge case: when down to the last lot, sell everything in one trade and reset cleanly." },
             { text: "Commentary archive after 7 days on dashboard", status: "todo", who: "AI", comment: "Not urgent until 20-30 entries accumulate." },
             { text: "Business plan: monthly running costs vs micro-profits", status: "todo", who: "BOTH", comment: "Deferred until project is stable." },
             { text: "Activate skim_pct on one coin as test", status: "todo", who: "BOTH", comment: "Pre-Phase 6. Test reserve accumulation in paper mode." },
