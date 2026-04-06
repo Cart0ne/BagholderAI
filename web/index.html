@@ -472,7 +472,8 @@
     }
 
     // === RENDER PORTFOLIO ===
-    function renderPortfolio(data) {
+    function renderPortfolio(data, skimTotal) {
+      skimTotal = skimTotal || 0;
       if (!data || !data.length) {
         document.getElementById('pv').textContent = 'Waiting for data';
         return;
@@ -623,16 +624,19 @@
       try {
         var res = await Promise.all([
           sbq('daily_commentary', 'select=date,commentary,model_used,created_at&order=date.desc,created_at.desc&limit=30'),
-          sbq('daily_pnl', 'select=*&order=date.desc&limit=90'),
-          sbq('v_reserve_totals', 'select=total_reserve&config_version=eq.v3')
+          sbq('daily_pnl', 'select=*&order=date.desc&limit=90')
         ]);
         var commentary = res[0];
         var pnl = res[1].filter(function(d) { return d.date >= '2026-03-30'; });
-        var skimTotal = res[2].reduce(function(acc, r) { return acc + Number(r.total_reserve || 0); }, 0);
-        document.getElementById('st-skim').textContent = '$' + skimTotal.toFixed(4);
+
+        var skimTotal = 0;
+        try {
+          var skimRes = await sbq('reserve_ledger', 'select=amount&config_version=eq.v3');
+          skimTotal = skimRes.reduce(function(acc, r) { return acc + Number(r.amount || 0); }, 0);
+        } catch (e) { /* skim non disponibile, mostra 0 */ }
 
         renderCommentary(commentary);
-        renderPortfolio(pnl);
+        renderPortfolio(pnl, skimTotal);
         renderCharts(pnl);
 
         document.getElementById('loading').style.display = 'none';
