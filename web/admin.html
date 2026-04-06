@@ -302,7 +302,7 @@
       </div>
 
       <div class="refresh-bar">
-        Last refresh: <span id="refresh-time">—</span>
+        Last refresh: <span id="refresh-time">—</span> · auto every 30s
         <button onclick="loadAll()">↻ Refresh</button>
       </div>
     </div>
@@ -343,6 +343,7 @@
       document.getElementById('auth-gate').style.display = 'none';
       document.getElementById('dashboard').style.display = 'block';
       loadAll();
+      setInterval(function() { loadAll(); }, 30000);
     }
 
     // === SUPABASE HELPERS ===
@@ -470,9 +471,11 @@
       var buyCount = coinTrades.filter(function(t) { return t.side === 'buy'; }).length;
       var sellCount = coinTrades.filter(function(t) { return t.side === 'sell'; }).length;
       var netSpent = totalBought - totalSold;
+      var positionClosed = netHoldings <= 0.000001; // fully sold out
+      if (positionClosed) netSpent = 0; // don't show negative invested
       var cashLeft = alloc - netSpent;
       var buysLeft = costPerTrade > 0 ? Math.floor(cashLeft / costPerTrade) : 0;
-      var capacityPct = alloc > 0 ? ((alloc - cashLeft) / alloc) * 100 : 0;
+      var capacityPct = positionClosed ? 0 : (alloc > 0 ? ((alloc - cashLeft) / alloc) * 100 : 0);
       var maxCapacity = costPerTrade > 0 ? Math.floor(alloc / costPerTrade) : 0;
       var lastTrade = coinTrades.length > 0 ? coinTrades[0] : null;
 
@@ -531,8 +534,9 @@
         var color = COLORS[sym] || '#888';
         var a = analyzeCoin(sym, cfg);
 
-        var statusClass = a.buysLeft === 0 ? 'status-dead' : a.buysLeft <= 1 ? 'status-low' : 'status-ok';
-        var statusText = a.buysLeft === 0 ? 'TAPPED OUT' : a.buysLeft + ' buys left';
+        var positionClosed = a.netHoldings <= 0.000001;
+        var statusClass = positionClosed ? 'status-ok' : a.buysLeft === 0 ? 'status-dead' : a.buysLeft <= 1 ? 'status-low' : 'status-ok';
+        var statusText = positionClosed ? 'CLOSED — awaiting re-entry' : a.buysLeft === 0 ? 'TAPPED OUT' : a.buysLeft + ' buys left';
 
         var barColor = a.buysLeft === 0 ? 'var(--red)' : a.buysLeft <= 1 ? 'var(--yellow)' : color;
 
@@ -546,7 +550,7 @@
             '<div class="coin-stat"><div class="cs-label">Invested</div><div class="cs-value">' + fmtUsd(a.netSpent) + '</div></div>' +
             '<div class="coin-stat"><div class="cs-label">Realized</div><div class="cs-value" style="color:' + (a.realizedPnl >= 0 ? 'var(--green)' : 'var(--red)') + ';">' + (a.realizedPnl >= 0 ? '+' : '') + fmtUsd(a.realizedPnl) + '</div></div>' +
             '<div class="coin-stat"><div class="cs-label">Buys / Sells</div><div class="cs-value">' + a.buyCount + ' / ' + a.sellCount + '</div></div>' +
-            '<div class="coin-stat"><div class="cs-label">Grid capacity</div><div class="cs-value">' + (a.buyCount - a.sellCount) + ' / ' + a.maxCapacity + ' filled</div></div>' +
+            '<div class="coin-stat"><div class="cs-label">Grid capacity</div><div class="cs-value">' + (positionClosed ? 'Position closed' : (a.buyCount - a.sellCount) + ' / ' + a.maxCapacity + ' filled') + '</div></div>' +
             '<div class="coin-stat"><div class="cs-label">Last trade</div><div class="cs-value">' + (a.lastTrade ? timeAgo(a.lastTrade.created_at) : '—') + '</div></div>' +
           '</div>' +
           '<div class="cap-bar-wrap">' +
