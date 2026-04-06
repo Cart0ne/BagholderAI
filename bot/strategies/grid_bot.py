@@ -712,10 +712,20 @@ class GridBot:
         standard_cost = self.capital_per_trade
         cash_before = self._available_cash()
 
-        # Last-shot logic: use remaining cash if below standard cost but above minimum
+        # Last-shot logic: use remaining cash if below standard cost but above minimum.
+        # Sweep logic: if remaining cash after this buy < one trade size, spend it all now.
         if cash_before >= standard_cost:
-            cost = standard_cost
-            last_shot = False
+            remaining_after = cash_before - standard_cost
+            if 0 < remaining_after < standard_cost:
+                cost = cash_before  # sweep stranded remainder into this trade
+                last_shot = True
+                logger.info(
+                    f"SWEEP BUY: spending ${cash_before:.2f} (remaining ${remaining_after:.2f} "
+                    f"< trade size ${standard_cost:.2f}) for {self.symbol}"
+                )
+            else:
+                cost = standard_cost
+                last_shot = False
         elif cash_before >= HardcodedRules.MIN_LAST_SHOT_USD:
             cost = cash_before
             last_shot = True
@@ -799,7 +809,12 @@ class GridBot:
         # Resolve the lot first so guards can reference the actual lot price
         lot = self._pct_open_positions[0]
         lot_buy_price = lot["price"]
-        amount = lot["amount"]
+
+        # Last-lot logic: if holdings are <= lot size, sell everything in one trade
+        if self.state.holdings <= lot["amount"] + 1e-10:
+            amount = self.state.holdings
+        else:
+            amount = lot["amount"]
 
         # Mirror the same guards as _execute_sell
         if self.min_profit_pct > 0 and self.state.avg_buy_price > 0:
@@ -851,7 +866,17 @@ class GridBot:
             self.state.holdings = 0
             self.state.avg_buy_price = 0
 
+        # After selling all lots, reset buy reference to sell price so next
+        # buy triggers correctly (buy_pct% drop from here, not from old buy price)
+        if not self._pct_open_positions:
+            self._pct_last_buy_price = price
+            logger.info(
+                f"[{self.symbol}] All lots sold. Buy reference reset to {fmt_price(price)}"
+            )
+
         self._daily_trade_count += 1
+
+        trade_pnl_pct = (realized_pnl / cost_basis * 100) if cost_basis > 0 else 0
 
         trade_data = {
             "symbol": self.symbol,
@@ -868,13 +893,21 @@ class GridBot:
             ),
             "mode": self.mode,
             "realized_pnl": realized_pnl,
+            "trade_pnl_pct": trade_pnl_pct,  # for Telegram only, filtered before DB log
             "capital_allocated": self.capital,
             "holdings_value_before": holdings_value_before,
         }
 
+        _LOG_TRADE_KEYS = {
+            "symbol", "side", "amount", "price", "fee", "strategy", "brain", "reason",
+            "mode", "exchange_order_id", "realized_pnl", "buy_trade_id", "cost",
+            "config_version", "cash_before", "capital_allocated", "holdings_value_before",
+        }
         trade_db_row = {}
         try:
-            trade_db_row = self.trade_logger.log_trade(**trade_data)
+            trade_db_row = self.trade_logger.log_trade(
+                **{k: v for k, v in trade_data.items() if k in _LOG_TRADE_KEYS}
+            )
         except Exception as e:
             logger.error(f"Failed to log trade: {e}")
 

@@ -250,12 +250,14 @@ class DailyPnLTracker:
             "positions": json.dumps(positions or []),
         }
 
+        # Use ignore_duplicates=True so only the first bot to insert wins.
+        # If the row already exists (another bot beat us), result.data is empty → return False.
         result = (
             self.client.table("daily_pnl")
-            .upsert(data, on_conflict="date")
+            .upsert(data, on_conflict="date", ignore_duplicates=True)
             .execute()
         )
-        return result.data[0] if result.data else {}
+        return bool(result.data)  # True = newly inserted, False = already existed
 
     def has_today_snapshot(self) -> bool:
         """Check if today's snapshot already exists (for single-report coordination)."""

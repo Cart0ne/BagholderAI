@@ -86,7 +86,7 @@ class TelegramNotifier:
         if trade["side"] == "sell" and trade.get("skim_amount") is not None:
             skim_amount = trade["skim_amount"]
             reserve_total = trade.get("reserve_total", 0)
-            skim_line = f"\n🏦 Reserve: +${skim_amount:.4f} (→ total ${reserve_total:.2f})"
+            skim_line = f"\n🏦 {base} Reserve: +${skim_amount:.4f} (→ total ${reserve_total:.2f})"
 
         text = (
             f"{emoji} <b>{trade['side'].upper()}</b> {trade['symbol']}\n"

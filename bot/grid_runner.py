@@ -228,6 +228,8 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
     ERROR_ALERT_COOLDOWN = 30 * 60  # 30 minutes between repeated error alerts
     # Skip-notification dedup: symbol -> (level_price_rounded, cash_rounded)
     _last_skip_notification: dict = {}
+    # Sell-skip dedup: symbol -> (level_price_rounded, holdings_rounded)
+    _last_sell_skip_notification: dict = {}
 
     cycle = 0
     while True:
@@ -278,10 +280,15 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
                     )
                     notifier.send_message(msg)
 
-            # Alert for skipped sells (insufficient holdings)
+            # Alert for skipped sells (insufficient holdings) — deduplicated
             for skip in bot.skipped_sells:
+                sym = skip['symbol']
+                sell_dedup_key = (round(skip['level_price'], 8), round(skip['holdings'], 6))
+                if _last_sell_skip_notification.get(sym) == sell_dedup_key:
+                    continue
+                _last_sell_skip_notification[sym] = sell_dedup_key
                 msg = (
-                    f"⚠️ SELL SKIPPED {skip['symbol']}\n"
+                    f"⚠️ SELL SKIPPED {sym}\n"
                     f"Level: {fmt_price(skip['level_price'])}\n"
                     f"Need: {skip['amount_needed']:.6f} | Have: {skip['holdings']:.6f}\n"
                     f"Motivo: holdings insufficienti"
@@ -326,108 +333,104 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
                 # Set flag immediately so even if the send fails we don't send twice
                 daily_report_sent = date.today()
                 try:
-                    # Check if another bot already sent today's report
-                    if pnl_tracker and pnl_tracker.has_today_snapshot():
-                        logger.info("Daily snapshot already exists. Skipping report.")
-                    else:
-                        # Build consolidated portfolio from DB + live prices
-                        portfolio_summary = _build_portfolio_summary(
-                            trade_logger, exchange, bot, cfg.symbol
-                        )
+                    # Build consolidated portfolio from DB + live prices
+                    portfolio_summary = _build_portfolio_summary(
+                        trade_logger, exchange, bot, cfg.symbol
+                    )
 
-                        # Get today's trades for ALL symbols
-                        today_all_trades = trade_logger.get_today_trades(config_version="v3") if trade_logger else []
-                        today_buys = sum(1 for t in today_all_trades if t.get("side") == "buy")
-                        today_sells = sum(1 for t in today_all_trades if t.get("side") == "sell")
-                        day_fees = sum(float(t.get("fee", 0)) for t in today_all_trades)
-                        day_realized = sum(
-                            float(t.get("realized_pnl", 0))
-                            for t in today_all_trades if t.get("realized_pnl")
-                        )
+                    # Get today's trades for ALL symbols
+                    today_all_trades = trade_logger.get_today_trades(config_version="v3") if trade_logger else []
+                    today_buys = sum(1 for t in today_all_trades if t.get("side") == "buy")
+                    today_sells = sum(1 for t in today_all_trades if t.get("side") == "sell")
+                    day_fees = sum(float(t.get("fee", 0)) for t in today_all_trades)
+                    day_realized = sum(
+                        float(t.get("realized_pnl", 0))
+                        for t in today_all_trades if t.get("realized_pnl")
+                    )
 
-                        # Enrich positions with today's trade counts + grid info
+                    # Enrich positions with today's trade counts + grid info
+                    for p in portfolio_summary.get("positions", []):
+                        sym_trades = [t for t in today_all_trades if t.get("symbol") == p["symbol"]]
+                        p["trades_today"] = len(sym_trades)
+                        p["buys_today"] = sum(1 for t in sym_trades if t.get("side") == "buy")
+                        p["sells_today"] = sum(1 for t in sym_trades if t.get("side") == "sell")
+                        # Grid info only available for this bot's symbol
+                        if p["symbol"] == cfg.symbol:
+                            status = bot.get_status()
+                            p["grid_range"] = status.get("range", "N/A")
+                            p["grid_active_buys"] = status.get("levels", {}).get("active_buys", 0)
+                            p["grid_active_sells"] = status.get("levels", {}).get("active_sells", 0)
+
+                    # Calculate trading day number
+                    day_number = 1
+                    try:
+                        first_trade_result = trade_logger.client.table("trades").select("created_at").order("created_at", desc=False).limit(1).execute()
+                        if first_trade_result.data:
+                            first_date_str = first_trade_result.data[0]["created_at"]
+                            first_date = datetime.fromisoformat(first_date_str.replace("Z", "+00:00")).date()
+                            day_number = (date.today() - first_date).days + 1
+                    except Exception:
+                        pass
+
+                    # Fetch reserve totals for all symbols (fresh for daily report)
+                    reserves = {}
+                    if reserve_ledger:
+                        for inst in GRID_INSTANCES:
+                            try:
+                                reserves[inst.symbol] = reserve_ledger.get_reserve_total(
+                                    inst.symbol, force_refresh=True
+                                )
+                            except Exception:
+                                reserves[inst.symbol] = 0.0
+
+                    # Bundle all report data
+                    report_data = {
+                        **portfolio_summary,
+                        "day_number": day_number,
+                        "today_trades_count": len(today_all_trades),
+                        "today_buys": today_buys,
+                        "today_sells": today_sells,
+                        "today_fees": day_fees,
+                        "today_realized": day_realized,
+                        "reserves": reserves,
+                    }
+
+                    # Atomic write: INSERT ON CONFLICT DO NOTHING.
+                    # Only the first bot to insert wins (returns True). The second gets False → skip.
+                    snapshot_written = False
+                    if pnl_tracker:
+                        snapshot_positions = []
                         for p in portfolio_summary.get("positions", []):
-                            sym_trades = [t for t in today_all_trades if t.get("symbol") == p["symbol"]]
-                            p["trades_today"] = len(sym_trades)
-                            p["buys_today"] = sum(1 for t in sym_trades if t.get("side") == "buy")
-                            p["sells_today"] = sum(1 for t in sym_trades if t.get("side") == "sell")
-                            # Grid info only available for this bot's symbol
-                            if p["symbol"] == cfg.symbol:
-                                status = bot.get_status()
-                                p["grid_range"] = status.get("range", "N/A")
-                                p["grid_active_buys"] = status.get("levels", {}).get("active_buys", 0)
-                                p["grid_active_sells"] = status.get("levels", {}).get("active_sells", 0)
+                            snapshot_positions.append({
+                                "symbol": p["symbol"],
+                                "holdings": p["holdings"],
+                                "value": round(p["value"], 4),
+                                "avg_buy_price": p["avg_buy_price"],
+                                "unrealized_pnl": round(p["unrealized_pnl"], 4),
+                                "unrealized_pnl_pct": round(p.get("unrealized_pnl_pct", 0), 2),
+                            })
+                        snapshot_written = pnl_tracker.record_daily(
+                            total_value=portfolio_summary["total_value"],
+                            cash_remaining=portfolio_summary["cash"],
+                            holdings_value=portfolio_summary["holdings_value"],
+                            initial_capital=portfolio_summary["initial_capital"],
+                            total_pnl=portfolio_summary["total_pnl"],
+                            realized_pnl_today=day_realized,
+                            total_fees_today=day_fees,
+                            trades_count=len(today_all_trades),
+                            buys_count=today_buys,
+                            sells_count=today_sells,
+                            positions=snapshot_positions,
+                        )
 
-                        # Calculate trading day number
-                        day_number = 1
-                        try:
-                            first_trade_result = trade_logger.client.table("trades").select("created_at").order("created_at", desc=False).limit(1).execute()
-                            if first_trade_result.data:
-                                first_date_str = first_trade_result.data[0]["created_at"]
-                                first_date = datetime.fromisoformat(first_date_str.replace("Z", "+00:00")).date()
-                                day_number = (date.today() - first_date).days + 1
-                        except Exception:
-                            pass
-
-                        # Fetch reserve totals for all symbols (fresh for daily report)
-                        reserves = {}
-                        if reserve_ledger:
-                            for inst in GRID_INSTANCES:
-                                try:
-                                    reserves[inst.symbol] = reserve_ledger.get_reserve_total(
-                                        inst.symbol, force_refresh=True
-                                    )
-                                except Exception:
-                                    reserves[inst.symbol] = 0.0
-
-                        # Bundle all report data
-                        report_data = {
-                            **portfolio_summary,
-                            "day_number": day_number,
-                            "today_trades_count": len(today_all_trades),
-                            "today_buys": today_buys,
-                            "today_sells": today_sells,
-                            "today_fees": day_fees,
-                            "today_realized": day_realized,
-                            "reserves": reserves,
-                        }
-
-                        # Send reports
+                    if not pnl_tracker or snapshot_written:
+                        # Send reports only if we were first to write (or no tracker)
                         notifier.send_private_daily_report(report_data)
                         notifier.send_public_daily_report(report_data)
-
-                        # Generate AI daily commentary (never crashes the bot)
                         generate_daily_commentary(report_data, trade_logger.client)
-
-                        # Save snapshot to daily_pnl
-                        if pnl_tracker:
-                            # Prepare positions for JSON storage
-                            snapshot_positions = []
-                            for p in portfolio_summary.get("positions", []):
-                                snapshot_positions.append({
-                                    "symbol": p["symbol"],
-                                    "holdings": p["holdings"],
-                                    "value": round(p["value"], 4),
-                                    "avg_buy_price": p["avg_buy_price"],
-                                    "unrealized_pnl": round(p["unrealized_pnl"], 4),
-                                    "unrealized_pnl_pct": round(p.get("unrealized_pnl_pct", 0), 2),
-                                })
-                            pnl_tracker.record_daily(
-                                total_value=portfolio_summary["total_value"],
-                                cash_remaining=portfolio_summary["cash"],
-                                holdings_value=portfolio_summary["holdings_value"],
-                                initial_capital=portfolio_summary["initial_capital"],
-                                total_pnl=portfolio_summary["total_pnl"],
-                                realized_pnl_today=day_realized,
-                                total_fees_today=day_fees,
-                                trades_count=len(today_all_trades),
-                                buys_count=today_buys,
-                                sells_count=today_sells,
-                                positions=snapshot_positions,
-                            )
-                            logger.info("Daily P&L snapshot saved to database.")
-
-                        logger.info("Daily report sent via Telegram.")
+                        logger.info("Daily P&L snapshot saved + report sent via Telegram.")
+                    else:
+                        logger.info("Daily snapshot already written by another bot. Skipping report.")
                 except Exception as e:
                     logger.error(f"Failed to send daily report: {e}")
 
