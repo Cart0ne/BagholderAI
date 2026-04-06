@@ -87,6 +87,7 @@ class GridBot:
         capital_per_trade: float = 0.0, # USDT to spend per buy in percentage mode
         reserve_ledger=None,            # ReserveLedger instance (Session 20b)
         skim_pct: float = 0.0,          # % of sell profit to skim into reserve
+        idle_reentry_hours: float = 24.0,  # hours idle (holdings=0) before forced re-entry
     ):
         self.exchange = exchange
         self.trade_logger = trade_logger
@@ -106,13 +107,16 @@ class GridBot:
         self.capital_per_trade = capital_per_trade
         self.reserve_ledger = reserve_ledger
         self.skim_pct = skim_pct
+        self.idle_reentry_hours = idle_reentry_hours
         self.state: Optional[GridState] = None
         self._daily_trade_count = 0
         self._daily_date = datetime.utcnow().date()
         self._daily_pnl_date = datetime.utcnow().date()
         self._last_buy_time: float = 0.0  # Task 5: timestamp of last buy
+        self._last_trade_time: Optional[datetime] = None  # UTC datetime of last executed trade
         self.skipped_buys: list = []     # filled each cycle with insufficient-cash skips
         self.skipped_sells: list = []    # filled each cycle with insufficient-holdings skips
+        self.idle_reentry_alerts: list = []  # filled each cycle when idle re-entry fires
         # Percentage mode state
         self._pct_last_buy_price: float = 0.0
         self._pct_open_positions: list = []  # FIFO: [{"amount": float, "price": float}, ...]
@@ -328,6 +332,17 @@ class GridBot:
 
         self._pct_open_positions = open_positions
         self._pct_last_buy_price = last_buy_price
+
+        # Restore last trade time so idle re-entry countdown is correct
+        if trades:
+            try:
+                dt_str = trades[-1].get("created_at", "")
+                if dt_str:
+                    self._last_trade_time = datetime.fromisoformat(
+                        dt_str.replace("Z", "+00:00")
+                    ).replace(tzinfo=None)
+            except Exception:
+                pass
 
         # Reconstruct cash accounting + holdings so sell logic fires correctly
         if self.state:
@@ -649,6 +664,7 @@ class GridBot:
         trades = []
         self.skipped_buys = []
         self.skipped_sells = []
+        self.idle_reentry_alerts = []
         self.state.last_price = current_price
 
         if self._daily_trade_count >= 50:
@@ -656,15 +672,23 @@ class GridBot:
             return trades
 
         # --- SELL CHECK ---
-        # Use the oldest FIFO lot's buy price as the sell trigger reference,
-        # not avg_buy_price — otherwise we'd sell the first lot at a loss
-        # when subsequent cheaper buys have pulled the average below it.
+        # Iterate ALL open lots; sell any whose trigger is hit.
+        # FIFO order: among triggered lots, sell oldest first.
+        # A lot can sell even if an older lot hasn't triggered yet.
         if self.state.holdings > 0 and self._pct_open_positions:
-            sell_trigger = self._pct_open_positions[0]["price"] * (1 + self.sell_pct / 100)
-            if current_price >= sell_trigger:
-                trade = self._execute_percentage_sell(current_price)
-                if trade:
-                    trades.append(trade)
+            lots_to_sell = [
+                lot for lot in self._pct_open_positions
+                if current_price >= lot["price"] * (1 + self.sell_pct / 100)
+            ]
+            if lots_to_sell:
+                # Reorder queue: triggered lots first (FIFO), then untriggered (FIFO)
+                sell_ids = {id(lot) for lot in lots_to_sell}
+                untriggered = [l for l in self._pct_open_positions if id(l) not in sell_ids]
+                self._pct_open_positions = lots_to_sell + untriggered
+                for _ in lots_to_sell:
+                    trade = self._execute_percentage_sell(current_price)
+                    if trade:
+                        trades.append(trade)
 
         # --- BUY CHECK ---
         now = time.time()
@@ -700,6 +724,29 @@ class GridBot:
                     trade = self._execute_percentage_buy(current_price)
                     if trade:
                         trades.append(trade)
+
+        # --- IDLE RE-ENTRY CHECK ---
+        # If holdings are 0 and price hasn't dropped enough for too long, force a re-entry.
+        if (self.state.holdings <= 0
+                and self._pct_last_buy_price > 0
+                and self._last_trade_time is not None
+                and self.idle_reentry_hours > 0):
+            elapsed = (datetime.utcnow() - self._last_trade_time).total_seconds() / 3600
+            if elapsed >= self.idle_reentry_hours:
+                logger.info(
+                    f"[{self.symbol}] Idle re-entry after {elapsed:.1f}h: "
+                    f"resetting reference from {fmt_price(self._pct_last_buy_price)} "
+                    f"to {fmt_price(current_price)}"
+                )
+                self.idle_reentry_alerts.append({
+                    "symbol": self.symbol,
+                    "elapsed_hours": elapsed,
+                    "reference_price": current_price,
+                })
+                self._pct_last_buy_price = 0  # triggers "first buy at market" reason in execute_buy
+                trade = self._execute_percentage_buy(current_price)
+                if trade:
+                    trades.append(trade)
 
         return trades
 
@@ -764,6 +811,7 @@ class GridBot:
         self._pct_open_positions.append({"amount": amount, "price": price})
         self._daily_trade_count += 1
         self._last_buy_time = time.time()
+        self._last_trade_time = datetime.utcnow()
 
         if old_last_buy == 0:
             reason = f"Pct buy: first buy at market {fmt_price(price)} (reference established)"
@@ -875,6 +923,7 @@ class GridBot:
             )
 
         self._daily_trade_count += 1
+        self._last_trade_time = datetime.utcnow()
 
         trade_pnl_pct = (realized_pnl / cost_basis * 100) if cost_basis > 0 else 0
 

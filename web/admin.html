@@ -405,6 +405,7 @@
     var pnlData = [];
     var totalRealizedAll = 0;
     var skimReserveTotal = 0;
+    var skimBySymbol = {};  // symbol -> total skim amount
     var livePrices = {};  // symbol -> price
 
     async function fetchLivePrices() {
@@ -426,15 +427,20 @@
       try {
         var results = await Promise.all([
           sbGet('bot_config', 'order=symbol'),
-          sbGet('trades', 'select=symbol,side,amount,cost,realized_pnl,created_at&config_version=eq.v3&order=created_at.desc'),
+          sbGet('trades', 'select=symbol,side,amount,price,cost,realized_pnl,created_at&config_version=eq.v3&order=created_at.desc'),
           sbGet('daily_pnl', 'order=date.desc&limit=10'),
-          sbGet('reserve_ledger', 'select=amount&config_version=eq.v3'),
+          sbGet('reserve_ledger', 'select=symbol,amount&config_version=eq.v3'),
           fetchLivePrices()
         ]);
         configData = results[0];
         tradesData = results[1];
         pnlData = results[2];
-        skimReserveTotal = results[3].reduce(function(s, r) { return s + Number(r.amount || 0); }, 0);
+        var skimRows = results[3];
+        skimReserveTotal = skimRows.reduce(function(s, r) { return s + Number(r.amount || 0); }, 0);
+        skimBySymbol = {};
+        skimRows.forEach(function(r) {
+          if (r.symbol) skimBySymbol[r.symbol] = (skimBySymbol[r.symbol] || 0) + Number(r.amount || 0);
+        });
         totalRealizedAll = tradesData
           .filter(function(t) { return t.side === 'sell'; })
           .reduce(function(s, r) { return s + Number(r.realized_pnl || 0); }, 0);
@@ -498,8 +504,14 @@
       var sellCount = coinTrades.filter(function(t) { return t.side === 'sell'; }).length;
       var netSpent = totalBought - totalSold;
       var positionClosed = netHoldings <= 0.000001; // fully sold out
-      if (positionClosed) netSpent = 0; // don't show negative invested
-      var cashLeft = alloc - netSpent;
+      var cashLeft;
+      if (positionClosed) {
+        netSpent = 0;
+        var skimForCoin = skimBySymbol[symbol] || 0;
+        cashLeft = alloc + realizedPnl - skimForCoin;
+      } else {
+        cashLeft = alloc - netSpent;
+      }
       var buysLeft = costPerTrade > 0 ? Math.floor(cashLeft / costPerTrade) : 0;
       var capacityPct = positionClosed ? 0 : (alloc > 0 ? ((alloc - cashLeft) / alloc) * 100 : 0);
       var maxCapacity = costPerTrade > 0 ? Math.floor(alloc / costPerTrade) : 0;
@@ -537,17 +549,37 @@
         if (a.netHoldings <= 0.000001) return;
         var livePrice = livePrices[cfg.symbol];
         if (!livePrice) return;
-        // avg buy price from trades
-        var buyTrades = tradesData.filter(function(t) { return t.symbol === cfg.symbol && t.side === 'buy'; });
-        var totalBoughtAmt = buyTrades.reduce(function(s, t) { return s + Number(t.amount); }, 0);
-        var totalBoughtCost = buyTrades.reduce(function(s, t) { return s + Number(t.cost); }, 0);
-        var sellTrades = tradesData.filter(function(t) { return t.symbol === cfg.symbol && t.side === 'sell'; });
-        var totalSoldAmt = sellTrades.reduce(function(s, t) { return s + Number(t.amount); }, 0);
-        var netHoldings = totalBoughtAmt - totalSoldAmt;
+        // Reconstruct FIFO queue to get avg buy of remaining open lots
+        var coinTrades = tradesData
+          .filter(function(t) { return t.symbol === cfg.symbol; })
+          .slice()
+          .sort(function(a, b) { return new Date(a.created_at) - new Date(b.created_at); });
+        var buyQueue = [];
+        coinTrades.forEach(function(t) {
+          if (t.side === 'buy') {
+            buyQueue.push({ amount: Number(t.amount), price: Number(t.price || 0), cost: Number(t.cost) });
+          } else {
+            var remaining = Number(t.amount);
+            while (remaining > 0.000001 && buyQueue.length > 0) {
+              var lot = buyQueue[0];
+              if (lot.amount <= remaining + 0.000001) {
+                remaining -= lot.amount;
+                buyQueue.shift();
+              } else {
+                lot.cost -= remaining * lot.price;
+                lot.amount -= remaining;
+                remaining = 0;
+              }
+            }
+          }
+        });
+        var openAmt = buyQueue.reduce(function(s, l) { return s + l.amount; }, 0);
+        var openCost = buyQueue.reduce(function(s, l) { return s + l.cost; }, 0);
+        var netHoldings = openAmt;
         if (netHoldings <= 0) return;
-        var avgBuy = totalBoughtCost > 0 ? (totalBoughtCost / totalBoughtAmt) : 0;
+        var avgBuyOpen = openAmt > 0 ? openCost / openAmt : 0;
         var val = netHoldings * livePrice;
-        var unr = (livePrice - avgBuy) * netHoldings;
+        var unr = avgBuyOpen > 0 ? (livePrice - avgBuyOpen) * netHoldings : 0;
         holdingsValue += val;
         totalUnrealized += unr;
         unrealizedBySymbol.push({ sym: cfg.symbol.split('/')[0], val: unr });
@@ -625,7 +657,7 @@
             '<div class="coin-stat"><div class="cs-label">Cash</div><div class="cs-value">' + fmtUsd(a.cashLeft) + '</div></div>' +
             '<div class="coin-stat"><div class="cs-label">Invested</div><div class="cs-value">' + fmtUsd(a.netSpent) + '</div></div>' +
             '<div class="coin-stat"><div class="cs-label">Realized</div><div class="cs-value" style="color:' + (a.realizedPnl >= 0 ? 'var(--green)' : 'var(--red)') + ';">' + (a.realizedPnl >= 0 ? '+' : '') + fmtUsd(a.realizedPnl) + '</div></div>' +
-            '<div class="coin-stat"><div class="cs-label">Buys / Sells</div><div class="cs-value">' + a.buyCount + ' / ' + a.sellCount + '</div></div>' +
+            '<div class="coin-stat"><div class="cs-label">Trades</div><div class="cs-value">' + a.buyCount + 'B / ' + a.sellCount + 'S</div></div>' +
             '<div class="coin-stat"><div class="cs-label">Grid capacity</div><div class="cs-value">' + (positionClosed ? 'Position closed' : (a.buyCount - a.sellCount) + ' / ' + a.maxCapacity + ' filled') + '</div></div>' +
             '<div class="coin-stat"><div class="cs-label">Last trade</div><div class="cs-value">' + (a.lastTrade ? timeAgo(a.lastTrade.created_at) : '—') + '</div></div>' +
           '</div>' +
@@ -645,6 +677,7 @@
               configFieldSelect(short, 'grid_mode', 'Grid mode', cfg.grid_mode, ['fixed', 'percentage']) +
               configField(short, 'buy_pct', 'Buy %', cfg.buy_pct) +
               configField(short, 'sell_pct', 'Sell %', cfg.sell_pct) +
+              configField(short, 'idle_reentry_hours', 'Idle re-entry (hours)', cfg.idle_reentry_hours) +
             '</div>' +
             '<div class="param-group-label" id="fixed-label-' + short + '">Fixed Grid</div>' +
             '<div class="fixed-grid-fields' + (cfg.grid_mode === 'percentage' ? ' dimmed' : '') + '" id="fixed-fields-' + short + '">' +

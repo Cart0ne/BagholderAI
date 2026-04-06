@@ -73,9 +73,19 @@ def _sync_config_to_bot(reader: "SupabaseConfigReader", bot: "GridBot", symbol: 
     if "capital_per_trade" in sb_cfg and sb_cfg["capital_per_trade"] is not None:
         bot.capital_per_trade = float(sb_cfg["capital_per_trade"])
     if "grid_mode" in sb_cfg and sb_cfg["grid_mode"] is not None:
-        bot.grid_mode = sb_cfg["grid_mode"]
+        new_mode = sb_cfg["grid_mode"]
+        if new_mode != bot.grid_mode:
+            logger.info(f"[{symbol}] Grid mode changed: {bot.grid_mode} → {new_mode}")
+            bot.grid_mode = new_mode
+            if new_mode == "percentage":
+                bot.init_percentage_state_from_db()
+            logger.info(f"[{symbol}] Strategy re-initialized for {new_mode} mode")
+        else:
+            bot.grid_mode = new_mode
     if "skim_pct" in sb_cfg and sb_cfg["skim_pct"] is not None:
         bot.skim_pct = float(sb_cfg["skim_pct"])
+    if "idle_reentry_hours" in sb_cfg and sb_cfg["idle_reentry_hours"] is not None:
+        bot.idle_reentry_hours = float(sb_cfg["idle_reentry_hours"])
 
 
 def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = False):
@@ -251,6 +261,16 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
 
             # Run grid logic
             trades = bot.check_price_and_execute(price)
+
+            # Idle re-entry alert: send BEFORE trade alerts so context arrives first
+            for alert in bot.idle_reentry_alerts:
+                base = alert["symbol"].split("/")[0] if "/" in alert["symbol"] else alert["symbol"]
+                notifier.send_message(
+                    f"⏰ <b>IDLE RE-ENTRY: {base}</b>\n"
+                    f"After {alert['elapsed_hours']:.1f}h idle, new reference: "
+                    f"{fmt_price(alert['reference_price'])}\n"
+                    f"Buying at market..."
+                )
 
             # Log trades
             if trades:
