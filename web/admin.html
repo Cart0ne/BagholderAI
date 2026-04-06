@@ -112,6 +112,7 @@
     .stats-row {
       display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px;
     }
+    .stats-row + .stats-row { margin-top: 8px; }
     .stat-box {
       background: var(--surface); border: 1px solid var(--border);
       border-radius: 8px; padding: 12px;
@@ -284,7 +285,8 @@
 
       <!-- Portfolio Overview -->
       <div class="section-title">Portfolio overview</div>
-      <div class="stats-row" id="overview-stats"></div>
+      <div id="overview-row1" class="stats-row"></div>
+      <div id="overview-row2" class="stats-row"></div>
 
       <!-- Per-Coin Status -->
       <div class="section-title">Grid status per coin</div>
@@ -401,17 +403,23 @@
     var configData = [];
     var tradesData = [];
     var pnlData = [];
+    var totalRealizedAll = 0;
+    var skimReserveTotal = 0;
 
     async function loadAll() {
       try {
         var results = await Promise.all([
           sbGet('bot_config', 'order=symbol'),
           sbGet('trades', 'config_version=eq.v3&order=created_at.desc&limit=50'),
-          sbGet('daily_pnl', 'order=date.desc&limit=10')
+          sbGet('daily_pnl', 'order=date.desc&limit=10'),
+          sbGet('trades', 'config_version=eq.v3&side=eq.sell&select=realized_pnl'),
+          sbGet('reserve_ledger', 'config_version=eq.v3&select=amount')
         ]);
         configData = results[0];
         tradesData = results[1];
         pnlData = results[2];
+        totalRealizedAll = results[3].reduce(function(s, r) { return s + Number(r.realized_pnl || 0); }, 0);
+        skimReserveTotal = results[4].reduce(function(s, r) { return s + Number(r.amount || 0); }, 0);
         render();
         document.getElementById('refresh-time').textContent = new Date().toLocaleTimeString();
       } catch (e) {
@@ -495,34 +503,72 @@
       var unalloc = 500 - totalAlloc;
 
       var totalCash = 0;
-      var totalInvested = 0;
-      var totalRealized = 0;
+      var totalDeployed = 0;
       configData.forEach(function(cfg) {
         var a = analyzeCoin(cfg.symbol, cfg);
         totalCash += a.cashLeft;
-        totalInvested += a.netSpent;
-        totalRealized += a.realizedPnl;
+        if (a.netHoldings > 0.000001) totalDeployed += a.netSpent;
       });
 
+      // Unrealized P&L from latest daily snapshot positions
       var latestPnl = pnlData.length > 0 ? pnlData[0] : null;
-      var portfolioVal = latestPnl ? '$' + fmt(latestPnl.total_value) : '—';
-      var totalPnl = latestPnl ? Number(latestPnl.total_pnl) : 0;
+      var totalUnrealized = 0;
+      var unrealizedBySymbol = [];
+      if (latestPnl && latestPnl.positions) {
+        var positions = typeof latestPnl.positions === 'string' ? JSON.parse(latestPnl.positions) : latestPnl.positions;
+        positions.forEach(function(p) {
+          var u = Number(p.unrealized_pnl || 0);
+          totalUnrealized += u;
+          unrealizedBySymbol.push({ sym: (p.symbol || '').split('/')[0], val: u });
+        });
+      }
 
-      document.getElementById('overview-stats').innerHTML =
+      var portfolioVal = latestPnl ? Number(latestPnl.total_value) : (totalCash + unalloc + totalDeployed);
+      var totalPnl = totalRealizedAll + totalUnrealized;
+
+      var pnlColor = totalPnl >= 0 ? 'var(--green)' : 'var(--red)';
+      var realSign = totalRealizedAll >= 0 ? '+' : '';
+      var unrSign = totalUnrealized >= 0 ? '+' : '';
+
+      var unrBreakdown = unrealizedBySymbol.map(function(x) {
+        var s = x.val >= 0 ? '+' : '';
+        return x.sym + ': ' + s + '$' + Math.abs(x.val).toFixed(2);
+      }).join(' · ');
+
+      var unrColor = totalUnrealized >= 0 ? 'var(--green)' : 'var(--red)';
+
+      document.getElementById('overview-row1').innerHTML =
         '<div class="stat-box">' +
-          '<div class="stat-label">Portfolio</div>' +
-          '<div class="stat-value">' + portfolioVal + '</div>' +
-          '<div class="stat-sub">' + (totalPnl >= 0 ? '+' : '') + fmtUsd(totalPnl) + ' P&L</div>' +
+          '<div class="stat-label">Portfolio Value</div>' +
+          '<div class="stat-value">$' + fmt(portfolioVal) + '</div>' +
+          '<div class="stat-sub">cash + holdings</div>' +
+        '</div>' +
+        '<div class="stat-box">' +
+          '<div class="stat-label">Total P&L</div>' +
+          '<div class="stat-value" style="color:' + pnlColor + ';">' + (totalPnl >= 0 ? '+' : '') + '$' + fmt(totalPnl) + '</div>' +
+          '<div class="stat-sub">realized ' + realSign + '$' + fmt(totalRealizedAll) + ' · unrealized ' + unrSign + '$' + fmt(totalUnrealized) + '</div>' +
+        '</div>' +
+        '<div class="stat-box">' +
+          '<div class="stat-label">Skim Reserve</div>' +
+          '<div class="stat-value" style="color:var(--green);">+$' + skimReserveTotal.toFixed(4) + '</div>' +
+          '<div class="stat-sub">accantonato dai profitti</div>' +
+        '</div>';
+
+      document.getElementById('overview-row2').innerHTML =
+        '<div class="stat-box">' +
+          '<div class="stat-label">Cash Available</div>' +
+          '<div class="stat-value">$' + fmt(totalCash + unalloc) + '</div>' +
+          '<div class="stat-sub">pronto per trading</div>' +
         '</div>' +
         '<div class="stat-box">' +
           '<div class="stat-label">Deployed</div>' +
-          '<div class="stat-value">' + fmtUsd(totalInvested) + '</div>' +
-          '<div class="stat-sub">of $' + fmt(totalAlloc, 0) + ' allocated</div>' +
+          '<div class="stat-value">$' + fmt(totalDeployed) + '</div>' +
+          '<div class="stat-sub">in posizioni aperte</div>' +
         '</div>' +
         '<div class="stat-box">' +
-          '<div class="stat-label">Idle cash</div>' +
-          '<div class="stat-value">' + fmtUsd(totalCash + unalloc) + '</div>' +
-          '<div class="stat-sub">$' + fmt(totalCash, 0) + ' in bots + $' + fmt(unalloc, 0) + ' unalloc</div>' +
+          '<div class="stat-label">Unrealized P&L</div>' +
+          '<div class="stat-value" style="color:' + unrColor + ';">' + unrSign + '$' + fmt(totalUnrealized) + '</div>' +
+          '<div class="stat-sub">' + (unrBreakdown || '—') + '</div>' +
         '</div>';
     }
 
