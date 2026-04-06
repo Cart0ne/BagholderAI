@@ -405,21 +405,39 @@
     var pnlData = [];
     var totalRealizedAll = 0;
     var skimReserveTotal = 0;
+    var livePrices = {};  // symbol -> price
+
+    async function fetchLivePrices() {
+      try {
+        var symbols = ['BTCUSDT', 'SOLUSDT', 'BONKUSDT'];
+        var res = await fetch('https://api.binance.com/api/v3/ticker/price?symbols=' + encodeURIComponent(JSON.stringify(symbols)));
+        var data = await res.json();
+        data.forEach(function(t) {
+          // Convert BTCUSDT → BTC/USDT
+          var sym = t.symbol.replace('USDT', '/USDT');
+          livePrices[sym] = Number(t.price);
+        });
+      } catch (e) {
+        console.warn('Live prices unavailable:', e);
+      }
+    }
 
     async function loadAll() {
       try {
         var results = await Promise.all([
           sbGet('bot_config', 'order=symbol'),
-          sbGet('trades', 'config_version=eq.v3&order=created_at.desc&limit=50'),
+          sbGet('trades', 'select=symbol,side,amount,cost,realized_pnl,created_at&config_version=eq.v3&order=created_at.desc'),
           sbGet('daily_pnl', 'order=date.desc&limit=10'),
-          sbGet('trades', 'config_version=eq.v3&side=eq.sell&select=realized_pnl'),
-          sbGet('reserve_ledger', 'select=amount&config_version=eq.v3')
+          sbGet('reserve_ledger', 'select=amount&config_version=eq.v3'),
+          fetchLivePrices()
         ]);
         configData = results[0];
         tradesData = results[1];
         pnlData = results[2];
-        totalRealizedAll = results[3].reduce(function(s, r) { return s + Number(r.realized_pnl || 0); }, 0);
-        skimReserveTotal = results[4].reduce(function(s, r) { return s + Number(r.amount || 0); }, 0);
+        skimReserveTotal = results[3].reduce(function(s, r) { return s + Number(r.amount || 0); }, 0);
+        totalRealizedAll = tradesData
+          .filter(function(t) { return t.side === 'sell'; })
+          .reduce(function(s, r) { return s + Number(r.realized_pnl || 0); }, 0);
         render();
         document.getElementById('refresh-time').textContent = new Date().toLocaleTimeString();
       } catch (e) {
@@ -510,26 +528,32 @@
         if (a.netHoldings > 0.000001) totalDeployed += a.netSpent;
       });
 
-      // Unrealized P&L from latest daily snapshot positions
-      var latestPnl = pnlData.length > 0 ? pnlData[0] : null;
+      // Unrealized P&L — computed live from holdings × live prices
       var totalUnrealized = 0;
       var unrealizedBySymbol = [];
-      if (latestPnl && latestPnl.positions) {
-        var positions = typeof latestPnl.positions === 'string' ? JSON.parse(latestPnl.positions) : latestPnl.positions;
-        positions.forEach(function(p) {
-          // Skip coins with closed positions — snapshot unrealized is stale
-          var coinCfg = configData.find(function(c) { return c.symbol === p.symbol; });
-          if (coinCfg) {
-            var a = analyzeCoin(p.symbol, coinCfg);
-            if (a.netHoldings <= 0.000001) return;
-          }
-          var u = Number(p.unrealized_pnl || 0);
-          totalUnrealized += u;
-          unrealizedBySymbol.push({ sym: (p.symbol || '').split('/')[0], val: u });
-        });
-      }
+      var holdingsValue = 0;
+      configData.forEach(function(cfg) {
+        var a = analyzeCoin(cfg.symbol, cfg);
+        if (a.netHoldings <= 0.000001) return;
+        var livePrice = livePrices[cfg.symbol];
+        if (!livePrice) return;
+        // avg buy price from trades
+        var buyTrades = tradesData.filter(function(t) { return t.symbol === cfg.symbol && t.side === 'buy'; });
+        var totalBoughtAmt = buyTrades.reduce(function(s, t) { return s + Number(t.amount); }, 0);
+        var totalBoughtCost = buyTrades.reduce(function(s, t) { return s + Number(t.cost); }, 0);
+        var sellTrades = tradesData.filter(function(t) { return t.symbol === cfg.symbol && t.side === 'sell'; });
+        var totalSoldAmt = sellTrades.reduce(function(s, t) { return s + Number(t.amount); }, 0);
+        var netHoldings = totalBoughtAmt - totalSoldAmt;
+        if (netHoldings <= 0) return;
+        var avgBuy = totalBoughtCost > 0 ? (totalBoughtCost / totalBoughtAmt) : 0;
+        var val = netHoldings * livePrice;
+        var unr = (livePrice - avgBuy) * netHoldings;
+        holdingsValue += val;
+        totalUnrealized += unr;
+        unrealizedBySymbol.push({ sym: cfg.symbol.split('/')[0], val: unr });
+      });
 
-      var portfolioVal = latestPnl ? Number(latestPnl.total_value) : (totalCash + unalloc + totalDeployed);
+      var portfolioVal = totalCash + unalloc + holdingsValue;
       var totalPnl = totalRealizedAll + totalUnrealized;
 
       var pnlColor = totalPnl >= 0 ? 'var(--green)' : 'var(--red)';
