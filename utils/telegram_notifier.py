@@ -306,7 +306,7 @@ class TelegramNotifier:
                 if amt > 0:
                     base = sym.split("/")[0] if "/" in sym else sym
                     text += f"  💰 Reserve {base}: ${amt:.2f}\n"
-            text += f"  📊 Totale: ${total_reserve:.2f}\n"
+            text += f"  📊 Total: ${total_reserve:.2f}\n"
 
         text += f"\n🤖 <i>Grid bot v3 · bagholder.lol</i>"
         return await self.send_message(text)

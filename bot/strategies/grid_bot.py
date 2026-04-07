@@ -236,10 +236,19 @@ class GridBot:
                         sl.order_amount = round(amount_per_level, 8)
 
         is_reset = "RESET" if old_state is not None else "NEW"
+        if self.grid_mode == "percentage":
+            buy_trigger = current_price * (1 - self.buy_pct / 100)
+            sell_trigger = current_price * (1 + self.sell_pct / 100)
+            range_str = (
+                f"Range: {fmt_price(buy_trigger)} (-{self.buy_pct}%) - "
+                f"{fmt_price(sell_trigger)} (+{self.sell_pct}%)"
+            )
+        else:
+            range_str = f"Range Fixed: {fmt_price(lower)} - {fmt_price(upper)}"
         logger.info(
             f"Grid {is_reset}: {self.symbol} | "
             f"Center: {fmt_price(current_price)} | "
-            f"Range: {fmt_price(lower)} - {fmt_price(upper)} | "
+            f"{range_str} | "
             f"Levels: {self.num_levels} | "
             f"Available capital: ${available_capital:.2f}"
         )

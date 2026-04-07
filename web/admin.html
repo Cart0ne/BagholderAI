@@ -304,7 +304,7 @@
       </div>
 
       <div class="refresh-bar">
-        Last refresh: <span id="refresh-time">—</span> · <span id="refresh-status">auto ogni 10s</span>
+        Last refresh: <span id="refresh-time">—</span> · <span id="refresh-status">auto every 5m</span>
         <button onclick="loadAll()">↻ Refresh</button>
       </div>
     </div>
@@ -345,7 +345,7 @@
       document.getElementById('auth-gate').style.display = 'none';
       document.getElementById('dashboard').style.display = 'block';
       loadAll();
-      setInterval(function() { loadAll(); }, 10000);
+      setInterval(function() { loadAll(); }, 300000);
     }
 
     // === SUPABASE HELPERS ===
@@ -456,7 +456,7 @@
         .reduce(function(s, r) { return s + Number(r.realized_pnl || 0); }, 0);
       render();
       document.getElementById('refresh-time').textContent = new Date().toLocaleTimeString();
-      document.getElementById('refresh-status').textContent = 'auto ogni 10s';
+      document.getElementById('refresh-status').textContent = 'auto every 5m';
       document.getElementById('refresh-status').style.color = '';
     }
 
@@ -622,19 +622,19 @@
         '<div class="stat-box">' +
           '<div class="stat-label">Skim Reserve</div>' +
           '<div class="stat-value" style="color:var(--green);">+$' + skimReserveTotal.toFixed(4) + '</div>' +
-          '<div class="stat-sub">accantonato dai profitti</div>' +
+          '<div class="stat-sub">set aside from profits · ' + (portfolioVal > 0 ? (skimReserveTotal / portfolioVal * 100).toFixed(2) + '% of portfolio' : '—') + '</div>' +
         '</div>';
 
       document.getElementById('overview-row2').innerHTML =
         '<div class="stat-box">' +
           '<div class="stat-label">Cash Available</div>' +
           '<div class="stat-value">$' + fmt(totalCash + unalloc) + '</div>' +
-          '<div class="stat-sub">pronto per trading</div>' +
+          '<div class="stat-sub">ready for trading</div>' +
         '</div>' +
         '<div class="stat-box">' +
           '<div class="stat-label">Deployed</div>' +
           '<div class="stat-value">$' + fmt(totalDeployed) + '</div>' +
-          '<div class="stat-sub">in posizioni aperte</div>' +
+          '<div class="stat-sub">in open positions</div>' +
         '</div>' +
         '<div class="stat-box">' +
           '<div class="stat-label">Unrealized P&L</div>' +
