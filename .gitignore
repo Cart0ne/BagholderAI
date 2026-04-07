@@ -5,6 +5,7 @@ config/.env
 __pycache__/
 *.pyc
 venv/
+venv_office/
 .DS_Store
 
 # Old files
