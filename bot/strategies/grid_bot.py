@@ -1067,7 +1067,12 @@ class GridBot:
             "strategy": self.strategy,
             "mode": self.mode,
             "center_price": self.state.center_price,
-            "range": f"${self.state.lower_bound:.{self._price_decimals(self.state.center_price)}f} - ${self.state.upper_bound:.{self._price_decimals(self.state.center_price)}f}",
+            "range": (
+                f"${self.state.last_price * (1 - self.buy_pct / 100):.{self._price_decimals(self.state.center_price)}f} (-{self.buy_pct}%) - "
+                f"${self.state.last_price * (1 + self.sell_pct / 100):.{self._price_decimals(self.state.center_price)}f} (+{self.sell_pct}%)"
+                if self.grid_mode == "percentage" else
+                f"${self.state.lower_bound:.{self._price_decimals(self.state.center_price)}f} - ${self.state.upper_bound:.{self._price_decimals(self.state.center_price)}f}"
+            ),
             "last_price": self.state.last_price,
             "levels": {
                 "total": self.num_levels,

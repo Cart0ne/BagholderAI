@@ -207,13 +207,30 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
         bot.restore_state_from_db()
 
     # Print initial grid
-    logger.info("Grid levels:")
-    for level in bot.state.levels:
-        marker = "BUY ↓" if level.side == "buy" else "SELL ↑"
-        base = cfg.symbol.split("/")[0] if "/" in cfg.symbol else cfg.symbol
-        amount_str = f" ({level.order_amount:.6f} {base})" if level.order_amount > 0 else ""
-        logger.info(f"  {fmt_price(level.price):>14}  {marker}{amount_str}")
-    logger.info(f"  Current price: {fmt_price(price)}")
+    if cfg.grid_mode == "percentage":
+        logger.info("Grid triggers (percentage mode):")
+        ref = bot._pct_last_buy_price
+        if ref:
+            buy_trigger = ref * (1 - bot.buy_pct / 100)
+            logger.info(f"  Buy trigger:    {fmt_price(buy_trigger)}  (ref {fmt_price(ref)} -{bot.buy_pct}%)")
+        else:
+            logger.info(f"  Buy trigger:    immediate  (no reference — first entry)")
+        open_lots = bot._pct_open_positions
+        if open_lots:
+            for i, lot in enumerate(open_lots, 1):
+                sell_trigger = lot["price"] * (1 + bot.sell_pct / 100)
+                logger.info(f"  Sell lot {i}:     {fmt_price(sell_trigger)}  (bought {fmt_price(lot['price'])} +{bot.sell_pct}%)")
+        else:
+            logger.info(f"  Open lots:      none")
+        logger.info(f"  Current price:  {fmt_price(price)}")
+    else:
+        logger.info("Grid levels (fixed mode):")
+        for level in bot.state.levels:
+            marker = "BUY ↓" if level.side == "buy" else "SELL ↑"
+            base = cfg.symbol.split("/")[0] if "/" in cfg.symbol else cfg.symbol
+            amount_str = f" ({level.order_amount:.6f} {base})" if level.order_amount > 0 else ""
+            logger.info(f"  {fmt_price(level.price):>14}  {marker}{amount_str}")
+        logger.info(f"  Current price:  {fmt_price(price)}")
 
     notifier.send_bot_started(bot.get_status())
 

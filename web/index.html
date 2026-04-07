@@ -165,6 +165,7 @@
     .pnl { font-family: var(--mono); font-size: 14px; }
     .positive { color: var(--green); }
     .negative { color: var(--red); }
+    .neutral { color: var(--text-dim); }
 
     .breakdown-grid {
       display: flex; gap: 24px; flex-wrap: wrap;
@@ -542,19 +543,24 @@
       document.getElementById('cash-bar').innerHTML = barHtml;
       document.getElementById('cash-legend').innerHTML = legendHtml;
 
-      // Asset cards
-      if (positions && positions.length) {
-        document.getElementById('assets-grid').innerHTML = positions.map(function(p) {
-          var name = ASSET_SHORT[p.symbol] || p.symbol;
-          var uPnl = Number(p.unrealized_pnl);
-          var uPct = Number(p.unrealized_pnl_pct);
-          var priceStr = p.avg_buy_price ? '<div class="asset-price">avg ' + fmtPrice(p.avg_buy_price) + '</div>' : '';
+      // Asset cards — always show all 3 coins, zeros if no active position
+      var ASSET_ORDER = ['BTC/USDT', 'SOL/USDT', 'BONK/USDT'];
+      document.getElementById('assets-grid').innerHTML = ASSET_ORDER.map(function(sym) {
+        var name = ASSET_SHORT[sym] || sym;
+        var p = (positions || []).find(function(x) { return x.symbol === sym; });
+        if (!p) {
           return '<div class="card"><div class="asset-symbol">' + name + '</div>' +
-            '<div class="asset-value">' + fmtUsd(p.value) + '</div>' +
-            priceStr +
-            '<div class="asset-pnl ' + pcls(uPnl) + '">' + sign(uPnl) + fmtUsd(uPnl) + ' (' + sign(uPct) + fmt(uPct) + '%)</div></div>';
-        }).join('');
-      }
+            '<div class="asset-value">$0.00</div>' +
+            '<div class="asset-pnl neutral">$0.00 (0.00%)</div></div>';
+        }
+        var uPnl = Number(p.unrealized_pnl);
+        var uPct = Number(p.unrealized_pnl_pct);
+        var priceStr = p.avg_buy_price ? '<div class="asset-price">avg ' + fmtPrice(p.avg_buy_price) + '</div>' : '';
+        return '<div class="card"><div class="asset-symbol">' + name + '</div>' +
+          '<div class="asset-value">' + fmtUsd(p.value) + '</div>' +
+          priceStr +
+          '<div class="asset-pnl ' + pcls(uPnl) + '">' + sign(uPnl) + fmtUsd(uPnl) + ' (' + sign(uPct) + fmt(uPct) + '%)</div></div>';
+      }).join('');
 
       // Stats
       document.getElementById('st-trades').textContent = cumTrades;
