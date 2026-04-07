@@ -278,7 +278,7 @@
   <script>
     // Roadmap data — update this JSON each session
     const ROADMAP = {
-      last_updated: "2026-04-06",
+      last_updated: "2026-04-07",
       phases: [
         {
           id: 0,
@@ -335,6 +335,7 @@
             { text: "Parameter calibration from data", status: "todo", who: "BOTH" },
             { text: "Dashboard: Trend Follower status", status: "todo", who: "AI" },
             { text: "Human cooldown override on bot_config (architecture)", status: "todo", who: "BOTH" },
+            { text: "Dynamic symbol orchestrator (spawn/kill runner from bot_config)", status: "todo", who: "AI" },
           ]
         },
         {
@@ -357,7 +358,7 @@
           title: "Dashboard + Monetization",
           timeframe: "Weeks 5-6",
           status: "planned",
-          description: "The dashboard IS the product. Must be beautiful and functional.",
+          description: "The dashboard is the product. The guides are the revenue.",
           tasks: [
             { text: "Professional UI design", status: "todo", who: "BOTH" },
             { text: "React + Supabase realtime", status: "todo", who: "AI" },
@@ -367,7 +368,12 @@
             { text: "Crypto-native ads (A-Ads live, upgrade later)", status: "done", who: "MAX", comment: "Register first, customers second." },
             { text: "Donation button", status: "todo", who: "AI" },
             { text: "Telegram bot (reports only, never signals)", status: "done", who: "BOTH", comment: "MiFID II compliance. Transparency, not advice." },
-            { text: "Per-phase sellable guides (diary packaged as paid content)", status: "todo", who: "BOTH" },
+            { text: "Dispensa 1 (Fase 0+1): outline, packaging, cover art", status: "todo", who: "BOTH" },
+            { text: "Setup payment platform (Gumroad or LemonSqueezy)", status: "todo", who: "MAX" },
+            { text: "Landing page /guide on bagholder.lol", status: "todo", who: "AI" },
+            { text: "Italian preface (Max writes, AI translates)", status: "todo", who: "BOTH" },
+            { text: "Editorial plan X: first 5-10 posts from diary", status: "todo", who: "BOTH" },
+            { text: "Publish Dispensa 1", status: "todo", who: "BOTH" },
           ]
         },
         {
@@ -425,7 +431,7 @@
           status: "active",
           description: "Everything we built beyond the blueprint — fixes, improvements, and features discovered in the field. Published alongside v1.1 to show what building really looks like.",
           tasks: [
-            { section: "Phase 1 — Grid Bot & Paper Trading" },
+            { section: "Phase 1 — Grid Bot & Paper Trading (CLOSED)" },
             { text: "Fix accounting: avg_buy_price, grid reset, daily P&L", status: "done", who: "AI", comment: "Session 09. 5 bugs found, 5 bugs fixed." },
             { text: "Per-asset Telegram reports (symbol + config filter)", status: "done", who: "AI", comment: "Session 10. Each bot reports its own trades." },
             { text: "Wide grids + buy cooldown + min profit target", status: "done", who: "AI", comment: "Session 10. Philosophy: holder, not scalper." },
@@ -495,6 +501,11 @@
             { text: "Dashboard: cashLeft for closed positions = alloc + realized P&L − skim", status: "done", who: "AI", comment: "Session 22b. Portfolio Value was underestimating closed positions." },
             { text: "Dashboard: Unrealized P&L rebuilt from FIFO open lots (not historical avg)", status: "done", who: "AI", comment: "Session 22b. Avg buy price now uses only open lots, not all-time buys." },
             { text: "Idle re-entry after N idle hours (holdings=0, no drop)", status: "done", who: "AI", comment: "Session 22c. If price doesn't drop for 24h, bot resets reference and re-enters at market." },
+            { text: "Self-healing: re-init from DB when holdings>0 but FIFO queue empty", status: "done", who: "AI", comment: "Session 22b. State divergence self-heals without restart." },
+            { text: "Dashboard: Promise.allSettled + auto-refresh 10s", status: "done", who: "AI", comment: "Session 22b. Resilient load — one slow API never blocks the rest." },
+            { text: "Fix idle re-entry timezone (.astimezone UTC)", status: "done", who: "AI", comment: "Session 22b. Restored _last_trade_time was off by TZ offset; now always UTC-naive." },
+            { text: "Idle re-entry diagnostic log (hourly countdown visible)", status: "done", who: "AI", comment: "Session 22b. Logs elapsed/threshold at each hour boundary — silent no more." },
+            { text: "Fix 'Reserve Accumulata' → 'Accumulated Reserve' in daily report", status: "done", who: "AI", comment: "Session 22b. Italian label removed from English report." },
             { section: "Phase 2 — Trend Follower" },
             { section: "Phase 3 — AI Sentinel" },
             { section: "Phase 4 — Dashboard & Monetization" },
@@ -513,6 +524,7 @@
             { text: "Commentary archive after 7 days on dashboard", status: "todo", who: "AI", comment: "Not urgent until 20-30 entries accumulate." },
             { text: "Business plan: monthly running costs vs micro-profits", status: "todo", who: "BOTH", comment: "Deferred until project is stable." },
             { text: "Activate skim_pct on one coin as test", status: "todo", who: "BOTH", comment: "Pre-Phase 6. Test reserve accumulation in paper mode." },
+            { text: "Alert: bot active with capital but 0 trades for X hours", status: "todo", who: "AI" },
           ]
         },
       ]
