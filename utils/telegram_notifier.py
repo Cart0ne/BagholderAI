@@ -301,7 +301,7 @@ class TelegramNotifier:
         reserves = data.get("reserves", {})
         if reserves and any(v > 0 for v in reserves.values()):
             total_reserve = sum(reserves.values())
-            text += f"\n{'─' * 28}\n🏦 <b>Reserve Accumulata</b>\n"
+            text += f"\n{'─' * 28}\n🏦 <b>Accumulated Reserve</b>\n"
             for sym, amt in reserves.items():
                 if amt > 0:
                     base = sym.split("/")[0] if "/" in sym else sym

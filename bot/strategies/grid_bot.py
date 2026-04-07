@@ -10,7 +10,7 @@ import time
 import logging
 from typing import Optional
 from dataclasses import dataclass, field
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from utils.formatting import fmt_price
 from config.settings import HardcodedRules
 
@@ -117,6 +117,7 @@ class GridBot:
         self.skipped_buys: list = []     # filled each cycle with insufficient-cash skips
         self.skipped_sells: list = []    # filled each cycle with insufficient-holdings skips
         self.idle_reentry_alerts: list = []  # filled each cycle when idle re-entry fires
+        self._idle_logged_hour: int = -1     # last elapsed-hour mark already logged (avoids spam)
         # Percentage mode state
         self._pct_last_buy_price: float = 0.0
         self._pct_open_positions: list = []  # FIFO: [{"amount": float, "price": float}, ...]
@@ -333,14 +334,18 @@ class GridBot:
         self._pct_open_positions = open_positions
         self._pct_last_buy_price = last_buy_price
 
-        # Restore last trade time so idle re-entry countdown is correct
+        # Restore last trade time so idle re-entry countdown is correct.
+        # Convert to UTC-naive so comparison with datetime.utcnow() is always correct
+        # regardless of the timezone offset stored in the DB timestamp.
         if trades:
             try:
                 dt_str = trades[-1].get("created_at", "")
                 if dt_str:
-                    self._last_trade_time = datetime.fromisoformat(
-                        dt_str.replace("Z", "+00:00")
-                    ).replace(tzinfo=None)
+                    dt = datetime.fromisoformat(dt_str.replace("Z", "+00:00"))
+                    if dt.tzinfo is not None:
+                        dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
+                    self._last_trade_time = dt
+                    self._idle_logged_hour = -1  # reset so first eval logs immediately
             except Exception:
                 pass
 
@@ -751,6 +756,18 @@ class GridBot:
                 and self._last_trade_time is not None
                 and self.idle_reentry_hours > 0):
             elapsed = (datetime.utcnow() - self._last_trade_time).total_seconds() / 3600
+            # Log once per elapsed-hour boundary so progress is always visible in logs
+            elapsed_h = int(elapsed)
+            if elapsed_h != self._idle_logged_hour:
+                self._idle_logged_hour = elapsed_h
+                logger.info(
+                    f"[{self.symbol}] IDLE RE-ENTRY CHECK: "
+                    f"elapsed={elapsed:.2f}h / threshold={self.idle_reentry_hours}h "
+                    f"| last_trade={self._last_trade_time:%Y-%m-%d %H:%M:%S} UTC "
+                    f"| ref_price={fmt_price(self._pct_last_buy_price)} "
+                    f"| holdings={self.state.holdings:.6f} "
+                    f"| will_fire={'YES' if elapsed >= self.idle_reentry_hours else 'NOT YET'}"
+                )
             if elapsed >= self.idle_reentry_hours:
                 logger.info(
                     f"[{self.symbol}] Idle re-entry after {elapsed:.1f}h: "
