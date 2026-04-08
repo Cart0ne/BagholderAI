@@ -775,17 +775,36 @@
 
       var data = {};
       var changes = [];
+      var invalidField = null;
       allFields.forEach(function(f) {
+        if (invalidField) return;
         var input = document.getElementById('cfg-' + short + '-' + f);
         if (!input) return;
-        var newVal = f === 'grid_mode' ? input.value
-          : f === 'grid_levels' ? parseInt(input.value)
-          : parseFloat(input.value);
+        // Normalize comma to dot for decimal fields (iOS Italian locale fix)
+        var rawVal = input.value;
+        var normVal = typeof rawVal === 'string' ? rawVal.replace(',', '.') : rawVal;
+        var newVal;
+        if (f === 'grid_mode') {
+          newVal = normVal;
+        } else if (f === 'grid_levels') {
+          newVal = parseInt(normVal);
+          if (isNaN(newVal)) { invalidField = f; return; }
+        } else {
+          newVal = parseFloat(normVal);
+          if (isNaN(newVal)) { invalidField = f; return; }
+        }
         data[f] = newVal;
         if (input.value !== input.dataset.original) {
-          changes.push({ symbol: symbol, field: f, old_value: input.dataset.original, new_value: input.value, changed_by: 'manual-ceo' });
+          changes.push({ symbol: symbol, parameter: f, old_value: input.dataset.original, new_value: normVal, changed_by: 'manual-ceo' });
         }
       });
+
+      if (invalidField) {
+        status.textContent = 'Invalid number in ' + invalidField;
+        status.style.color = 'var(--red)';
+        btn.disabled = false;
+        return;
+      }
 
       try {
         await sbPatch('bot_config', 'symbol', symbol, data);

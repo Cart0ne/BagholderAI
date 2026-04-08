@@ -299,18 +299,18 @@
     <!-- Dashboard (hidden until loaded) -->
     <div id="dashboard" style="display: none;">
 
-      <!-- CEO's Log -->
+      <!-- CEO's Log (today only) -->
       <section style="margin-top: 40px;">
         <h2 class="section-title">CEO's Log</h2>
         <div id="ceo-log-hero" class="card ceo-log-hero">
-          <div class="ceo-log-empty">No commentary yet. The CEO starts talking tonight at 21:00.</div>
+          <div class="ceo-log-empty">No commentary yet. The CEO starts talking tonight at 20:00.</div>
         </div>
-        <div id="commentary-history" class="commentary-history"></div>
       </section>
 
       <!-- The Numbers -->
       <section>
         <h2 class="section-title">The Numbers</h2>
+        <div id="numbers-timestamp" style="font-family: var(--mono); font-size: 11px; color: var(--text-dim); margin-bottom: 12px;"></div>
 
         <!-- Portfolio card -->
         <div class="card" style="padding: 20px;">
@@ -382,13 +382,19 @@
         <div class="card activity-bar" id="activity-bar"></div>
       </section>
 
+      <!-- CEO's Log Archive -->
+      <section>
+        <h2 class="section-title">CEO's Log Archive</h2>
+        <div id="commentary-history" class="commentary-history"></div>
+      </section>
+
       <!-- Follow / Social -->
       <section>
         <h2 class="section-title">Follow the build</h2>
         <div class="links-grid">
           <a href="https://t.me/BagHolderAI_report" target="_blank" rel="noopener" class="link-card">
             <div class="link-card-title">📡 Telegram</div>
-            <div class="link-card-desc">Daily reports at 21:00</div>
+            <div class="link-card-desc">Daily reports at 20:00</div>
           </a>
           <a href="https://x.com/BagHolderAI" target="_blank" rel="noopener" class="link-card">
             <div class="link-card-title">𝕏 Twitter / X</div>
@@ -452,7 +458,7 @@
       var hero = document.getElementById('ceo-log-hero');
       var hist = document.getElementById('commentary-history');
       if (!entries || !entries.length) {
-        hero.innerHTML = '<div class="ceo-log-empty">No commentary yet. The CEO starts talking tonight at 21:00.</div>';
+        hero.innerHTML = '<div class="ceo-log-empty">No commentary yet. The CEO starts talking tonight at 20:00.</div>';
         return;
       }
       // Deduplicate: keep only the latest entry per date (already sorted by date desc, created_at desc)
@@ -626,6 +632,40 @@
       }
     }
 
+    // === TIMESTAMP ===
+    function updateTimestamp() {
+      var now = new Date();
+      var h = now.getHours();
+      var m = now.getMinutes();
+      var ampm = h >= 12 ? 'PM' : 'AM';
+      h = h % 12 || 12;
+      var timeStr = h + ':' + (m < 10 ? '0' : '') + m + ' ' + ampm;
+      document.getElementById('numbers-timestamp').textContent =
+        'Updated at ' + timeStr + ' \u00b7 full report at 20:00';
+    }
+
+    // === REFRESH NUMBERS ONLY ===
+    async function refreshNumbers() {
+      try {
+        var pnlRes = await sbq('daily_pnl', 'select=*&order=date.desc&limit=90');
+        var pnl = pnlRes.filter(function(d) { return d.date >= '2026-03-30'; });
+
+        var skimTotal = 0;
+        var totalInvested = 0;
+        try {
+          var skimRes = await sbq('reserve_ledger', 'select=amount&config_version=eq.v3');
+          skimTotal = skimRes.reduce(function(acc, r) { return acc + Number(r.amount || 0); }, 0);
+          var investedRes = await sbq('trades', 'select=cost&config_version=eq.v3&side=eq.buy');
+          totalInvested = investedRes.reduce(function(acc, r) { return acc + Number(r.cost || 0); }, 0);
+        } catch (e) { /* skim/invested non disponibile, mostra 0 */ }
+
+        renderPortfolio(pnl, skimTotal, totalInvested);
+        updateTimestamp();
+      } catch (err) {
+        console.error('refreshNumbers error:', err);
+      }
+    }
+
     // === MAIN ===
     async function load() {
       try {
@@ -648,6 +688,7 @@
         renderCommentary(commentary);
         renderPortfolio(pnl, skimTotal, totalInvested);
         renderCharts(pnl);
+        updateTimestamp();
 
         document.getElementById('loading').style.display = 'none';
         document.getElementById('dashboard').style.display = 'block';
@@ -659,6 +700,7 @@
       }
     }
     load();
+    setInterval(refreshNumbers, 5 * 60 * 1000); // refresh numbers every 5 minutes
   </script>
 </body>
 </html>

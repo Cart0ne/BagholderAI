@@ -1,6 +1,6 @@
 """
 BagHolderAI - Force Daily Report (test script)
-Triggers the private daily report immediately, without waiting for 21:00.
+Triggers the private daily report immediately, without waiting for 20:00.
 Also prints what the public report would look like.
 
 Usage:

@@ -1,13 +1,13 @@
 """
 BagHolderAI - Daily Commentary Generator
-Calls Haiku to generate a short daily micro-log after the 21:00 report.
+Calls Haiku to generate a short daily micro-log after the 20:00 report.
 Commentary is saved to the daily_commentary table on Supabase.
 """
 
 import json
 import logging
 import os
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
 logger = logging.getLogger(__name__)
 
@@ -52,13 +52,13 @@ def get_yesterday_commentary(supabase_client):
 
 
 def get_config_changes(supabase_client):
-    """Fetch any config changes made today."""
-    today_midnight = datetime.combine(date.today(), datetime.min.time(), tzinfo=timezone.utc).isoformat()
+    """Fetch any config changes made in the last 24 hours."""
+    cutoff = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()
     try:
         result = (
             supabase_client.table("config_changes_log")
             .select("symbol, parameter, old_value, new_value")
-            .gte("created_at", today_midnight)
+            .gte("created_at", cutoff)
             .execute()
         )
         return result.data if result.data else []
