@@ -513,16 +513,47 @@
       var sellCount = coinTrades.filter(function(t) { return t.side === 'sell'; }).length;
       var netSpent = totalBought - totalSold;
       var positionClosed = netHoldings <= 0.000001; // fully sold out
+
+      // FIFO reconstruction: open lots = cost basis + count of slots actually filled
+      var sortedTrades = coinTrades.slice().sort(function(a, b) {
+        return new Date(a.created_at) - new Date(b.created_at);
+      });
+      var buyQueue = [];
+      sortedTrades.forEach(function(t) {
+        if (t.side === 'buy') {
+          buyQueue.push({ amount: Number(t.amount), price: Number(t.price || 0), cost: Number(t.cost) });
+        } else {
+          var remaining = Number(t.amount);
+          while (remaining > 0.000001 && buyQueue.length > 0) {
+            var lot = buyQueue[0];
+            if (lot.amount <= remaining + 0.000001) {
+              remaining -= lot.amount;
+              buyQueue.shift();
+            } else {
+              lot.cost -= remaining * lot.price;
+              lot.amount -= remaining;
+              remaining = 0;
+            }
+          }
+        }
+      });
+      var openLots = buyQueue.length;
+      var openCost = buyQueue.reduce(function(s, l) { return s + l.cost; }, 0);
+
       var cashLeft;
       if (positionClosed) {
         netSpent = 0;
         var skimForCoin = skimBySymbol[symbol] || 0;
         cashLeft = alloc + realizedPnl - skimForCoin;
       } else {
+        // Cash = alloc − net cash out (bought − sold). Includes realized profits
+        // already cycled back into the pool.
         cashLeft = alloc - netSpent;
       }
       var buysLeft = costPerTrade > 0 ? Math.floor(cashLeft / costPerTrade) : 0;
-      var capacityPct = positionClosed ? 0 : (alloc > 0 ? ((alloc - cashLeft) / alloc) * 100 : 0);
+      // Capacity bar reflects how much of the allocation is committed to open lots,
+      // not total volume traded.
+      var capacityPct = alloc > 0 ? (openCost / alloc) * 100 : 0;
       var maxCapacity = costPerTrade > 0 ? Math.floor(alloc / costPerTrade) : 0;
       var lastTrade = coinTrades.length > 0 ? coinTrades[0] : null;
 
@@ -531,7 +562,8 @@
         totalBought: totalBought, totalSold: totalSold,
         realizedPnl: realizedPnl, netHoldings: netHoldings,
         buyCount: buyCount, sellCount: sellCount,
-        netSpent: netSpent, cashLeft: cashLeft,
+        netSpent: netSpent, openCost: openCost, openLots: openLots,
+        cashLeft: cashLeft,
         buysLeft: buysLeft, capacityPct: Math.min(capacityPct, 100),
         maxCapacity: maxCapacity, lastTrade: lastTrade
       };
@@ -546,7 +578,7 @@
       configData.forEach(function(cfg) {
         var a = analyzeCoin(cfg.symbol, cfg);
         totalCash += a.cashLeft;
-        if (a.netHoldings > 0.000001) totalDeployed += a.netSpent;
+        if (a.netHoldings > 0.000001) totalDeployed += a.openCost;
       });
 
       // Unrealized P&L — computed live from holdings × live prices
@@ -664,10 +696,10 @@
           '</div>' +
           '<div class="coin-grid">' +
             '<div class="coin-stat"><div class="cs-label">Cash</div><div class="cs-value">' + fmtUsd(a.cashLeft) + '</div></div>' +
-            '<div class="coin-stat"><div class="cs-label">Invested</div><div class="cs-value">' + fmtUsd(a.netSpent) + '</div></div>' +
+            '<div class="coin-stat"><div class="cs-label">Open cost basis</div><div class="cs-value">' + fmtUsd(a.openCost) + '</div></div>' +
             '<div class="coin-stat"><div class="cs-label">Realized</div><div class="cs-value" style="color:' + (a.realizedPnl >= 0 ? 'var(--green)' : 'var(--red)') + ';">' + (a.realizedPnl >= 0 ? '+' : '') + fmtUsd(a.realizedPnl) + '</div></div>' +
             '<div class="coin-stat"><div class="cs-label">Trades</div><div class="cs-value">' + a.buyCount + 'B / ' + a.sellCount + 'S</div></div>' +
-            '<div class="coin-stat"><div class="cs-label">Grid capacity</div><div class="cs-value">' + (positionClosed ? 'Position closed' : (a.buyCount - a.sellCount) + ' / ' + a.maxCapacity + ' filled') + '</div></div>' +
+            '<div class="coin-stat"><div class="cs-label">Open lots</div><div class="cs-value">' + (positionClosed ? 'Position closed' : a.openLots + ' / ' + a.maxCapacity + ' filled') + '</div></div>' +
             '<div class="coin-stat"><div class="cs-label">Last trade</div><div class="cs-value">' + (a.lastTrade ? timeAgo(a.lastTrade.created_at) : '—') + '</div></div>' +
           '</div>' +
           '<div class="cap-bar-wrap">' +
