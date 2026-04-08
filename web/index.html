@@ -478,33 +478,147 @@
       }
     }
 
-    // === RENDER PORTFOLIO ===
-    function renderPortfolio(data, skimTotal, totalInvested) {
-      skimTotal = skimTotal || 0;
-      totalInvested = totalInvested || 0;
-      if (!data || !data.length) {
+    // === LIVE PRICES (Binance) ===
+    async function fetchLivePrices() {
+      var out = {};
+      try {
+        var symbols = ['BTCUSDT', 'SOLUSDT', 'BONKUSDT'];
+        var res = await fetch('https://api.binance.com/api/v3/ticker/price?symbols=' + encodeURIComponent(JSON.stringify(symbols)));
+        var data = await res.json();
+        data.forEach(function(t) {
+          var sym = t.symbol.replace('USDT', '/USDT');
+          out[sym] = Number(t.price);
+        });
+      } catch (e) { console.warn('Live prices unavailable:', e); }
+      return out;
+    }
+
+    // === LIVE STATE COMPUTATION ===
+    // Mirrors the admin page: FIFO reconstruction of holdings from trades,
+    // cash = alloc - netSpent (open) or alloc + realized - skim (closed).
+    function analyzeCoin(symbol, cfg, trades, skimBySymbol) {
+      var alloc = Number(cfg.capital_allocation);
+      var coinTrades = trades.filter(function(t) { return t.symbol === symbol; });
+      var totalBought = coinTrades.filter(function(t) { return t.side === 'buy'; }).reduce(function(s, t) { return s + Number(t.cost); }, 0);
+      var totalSold = coinTrades.filter(function(t) { return t.side === 'sell'; }).reduce(function(s, t) { return s + Number(t.cost); }, 0);
+      var realizedPnl = coinTrades.reduce(function(s, t) { return s + Number(t.realized_pnl || 0); }, 0);
+      var netHoldings = coinTrades.reduce(function(s, t) {
+        return s + (t.side === 'buy' ? Number(t.amount) : -Number(t.amount));
+      }, 0);
+      var netSpent = totalBought - totalSold;
+      var positionClosed = netHoldings <= 0.000001;
+      var cashLeft;
+      if (positionClosed) {
+        netSpent = 0;
+        var skimForCoin = skimBySymbol[symbol] || 0;
+        cashLeft = alloc + realizedPnl - skimForCoin;
+      } else {
+        cashLeft = alloc - netSpent;
+      }
+      return { alloc: alloc, netSpent: netSpent, netHoldings: netHoldings, realizedPnl: realizedPnl, cashLeft: cashLeft, positionClosed: positionClosed };
+    }
+
+    function computeLiveState(configData, trades, prices, skimBySymbol, skimTotal) {
+      var totalAlloc = configData.reduce(function(s, c) { return s + Number(c.capital_allocation); }, 0);
+      var initialCapital = 500;
+      var unalloc = initialCapital - totalAlloc;
+
+      var totalCash = 0;
+      var holdingsValue = 0;
+      var totalUnrealized = 0;
+      var totalRealized = 0;
+      var perCoin = {};
+
+      configData.forEach(function(cfg) {
+        var sym = cfg.symbol;
+        var a = analyzeCoin(sym, cfg, trades, skimBySymbol);
+        totalCash += a.cashLeft;
+        totalRealized += a.realizedPnl;
+
+        // FIFO queue to compute avg buy price of remaining open lots
+        var coinTrades = trades
+          .filter(function(t) { return t.symbol === sym; })
+          .slice()
+          .sort(function(a, b) { return new Date(a.created_at) - new Date(b.created_at); });
+        var buyQueue = [];
+        coinTrades.forEach(function(t) {
+          if (t.side === 'buy') {
+            buyQueue.push({ amount: Number(t.amount), price: Number(t.price || 0), cost: Number(t.cost) });
+          } else {
+            var remaining = Number(t.amount);
+            while (remaining > 0.000001 && buyQueue.length > 0) {
+              var lot = buyQueue[0];
+              if (lot.amount <= remaining + 0.000001) {
+                remaining -= lot.amount;
+                buyQueue.shift();
+              } else {
+                lot.cost -= remaining * lot.price;
+                lot.amount -= remaining;
+                remaining = 0;
+              }
+            }
+          }
+        });
+        var openAmt = buyQueue.reduce(function(s, l) { return s + l.amount; }, 0);
+        var openCost = buyQueue.reduce(function(s, l) { return s + l.cost; }, 0);
+        var livePrice = prices[sym];
+        var value = 0, unr = 0, unrPct = 0, avgBuy = 0;
+        if (openAmt > 0 && livePrice) {
+          avgBuy = openCost / openAmt;
+          value = openAmt * livePrice;
+          unr = (livePrice - avgBuy) * openAmt;
+          unrPct = avgBuy > 0 ? (livePrice / avgBuy - 1) * 100 : 0;
+          holdingsValue += value;
+          totalUnrealized += unr;
+        }
+        perCoin[sym] = { value: value, unrealized: unr, unrealizedPct: unrPct, avgBuy: avgBuy, netHoldings: openAmt };
+      });
+
+      var cash = totalCash + unalloc;
+      var totalValue = cash + holdingsValue;
+      var totalPnl = totalValue - initialCapital;
+      var totalFees = trades.reduce(function(s, t) { return s + Number(t.fee || 0); }, 0);
+
+      // Today's activity (local time)
+      var todayStr = new Date().toISOString().slice(0, 10);
+      var todayTrades = trades.filter(function(t) { return (t.created_at || '').slice(0, 10) === todayStr; });
+      var todayBuys = todayTrades.filter(function(t) { return t.side === 'buy'; }).length;
+      var todaySells = todayTrades.filter(function(t) { return t.side === 'sell'; }).length;
+      var todayRealized = todayTrades.reduce(function(s, t) { return s + Number(t.realized_pnl || 0); }, 0);
+
+      return {
+        initialCapital: initialCapital,
+        cash: cash,
+        holdingsValue: holdingsValue,
+        totalValue: totalValue,
+        totalPnl: totalPnl,
+        totalRealized: totalRealized,
+        totalUnrealized: totalUnrealized,
+        totalFees: totalFees,
+        skimTotal: skimTotal,
+        perCoin: perCoin,
+        totalTrades: trades.length,
+        totalBuys: trades.filter(function(t) { return t.side === 'buy'; }).length,
+        totalSells: trades.filter(function(t) { return t.side === 'sell'; }).length,
+        todayTrades: todayTrades.length,
+        todayBuys: todayBuys,
+        todaySells: todaySells,
+        todayRealized: todayRealized,
+      };
+    }
+
+    // === RENDER PORTFOLIO (live) ===
+    function renderPortfolio(state, totalInvested) {
+      if (!state) {
         document.getElementById('pv').textContent = 'Waiting for data';
         return;
       }
-      var d = data[0]; // latest
-      var tv = Number(d.total_value);
-      var pnl = Number(d.total_pnl);
-      var pnlPct = (pnl / Number(d.initial_capital)) * 100;
-      var cash = Number(d.cash_remaining);
-      var cashPct = (cash / Number(d.initial_capital)) * 100;
-      var positions = typeof d.positions === 'string' ? JSON.parse(d.positions) : d.positions;
-
-      // Cumulative realized & fees across all v3 days
-      var cumReal = 0, cumFees = 0, cumTrades = 0, cumBuys = 0, cumSells = 0;
-      data.forEach(function(row) {
-        cumReal += Number(row.realized_pnl_today || 0);
-        cumFees += Number(row.total_fees_today || 0);
-        cumTrades += Number(row.trades_count || 0);
-        cumBuys += Number(row.buys_count || 0);
-        cumSells += Number(row.sells_count || 0);
-      });
-
-      var unrealized = pnl - cumReal + cumFees; // total_pnl = realized - fees + unrealized
+      totalInvested = totalInvested || 0;
+      var tv = state.totalValue;
+      var pnl = state.totalPnl;
+      var pnlPct = (pnl / state.initialCapital) * 100;
+      var cash = state.cash;
+      var cashPct = (cash / state.initialCapital) * 100;
 
       // Portfolio value + P&L
       document.getElementById('pv').textContent = fmtUsd(tv);
@@ -513,74 +627,73 @@
       ppEl.className = 'pnl ' + pcls(pnl);
 
       // Meta
+      var today = new Date().toISOString().slice(0, 10);
       document.getElementById('pmeta').innerHTML =
-        '<span>Initial: ' + fmtUsd(d.initial_capital) + '</span>' +
-        '<span>Day ' + dayNum(d.date) + '</span>';
+        '<span>Initial: ' + fmtUsd(state.initialCapital) + '</span>' +
+        '<span>Day ' + dayNum(today) + '</span>';
 
       // P&L breakdown
       document.getElementById('pnl-breakdown').innerHTML =
         '<div class="breakdown-item"><div class="label">Realized</div>' +
-        '<div class="value ' + pcls(cumReal) + '">' + sign(cumReal) + fmtUsd(cumReal) + '</div>' +
+        '<div class="value ' + pcls(state.totalRealized) + '">' + sign(state.totalRealized) + fmtUsd(state.totalRealized) + '</div>' +
         '<div class="sub">locked in</div></div>' +
         '<div class="breakdown-item"><div class="label">Unrealized</div>' +
-        '<div class="value ' + pcls(unrealized) + '">' + sign(unrealized) + fmtUsd(unrealized) + '</div>' +
+        '<div class="value ' + pcls(state.totalUnrealized) + '">' + sign(state.totalUnrealized) + fmtUsd(state.totalUnrealized) + '</div>' +
         '<div class="sub">still on paper</div></div>' +
         '<div class="breakdown-item"><div class="label">Fees paid</div>' +
-        '<div class="value negative">-' + fmtUsd(Math.abs(cumFees)) + '</div>' +
+        '<div class="value negative">-' + fmtUsd(Math.abs(state.totalFees)) + '</div>' +
         '<div class="sub">cost of doing biz</div></div>' +
         '<div class="breakdown-item"><div class="label">Skim reserved</div>' +
-        '<div class="value positive">+$' + skimTotal.toFixed(4) + (totalInvested > 0 ? ' (' + (skimTotal / totalInvested * 100).toFixed(2) + '% of invested)' : '') + '</div>' +
+        '<div class="value positive">+$' + state.skimTotal.toFixed(4) + (totalInvested > 0 ? ' (' + (state.skimTotal / totalInvested * 100).toFixed(2) + '% of invested)' : '') + '</div>' +
         '<div class="sub">set aside</div></div>';
 
       // Cash allocation bar
       document.getElementById('cash-pct-label').textContent = fmt(cashPct, 0) + '% cash';
       var barHtml = '';
       var legendHtml = '';
-      if (positions && positions.length) {
-        positions.forEach(function(p) {
-          var pct = (Number(p.value) / Number(d.initial_capital)) * 100;
-          var color = ASSET_COLORS[p.symbol] || '#888';
-          var name = ASSET_SHORT[p.symbol] || p.symbol;
-          barHtml += '<div style="width:' + pct + '%;background:' + color + ';"></div>';
-          legendHtml += '<span class="legend-item"><span class="legend-dot" style="background:' + color + ';"></span>' + name + ' ' + fmt(pct, 0) + '%</span>';
-        });
-      }
+      var ASSET_ORDER = ['BTC/USDT', 'SOL/USDT', 'BONK/USDT'];
+      ASSET_ORDER.forEach(function(sym) {
+        var p = state.perCoin[sym];
+        if (!p || p.value <= 0) return;
+        var pct = (p.value / state.initialCapital) * 100;
+        var color = ASSET_COLORS[sym] || '#888';
+        var name = ASSET_SHORT[sym] || sym;
+        barHtml += '<div style="width:' + pct + '%;background:' + color + ';"></div>';
+        legendHtml += '<span class="legend-item"><span class="legend-dot" style="background:' + color + ';"></span>' + name + ' ' + fmt(pct, 0) + '%</span>';
+      });
       legendHtml += '<span class="legend-item" style="color:var(--text-dim);">Cash ' + fmt(cashPct, 0) + '%</span>';
       document.getElementById('cash-bar').innerHTML = barHtml;
       document.getElementById('cash-legend').innerHTML = legendHtml;
 
       // Asset cards — always show all 3 coins, zeros if no active position
-      var ASSET_ORDER = ['BTC/USDT', 'SOL/USDT', 'BONK/USDT'];
       document.getElementById('assets-grid').innerHTML = ASSET_ORDER.map(function(sym) {
         var name = ASSET_SHORT[sym] || sym;
-        var p = (positions || []).find(function(x) { return x.symbol === sym; });
-        if (!p) {
+        var p = state.perCoin[sym];
+        if (!p || p.value <= 0) {
           return '<div class="card"><div class="asset-symbol">' + name + '</div>' +
             '<div class="asset-value">$0.00</div>' +
             '<div class="asset-pnl neutral">$0.00 (0.00%)</div></div>';
         }
-        var uPnl = Number(p.unrealized_pnl);
-        var uPct = Number(p.unrealized_pnl_pct);
-        var priceStr = p.avg_buy_price ? '<div class="asset-price">avg ' + fmtPrice(p.avg_buy_price) + '</div>' : '';
+        var priceStr = p.avgBuy > 0 ? '<div class="asset-price">avg ' + fmtPrice(p.avgBuy) + '</div>' : '';
         return '<div class="card"><div class="asset-symbol">' + name + '</div>' +
           '<div class="asset-value">' + fmtUsd(p.value) + '</div>' +
           priceStr +
-          '<div class="asset-pnl ' + pcls(uPnl) + '">' + sign(uPnl) + fmtUsd(uPnl) + ' (' + sign(uPct) + fmt(uPct) + '%)</div></div>';
+          '<div class="asset-pnl ' + pcls(p.unrealized) + '">' + sign(p.unrealized) + fmtUsd(p.unrealized) + ' (' + sign(p.unrealizedPct) + fmt(p.unrealizedPct) + '%)</div></div>';
       }).join('');
 
-      // Stats
-      document.getElementById('st-trades').textContent = cumTrades;
-      document.getElementById('st-buysells').textContent = cumBuys + ' / ' + cumSells;
+      // Stats (cumulative from trades)
+      document.getElementById('st-trades').textContent = state.totalTrades;
+      document.getElementById('st-buysells').textContent = state.totalBuys + ' / ' + state.totalSells;
       var stReal = document.getElementById('st-realized');
-      stReal.textContent = sign(cumReal) + fmtUsd(cumReal);
-      stReal.className = 'stat-value ' + pcls(cumReal);
+      stReal.textContent = sign(state.totalRealized) + fmtUsd(state.totalRealized);
+      stReal.className = 'stat-value ' + pcls(state.totalRealized);
       var stFees = document.getElementById('st-fees');
-      stFees.textContent = '-' + fmtUsd(Math.abs(cumFees));
+      stFees.textContent = '-' + fmtUsd(Math.abs(state.totalFees));
       stFees.className = 'stat-value negative';
 
       // Activity bar (today)
       document.getElementById('activity-bar').innerHTML =
-        'Today: ' + d.trades_count + ' trades (' + d.buys_count + ' buys, ' + d.sells_count + ' sells) \u00b7 Realized: <span class="' + pcls(d.realized_pnl_today) + '">' + sign(d.realized_pnl_today) + fmtUsd(d.realized_pnl_today) + '</span>';
+        'Today: ' + state.todayTrades + ' trades (' + state.todayBuys + ' buys, ' + state.todaySells + ' sells) \u00b7 Realized: <span class="' + pcls(state.todayRealized) + '">' + sign(state.todayRealized) + fmtUsd(state.todayRealized) + '</span>';
     }
 
     // === RENDER CHARTS ===
@@ -644,22 +757,39 @@
         'Updated at ' + timeStr + ' \u00b7 full report at 20:00';
     }
 
+    // === FETCH + BUILD LIVE STATE ===
+    async function fetchLiveData() {
+      var res = await Promise.all([
+        sbq('bot_config', 'select=symbol,capital_allocation&order=symbol'),
+        sbq('trades', 'select=symbol,side,amount,price,cost,fee,realized_pnl,created_at&config_version=eq.v3&order=created_at.desc'),
+        sbq('reserve_ledger', 'select=symbol,amount&config_version=eq.v3'),
+        fetchLivePrices()
+      ]);
+      var configData = res[0];
+      var trades = res[1];
+      var skimRows = res[2];
+      var prices = res[3];
+
+      var skimBySymbol = {};
+      var skimTotal = 0;
+      skimRows.forEach(function(r) {
+        var amt = Number(r.amount || 0);
+        skimTotal += amt;
+        if (r.symbol) skimBySymbol[r.symbol] = (skimBySymbol[r.symbol] || 0) + amt;
+      });
+      var totalInvested = trades
+        .filter(function(t) { return t.side === 'buy'; })
+        .reduce(function(s, t) { return s + Number(t.cost || 0); }, 0);
+
+      var state = computeLiveState(configData, trades, prices, skimBySymbol, skimTotal);
+      return { state: state, totalInvested: totalInvested };
+    }
+
     // === REFRESH NUMBERS ONLY ===
     async function refreshNumbers() {
       try {
-        var pnlRes = await sbq('daily_pnl', 'select=*&order=date.desc&limit=90');
-        var pnl = pnlRes.filter(function(d) { return d.date >= '2026-03-30'; });
-
-        var skimTotal = 0;
-        var totalInvested = 0;
-        try {
-          var skimRes = await sbq('reserve_ledger', 'select=amount&config_version=eq.v3');
-          skimTotal = skimRes.reduce(function(acc, r) { return acc + Number(r.amount || 0); }, 0);
-          var investedRes = await sbq('trades', 'select=cost&config_version=eq.v3&side=eq.buy');
-          totalInvested = investedRes.reduce(function(acc, r) { return acc + Number(r.cost || 0); }, 0);
-        } catch (e) { /* skim/invested non disponibile, mostra 0 */ }
-
-        renderPortfolio(pnl, skimTotal, totalInvested);
+        var live = await fetchLiveData();
+        renderPortfolio(live.state, live.totalInvested);
         updateTimestamp();
       } catch (err) {
         console.error('refreshNumbers error:', err);
@@ -671,22 +801,15 @@
       try {
         var res = await Promise.all([
           sbq('daily_commentary', 'select=date,commentary,model_used,created_at&order=date.desc,created_at.desc&limit=30'),
-          sbq('daily_pnl', 'select=*&order=date.desc&limit=90')
+          sbq('daily_pnl', 'select=*&order=date.desc&limit=90'),
+          fetchLiveData()
         ]);
         var commentary = res[0];
         var pnl = res[1].filter(function(d) { return d.date >= '2026-03-30'; });
-
-        var skimTotal = 0;
-        var totalInvested = 0;
-        try {
-          var skimRes = await sbq('reserve_ledger', 'select=amount&config_version=eq.v3');
-          skimTotal = skimRes.reduce(function(acc, r) { return acc + Number(r.amount || 0); }, 0);
-          var investedRes = await sbq('trades', 'select=cost&config_version=eq.v3&side=eq.buy');
-          totalInvested = investedRes.reduce(function(acc, r) { return acc + Number(r.cost || 0); }, 0);
-        } catch (e) { /* skim/invested non disponibile, mostra 0 */ }
+        var live = res[2];
 
         renderCommentary(commentary);
-        renderPortfolio(pnl, skimTotal, totalInvested);
+        renderPortfolio(live.state, live.totalInvested);
         renderCharts(pnl);
         updateTimestamp();
 
