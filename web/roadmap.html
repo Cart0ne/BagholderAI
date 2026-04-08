@@ -278,7 +278,7 @@
   <script>
     // Roadmap data — update this JSON each session
     const ROADMAP = {
-      version: "Versione 1.24 — Aprile 2026",
+      version: "Versione 1.25 — Aprile 2026",
       last_updated: "2026-04-07",
       phases: [
         {
@@ -378,7 +378,9 @@
             { text: "Dedication page", status: "done", who: "BOTH", comment: "Session 25. Four hands." },
             { text: "Glossary (Appendix D)", status: "done", who: "AI", comment: "Session 25. 37 terms, organized by topic." },
             { text: "Screenshot placement map", status: "done", who: "BOTH", comment: "Session 25. 9 screenshots mapped to sessions." },
-            { text: "Cover art + assembly into final PDF", status: "todo", who: "BOTH" },
+            { text: "Book title decided", status: "done", who: "BOTH", comment: "Session 26. Picked together with the CEO." },
+            { text: "Cover art designed", status: "done", who: "BOTH", comment: "Session 26. Designed together with the CEO." },
+            { text: "Final PDF assembly", status: "todo", who: "BOTH" },
             { text: "Editorial plan X: first 5-10 posts from diary", status: "todo", who: "BOTH" },
             { text: "Publish Dispensa 1", status: "todo", who: "BOTH" },
           ]
@@ -513,6 +515,16 @@
             { text: "Fix idle re-entry timezone (.astimezone UTC)", status: "done", who: "AI", comment: "Session 22b. Restored _last_trade_time was off by TZ offset; now always UTC-naive." },
             { text: "Idle re-entry diagnostic log (hourly countdown visible)", status: "done", who: "AI", comment: "Session 22b. Logs elapsed/threshold at each hour boundary — silent no more." },
             { text: "Fix 'Reserve Accumulata' → 'Accumulated Reserve' in daily report", status: "done", who: "AI", comment: "Session 22b. Italian label removed from English report." },
+            { text: "Haiku commentary: 24h rolling window for config_changes", status: "done", who: "AI", comment: "Session 26. Was 'today midnight UTC' (= 02:00 italian) and missed late-day changes." },
+            { text: "Fix admin payload bug: config_changes_log was silently failing for 5 days", status: "done", who: "AI", comment: "Session 26. Payload used 'field:' but column is 'parameter'. Try/catch hid the error since S18b. Backfilled 4 missed entries manually." },
+            { text: "Admin: sanitize comma → dot on save (iOS Italian decimal locale)", status: "done", who: "AI", comment: "Session 26. type=text inputmode=decimal + comma normalization + isNaN guard." },
+            { text: "Index dashboard: layout restructure (today log → numbers → archive)", status: "done", who: "AI", comment: "Session 26. CEO's Log Archive moved below The Numbers." },
+            { text: "Index dashboard: live numbers from trades + Binance prices", status: "done", who: "AI", comment: "Session 26. Was reading from daily_pnl snapshot (20:00 only) — SOL showed $0.00 mid-day. Now mirrors admin strategy with FIFO + live prices." },
+            { text: "Index dashboard: 5-min auto-refresh + 'Updated at HH:MM' timestamp", status: "done", who: "AI", comment: "Session 26. Numbers section refreshes without page reload." },
+            { text: "Admin coin cards: 'Invested' → 'Open cost basis' (FIFO)", status: "done", who: "AI", comment: "Session 26. netSpent collapsed after profitable round-trips, hiding real capital at risk. Now shows true open lots cost basis." },
+            { text: "Admin coin cards: 'Grid capacity' → 'Open lots N/max filled'", status: "done", who: "AI", comment: "Session 26. Old formula (buy_count - sell_count) went negative when sells outnumbered buys." },
+            { text: "Admin overview: 'Deployed' from openCost instead of netSpent", status: "done", who: "AI", comment: "Session 26. Cash + Deployed now equals Portfolio Value (mod unrealized)." },
+            { text: "Align all user-facing time references to 20:00", status: "done", who: "AI", comment: "Session 26. commentary.py, test_report.py, index.html all said 21:00 or midnight from earlier sessions." },
             { section: "Phase 2 — Trend Follower" },
             { section: "Phase 3 — AI Sentinel" },
             { section: "Phase 4 — Dashboard & Monetization" },
