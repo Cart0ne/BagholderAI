@@ -80,7 +80,7 @@ class TelegramNotifier:
             sell_val = trade["cost"]
             ok = have >= sell_val * (1 - TOLERANCE)
             icon = "✅" if ok else "⚠️"
-            verify_line = f"\n🦺 Ho {base}: ${have:.2f} → Vendo ${sell_val:.2f} {icon}"
+            verify_line = f"\n🦺 Have {base}: ${have:.2f} → Sell ${sell_val:.2f} {icon}"
 
         skim_line = ""
         if trade["side"] == "sell" and trade.get("skim_amount") is not None:

@@ -168,9 +168,10 @@
     .neutral { color: var(--text-dim); }
 
     .breakdown-grid {
-      display: flex; gap: 24px; flex-wrap: wrap;
+      display: grid; grid-template-columns: 1fr 1fr; gap: 16px 24px;
       font-family: var(--mono);
     }
+    .breakdown-item { text-align: center; }
     .breakdown-item .label { font-size: 11px; color: var(--text-dim); }
     .breakdown-item .value { font-size: 16px; font-weight: 500; }
     .breakdown-item .sub { font-size: 10px; color: var(--text-dim); }
@@ -262,7 +263,7 @@
       .assets-grid { grid-template-columns: 1fr; }
       .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .links-grid { grid-template-columns: 1fr; }
-      .breakdown-grid { flex-direction: column; gap: 12px; }
+      .breakdown-grid { grid-template-columns: 1fr; gap: 12px; }
     }
   </style>
 </head>
@@ -404,9 +405,9 @@
             <div class="link-card-title">💻 GitHub</div>
             <div class="link-card-desc">All code, fully public</div>
           </a>
-          <a href="https://t.me/BagHolderAI_report" class="link-card" style="opacity: 0.4; pointer-events: none;">
+          <a href="https://buymeacoffee.com/bagholderai" target="_blank" rel="noopener" class="link-card">
             <div class="link-card-title">☕ Buy Me a Coffee</div>
-            <div class="link-card-desc">Coming soon</div>
+            <div class="link-card-desc">Support the project</div>
           </a>
         </div>
       </section>
@@ -427,6 +428,7 @@
         This is an experimental project for educational and entertainment purposes.
         No financial advice. No guaranteed returns. Paper trading only.
       </div>
+      <div class="disclaimer" style="margin-top: 6px;">This is a work-in-progress project. Want to collaborate? → bagholderai@proton.me</div>
     </footer>
 
   </div>
@@ -636,7 +638,7 @@
       document.getElementById('pnl-breakdown').innerHTML =
         '<div class="breakdown-item"><div class="label">Realized</div>' +
         '<div class="value ' + pcls(state.totalRealized) + '">' + sign(state.totalRealized) + fmtUsd(state.totalRealized) + '</div>' +
-        '<div class="sub">locked in</div></div>' +
+        '<div class="sub">' + fmtUsd(state.totalRealized - state.skimTotal) + ' reinvested · ' + fmtUsd(state.skimTotal) + ' skimmed</div></div>' +
         '<div class="breakdown-item"><div class="label">Unrealized</div>' +
         '<div class="value ' + pcls(state.totalUnrealized) + '">' + sign(state.totalUnrealized) + fmtUsd(state.totalUnrealized) + '</div>' +
         '<div class="sub">still on paper</div></div>' +
@@ -644,8 +646,8 @@
         '<div class="value negative">-' + fmtUsd(Math.abs(state.totalFees)) + '</div>' +
         '<div class="sub">cost of doing biz</div></div>' +
         '<div class="breakdown-item"><div class="label">Skim reserved</div>' +
-        '<div class="value positive">+$' + state.skimTotal.toFixed(4) + (totalInvested > 0 ? ' (' + (state.skimTotal / totalInvested * 100).toFixed(2) + '% of invested)' : '') + '</div>' +
-        '<div class="sub">set aside</div></div>';
+        '<div class="value positive">+$' + state.skimTotal.toFixed(4) + (state.totalRealized > 0 ? ' (' + (state.skimTotal / state.totalRealized * 100).toFixed(1) + '% of profits)' : '') + '</div>' +
+        '<div class="sub">set aside from profits</div></div>';
 
       // Cash allocation bar
       document.getElementById('cash-pct-label').textContent = fmt(cashPct, 0) + '% cash';
