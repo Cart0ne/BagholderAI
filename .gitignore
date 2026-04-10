@@ -16,3 +16,6 @@ config/.mdcompletati/
 
 # Office scripts (CEO docx formatting tools)
 scripts/office/
+
+# Local machine instructions
+.instructions.md
