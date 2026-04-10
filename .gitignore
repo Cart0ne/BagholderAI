@@ -13,3 +13,6 @@ venv_office/
 
 # Completed briefs archive
 config/.mdcompletati/
+
+# Office scripts (CEO docx formatting tools)
+scripts/office/
