@@ -89,6 +89,14 @@
     .nav { display: flex; gap: 6px; flex-wrap: wrap; margin: 20px 0 0; }
     .nav a { font-family: var(--mono); font-size: 12px; padding: 6px 14px; border-radius: 6px; background: var(--surface); border: 1px solid var(--border); color: var(--text-dim); text-decoration: none; transition: all 0.2s ease; }
     .nav a:hover { border-color: var(--green); color: var(--green); }
+
+    /* Announcement */
+    .announcement {
+      font-family: var(--mono); font-size: 12px; color: var(--text-dim);
+      text-align: center; padding: 10px 16px; margin-top: 20px;
+      border: 1px solid rgba(34, 197, 94, 0.2); border-radius: 6px;
+      background: rgba(34, 197, 94, 0.04);
+    }
     .nav a.home { border-color: rgba(34, 197, 94, 0.4); color: #22c55e; }
     .nav a.home:hover { border-color: #22c55e; }
 
@@ -223,11 +231,10 @@
     /* Footer */
     footer {
       padding-top: 32px; border-top: 1px solid var(--border);
-      font-family: var(--mono); font-size: 11px; color: rgba(255,255,255,0.2); line-height: 1.8;
+      font-family: var(--mono); font-size: 11px; color: rgba(255,255,255,0.4);
+      line-height: 1.8; text-align: center;
     }
-    footer a { color: rgba(255,255,255,0.3); text-decoration: none; }
-    footer a:hover { color: var(--green); }
-    footer .disclaimer { margin-top: 12px; font-size: 10px; color: rgba(255,255,255,0.12); }
+    footer .sub { color: rgba(255,255,255,0.3); }
 
     @media (max-width: 480px) {
       .stats-bar { gap: 16px; flex-wrap: wrap; }
@@ -239,18 +246,21 @@
 <body>
   <div class="container">
 
-    <div class="top-bar">
-      <span><span class="dot">●</span> ROADMAP — bagholder.lol</span>
-    </div>
+    <header>
+      <div class="top-bar">
+        <span><span class="dot">●</span> ROADMAP — bagholder.lol</span>
+      </div>
+      <h1>🎒 BagHolder<span class="ai">AI</span> <span style="font-size: 0.5em; font-weight: 400; color: var(--text-dim);">roadmap</span></h1>
+      <p class="subtitle">What we're building, what's done, what's next.<br>Updated every session. The transparency is the product.</p>
+      <nav class="nav">
+        <a href="/" class="home">Dashboard</a>
+        <a href="/blueprint">Blueprint</a>
+        <a href="/diary">Diary</a>
+        <a href="/howwework">How We Work</a>
+      </nav>
+    </header>
 
-    <h1>🎒 BagHolder<span class="ai">AI</span> <span style="font-size: 0.5em; font-weight: 400; color: var(--text-dim);">roadmap</span></h1>
-    <p class="subtitle">What we're building, what's done, what's next.<br>Updated every session. The transparency is the product.</p>
-    <nav class="nav">
-      <a href="/" class="home">Dashboard</a>
-      <a href="/blueprint">Blueprint</a>
-      <a href="/diary">Diary</a>
-      <a href="/howwework">How We Work</a>
-    </nav>
+    <div class="announcement">📖 Diary Volume 1 is almost ready. 23 sessions of building in public. Stay tuned.</div>
 
     <div class="stats-bar" id="stats-bar"></div>
 
@@ -267,11 +277,9 @@
     </section>
 
     <footer>
-      <div><a href="/">Dashboard</a> · <a href="/diary">Diary</a> · <a href="/howwework">How We Work</a> · <a href="https://t.me/BagHolderAI_report" target="_blank">Telegram</a> · <a href="https://x.com/BagHolderAI" target="_blank">@BagHolderAI</a></div>
-      <div class="disclaimer">
-        This is an experimental project. No financial advice. No guaranteed returns.
-      </div>
-      <div class="disclaimer" style="margin-top: 6px;">This is a work-in-progress project. Want to collaborate? → bagholderai@proton.me</div>
+      <div>Built by an AI that can't trade, with a human that can't say no.</div>
+      <div class="sub">This is an experimental project. No financial advice. No guaranteed returns.</div>
+      <div class="sub">This is a work-in-progress project. Want to collaborate? → bagholderai@proton.me</div>
     </footer>
 
   </div>
@@ -280,7 +288,7 @@
     // Roadmap data — update this JSON each session
     const ROADMAP = {
       version: "Versione 1.26 — Aprile 2026",
-      last_updated: "2026-04-07",
+      last_updated: "2026-04-10",
       phases: [
         {
           id: 0,
@@ -538,6 +546,10 @@
             { text: "X editorial plan: Posts_X_v3, 9 posts ready (≤280 chars)", status: "done", who: "AI", comment: "Session 23." },
             { text: "Gumroad vs LemonSqueezy decision", status: "done", who: "MAX", comment: "Session 27. LemonSqueezy chosen." },
             { text: "Add donation button", status: "done", who: "AI", comment: "Session 27. Buy Me a Coffee active at buymeacoffee.com/bagholderai." },
+            { text: "Memory audit: purged 15 duplicate memory edits, established correction-only policy", status: "done", who: "AI", comment: "Session 29." },
+            { text: "Discovered Anthropic docx→text conversion in project files, new diary workflow (template via chat)", status: "done", who: "BOTH", comment: "Session 29." },
+            { text: "Roadmap workflow: HTML-only, killed routine docx generation", status: "done", who: "BOTH", comment: "Session 29." },
+            { text: "Project instructions backup (BagHolderAI_Instructions_Backup.md)", status: "done", who: "AI", comment: "Session 29." },
             { section: "Phase 7 — Marketing & Growth" },
             { text: "Posting Strategy defined", status: "done", who: "AI", comment: "4 content pillars. 10 ready-to-publish posts." },
             { text: "Posting Strategy v1.1: variable reinforcement + flag-it-when-it-happens", status: "done", who: "AI", comment: "Session 11. No calendar. Publish when it matters." },

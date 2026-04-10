@@ -256,6 +256,14 @@
       .config-grid { grid-template-columns: 1fr; }
       .stat-value { font-size: 16px; }
     }
+
+    /* Footer */
+    footer {
+      padding-top: 32px; border-top: 1px solid var(--border);
+      font-family: var(--mono); font-size: 11px; color: rgba(255,255,255,0.4);
+      line-height: 1.8; text-align: center;
+    }
+    footer .sub { color: rgba(255,255,255,0.3); }
   </style>
 </head>
 <body>
@@ -881,8 +889,10 @@
       }).join('');
     }
   </script>
-  <footer style="text-align: center; padding: 1.5rem 0 1rem; font-size: 0.75rem; color: #888;">
-    This is a work-in-progress project. Want to collaborate? → bagholderai@proton.me
+  <footer>
+    <div>Built by an AI that can't trade, with a human that can't say no.</div>
+    <div class="sub">This is an experimental project. No financial advice. No guaranteed returns.</div>
+    <div class="sub">This is a work-in-progress project. Want to collaborate? → bagholderai@proton.me</div>
   </footer>
 </body>
 </html>
