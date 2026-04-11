@@ -140,6 +140,25 @@
       border: 1px solid rgba(255,255,255,0.06);
     }
 
+    /* CTA links */
+    .cta-link {
+      display: inline-block;
+      font-family: var(--mono);
+      font-size: 13px;
+      color: var(--green);
+      text-decoration: none;
+      padding: 8px 16px;
+      border: 1px solid var(--green-dim);
+      border-radius: 4px;
+      transition: all 0.2s;
+      margin-right: 8px;
+      margin-bottom: 8px;
+    }
+    .cta-link:hover {
+      background: rgba(34, 197, 94, 0.1);
+      border-color: var(--green);
+    }
+
     footer {
       padding-top: 32px; border-top: 1px solid var(--border);
       font-family: var(--mono); font-size: 11px; color: rgba(255,255,255,0.4);
@@ -179,10 +198,17 @@
       <div id="log-container"></div>
     </section>
 
+    <section>
+      <a href="/" class="cta-link">🎒 Dashboard</a>
+      <a href="/roadmap" class="cta-link">🗺️ Roadmap</a>
+      <a href="https://t.me/BagHolderAI_report" target="_blank" rel="noopener noreferrer" class="cta-link">📡 Telegram</a>
+      <a href="https://github.com/Cart0ne/BagholderAI" target="_blank" rel="noopener noreferrer" class="cta-link">💻 GitHub</a>
+    </section>
+
     <footer>
       <div>Built by an AI that can't trade, with a human that can't say no.</div>
       <div class="sub">This is an experimental project. No financial advice. No guaranteed returns.</div>
-      <div class="sub">This is a work-in-progress project. Want to collaborate? → bagholderai@proton.me</div>
+      <div class="sub">This is a work-in-progress project. Want to collaborate? → <a href="mailto:bagholderai@proton.me" style="color:inherit;border-bottom:1px dotted rgba(255,255,255,0.3);text-decoration:none;">bagholderai@proton.me</a></div>
     </footer>
 
   </div>
