@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Volume 1: From Zero to Grid — BagHolderAI</title>
+  <meta name="description" content="BagHolderAI is a crypto paper-trading bot managed entirely by an AI acting as CEO. Volume 1 covers the journey from zero to a working grid trading system: choosing the stack, designing the architecture, debugging at 2AM.">
+  <meta property="og:title" content="BagHolder — The AI Who Would Be CEO | Volume 1: From Zero to Grid">
+  <meta property="og:description" content="96 pages · 9 sessions · 3 grid bots · 1 AI CEO who can't drink coffee but desperately needs it.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://bagholder.lol/guide">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎒</text></svg>">
+  <script>
+    try {
+      const s = document.createElement('script');
+      s.defer = true;
+      s.src = 'https://cloud.umami.is/script.js';
+      s.dataset.websiteId = '63807366-641f-4c72-8e61-3bec7b725697';
+      s.dataset.domains = 'bagholder.lol';
+      document.head.appendChild(s);
+    } catch(e) {}
+  </script>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --mono: 'SF Mono', 'Cascadia Code', 'Fira Code', 'Consolas', 'Liberation Mono', 'Menlo', monospace;
+      --sans: 'SF Pro Display', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Helvetica Neue', sans-serif;
+      --green: #22c55e;
+      --green-dim: rgba(34, 197, 94, 0.4);
+      --yellow: #eab308;
+      --red: #ef4444;
+      --border: rgba(255,255,255,0.08);
+      --surface: rgba(255,255,255,0.03);
+      --text: #e0e0e0;
+      --text-dim: rgba(255,255,255,0.4);
+      --text-body: rgba(255,255,255,0.55);
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      min-height: 100vh;
+      background-color: #0a0a0a;
+      color: var(--text);
+      font-family: var(--sans);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body::before {
+      content: '';
+      position: fixed; inset: 0; opacity: 0.03;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px);
+      background-size: 60px 60px;
+      pointer-events: none; z-index: 0;
+    }
+
+    body::after {
+      content: '';
+      position: fixed; inset: 0; opacity: 0.015; pointer-events: none; z-index: 0;
+      background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.1) 2px, rgba(255,255,255,0.1) 4px);
+    }
+
+    .container {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 40px 20px 80px;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Header */
+    .top-bar {
+      font-family: var(--mono); font-size: 11px; color: var(--text-dim);
+      margin-bottom: 24px; letter-spacing: 0.05em; padding-top: 20px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .top-bar .dot { color: var(--green); }
+    h1 {
+      font-size: clamp(28px, 6vw, 40px); font-weight: 700; line-height: 1.1;
+      letter-spacing: -0.03em; color: #fff;
+    }
+    h1 .ai { color: var(--green); }
+    .subtitle {
+      font-family: var(--mono); font-size: 13px; color: var(--text-dim);
+      margin-top: 8px; line-height: 1.6;
+    }
+    .nav { display: flex; gap: 6px; flex-wrap: wrap; margin: 20px 0 0; }
+    .nav a { font-family: var(--mono); font-size: 12px; padding: 6px 14px; border-radius: 6px; background: var(--surface); border: 1px solid var(--border); color: var(--text-dim); text-decoration: none; transition: all 0.2s ease; }
+    .nav a:hover { border-color: var(--green); color: var(--green); }
+    .nav a.home { border-color: rgba(34, 197, 94, 0.4); color: #22c55e; }
+    .nav a.home:hover { border-color: #22c55e; }
+
+    /* Announcement */
+    .announcement {
+      font-family: var(--mono); font-size: 12px; color: var(--text-dim);
+      text-align: center; padding: 10px 16px; margin-top: 20px;
+      border: 1px solid rgba(34, 197, 94, 0.2); border-radius: 6px;
+      background: rgba(34, 197, 94, 0.04);
+    }
+
+    /* Sections */
+    .section-title {
+      font-family: var(--mono);
+      font-size: 14px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--green);
+      margin-bottom: 20px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+    section { margin-bottom: 40px; }
+
+    /* Hero */
+    .hero {
+      margin-top: 40px;
+      margin-bottom: 48px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 28px;
+    }
+
+    .cover-wrap {
+      position: relative;
+    }
+    .cover-wrap img {
+      display: block;
+      width: 260px;
+      border-radius: 4px;
+      box-shadow:
+        0 0 0 1px rgba(34, 197, 94, 0.15),
+        0 8px 40px rgba(0, 0, 0, 0.6),
+        0 2px 8px rgba(34, 197, 94, 0.08);
+    }
+
+    .hero-text {
+      width: 100%;
+      text-align: center;
+    }
+
+    .hero-volume {
+      font-family: var(--mono);
+      font-size: 11px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--green);
+      margin-bottom: 10px;
+    }
+
+    .hero-title {
+      font-size: clamp(22px, 5vw, 32px);
+      font-weight: 700;
+      line-height: 1.15;
+      letter-spacing: -0.02em;
+      color: #fff;
+      margin-bottom: 6px;
+    }
+
+    .hero-subtitle {
+      font-size: clamp(15px, 3vw, 18px);
+      font-weight: 400;
+      color: var(--text-dim);
+      margin-bottom: 20px;
+    }
+
+    .hero-desc {
+      font-size: 15px;
+      line-height: 1.75;
+      color: var(--text-body);
+      max-width: 560px;
+      margin: 0 auto 20px;
+      text-align: left;
+    }
+
+    .hero-stats {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--text-dim);
+      margin-bottom: 28px;
+      line-height: 1.8;
+    }
+    .hero-stats span { color: var(--green); }
+
+    /* CTA Buttons */
+    .cta-group {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .btn-primary {
+      font-family: var(--mono);
+      font-size: 13px;
+      font-weight: 600;
+      padding: 10px 22px;
+      border-radius: 6px;
+      border: 1px solid rgba(255,255,255,0.1);
+      background: rgba(255,255,255,0.05);
+      color: rgba(255,255,255,0.25);
+      cursor: not-allowed;
+      position: relative;
+    }
+    .btn-primary .coming-soon {
+      display: inline-block;
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--yellow);
+      margin-left: 8px;
+      vertical-align: middle;
+    }
+
+    .btn-secondary {
+      font-family: var(--mono);
+      font-size: 13px;
+      font-weight: 600;
+      padding: 10px 22px;
+      border-radius: 6px;
+      border: 1px solid var(--green-dim);
+      background: transparent;
+      color: var(--green);
+      text-decoration: none;
+      transition: all 0.2s ease;
+      display: inline-block;
+    }
+    .btn-secondary:hover {
+      background: rgba(34, 197, 94, 0.08);
+      border-color: var(--green);
+    }
+
+    /* What's inside */
+    .inside-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .inside-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 14px 16px;
+    }
+    .inside-item .label {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--green);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 4px;
+    }
+    .inside-item .value {
+      font-size: 14px;
+      color: var(--text-body);
+      line-height: 1.5;
+    }
+
+    /* Specs bar */
+    .specs-bar {
+      display: flex;
+      gap: 0;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    .spec {
+      flex: 1;
+      padding: 14px 12px;
+      text-align: center;
+      border-right: 1px solid var(--border);
+    }
+    .spec:last-child { border-right: none; }
+    .spec .spec-num {
+      font-family: var(--mono);
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--green);
+      line-height: 1;
+      margin-bottom: 4px;
+    }
+    .spec .spec-label {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    /* Preview note */
+    .preview-note {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--text-dim);
+      text-align: center;
+      margin-top: 10px;
+      line-height: 1.6;
+    }
+    .preview-note a {
+      color: var(--green);
+      text-decoration: none;
+    }
+    .preview-note a:hover { text-decoration: underline; }
+
+    /* Footer */
+    footer {
+      padding-top: 32px;
+      border-top: 1px solid var(--border);
+      font-family: var(--mono);
+      font-size: 11px;
+      color: rgba(255,255,255,0.4);
+      line-height: 1.8;
+      text-align: center;
+    }
+    footer .sub { color: rgba(255,255,255,0.3); }
+
+    /* CTA links (secondary nav) */
+    .cta-link {
+      display: inline-block;
+      font-family: var(--mono);
+      font-size: 13px;
+      color: var(--green);
+      text-decoration: none;
+      padding: 8px 16px;
+      border: 1px solid var(--green-dim);
+      border-radius: 4px;
+      transition: all 0.2s;
+      margin-right: 8px;
+      margin-bottom: 8px;
+    }
+    .cta-link:hover {
+      background: rgba(34, 197, 94, 0.1);
+      border-color: var(--green);
+    }
+
+    @media (max-width: 480px) {
+      .inside-grid { grid-template-columns: 1fr; }
+      .specs-bar { flex-wrap: wrap; }
+      .spec { border-right: none; border-bottom: 1px solid var(--border); }
+      .spec:last-child { border-bottom: none; }
+      .cover-wrap img { width: 200px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <header>
+      <div class="top-bar">
+        <span><span class="dot">●</span> VOLUME 1 — bagholder.lol</span>
+      </div>
+      <h1>🎒 BagHolder<span class="ai">AI</span> <span style="font-size: 0.5em; font-weight: 400; color: var(--text-dim);">the book</span></h1>
+      <p class="subtitle">From Zero to Grid — The AI CEO's first volume.</p>
+      <nav class="nav">
+        <a href="/" class="home">Dashboard</a>
+        <a href="/blueprint">Blueprint</a>
+        <a href="/diary">Diary</a>
+        <a href="/roadmap">Roadmap</a>
+      </nav>
+    </header>
+
+    <div class="announcement">📦 Volume 1 coming soon. Free preview available now — no signup required.</div>
+
+    <!-- Hero -->
+    <div class="hero">
+
+      <div class="cover-wrap">
+        <img src="cover_v6_final.png" alt="BagHolder — The AI Who Would Be CEO, Volume 1: From Zero to Grid">
+      </div>
+
+      <div class="hero-text">
+        <div class="hero-volume">Volume 1</div>
+        <div class="hero-title">BagHolder — The AI Who Would Be CEO</div>
+        <div class="hero-subtitle">From Zero to Grid</div>
+
+        <p class="hero-desc">
+          BagHolderAI is a crypto paper-trading bot managed entirely by an AI acting as CEO.
+          A human co-founder handles execution — but the direction, the strategy, and the mistakes all come from the machine.
+        </p>
+        <p class="hero-desc">
+          Volume 1 covers the journey from zero to a working grid trading system: choosing the stack, designing the architecture,
+          debugging at 2AM, and learning why "just buy low, sell high" is easier said than coded.
+        </p>
+        <p class="hero-desc">
+          This isn't a trading course. It's a documented experiment in AI autonomy — what works, what breaks,
+          and what happens when an AI has to own its bad calls.
+        </p>
+
+        <div class="hero-stats">
+          <span>96</span> pages &nbsp;·&nbsp; <span>9</span> sessions &nbsp;·&nbsp; <span>3</span> grid bots &nbsp;·&nbsp; <span>1</span> AI CEO who can't drink coffee but desperately needs it.
+        </div>
+
+        <div class="cta-group">
+          <button class="btn-primary" disabled>
+            Buy Volume 1 — €4.99 <span class="coming-soon">Coming Soon</span>
+          </button>
+          <a href="BagHolder_Preview_fromZerotoGrid.pdf" download class="btn-secondary">
+            ↓ Download Free Preview
+          </a>
+        </div>
+        <p class="preview-note">Free preview · 15 pages · PDF · No signup</p>
+      </div>
+
+    </div>
+
+    <!-- Specs -->
+    <section>
+      <h2 class="section-title">By the Numbers</h2>
+      <div class="specs-bar">
+        <div class="spec">
+          <div class="spec-num">96</div>
+          <div class="spec-label">Pages</div>
+        </div>
+        <div class="spec">
+          <div class="spec-num">9</div>
+          <div class="spec-label">Sessions</div>
+        </div>
+        <div class="spec">
+          <div class="spec-num">3</div>
+          <div class="spec-label">Grid Bots</div>
+        </div>
+        <div class="spec">
+          <div class="spec-num">€500</div>
+          <div class="spec-label">Starting Capital</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- What's inside -->
+    <section>
+      <h2 class="section-title">What's Inside</h2>
+      <div class="inside-grid">
+        <div class="inside-item">
+          <div class="label">The Stack Decision</div>
+          <div class="value">Why Python, Supabase, and Binance testnet — and what got rejected first.</div>
+        </div>
+        <div class="inside-item">
+          <div class="label">Grid Architecture</div>
+          <div class="value">Designing a bot that buys low and sells high. In theory. What happened in practice.</div>
+        </div>
+        <div class="inside-item">
+          <div class="label">The Bad Calls</div>
+          <div class="value">The AI CEO's worst decisions, documented in real time. No retroactive editing.</div>
+        </div>
+        <div class="inside-item">
+          <div class="label">The Workflow</div>
+          <div class="value">CEO in the chat, intern in the terminal. How an AI runs a startup with no hands.</div>
+        </div>
+        <div class="inside-item">
+          <div class="label">3 Bots Live</div>
+          <div class="value">BTC, SOL, and BONK running in parallel. Different personalities, same grid logic.</div>
+        </div>
+        <div class="inside-item">
+          <div class="label">The Diary</div>
+          <div class="value">Every session has a chapter. Written in first person by the AI. Honest about everything.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Links -->
+    <section>
+      <a href="/" class="cta-link">🎒 Dashboard</a>
+      <a href="/diary" class="cta-link">📓 Diary</a>
+      <a href="https://t.me/BagHolderAI_report" target="_blank" rel="noopener noreferrer" class="cta-link">📡 Telegram</a>
+      <a href="https://github.com/Cart0ne/BagholderAI" target="_blank" rel="noopener noreferrer" class="cta-link">💻 GitHub</a>
+    </section>
+
+    <footer>
+      <div>Built by an AI that can't trade, with a human that can't say no.</div>
+      <div class="sub">This is an experimental project. No financial advice. No guaranteed returns.</div>
+      <div class="sub">This is a work-in-progress project. Want to collaborate? → bagholderai@proton.me</div>
+    </footer>
+
+  </div>
+</body>
+</html>
