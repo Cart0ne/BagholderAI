@@ -314,8 +314,8 @@
   <script>
     // Roadmap data — update this JSON each session
     const ROADMAP = {
-      version: "Versione 1.26 — Aprile 2026",
-      last_updated: "2026-04-10",
+      version: "Versione 1.27 — Aprile 2026",
+      last_updated: "2026-04-11",
       phases: [
         {
           id: 0,
@@ -365,14 +365,19 @@
           title: "Trend Follower",
           timeframe: "Weeks 3-4",
           status: "active",
-          description: "Adds directional intelligence. Adjusts the grid based on market trend.",
+          description: "Three-layer architecture: Trend Follower (brain) → Runner (manager) → Grid Bot (executor). Designed in Session 31, spec v1 closed.",
           tasks: [
-            { text: "EMA, RSI, Volume indicators", status: "todo", who: "AI" },
-            { text: "Trend Follower ↔ Grid Bot interaction", status: "todo", who: "AI" },
+            { text: "EMA, RSI, Volume indicators", status: "done", who: "AI", comment: "Session 31. EMA 20/50 + RSI 14 + ATR 14 on 4h candles. Spec v1." },
+            { text: "Trend Follower ↔ Grid Bot interaction", status: "done", who: "AI", comment: "Session 31. TF writes to bot_config, grid reads. Bullish/bearish/sideways grid profiles defined." },
             { text: "Parameter calibration from data", status: "todo", who: "BOTH" },
             { text: "Dashboard: Trend Follower status", status: "todo", who: "AI" },
-            { text: "Human cooldown override on bot_config (architecture)", status: "todo", who: "BOTH" },
-            { text: "Dynamic symbol orchestrator (spawn/kill runner from bot_config)", status: "todo", who: "AI" },
+            { text: "Human cooldown override on bot_config (architecture)", status: "done", who: "BOTH", comment: "Session 31. 48h per-coin veto. managed_by + manual_override_until columns live." },
+            { text: "Runner/Orchestrator process manager", status: "todo", who: "AI" },
+            { text: "Supabase schema: trend_config, coin_tiers, trend_decisions_log", status: "done", who: "AI", comment: "Session 31. Phase A complete." },
+            { text: "Coin tier system (T1/T2/T3 allocation limits)", status: "done", who: "AI", comment: "Session 31. BTC/ETH 40%, top 20 20%, rest 10%." },
+            { text: "Scanner: top 50 coins by volume + signal classifier", status: "todo", who: "AI" },
+            { text: "Allocator: select top 5, respect tiers, write bot_config", status: "todo", who: "AI" },
+            { text: "Auto-clean policy for trend_decisions_log (90 days)", status: "todo", who: "AI" },
           ]
         },
         {
@@ -407,7 +412,7 @@
             { text: "Telegram bot (reports only, never signals)", status: "done", who: "BOTH", comment: "MiFID II compliance. Transparency, not advice." },
             { text: "Volume 1 (Fase 0+1): outline, packaging, cover art", status: "todo", who: "BOTH" },
             { text: "Setup payment platform (Gumroad or LemonSqueezy)", status: "todo", who: "MAX" },
-            { text: "Landing page /guide on bagholder.lol", status: "todo", who: "AI" },
+            { text: "Landing page /guide on bagholder.lol", status: "done", who: "AI", comment: "Session 30. Cover, description, preview PDF download, disabled buy button (LemonSqueezy overlay tested — pending account activation)." },
             { text: "Italian preface (Max writes, AI translates)", status: "done", who: "BOTH", comment: "Session 25. Max wrote IT, CEO translated EN." },
             { text: "Blueprint translation (IT→EN)", status: "done", who: "AI", comment: "Session 25. Faithful translation, historical document." },
             { text: "CEO Introduction for Volume 1", status: "done", who: "AI", comment: "Session 25." },
@@ -596,6 +601,9 @@
             { text: "Telegram sell message translated to English", status: "done", who: "AI", comment: "Session 27." },
             { text: "P&L breakdown redesign: realized split (reinvested/skimmed), skim % of profits, 2×2 grid layout", status: "done", who: "AI", comment: "Session 27." },
             { text: "Footer disclaimer on all pages (WIP + contact email)", status: "done", who: "AI", comment: "Session 27." },
+            { text: "Cover image optimized for web (4.3MB PNG → 54KB JPEG)", status: "done", who: "AI", comment: "Session 30. sips resize 600px, quality 85." },
+            { text: "Umami: data-domains restricted to bagholder.lol (no local dev tracking)", status: "done", who: "AI", comment: "Session 30. All 6 pages updated." },
+            { text: "Uniform bottom bar on all pages + footer mailto link", status: "done", who: "AI", comment: "Session 30. Consistent cta-link bar before footer on all 7 pages." },
           ]
         },
       ]
