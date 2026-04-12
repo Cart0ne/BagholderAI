@@ -492,3 +492,8 @@ class SyncTelegramNotifier:
         except Exception as e:
             logger.warning(f"Telegram public daily report exception: {e}")
             return False
+
+    def send_tf_error(self, error_msg: str) -> bool:
+        """Send a Trend Follower error alert."""
+        text = f"🚨 <b>TREND FOLLOWER ERROR</b>\n<code>{error_msg[:300]}</code>"
+        return self.send_message(text)
