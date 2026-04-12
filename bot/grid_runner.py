@@ -86,6 +86,8 @@ def _sync_config_to_bot(reader: "SupabaseConfigReader", bot: "GridBot", symbol: 
         bot.skim_pct = float(sb_cfg["skim_pct"])
     if "idle_reentry_hours" in sb_cfg and sb_cfg["idle_reentry_hours"] is not None:
         bot.idle_reentry_hours = float(sb_cfg["idle_reentry_hours"])
+    if "is_active" in sb_cfg:
+        bot.is_active = bool(sb_cfg["is_active"])
 
 
 def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = False):
@@ -200,6 +202,17 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
         logger.error(f"Failed to fetch price: {e}")
         return
 
+    # Load exchange filters for order validation + cache to Supabase
+    from utils.exchange_filters import fetch_filters, fetch_and_cache_filters
+    try:
+        filters = fetch_filters(exchange, cfg.symbol)
+        bot.set_exchange_filters(filters)
+        # Cache filters for all grid instances (first bot to start does this)
+        all_symbols = [inst.symbol for inst in GRID_INSTANCES]
+        fetch_and_cache_filters(exchange, all_symbols, supabase_client=trade_logger.client if trade_logger else None)
+    except Exception as e:
+        logger.warning(f"[{cfg.symbol}] Could not load exchange filters: {e}")
+
     bot.setup_grid(price)
     if cfg.grid_mode == "percentage":
         bot.init_percentage_state_from_db()
@@ -265,6 +278,14 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
 
             # Sync dynamic config fields from Supabase reader to bot
             _sync_config_to_bot(config_reader, bot, cfg.symbol)
+
+            # Graceful shutdown if is_active=false in Supabase
+            if not bot.is_active:
+                logger.info(f"[{cfg.symbol}] is_active=false — shutting down gracefully")
+                notifier.send_message(
+                    f"🛑 <b>{cfg.symbol} grid bot stopped</b> (is_active=false)"
+                )
+                break
 
             price = fetch_price(exchange, cfg.symbol)
 
