@@ -899,6 +899,10 @@ class GridBot:
         if not self._pct_open_positions:
             return None
 
+        if self.state.holdings <= 0:
+            logger.info(f"No holdings left to sell {self.symbol}, skipping pct sell.")
+            return None
+
         # Resolve the lot first so guards can reference the actual lot price
         lot = self._pct_open_positions[0]
         lot_buy_price = lot["price"]
