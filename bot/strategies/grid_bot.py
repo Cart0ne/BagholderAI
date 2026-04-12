@@ -108,6 +108,8 @@ class GridBot:
         self.reserve_ledger = reserve_ledger
         self.skim_pct = skim_pct
         self.idle_reentry_hours = idle_reentry_hours
+        self.is_active: bool = True  # controlled via Supabase bot_config
+        self._exchange_filters: dict = {}  # populated at startup via set_exchange_filters()
         self.state: Optional[GridState] = None
         self._daily_trade_count = 0
         self._daily_date = datetime.utcnow().date()
@@ -148,6 +150,10 @@ class GridBot:
         if price >= 0.0001:
             return 6
         return 8
+
+    def set_exchange_filters(self, filters: dict):
+        """Store exchange filters for order validation."""
+        self._exchange_filters = filters
 
     def setup_grid(self, current_price: float) -> GridState:
         """
@@ -355,8 +361,11 @@ class GridBot:
                         dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
                     self._last_trade_time = dt
                     self._idle_logged_hour = -1  # reset so first eval logs immediately
+                    logger.info(f"[{self.symbol}] Restored _last_trade_time = {dt:%Y-%m-%d %H:%M:%S} UTC")
             except Exception:
                 pass
+        else:
+            logger.info(f"[{self.symbol}] No v3 trades found — _last_trade_time stays None")
 
         # Reconstruct cash accounting + holdings so sell logic fires correctly
         if self.state:
@@ -760,7 +769,9 @@ class GridBot:
 
         # --- IDLE RE-ENTRY CHECK ---
         # If holdings are 0 and price hasn't dropped enough for too long, force a re-entry.
-        if (self.state.holdings <= 0
+        # Guard: do NOT re-enter if bot has been deactivated via is_active=false.
+        if (self.is_active
+                and self.state.holdings <= 0
                 and self._pct_last_buy_price > 0
                 and self._last_trade_time is not None
                 and self.idle_reentry_hours > 0):
@@ -839,6 +850,17 @@ class GridBot:
             return None
 
         amount = cost / price
+
+        # Round to valid step size and validate against exchange filters
+        if self._exchange_filters:
+            from utils.exchange_filters import round_to_step, validate_order
+            amount = round_to_step(amount, self._exchange_filters["lot_step_size"])
+            valid, reason_reject = validate_order(self.symbol, amount, price, self._exchange_filters)
+            if not valid:
+                logger.warning(f"[{self.symbol}] BUY order rejected: {reason_reject}")
+                return None
+            cost = amount * price  # recalculate cost after rounding
+
         fee = cost * self.FEE_RATE
 
         old_last_buy = self._pct_last_buy_price
@@ -943,6 +965,15 @@ class GridBot:
                 "holdings": self.state.holdings,
             })
             return None
+
+        # Round to valid step size and validate against exchange filters
+        if self._exchange_filters:
+            from utils.exchange_filters import round_to_step, validate_order
+            amount = round_to_step(amount, self._exchange_filters["lot_step_size"])
+            valid, reason_reject = validate_order(self.symbol, amount, price, self._exchange_filters)
+            if not valid:
+                logger.warning(f"[{self.symbol}] SELL order rejected: {reason_reject}")
+                return None
 
         revenue = amount * price
         fee = revenue * self.FEE_RATE
