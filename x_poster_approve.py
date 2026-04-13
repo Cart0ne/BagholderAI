@@ -30,6 +30,7 @@ from utils.x_poster import (
     mark_as_posted,
     already_posted_today,
     log_post,
+    DEFAULT_SIGNATURE,
 )
 
 PENDING_FILE = "/tmp/pending_x_post.json"
@@ -69,7 +70,7 @@ async def cmd_approve(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     draft = pending["draft"]
-    signature = pending.get("signature", "🤖 AI")
+    signature = pending.get("signature", DEFAULT_SIGNATURE)
     session = pending["session"]
 
     url = post_to_x(draft, signature=signature)
@@ -122,7 +123,7 @@ async def cmd_rewrite(update: Update, context: ContextTypes.DEFAULT_TYPE):
     with open(PENDING_FILE, "w") as f:
         json.dump(pending, f, indent=2)
 
-    full_text = f"{new_draft}\n\n{pending.get('signature', '🤖 AI')}"
+    full_text = f"{new_draft}\n\n{pending.get('signature', DEFAULT_SIGNATURE)}"
     char_count = len(full_text)
 
     await update.message.reply_text(
@@ -130,7 +131,7 @@ async def cmd_rewrite(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"\n"
         f"{new_draft}\n"
         f"\n"
-        f"🤖 AI\n"
+        f"{DEFAULT_SIGNATURE}\n"
         f"\n"
         f"📏 {char_count}/270 chars\n"
         f"\n"
@@ -146,13 +147,13 @@ async def cmd_xstatus(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     pending = load_pending()
     if pending:
-        full_text = f"{pending['draft']}\n\n{pending.get('signature', '🤖 AI')}"
+        full_text = f"{pending['draft']}\n\n{pending.get('signature', DEFAULT_SIGNATURE)}"
         await update.message.reply_text(
             f"📋 Post in attesa (Session {pending['session']}):\n"
             f"\n"
             f"{pending['draft']}\n"
             f"\n"
-            f"🤖 AI\n"
+            f"{DEFAULT_SIGNATURE}\n"
             f"\n"
             f"📏 {len(full_text)}/270 chars\n"
             f"Comandi: /approve · /discard · /rewrite"

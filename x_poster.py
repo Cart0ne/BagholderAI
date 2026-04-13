@@ -35,6 +35,7 @@ from utils.x_poster import (
     mark_as_posted,
     already_posted_today,
     log_post,
+    DEFAULT_SIGNATURE,
 )
 from utils.telegram_notifier import SyncTelegramNotifier
 
@@ -98,13 +99,13 @@ def cmd_cron(args):
         "summary": summary,
         "draft": draft,
         "generated_at": datetime.now(timezone.utc).isoformat(),
-        "signature": "🤖 AI",
+        "signature": DEFAULT_SIGNATURE,
     }
     with open(PENDING_FILE, "w") as f:
         json.dump(pending, f, indent=2)
 
     # Calculate char count with signature
-    full_text = f"{draft}\n\n🤖 AI"
+    full_text = f"{draft}\n\n{DEFAULT_SIGNATURE}"
     char_count = len(full_text)
 
     # Notify Telegram
@@ -114,7 +115,7 @@ def cmd_cron(args):
         f"\n"
         f"{draft}\n"
         f"\n"
-        f"🤖 AI\n"
+        f"{DEFAULT_SIGNATURE}\n"
         f"\n"
         f"📏 {char_count}/270 chars\n"
         f"\n"
@@ -137,7 +138,7 @@ def cmd_generate_only(args):
 
     print(f"--- Session {session}: {title} ---")
     draft = generate_post(summary, title)
-    full_text = f"{draft}\n\n🤖 AI"
+    full_text = f"{draft}\n\n{DEFAULT_SIGNATURE}"
     print(f"\n{draft}")
     print(f"\n📏 {len(full_text)}/280 chars (con firma)")
 
@@ -149,7 +150,7 @@ def main():
     group.add_argument("--text", type=str, help="CLI mode: post exact text immediately")
     group.add_argument("--generate-only", action="store_true", help="Generate draft only (no post)")
 
-    parser.add_argument("--sig", type=str, default="🤖 AI", help="Signature (default: 🤖 AI)")
+    parser.add_argument("--sig", type=str, default=DEFAULT_SIGNATURE, help=f"Signature (default: {DEFAULT_SIGNATURE})")
     parser.add_argument("--image", type=str, default=None, help="Image path to attach")
     parser.add_argument("--force", action="store_true", help="Override anti-dupe check")
 

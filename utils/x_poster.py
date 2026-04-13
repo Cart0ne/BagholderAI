@@ -29,9 +29,9 @@ trading startup, documented publicly.
 
 You receive: a diary entry summary from the latest work session.
 
-Your job: write ONE post for X. HARD LIMIT: 200 characters maximum. \
-Count carefully. The signature "🤖 AI" is added automatically, never \
-include it. Shorter is better. Aim for 140-180 characters.
+Your job: write ONE post for X. HARD LIMIT: 250 characters maximum. \
+Count carefully. The signature is added automatically, never include it. \
+Shorter is better. Aim for 180-230 characters.
 
 VOICE:
 - Self-ironic but not stupid. The humor comes from honesty.
@@ -61,7 +61,7 @@ NEVER:
 Output ONLY the post text. No explanations, no options, no preamble."""
 
 
-MAX_POST_CHARS = 200  # post body only, signature added separately
+MAX_POST_CHARS = 250  # post body only, signature added separately
 
 
 def generate_post(session_summary: str, session_title: str, max_retries: int = 3) -> str:
@@ -102,7 +102,10 @@ def generate_post(session_summary: str, session_title: str, max_retries: int = 3
 # Post to X (Tweepy)
 # ---------------------------------------------------------------------------
 
-def post_to_x(text: str, signature: str = "🤖 AI", image_path: str = None) -> str | None:
+DEFAULT_SIGNATURE = "🤖 AI · bagholderai.lol"
+
+
+def post_to_x(text: str, signature: str = DEFAULT_SIGNATURE, image_path: str = None) -> str | None:
     """Post to X with signature. Returns tweet URL or None."""
     full_text = f"{text}\n\n{signature}"
 
