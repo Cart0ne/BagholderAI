@@ -173,8 +173,13 @@ def _make_decision(
             "ema_slow": coin.get("ema_slow", 0),
             "rsi": coin.get("rsi", 0),
             "atr": coin.get("atr", 0),
-            "signal": coin.get("signal", ""),
+            "signal": coin.get("signal", "NO_SIGNAL"),
             "signal_strength": coin.get("signal_strength", 0),
+        })
+    else:
+        d.update({
+            "ema_fast": 0, "ema_slow": 0, "rsi": 0, "atr": 0,
+            "signal": "NO_SIGNAL", "signal_strength": 0,
         })
     if config_snapshot:
         d["config_snapshot"] = config_snapshot
