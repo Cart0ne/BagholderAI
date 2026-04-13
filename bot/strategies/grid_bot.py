@@ -775,11 +775,15 @@ class GridBot:
                     if trade:
                         trades.append(trade)
 
-        # --- IDLE RE-ENTRY CHECK ---
-        # If holdings are 0 and price hasn't dropped enough for too long, force a re-entry.
-        # Guard: do NOT re-enter if bot has been deactivated via is_active=false.
+        # --- IDLE RE-ENTRY / RECALIBRATE CHECK ---
+        # After idle_reentry_hours of inactivity:
+        #   holdings <= 0 → force a re-entry buy at market (existing behaviour)
+        #   holdings >  0 → recalibrate: reset buy reference to current price
+        #                   so the next cycle can evaluate a normal buy.
+        #                   This unsticks bots with dust residuals that keep
+        #                   holdings > 0 forever, blocking the original idle path.
+        # Guard: do NOT act if bot has been deactivated via is_active=false.
         if (self.is_active
-                and self.state.holdings <= 0
                 and self._pct_last_buy_price > 0
                 and self._last_trade_time is not None
                 and self.idle_reentry_hours > 0):
@@ -788,8 +792,9 @@ class GridBot:
             elapsed_h = int(elapsed)
             if elapsed_h != self._idle_logged_hour:
                 self._idle_logged_hour = elapsed_h
+                mode = "RE-ENTRY" if self.state.holdings <= 0 else "RECALIBRATE"
                 logger.info(
-                    f"[{self.symbol}] IDLE RE-ENTRY CHECK: "
+                    f"[{self.symbol}] IDLE {mode} CHECK: "
                     f"elapsed={elapsed:.2f}h / threshold={self.idle_reentry_hours}h "
                     f"| last_trade={self._last_trade_time:%Y-%m-%d %H:%M:%S} UTC "
                     f"| ref_price={fmt_price(self._pct_last_buy_price)} "
@@ -797,20 +802,38 @@ class GridBot:
                     f"| will_fire={'YES' if elapsed >= self.idle_reentry_hours else 'NOT YET'}"
                 )
             if elapsed >= self.idle_reentry_hours:
-                logger.info(
-                    f"[{self.symbol}] Idle re-entry after {elapsed:.1f}h: "
-                    f"resetting reference from {fmt_price(self._pct_last_buy_price)} "
-                    f"to {fmt_price(current_price)}"
-                )
-                self.idle_reentry_alerts.append({
-                    "symbol": self.symbol,
-                    "elapsed_hours": elapsed,
-                    "reference_price": current_price,
-                })
-                self._pct_last_buy_price = 0  # triggers "first buy at market" reason in execute_buy
-                trade = self._execute_percentage_buy(current_price)
-                if trade:
-                    trades.append(trade)
+                if self.state.holdings <= 0:
+                    # --- Path A: no holdings → force re-entry buy ---
+                    logger.info(
+                        f"[{self.symbol}] Idle re-entry after {elapsed:.1f}h: "
+                        f"resetting reference from {fmt_price(self._pct_last_buy_price)} "
+                        f"to {fmt_price(current_price)}"
+                    )
+                    self.idle_reentry_alerts.append({
+                        "symbol": self.symbol,
+                        "elapsed_hours": elapsed,
+                        "reference_price": current_price,
+                    })
+                    self._pct_last_buy_price = 0  # triggers "first buy at market" reason in execute_buy
+                    trade = self._execute_percentage_buy(current_price)
+                    if trade:
+                        trades.append(trade)
+                else:
+                    # --- Path B: holdings > 0 → recalibrate buy reference ---
+                    logger.info(
+                        f"[{self.symbol}] Idle recalibrate after {elapsed:.1f}h: "
+                        f"resetting buy reference from {fmt_price(self._pct_last_buy_price)} "
+                        f"to {fmt_price(current_price)} (holdings={self.state.holdings:.6f})"
+                    )
+                    self.idle_reentry_alerts.append({
+                        "symbol": self.symbol,
+                        "elapsed_hours": elapsed,
+                        "reference_price": current_price,
+                        "recalibrate": True,
+                    })
+                    self._pct_last_buy_price = current_price
+                    self._last_trade_time = datetime.utcnow()
+                    self._idle_logged_hour = -1
 
         return trades
 

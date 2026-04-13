@@ -304,15 +304,23 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
             # Run grid logic
             trades = bot.check_price_and_execute(price)
 
-            # Idle re-entry alert: send BEFORE trade alerts so context arrives first
+            # Idle re-entry / recalibrate alert: send BEFORE trade alerts so context arrives first
             for alert in bot.idle_reentry_alerts:
                 base = alert["symbol"].split("/")[0] if "/" in alert["symbol"] else alert["symbol"]
-                notifier.send_message(
-                    f"⏰ <b>IDLE RE-ENTRY: {base}</b>\n"
-                    f"After {alert['elapsed_hours']:.1f}h idle, new reference: "
-                    f"{fmt_price(alert['reference_price'])}\n"
-                    f"Buying at market..."
-                )
+                if alert.get("recalibrate"):
+                    notifier.send_message(
+                        f"🔄 <b>IDLE RECALIBRATE: {base}</b>\n"
+                        f"After {alert['elapsed_hours']:.1f}h idle, buy reference reset to "
+                        f"{fmt_price(alert['reference_price'])}\n"
+                        f"Holdings still open — waiting for next buy signal."
+                    )
+                else:
+                    notifier.send_message(
+                        f"⏰ <b>IDLE RE-ENTRY: {base}</b>\n"
+                        f"After {alert['elapsed_hours']:.1f}h idle, new reference: "
+                        f"{fmt_price(alert['reference_price'])}\n"
+                        f"Buying at market..."
+                    )
 
             # Log trades
             if trades:
