@@ -718,6 +718,7 @@
             '<div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-bottom:8px;">PARAMETERS</div>' +
             '<div class="param-group-label">Trading Parameters</div>' +
             '<div class="config-grid">' +
+              configField(short, 'capital_allocation', 'Allocation ($)', cfg.capital_allocation) +
               configField(short, 'capital_per_trade', '$/Trade', cfg.capital_per_trade) +
               configField(short, 'skim_pct', 'Skim % (profit reserve)', cfg.skim_pct) +
             '</div>' +
@@ -732,7 +733,6 @@
             '<div class="param-group-label" id="fixed-label-' + short + '">Fixed Grid</div>' +
             '<div class="fixed-grid-fields' + (cfg.grid_mode === 'percentage' ? ' dimmed' : '') + '" id="fixed-fields-' + short + '">' +
               '<div class="config-grid">' +
-                configField(short, 'capital_allocation', 'Allocation ($)', cfg.capital_allocation) +
                 configField(short, 'grid_levels', 'Grid levels', cfg.grid_levels) +
                 configField(short, 'grid_lower', 'Grid lower', cfg.grid_lower) +
                 configField(short, 'grid_upper', 'Grid upper', cfg.grid_upper) +
