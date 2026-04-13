@@ -143,7 +143,15 @@ def post_to_x(text: str, signature: str = DEFAULT_SIGNATURE, image_path: str = N
         logger.info(f"Posted to X: {url}")
         return url
     except tweepy.TweepyException as e:
-        logger.error(f"Tweepy error: {e}")
+        err = str(e).lower()
+        if "402" in err or "payment required" in err or "credits" in err:
+            logger.error("X API credits exhausted. Top up at developer.x.com → Billing.")
+        elif "403" in err:
+            logger.error("X API permission denied. Check app has Write access and regenerate tokens.")
+        elif "429" in err or "rate limit" in err:
+            logger.error("X API rate limited. Try again later.")
+        else:
+            logger.error(f"Tweepy error: {e}")
         return None
 
 
