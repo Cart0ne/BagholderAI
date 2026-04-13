@@ -86,6 +86,8 @@ def _sync_config_to_bot(reader: "SupabaseConfigReader", bot: "GridBot", symbol: 
         bot.skim_pct = float(sb_cfg["skim_pct"])
     if "idle_reentry_hours" in sb_cfg and sb_cfg["idle_reentry_hours"] is not None:
         bot.idle_reentry_hours = float(sb_cfg["idle_reentry_hours"])
+    if "profit_target_pct" in sb_cfg and sb_cfg["profit_target_pct"] is not None:
+        bot.min_profit_pct = float(sb_cfg["profit_target_pct"])
     if "is_active" in sb_cfg:
         bot.is_active = bool(sb_cfg["is_active"])
 
@@ -113,6 +115,8 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
                 cfg.buy_pct = float(sb_cfg["buy_pct"])
             if sb_cfg.get("sell_pct") is not None:
                 cfg.sell_pct = float(sb_cfg["sell_pct"])
+            if sb_cfg.get("profit_target_pct") is not None:
+                cfg.min_profit_pct = float(sb_cfg["profit_target_pct"])
             if sb_cfg.get("grid_mode") is not None:
                 cfg.grid_mode = sb_cfg["grid_mode"]
             gl = sb_cfg.get("grid_lower")
