@@ -40,6 +40,14 @@ class TelegramConfig:
     PUBLIC_CHAT_ID = os.getenv("TELEGRAM_PUBLIC_CHAT_ID", "")
 
 
+# === X / Twitter Configuration ===
+class XConfig:
+    API_KEY = os.getenv("X_API_KEY", "")
+    API_SECRET = os.getenv("X_API_SECRET", "")
+    ACCESS_TOKEN = os.getenv("X_ACCESS_TOKEN", "")
+    ACCESS_SECRET = os.getenv("X_ACCESS_SECRET", "")
+
+
 # === AI Sentinel Configuration ===
 class SentinelConfig:
     ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
