@@ -123,6 +123,7 @@ class GridBot:
         # Percentage mode state
         self._pct_last_buy_price: float = 0.0
         self._pct_open_positions: list = []  # FIFO: [{"amount": float, "price": float}, ...]
+        self._self_heal_attempted: bool = False  # prevents repeated futile self-heal calls
 
     def _available_cash(self) -> float:
         """
@@ -362,9 +363,18 @@ class GridBot:
                     dt = datetime.fromisoformat(dt_str.replace("Z", "+00:00"))
                     if dt.tzinfo is not None:
                         dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
-                    self._last_trade_time = dt
-                    self._idle_logged_hour = -1  # reset so first eval logs immediately
-                    logger.info(f"[{self.symbol}] Restored _last_trade_time = {dt:%Y-%m-%d %H:%M:%S} UTC")
+                    # Only overwrite if DB value is newer than in-memory value.
+                    # The idle-recalibrate path sets _last_trade_time = utcnow() without
+                    # writing to DB; the self-heal re-init must not clobber that.
+                    if self._last_trade_time is None or dt > self._last_trade_time:
+                        self._last_trade_time = dt
+                        self._idle_logged_hour = -1  # reset so first eval logs immediately
+                        logger.info(f"[{self.symbol}] Restored _last_trade_time = {dt:%Y-%m-%d %H:%M:%S} UTC")
+                    else:
+                        logger.info(
+                            f"[{self.symbol}] DB _last_trade_time ({dt:%Y-%m-%d %H:%M:%S}) "
+                            f"older than in-memory ({self._last_trade_time:%Y-%m-%d %H:%M:%S}), keeping in-memory"
+                        )
             except Exception:
                 pass
         else:
@@ -706,14 +716,22 @@ class GridBot:
         # Iterate ALL open lots; sell any whose trigger is hit.
         # FIFO order: among triggered lots, sell oldest first.
         # A lot can sell even if an older lot hasn't triggered yet.
-        if self.state.holdings > 0 and not self._pct_open_positions:
+        if self.state.holdings > 0 and not self._pct_open_positions and not self._self_heal_attempted:
             # Self-heal: holdings exist but open-positions queue is empty → state diverged.
             # Re-init from DB so the sell check can fire correctly.
+            # Only attempt once: if DB replay still yields no positions (e.g. dust residual),
+            # retrying every cycle is futile and clobbers in-memory state set by idle recalibrate.
+            self._self_heal_attempted = True
             logger.warning(
                 f"[{self.symbol}] WARN: holdings={self.state.holdings:.6f} ma _pct_open_positions è vuota. "
                 f"Re-init dal DB..."
             )
             self.init_percentage_state_from_db()
+            if not self._pct_open_positions:
+                logger.warning(
+                    f"[{self.symbol}] Self-heal: DB replay still yielded no open positions (dust residual). "
+                    f"Will not retry until next real trade."
+                )
 
         if self.state.holdings > 0 and self._pct_open_positions:
             lots_to_sell = [
@@ -910,6 +928,7 @@ class GridBot:
         self._daily_trade_count += 1
         self._last_buy_time = time.time()
         self._last_trade_time = datetime.utcnow()
+        self._self_heal_attempted = False  # real trade happened, allow self-heal again if needed
 
         if old_last_buy == 0:
             reason = f"Pct buy: first buy at market {fmt_price(price)} (reference established)"
@@ -1044,6 +1063,7 @@ class GridBot:
 
         self._daily_trade_count += 1
         self._last_trade_time = datetime.utcnow()
+        self._self_heal_attempted = False  # real trade happened, allow self-heal again if needed
 
         trade_pnl_pct = (realized_pnl / cost_basis * 100) if cost_basis > 0 else 0
 
