@@ -197,6 +197,9 @@ class GridBot:
             if level_price < current_price:
                 # Buy level — below current price
                 amount = capital_per_level / level_price
+                if self._exchange_filters:
+                    from utils.exchange_filters import round_to_step
+                    amount = round_to_step(amount, self._exchange_filters["lot_step_size"])
                 levels.append(GridLevel(
                     price=round(level_price, decimals),
                     side="buy",
@@ -505,7 +508,12 @@ class GridBot:
             return None
 
         amount = actual_cost / price
-        cost = actual_cost
+        if self._exchange_filters:
+            from utils.exchange_filters import round_to_step
+            amount = round_to_step(amount, self._exchange_filters["lot_step_size"])
+            cost = amount * price  # recalculate cost after rounding
+        else:
+            cost = actual_cost
         fee = cost * self.FEE_RATE
 
         # Mark level as filled
