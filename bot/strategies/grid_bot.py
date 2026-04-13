@@ -970,6 +970,15 @@ class GridBot:
         if self._exchange_filters:
             from utils.exchange_filters import round_to_step, validate_order
             amount = round_to_step(amount, self._exchange_filters["lot_step_size"])
+            if amount <= 0:
+                # Dust amount — too small to sell after rounding. Remove lot from queue.
+                dust_value = self.state.holdings * price
+                logger.info(
+                    f"[{self.symbol}] Dust lot removed: {self.state.holdings:.6f} units "
+                    f"(${dust_value:.4f}) too small for step_size {self._exchange_filters['lot_step_size']}"
+                )
+                self._pct_open_positions.pop(0)
+                return None
             valid, reason_reject = validate_order(self.symbol, amount, price, self._exchange_filters)
             if not valid:
                 logger.warning(f"[{self.symbol}] SELL order rejected: {reason_reject}")

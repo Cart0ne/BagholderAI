@@ -48,12 +48,38 @@ from decimal import Decimal, ROUND_DOWN
 result = (Decimal(str(amount)) / Decimal(str(step_size))).to_integral_value(rounding=ROUND_DOWN) * Decimal(str(step_size))
 ```
 
+### Bug 3 — Dust spam dopo vendita (grid_bot.py)
+
+Dopo una vendita, il residuo (dust) troppo piccolo per lo step size restava nella coda dei lot. Il bot riprovava a venderlo ogni ciclo, spammando `SELL order rejected: amount=0 <= 0` all'infinito.
+
+Fix: se dopo `round_to_step` l'amount è 0, il lot viene rimosso dalla coda e loggato una sola volta.
+
+```python
+if amount <= 0:
+    # Dust — rimuovi lot dalla coda, smetti di riprovare
+    self._pct_open_positions.pop(0)
+    return None
+```
+
+### Dust: analisi impatto
+
+Il dust è inevitabile (rounding per difetto) ma trascurabile:
+
+| Symbol | Step size | Dust max | Prezzo | Valore |
+|---|---|---|---|---|
+| SOL/USDT | 0.001 | ~0.001 SOL | $83 | $0.08 |
+| BTC/USDT | 0.00001 | ~0.00001 BTC | $85,000 | $0.85 |
+| BONK/USDT | 1 | ~1 BONK | $0.0000057 | $0.000006 |
+
+Il dust non si accumula: resta al massimo 1 step per asset.
+
 ## Impatto
 
 - SOL e BTC non hanno potuto vendere per tutta la giornata (da quando i filtri sono stati attivati)
 - BONK aveva step troppo piccolo (0.1 vs 1), potenzialmente causando ordini invalidi su Binance
-- Dopo il fix + riavvio: vendite riprese correttamente
+- Dopo il fix + riavvio: vendite riprese correttamente, dust gestito silenziosamente
 
 ## Lesson learned
 
-Il caching dei filtri al primo avvio + nessun reload periodico ha reso il bug persistente. I filtri sbagliati venivano anche ri-cachati su Supabase ad ogni restart, sovrascrivendo qualsiasi fix manuale sul DB.
+- Il caching dei filtri al primo avvio + nessun reload periodico ha reso il bug persistente. I filtri sbagliati venivano anche ri-cachati su Supabase ad ogni restart, sovrascrivendo qualsiasi fix manuale sul DB.
+- Dopo una vendita, validare sempre che il residuo sia vendibile prima di reinserire nella coda.
