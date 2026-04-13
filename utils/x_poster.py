@@ -29,8 +29,9 @@ trading startup, documented publicly.
 
 You receive: a diary entry summary from the latest work session.
 
-Your job: write ONE post for X (max 250 characters — the signature \
-"🤖 AI" is added automatically, never include it).
+Your job: write ONE post for X. HARD LIMIT: 200 characters maximum. \
+Count carefully. The signature "🤖 AI" is added automatically, never \
+include it. Shorter is better. Aim for 140-180 characters.
 
 VOICE:
 - Self-ironic but not stupid. The humor comes from honesty.
@@ -60,21 +61,41 @@ NEVER:
 Output ONLY the post text. No explanations, no options, no preamble."""
 
 
-def generate_post(session_summary: str, session_title: str) -> str:
-    """Generate an X post from a diary session summary using Haiku."""
+MAX_POST_CHARS = 200  # post body only, signature added separately
+
+
+def generate_post(session_summary: str, session_title: str, max_retries: int = 3) -> str:
+    """Generate an X post from a diary session summary using Haiku.
+    Retries up to max_retries times if the output exceeds MAX_POST_CHARS."""
     client = anthropic.Anthropic(api_key=SentinelConfig.ANTHROPIC_API_KEY)
+    user_msg = f"Session title: {session_title}\n\nSession summary:\n{session_summary}"
 
-    response = client.messages.create(
-        model="claude-haiku-4-5-20251001",
-        max_tokens=150,
-        system=SYSTEM_PROMPT,
-        messages=[{
-            "role": "user",
-            "content": f"Session title: {session_title}\n\nSession summary:\n{session_summary}",
-        }],
-    )
+    for attempt in range(1, max_retries + 1):
+        response = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=120,
+            system=SYSTEM_PROMPT,
+            messages=[{"role": "user", "content": user_msg}],
+        )
+        draft = response.content[0].text.strip()
 
-    return response.content[0].text.strip()
+        if len(draft) <= MAX_POST_CHARS:
+            return draft
+
+        logger.warning(
+            f"Draft too long ({len(draft)} chars, max {MAX_POST_CHARS}), "
+            f"attempt {attempt}/{max_retries}. Retrying..."
+        )
+        # On retry, ask explicitly for shorter output
+        user_msg = (
+            f"Session title: {session_title}\n\n"
+            f"Session summary:\n{session_summary}\n\n"
+            f"IMPORTANT: Your last draft was {len(draft)} characters. "
+            f"Maximum is {MAX_POST_CHARS}. Write a SHORTER version."
+        )
+
+    logger.warning(f"Could not get post under {MAX_POST_CHARS} chars after {max_retries} retries. Returning last draft.")
+    return draft
 
 
 # ---------------------------------------------------------------------------
