@@ -29,13 +29,11 @@ def fetch_filters(exchange, symbol: str) -> dict:
     min_notional = float(cost_limits.get("min") or 0)
     min_qty = float(amount_limits.get("min") or 0)
 
-    # lot_step_size: ccxt stores precision as number of decimals or step size
-    # depending on the exchange. For Binance, precision.amount is the number
-    # of decimal places, so step_size = 10^(-precision.amount)
+    # lot_step_size: for Binance, ccxt precision.amount IS the step size directly
     precision = market.get("precision", {})
     amount_precision = precision.get("amount")
-    if amount_precision is not None:
-        lot_step_size = 10 ** (-int(amount_precision))
+    if amount_precision is not None and float(amount_precision) > 0:
+        lot_step_size = float(amount_precision)
     else:
         lot_step_size = 0.0
 
@@ -99,8 +97,11 @@ def validate_order(symbol: str, amount: float, price: float, filters: dict) -> t
 
     lot_step_size = filters.get("lot_step_size", 0)
     if lot_step_size > 0:
-        remainder = amount % lot_step_size
-        if remainder > 1e-12 and abs(remainder - lot_step_size) > 1e-12:
+        from decimal import Decimal
+        d_amount = Decimal(str(amount))
+        d_step = Decimal(str(lot_step_size))
+        remainder = d_amount % d_step
+        if remainder != 0:
             return (False, f"amount {amount} not aligned to step_size {lot_step_size}")
 
     return (True, "OK")
@@ -109,7 +110,12 @@ def validate_order(symbol: str, amount: float, price: float, filters: dict) -> t
 def round_to_step(amount: float, step_size: float) -> float:
     """
     Round amount DOWN to nearest valid step size.
+    Uses Decimal to avoid floating point artifacts (e.g. 3878984.8000000003).
     """
     if step_size <= 0:
         return amount
-    return math.floor(amount / step_size) * step_size
+    from decimal import Decimal, ROUND_DOWN
+    d_amount = Decimal(str(amount))
+    d_step = Decimal(str(step_size))
+    result = (d_amount / d_step).to_integral_value(rounding=ROUND_DOWN) * d_step
+    return float(result)
