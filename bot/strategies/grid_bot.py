@@ -1031,6 +1031,15 @@ class GridBot:
                 return None
             valid, reason_reject = validate_order(self.symbol, amount, price, self._exchange_filters)
             if not valid:
+                # Economic dust: lot above step_size but below exchange min_notional/min_qty.
+                # It will never be sellable — remove from queue to stop retry spam.
+                if "MIN_NOTIONAL" in reason_reject or "min_qty" in reason_reject:
+                    logger.info(
+                        f"[{self.symbol}] Economic dust lot removed: {amount:.8f} units "
+                        f"(${amount * price:.4f}) — {reason_reject}"
+                    )
+                    self._pct_open_positions.pop(0)
+                    return None
                 logger.warning(f"[{self.symbol}] SELL order rejected: {reason_reject}")
                 return None
 
