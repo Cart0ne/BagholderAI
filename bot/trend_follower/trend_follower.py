@@ -24,7 +24,7 @@ from db.client import get_client
 from utils.telegram_notifier import SyncTelegramNotifier
 from utils.exchange_filters import fetch_and_cache_filters
 
-from bot.trend_follower.scanner import scan_top_coins
+from bot.trend_follower.scanner import scan_top_coins, fmt_volume
 from bot.trend_follower.classifier import classify_signal
 from bot.trend_follower.allocator import decide_allocations
 
@@ -175,13 +175,41 @@ def log_decisions(supabase, decisions: list[dict], is_shadow: bool):
     logger.info(f"Logged {logged} decisions to trend_decisions_log (shadow={is_shadow})")
 
 
+def log_full_scan(supabase, coins: list[dict]):
+    """Log all scanned coins to trend_scans for debugging. Temporary."""
+    scan_ts = datetime.now(timezone.utc).isoformat()
+    rows = []
+    for c in coins:
+        rows.append({
+            "scan_timestamp": scan_ts,
+            "symbol": c["symbol"],
+            "rank": c.get("rank", 0),
+            "tier": c.get("tier", "?"),
+            "price": c.get("price", 0),
+            "volume_24h": c.get("volume_24h", 0),
+            "ema_fast": c.get("ema_fast", 0),
+            "ema_slow": c.get("ema_slow", 0),
+            "rsi": c.get("rsi", 0),
+            "atr": c.get("atr", 0),
+            "atr_avg": c.get("atr_avg", 0),
+            "signal": c.get("signal", "NO_SIGNAL"),
+            "signal_strength": c.get("signal_strength", 0),
+        })
+
+    try:
+        supabase.table("trend_scans").insert(rows).execute()
+        logger.info(f"Logged {len(rows)} coins to trend_scans")
+    except Exception as e:
+        logger.warning(f"Failed to log scan data: {e}")
+
+
 # ---------------------------------------------------------------------------
 # Telegram reporting
 # ---------------------------------------------------------------------------
 
 def send_scan_report(notifier: SyncTelegramNotifier, coins: list[dict],
                      current_allocs: list[dict], config: dict):
-    """Send scan summary to Telegram."""
+    """Send tiered scan report to Telegram."""
     now = datetime.now(timezone.utc).strftime("%B %d, %Y %H:%M UTC")
 
     bullish = sum(1 for c in coins if c.get("signal") == "BULLISH")
@@ -193,27 +221,41 @@ def send_scan_report(notifier: SyncTelegramNotifier, coins: list[dict],
     max_grids = config.get("max_active_grids", 5)
     deployed = sum(float(a.get("capital_allocation", 0)) for a in current_allocs if a.get("is_active"))
 
-    # Top 5 signals by strength
-    ranked = sorted(coins, key=lambda c: c.get("signal_strength", 0), reverse=True)[:5]
-    top_lines = []
-    for i, c in enumerate(ranked, 1):
-        sym = c["symbol"].split("/")[0]
-        sig = c.get("signal", "?")
-        strength = c.get("signal_strength", 0)
-        rsi = c.get("rsi", 0)
-        ema_dir = "cross up" if c.get("ema_fast", 0) > c.get("ema_slow", 0) else "cross down"
-        top_lines.append(f"{i}. {sym} — {sig} (strength: {strength:.1f}) — RSI {rsi:.0f}, EMA {ema_dir}")
-
     shadow_tag = "[SHADOW] " if config.get("dry_run") else ""
+
+    tier_names = {"A": "🔵 Large cap", "B": "🟡 Mid cap", "C": "🔴 Small cap"}
+    tier_sections = []
+
+    for tier_key in ["A", "B", "C"]:
+        tier_coins = [c for c in coins if c.get("tier") == tier_key]
+        tier_count = len(tier_coins)
+        tier_bullish = sum(1 for c in tier_coins if c.get("signal") == "BULLISH")
+
+        top2 = sorted(tier_coins, key=lambda c: c.get("signal_strength", 0), reverse=True)[:2]
+
+        lines = []
+        for c in top2:
+            sym = c["symbol"].split("/")[0]
+            sig = c.get("signal", "?")
+            strength = c.get("signal_strength", 0)
+            rsi = c.get("rsi", 0)
+            ema_dir = "cross up" if c.get("ema_fast", 0) > c.get("ema_slow", 0) else "cross down"
+            vol = fmt_volume(c.get("volume_24h", 0)) if "volume_24h" in c else "?"
+            lines.append(
+                f"  {sym} — {sig} ({strength:.1f}) — RSI {rsi:.0f}, EMA {ema_dir} — Vol {vol}"
+            )
+
+        header = f"{tier_names.get(tier_key, tier_key)} ({tier_count} coins, {tier_bullish} bullish)"
+        tier_sections.append(header + "\n" + "\n".join(lines))
 
     text = (
         f"{shadow_tag}📊 <b>TREND SCAN — {now}</b>\n"
         f"\n"
-        f"Scanned: {len(coins)} coins\n"
+        f"Scanned: {len(coins)} coins (stablecoins excluded)\n"
         f"Bullish: {bullish} | Bearish: {bearish} | Sideways: {sideways} | No signal: {no_signal}\n"
         f"\n"
-        f"<b>Top signals:</b>\n"
-        + "\n".join(top_lines) + "\n"
+        f"<b>Top 2 per tier:</b>\n"
+        + "\n\n".join(tier_sections) + "\n"
         f"\n"
         f"Active grids: {active_count}/{max_grids}\n"
         f"Capital deployed: ${deployed:.0f}"
@@ -302,6 +344,9 @@ def run_trend_follower():
             # Classify
             for coin in coins:
                 classify_signal(coin, config)
+
+            # Log full scan to trend_scans (temporary — for debugging tier splits)
+            log_full_scan(supabase, coins)
 
             # Load context
             coin_tiers = load_coin_tiers(supabase)

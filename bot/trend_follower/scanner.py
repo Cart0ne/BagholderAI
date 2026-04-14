@@ -10,6 +10,24 @@ import pandas as pd
 logger = logging.getLogger("bagholderai.trend.scanner")
 
 
+STABLECOIN_SYMBOLS = {
+    "USDC/USDT", "FDUSD/USDT", "USD1/USDT", "TUSD/USDT",
+    "DAI/USDT", "PYUSD/USDT", "BUSD/USDT", "USDP/USDT",
+    "EURI/USDT", "RLUSD/USDT", "U/USDT",
+}
+
+
+def fmt_volume(v: float) -> str:
+    """Format volume for display: $1.2B, $340M, $5.6M"""
+    if v >= 1_000_000_000:
+        return f"${v / 1_000_000_000:.1f}B"
+    if v >= 1_000_000:
+        return f"${v / 1_000_000:.1f}M"
+    if v >= 1_000:
+        return f"${v / 1_000:.1f}K"
+    return f"${v:.0f}"
+
+
 # ---------------------------------------------------------------------------
 # Technical indicator helpers
 # ---------------------------------------------------------------------------
@@ -62,7 +80,10 @@ def scan_top_coins(exchange, top_n: int = 50) -> list[dict]:
     tickers = exchange.fetch_tickers()
     usdt_tickers = {
         k: v for k, v in tickers.items()
-        if k.endswith("/USDT") and v.get("quoteVolume") and v.get("last")
+        if k.endswith("/USDT")
+        and v.get("quoteVolume")
+        and v.get("last")
+        and k not in STABLECOIN_SYMBOLS
     }
 
     # 2. Sort by volume, take top N
@@ -108,6 +129,16 @@ def scan_top_coins(exchange, top_n: int = 50) -> list[dict]:
         except Exception as e:
             logger.warning(f"[{symbol}] Failed to scan: {e}")
             continue
+
+    # Assign volume tier based on rank position (coins preserves volume-desc order)
+    for i, coin in enumerate(coins):
+        coin["rank"] = i + 1
+        if i < 20:
+            coin["tier"] = "A"
+        elif i < 40:
+            coin["tier"] = "B"
+        else:
+            coin["tier"] = "C"
 
     logger.info(f"Scan complete: {len(coins)} coins with indicators")
     return coins
