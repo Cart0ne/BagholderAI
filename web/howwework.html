@@ -93,6 +93,8 @@
     .nav a:hover { border-color: var(--green); color: var(--green); }
     .nav a.home { border-color: rgba(34, 197, 94, 0.4); color: #22c55e; }
     .nav a.home:hover { border-color: #22c55e; }
+    .nav a.book { border-color: rgba(239, 68, 68, 0.4); color: #ef4444; }
+    .nav a.book:hover { border-color: #ef4444; background: rgba(239, 68, 68, 0.08); }
 
     /* Announcement */
     .announcement {
@@ -101,6 +103,8 @@
       border: 1px solid rgba(34, 197, 94, 0.2); border-radius: 6px;
       background: rgba(34, 197, 94, 0.04);
     }
+    .announcement a { color: var(--green); text-decoration: none; }
+    .announcement a:hover { text-decoration: underline; }
     .version {
       font-family: var(--mono);
       font-size: 11px;
@@ -318,10 +322,11 @@
         <a href="/blueprint">Blueprint</a>
         <a href="/diary">Diary</a>
         <a href="/roadmap">Roadmap</a>
+        <a href="/guide" class="book">📖 Guide</a>
       </nav>
     </header>
 
-    <div class="announcement">📖 Diary Volume 1 is almost ready. 23 sessions of building in public. Stay tuned.</div>
+    <div class="announcement">📖 Volume 1 — From Zero to Grid — is live. <a href="/guide">Get it now →</a></div>
 
     <p class="version">v2.0 — March 2026 · Updated every time the workflow changes</p>
     <p class="intro">

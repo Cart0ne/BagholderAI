@@ -98,8 +98,12 @@
       border: 1px solid rgba(34, 197, 94, 0.2); border-radius: 6px;
       background: rgba(34, 197, 94, 0.04);
     }
+    .announcement a { color: var(--green); text-decoration: none; }
+    .announcement a:hover { text-decoration: underline; }
     .nav a.home { border-color: rgba(34, 197, 94, 0.4); color: #22c55e; }
     .nav a.home:hover { border-color: #22c55e; }
+    .nav a.book { border-color: rgba(239, 68, 68, 0.4); color: #ef4444; }
+    .nav a.book:hover { border-color: #ef4444; background: rgba(239, 68, 68, 0.08); }
 
     h1 {
       font-size: clamp(28px, 6vw, 40px); font-weight: 700; line-height: 1.1;
@@ -277,10 +281,11 @@
         <a href="/blueprint">Blueprint</a>
         <a href="/diary">Diary</a>
         <a href="/howwework">How We Work</a>
+        <a href="/guide" class="book">📖 Guide</a>
       </nav>
     </header>
 
-    <div class="announcement">📖 Diary Volume 1 is almost ready. 23 sessions of building in public. Stay tuned.</div>
+    <div class="announcement">📖 Volume 1 — From Zero to Grid — is live. <a href="/guide">Get it now →</a></div>
 
     <div class="stats-bar" id="stats-bar"></div>
 
@@ -318,8 +323,8 @@
   <script>
     // Roadmap data — update this JSON each session
     const ROADMAP = {
-      version: "Versione 1.27 — Aprile 2026",
-      last_updated: "2026-04-11",
+      version: "Versione 1.28 — Aprile 2026",
+      last_updated: "2026-04-14",
       phases: [
         {
           id: 0,
@@ -415,8 +420,8 @@
             { text: "Donation button", status: "done", who: "AI", comment: "Session 27. Buy Me a Coffee active at buymeacoffee.com/bagholderai." },
             { text: "Telegram bot (reports only, never signals)", status: "done", who: "BOTH", comment: "MiFID II compliance. Transparency, not advice." },
             { text: "Volume 1 (Fase 0+1): outline, packaging, cover art", status: "done", who: "BOTH", comment: "Session 26. Content-complete. Cover art designed with CEO, PDF assembled." },
-            { text: "Setup payment platform (Gumroad or LemonSqueezy)", status: "done", who: "MAX", comment: "Session 33. LemonSqueezy chosen. KYB response sent, pending approval." },
-            { text: "Landing page /guide on bagholder.lol", status: "done", who: "AI", comment: "Session 30. Cover, description, preview PDF download, disabled buy button (LemonSqueezy overlay tested — pending account activation)." },
+            { text: "Setup payment platform", status: "done", who: "MAX", comment: "Session 34. LemonSqueezy rejected (crypto risk flag). Migrated to Payhip — live in 20 minutes." },
+            { text: "Landing page /guide on bagholderai.lol", status: "done", who: "AI", comment: "Session 30. Cover, description, preview PDF download. Session 34: Payhip checkout live, button active." },
             { text: "Italian preface (Max writes, AI translates)", status: "done", who: "BOTH", comment: "Session 25. Max wrote IT, CEO translated EN." },
             { text: "Blueprint translation (IT→EN)", status: "done", who: "AI", comment: "Session 25. Faithful translation, historical document." },
             { text: "CEO Introduction for Volume 1", status: "done", who: "AI", comment: "Session 25." },
@@ -428,7 +433,7 @@
             { text: "Volume 1 content-complete", status: "done", who: "BOTH", comment: "Session 26. All chapters, appendices, glossary, intros — locked." },
             { text: "Final assembly into PDF", status: "done", who: "BOTH", comment: "Session 26. Almost there — last typographic passes pending." },
             { text: "Editorial plan X: first 5-10 posts from diary", status: "active", who: "BOTH", comment: "9 posts published, schema defined. Ongoing." },
-            { text: "Publish Volume 1", status: "todo", who: "BOTH" },
+            { text: "Publish Volume 1", status: "done", who: "BOTH", comment: "Session 34. Live on Payhip at €4.99. payhip.com/b/a4yMc" },
           ]
         },
         {
@@ -580,7 +585,7 @@
             { text: "Batch reformat 24 files with uniform template", status: "done", who: "AI", comment: "Session 24. 23 diary + How We Work." },
             { text: "Fix Word styles (Heading 1/2 for TOC) on 24 files", status: "done", who: "AI", comment: "Session 24." },
             { text: "X editorial plan: Posts_X_v3, 9 posts ready (≤280 chars)", status: "done", who: "AI", comment: "Session 23." },
-            { text: "Gumroad vs LemonSqueezy decision", status: "done", who: "MAX", comment: "Session 27. LemonSqueezy chosen." },
+            { text: "Payment platform decision (Gumroad → LemonSqueezy → Payhip)", status: "done", who: "MAX", comment: "Session 27: LemonSqueezy chosen over Gumroad. Session 34: LemonSqueezy rejected at KYB (crypto risk), pivoted to Payhip in same session." },
             { text: "Add donation button", status: "done", who: "AI", comment: "Session 27. Buy Me a Coffee active at buymeacoffee.com/bagholderai." },
             { text: "Memory audit: purged 15 duplicate memory edits, established correction-only policy", status: "done", who: "AI", comment: "Session 29." },
             { text: "Discovered Anthropic docx→text conversion in project files, new diary workflow (template via chat)", status: "done", who: "BOTH", comment: "Session 29." },

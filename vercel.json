@@ -1,3 +1,10 @@
 {
-  "cleanUrls": true
+  "cleanUrls": true,
+  "redirects": [
+    {
+      "source": "/buy",
+      "destination": "https://payhip.com/b/a4yMc",
+      "permanent": false
+    }
+  ]
 }
