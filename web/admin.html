@@ -295,6 +295,7 @@
       <div class="section-title">Portfolio overview</div>
       <div id="overview-row1" class="stats-row"></div>
       <div id="overview-row2" class="stats-row"></div>
+      <div id="overview-row3" class="stats-row"></div>
 
       <!-- Per-Coin Status -->
       <div class="section-title">Grid status per coin</div>
@@ -325,6 +326,8 @@
     var ADMIN_HASH = '8a308134250d16e95b79019171e5cb37ed436a14e2800f22b98e0fa20ac6f9eb'; // sha256 of 'password' — CHANGE THIS
     var COLORS = { 'BTC/USDT': '#378ADD', 'SOL/USDT': '#5DCAA5', 'BONK/USDT': '#EF9F27' };
     var SHORT = { 'BTC/USDT': 'BTC', 'SOL/USDT': 'SOL', 'BONK/USDT': 'BONK' };
+    // Decimal precision per coin to surface sub-step dust without rounding it away
+    var DUST_DECIMALS = { 'BTC/USDT': 8, 'SOL/USDT': 6, 'BONK/USDT': 6 };
 
     // === AUTH ===
     async function sha256(msg) {
@@ -680,6 +683,30 @@
           '<div class="stat-label">Unrealized P&L</div>' +
           '<div class="stat-value" style="color:' + unrColor + ';">' + unrSign + '$' + fmt(totalUnrealized) + '</div>' +
           '<div class="stat-sub">' + (unrBreakdown || '—') + '</div>' +
+        '</div>';
+
+      // Dust v3 monitor: net residual per symbol (v3 only, since tradesData is already filtered).
+      // Surfaces sub-step leftovers that won't be sellable on Binance — should stay flat post-2026-04-13.
+      var dustTotalUsd = 0;
+      var dustParts = [];
+      configData.forEach(function(cfg) {
+        var a = analyzeCoin(cfg.symbol, cfg);
+        if (a.netHoldings <= 0) return;
+        var livePrice = livePrices[cfg.symbol] || 0;
+        var usd = a.netHoldings * livePrice;
+        dustTotalUsd += usd;
+        var decimals = DUST_DECIMALS[cfg.symbol] || 6;
+        var short = SHORT[cfg.symbol] || cfg.symbol;
+        dustParts.push(short + ': ' + a.netHoldings.toFixed(decimals));
+      });
+      var dustBreakdown = dustParts.length ? dustParts.join(' · ') : '—';
+      var dustColor = dustTotalUsd > 1 ? 'var(--yellow)' : 'var(--muted)';
+
+      document.getElementById('overview-row3').innerHTML =
+        '<div class="stat-box" style="grid-column: 1 / -1;">' +
+          '<div class="stat-label">Dust v3</div>' +
+          '<div class="stat-value" style="color:' + dustColor + ';">$' + dustTotalUsd.toFixed(4) + '</div>' +
+          '<div class="stat-sub">' + dustBreakdown + '</div>' +
         '</div>';
     }
 
