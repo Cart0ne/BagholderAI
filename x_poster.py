@@ -61,8 +61,11 @@ def cmd_cli(args):
 
 def cmd_cron(args):
     """Cron mode: read diary -> generate -> save pending -> notify Telegram."""
+    notifier = SyncTelegramNotifier()
+
     if already_posted_today():
         logger.info("Already posted today. Skipping.")
+        notifier.send_message("⏸ <b>X post skip</b> — già postato oggi.")
         return
 
     # Check for expired pending post (>24h)
@@ -74,6 +77,11 @@ def cmd_cron(args):
         age_hours = (datetime.now(timezone.utc) - gen_time.replace(tzinfo=timezone.utc)).total_seconds() / 3600
         if age_hours < 24:
             logger.info("Pending post already exists (waiting for approval). Skipping.")
+            notifier.send_message(
+                f"⏸ <b>X post skip</b> — bozza Session {pending.get('session', '?')} "
+                f"ancora in attesa di approvazione ({age_hours:.1f}h).\n"
+                f"Usa /approve · /discard · /rewrite"
+            )
             return
         else:
             logger.info("Pending post expired (>24h). Generating new one.")
@@ -83,6 +91,7 @@ def cmd_cron(args):
     diary = get_latest_unposted_diary()
     if not diary:
         logger.info("No unposted diary entries found. Nothing to do.")
+        notifier.send_message("ℹ️ <b>X post skip</b> — nessuna diary entry nuova da postare.")
         return
 
     session = diary["session"]
@@ -109,7 +118,6 @@ def cmd_cron(args):
     char_count = len(full_text)
 
     # Notify Telegram
-    notifier = SyncTelegramNotifier()
     msg = (
         f"🐦 Bozza post X (Session {session}):\n"
         f"\n"
