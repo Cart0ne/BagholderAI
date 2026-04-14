@@ -74,7 +74,7 @@ class TelegramNotifier:
             spend = trade["cost"]
             ok = cash >= spend * (1 - TOLERANCE)
             icon = "✅" if ok else "⚠️"
-            verify_line = f"\n💵 Cash {base}: ${cash:.2f} → Spendo ${spend:.2f} {icon}"
+            verify_line = f"\n💵 Cash {base}: ${cash:.2f} → Spend ${spend:.2f} {icon}"
         elif trade["side"] == "sell" and "holdings_value_before" in trade:
             have = trade["holdings_value_before"]
             sell_val = trade["cost"]
