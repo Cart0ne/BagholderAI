@@ -859,16 +859,18 @@
         await sbPatch('bot_config', 'symbol', symbol, data);
 
         // Log each changed field to config_changes_log (best-effort)
+        var auditOk = true;
         if (changes.length > 0) {
           try {
             await Promise.all(changes.map(function(c) { return sbInsert('config_changes_log', c); }));
           } catch (logErr) {
             console.warn('config_changes_log write failed:', logErr);
+            auditOk = false;
           }
         }
 
-        status.textContent = 'Saved ✓';
-        status.style.color = 'var(--green)';
+        status.textContent = auditOk ? 'Saved ✓' : 'Saved (audit log failed)';
+        status.style.color = auditOk ? 'var(--green)' : 'var(--yellow)';
         allFields.forEach(function(f) {
           var input = document.getElementById('cfg-' + short + '-' + f);
           if (input) { input.dataset.original = input.value; input.classList.remove('changed'); }
