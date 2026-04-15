@@ -235,6 +235,9 @@ def apply_allocations(supabase, decisions: list[dict], config: dict) -> None:
                 "buy_pct": buy_pct,
                 "sell_pct": sell_pct,
                 "grid_mode": "percentage",
+                # grid_levels is NOT NULL in the DB. Unused in percentage mode
+                # but must be set for the INSERT path to succeed.
+                "grid_levels": 10,
             }
 
             try:
