@@ -10,6 +10,9 @@ from utils.exchange_filters import validate_order
 
 logger = logging.getLogger("bagholderai.trend.allocator")
 
+# Symbols managed manually by Max — TF must NEVER touch these
+MANUAL_WHITELIST = {"BTC/USDT", "SOL/USDT", "BONK/USDT"}
+
 # Default tier for coins not in coin_tiers table
 DEFAULT_TIER = 3
 DEFAULT_MAX_ALLOC_PCT = 10  # T3 = 10%
@@ -49,7 +52,7 @@ def decide_allocations(
     In shadow mode, these are logged but not acted upon.
     """
     scan_ts = datetime.now(timezone.utc).isoformat()
-    max_grids = config.get("max_active_grids", 5)
+    max_grids = config.get("tf_max_coins") or config.get("max_active_grids", 5)
     decisions = []
 
     # Current state
@@ -184,3 +187,94 @@ def _make_decision(
     if config_snapshot:
         d["config_snapshot"] = config_snapshot
     return d
+
+
+def apply_allocations(supabase, decisions: list[dict], config: dict) -> None:
+    """
+    Apply TF allocation decisions to bot_config. Called only when dry_run=False.
+
+    ALLOCATE   → INSERT or UPDATE bot_config (is_active=True, managed_by='trend_follower')
+    DEALLOCATE → SET pending_liquidation=True (grid_runner forces sell + self-stop)
+
+    Never touches symbols in MANUAL_WHITELIST.
+    """
+    for d in decisions:
+        symbol = d["symbol"]
+        action = d["action_taken"]
+
+        if symbol in MANUAL_WHITELIST:
+            logger.warning(f"[ALLOCATOR] Skipping {symbol} — in MANUAL_WHITELIST")
+            continue
+
+        if action == "ALLOCATE":
+            snapshot = d.get("config_snapshot", {})
+            capital = snapshot.get("capital_allocation", 0)
+
+            if capital <= 0:
+                logger.warning(f"[ALLOCATOR] {symbol}: capital=0, skipping ALLOCATE")
+                continue
+
+            signal = d.get("signal", "SIDEWAYS")
+            if signal == "BULLISH":
+                buy_pct, sell_pct = 1.5, 1.2
+            elif signal == "BEARISH":
+                buy_pct, sell_pct = 2.0, 0.8
+            else:
+                buy_pct, sell_pct = 1.5, 1.0
+
+            # capital_per_trade: 1/4 of allocation, floor $6 (> Binance min_notional $5).
+            # Prevents grid from defaulting to BTC's $25 per-trade when TF allocates $10.
+            capital_per_trade = max(6.0, round(capital / 4, 2))
+
+            row_fields = {
+                "is_active": True,
+                "managed_by": "trend_follower",
+                "pending_liquidation": False,
+                "capital_allocation": capital,
+                "capital_per_trade": capital_per_trade,
+                "buy_pct": buy_pct,
+                "sell_pct": sell_pct,
+                "grid_mode": "percentage",
+            }
+
+            try:
+                existing = supabase.table("bot_config").select("symbol").eq("symbol", symbol).execute()
+                if existing.data:
+                    supabase.table("bot_config").update(row_fields).eq("symbol", symbol).execute()
+                    logger.info(
+                        f"[ALLOCATOR] UPDATED {symbol} in bot_config "
+                        f"(${capital:.0f}, per_trade=${capital_per_trade:.2f})"
+                    )
+                else:
+                    supabase.table("bot_config").insert({"symbol": symbol, **row_fields}).execute()
+                    logger.info(
+                        f"[ALLOCATOR] INSERTED {symbol} in bot_config "
+                        f"(${capital:.0f}, per_trade=${capital_per_trade:.2f})"
+                    )
+            except Exception as e:
+                logger.error(f"[ALLOCATOR] Failed to apply ALLOCATE for {symbol}: {e}")
+
+        elif action == "DEALLOCATE":
+            try:
+                existing = supabase.table("bot_config").select(
+                    "symbol, managed_by"
+                ).eq("symbol", symbol).execute()
+
+                if not existing.data:
+                    logger.warning(f"[ALLOCATOR] {symbol}: not in bot_config, nothing to deallocate")
+                    continue
+
+                current_managed_by = existing.data[0].get("managed_by")
+                if current_managed_by != "trend_follower":
+                    logger.warning(
+                        f"[ALLOCATOR] {symbol}: managed_by={current_managed_by}, "
+                        f"skipping DEALLOCATE (not TF-managed)"
+                    )
+                    continue
+
+                supabase.table("bot_config").update({
+                    "pending_liquidation": True,
+                }).eq("symbol", symbol).execute()
+                logger.info(f"[ALLOCATOR] SET pending_liquidation=True for {symbol}")
+            except Exception as e:
+                logger.error(f"[ALLOCATOR] Failed to apply DEALLOCATE for {symbol}: {e}")

@@ -26,7 +26,7 @@ from utils.exchange_filters import fetch_and_cache_filters
 
 from bot.trend_follower.scanner import scan_top_coins, fmt_volume
 from bot.trend_follower.classifier import classify_signal
-from bot.trend_follower.allocator import decide_allocations
+from bot.trend_follower.allocator import decide_allocations, apply_allocations
 
 
 # ---------------------------------------------------------------------------
@@ -218,7 +218,7 @@ def send_scan_report(notifier: SyncTelegramNotifier, coins: list[dict],
     no_signal = sum(1 for c in coins if c.get("signal") == "NO_SIGNAL")
 
     active_count = len([a for a in current_allocs if a.get("is_active")])
-    max_grids = config.get("max_active_grids", 5)
+    max_grids = config.get("tf_max_coins") or config.get("max_active_grids", 5)
     deployed = sum(float(a.get("capital_allocation", 0)) for a in current_allocs if a.get("is_active"))
 
     shadow_tag = "[SHADOW] " if config.get("dry_run") else ""
@@ -324,8 +324,15 @@ def run_trend_follower():
         f"🧠 <b>Trend Follower started</b>\n"
         f"Mode: {'SHADOW (dry run)' if config.get('dry_run') else 'LIVE'}\n"
         f"Scan interval: {config.get('scan_interval_hours', 4)}h\n"
-        f"Max grids: {config.get('max_active_grids', 5)}"
+        f"Max grids: {config.get('tf_max_coins') or config.get('max_active_grids', 5)}"
     )
+
+    if not config.get("dry_run", True):
+        notifier.send_message(
+            f"⚡ <b>TF LIVE MODE</b>\n"
+            f"Budget: ${float(config.get('tf_budget', 100)):.0f} | "
+            f"Max coins: {config.get('tf_max_coins', 2)}"
+        )
 
     # Main loop
     while True:
@@ -352,22 +359,32 @@ def run_trend_follower():
             coin_tiers = load_coin_tiers(supabase)
             exchange_filters = load_exchange_filters(supabase, exchange=exchange)
             current_allocs = load_current_allocations(supabase)
-            total_capital = sum_total_capital(supabase)
+
+            # TF operates only on its own budget and its own allocations.
+            # Manual bots (BTC/SOL/BONK) are excluded from the TF universe so
+            # decide_allocations never sees them as "existing" and never tries
+            # to DEALLOCATE them.
+            tf_allocs = [a for a in current_allocs if a.get("managed_by") == "trend_follower"]
+            tf_total_capital = float(config.get("tf_budget", 100))
 
             # Decide allocations
             decisions = decide_allocations(
-                coins, current_allocs, coin_tiers,
-                exchange_filters, config, total_capital,
+                coins, tf_allocs, coin_tiers,
+                exchange_filters, config, tf_total_capital,
             )
 
             # Log to Supabase
             log_decisions(supabase, decisions, is_shadow=config.get("dry_run", True))
 
-            # Report to Telegram
-            send_scan_report(notifier, coins, current_allocs, config)
+            # Report to Telegram (TF-only view: active/deployed count reflects TF's universe)
+            send_scan_report(notifier, coins, tf_allocs, config)
             for d in decisions:
                 if d["action_taken"] in ("ALLOCATE", "DEALLOCATE"):
                     send_tf_decision(notifier, d, is_shadow=config.get("dry_run", True))
+
+            # Apply allocations if live mode
+            if not config.get("dry_run", True):
+                apply_allocations(supabase, decisions, config)
 
             scan_interval = config.get("scan_interval_hours", 4)
             logger.info(f"Scan complete. Sleeping {scan_interval}h...")
