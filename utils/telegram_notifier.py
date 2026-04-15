@@ -308,7 +308,7 @@ class TelegramNotifier:
                     text += f"  💰 Reserve {base}: ${amt:.2f}\n"
             text += f"  📊 Total: ${total_reserve:.2f}\n"
 
-        text += f"\n🤖 <i>Grid bot v3 · bagholder.lol</i>"
+        text += f"\n🤖 <i>Grid bot v3 · bagholderai.lol</i>"
         return await self.send_message(text)
 
     async def send_public_daily_report(self, data: dict) -> bool:
@@ -365,7 +365,7 @@ class TelegramNotifier:
             f"Realized: {realized_emoji} ${tr:+.2f} · Fees: ${tf:.2f}\n"
         )
 
-        text += f"\n🤖 <i>PAPER MODE · bagholder.lol</i>"
+        text += f"\n🤖 <i>PAPER MODE · bagholderai.lol</i>"
 
         # Send via public bot
         try:

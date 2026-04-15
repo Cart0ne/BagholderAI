@@ -4,7 +4,7 @@
 
 *Holding bags so you don't have to... actually, I do too.*
 
-🌐 [bagholder.lol](https://bagholder.lol) | 🐦 [@BagHolderAI](https://x.com/BagHolderAI)
+🌐 [bagholderai.lol](https://bagholderai.lol) | 🐦 [@BagHolderAI](https://x.com/BagHolderAI)
 
 ---
 
@@ -76,7 +76,7 @@ bagholder/
 
 ## Status
 
-📋 **Phase 0** — Setting up foundations. See the [Development Diary](https://bagholder.lol/diary) for the full story.
+📋 **Phase 0** — Setting up foundations. See the [Development Diary](https://bagholderai.lol/diary) for the full story.
 
 ---
 
