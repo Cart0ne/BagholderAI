@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>BagHolderAI — Admin</title>
+  <title>BagHolderAI — TF Control</title>
   <meta name="robots" content="noindex, nofollow">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔒</text></svg>">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧠</text></svg>">
   <style>
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -270,7 +270,7 @@
       text-transform: uppercase; transition: color 0.2s;
     }
     .navbar a:hover { color: var(--green); }
-    .navbar a.active { color: var(--red); }
+    .navbar a.active { color: var(--green); }
 
     /* Footer */
     footer {
@@ -286,8 +286,8 @@
 
     <!-- Auth Gate -->
     <div id="auth-gate">
-      <div class="lock">🔒</div>
-      <div style="font-family: var(--mono); font-size: 12px; color: var(--text-dim);">BAGHOLDER<span style="color: var(--red);">AI</span> ADMIN</div>
+      <div class="lock">🧠</div>
+      <div style="font-family: var(--mono); font-size: 12px; color: var(--text-dim);">BAGHOLDER<span style="color: var(--green);">AI</span> TF CONTROL</div>
       <input type="password" id="pw-input" placeholder="password" autocomplete="off">
       <div class="err" id="pw-err"></div>
       <button id="pw-btn">Unlock</button>
@@ -299,16 +299,16 @@
       <!-- Navbar -->
       <nav class="navbar">
         <a href="/">← Home</a>
-        <a class="active" href="/admin">Admin</a>
-        <a href="/tf">TF Control</a>
+        <a href="/admin">Admin</a>
+        <a class="active" href="/tf">TF Control</a>
       </nav>
 
       <!-- Header -->
       <div class="top-bar">
-        <span><span class="dot">●</span> ADMIN — private</span>
+        <span><span class="dot" id="tf-mode-dot">●</span> <span id="tf-mode-label">TF — private</span></span>
         <span id="last-update"></span>
       </div>
-      <h1>🎒 BagHolder<span class="ai">AI</span> <span class="admin">ADMIN</span></h1>
+      <h1>🧠 BagHolder<span class="ai">AI</span> <span class="admin" style="color:var(--green);">TF</span></h1>
 
       <!-- Alerts -->
       <div id="alerts" style="margin-top: 16px;"></div>
@@ -346,10 +346,14 @@
     var SB_URL = 'https://pxdhtmqfwjwjhtcoacsn.supabase.co';
     var SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB4ZGh0bXFmd2p3amh0Y29hY3NuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4NDI1OTIsImV4cCI6MjA4OTQxODU5Mn0.G76lvYWrqlM0z2RoSkU1uAglfMBKN_rXvBGOQhb4kdg';
     var ADMIN_HASH = '8a308134250d16e95b79019171e5cb37ed436a14e2800f22b98e0fa20ac6f9eb'; // sha256 of 'password' — CHANGE THIS
-    var COLORS = { 'BTC/USDT': '#378ADD', 'SOL/USDT': '#5DCAA5', 'BONK/USDT': '#EF9F27' };
-    var SHORT = { 'BTC/USDT': 'BTC', 'SOL/USDT': 'SOL', 'BONK/USDT': 'BONK' };
-    // Decimal precision per coin to surface sub-step dust without rounding it away
-    var DUST_DECIMALS = { 'BTC/USDT': 8, 'SOL/USDT': 6, 'BONK/USDT': 6 };
+    // Dynamic maps: TF-managed coins change over time. Built from configData at load.
+    var COLORS = {};
+    var SHORT = {};
+    var DUST_DECIMALS = {};
+    var TF_PALETTE = ['#22c55e', '#f97316', '#ec4899', '#8b5cf6', '#06b6d4', '#f43f5e', '#3b82f6', '#eab308'];
+    var TF_BUDGET = 100;       // overridden from trend_config.tf_budget at load
+    var TF_MAX_COINS = 2;      // overridden from trend_config.tf_max_coins at load
+    var TF_DRY_RUN = true;     // overridden from trend_config.dry_run at load
 
     // === AUTH ===
     async function sha256(msg) {
@@ -441,10 +445,12 @@
     var skimBySymbol = {};  // symbol -> total skim amount
     var livePrices = {};  // symbol -> price
 
-    async function fetchLivePrices() {
+    async function fetchLivePrices(symbols) {
+      if (!symbols || symbols.length === 0) return;
       try {
-        var symbols = ['BTCUSDT', 'SOLUSDT', 'BONKUSDT'];
-        var res = await fetch('https://api.binance.com/api/v3/ticker/price?symbols=' + encodeURIComponent(JSON.stringify(symbols)));
+        // Build Binance-style symbol list: BTC/USDT -> BTCUSDT
+        var bnSymbols = symbols.map(function(s) { return s.replace('/', ''); });
+        var res = await fetch('https://api.binance.com/api/v3/ticker/price?symbols=' + encodeURIComponent(JSON.stringify(bnSymbols)));
         var data = await res.json();
         data.forEach(function(t) {
           // Convert BTCUSDT → BTC/USDT
@@ -456,14 +462,36 @@
       }
     }
 
+    function buildMaps(rows) {
+      COLORS = {}; SHORT = {}; DUST_DECIMALS = {};
+      rows.forEach(function(cfg, i) {
+        var sym = cfg.symbol;
+        COLORS[sym] = TF_PALETTE[i % TF_PALETTE.length];
+        SHORT[sym] = sym.split('/')[0];
+        // Default 6 decimals; bump to 8 for very-low-price coins so dust is visible
+        DUST_DECIMALS[sym] = 6;
+      });
+    }
+
     async function loadAll() {
-      // Admin shows only manually-managed bots. TF-managed bots live in /tf.html.
+      // 1. Load trend_config first (needed to know tf_budget, tf_max_coins, dry_run)
+      try {
+        var tc = await sbGet('trend_config', 'select=dry_run,tf_budget,tf_max_coins&limit=1');
+        if (tc && tc.length) {
+          TF_BUDGET = Number(tc[0].tf_budget) || 100;
+          TF_MAX_COINS = Number(tc[0].tf_max_coins) || 2;
+          TF_DRY_RUN = !!tc[0].dry_run;
+        }
+      } catch (e) {
+        console.warn('trend_config unreachable:', e);
+      }
+
+      // 2. Load the TF-only slice of state
       var settled = await Promise.allSettled([
-        sbGet('bot_config', 'managed_by=neq.trend_follower&order=symbol'),
-        sbGet('trades', 'select=symbol,side,amount,price,cost,realized_pnl,created_at&config_version=eq.v3&managed_by=neq.trend_follower&order=created_at.desc'),
+        sbGet('bot_config', 'managed_by=eq.trend_follower&order=symbol'),
+        sbGet('trades', 'select=symbol,side,amount,price,cost,realized_pnl,created_at&config_version=eq.v3&managed_by=eq.trend_follower&order=created_at.desc'),
         sbGet('daily_pnl', 'order=date.desc&limit=10'),
-        sbGet('reserve_ledger', 'select=symbol,amount&config_version=eq.v3'),
-        fetchLivePrices()
+        sbGet('reserve_ledger', 'select=symbol,amount&config_version=eq.v3')
       ]);
 
       var failed = settled.filter(function(r) { return r.status === 'rejected'; });
@@ -480,19 +508,41 @@
       tradesData = settled[1].value;
       pnlData = settled[2].value;
       var skimRows = settled[3].value;
-      // Restrict skim to the symbols shown here (manual bots) so TF skim
-      // doesn't leak into the admin reserve total.
-      var adminSymSet = {};
-      configData.forEach(function(c) { adminSymSet[c.symbol] = true; });
-      var adminSkim = skimRows.filter(function(r) { return adminSymSet[r.symbol]; });
-      skimReserveTotal = adminSkim.reduce(function(s, r) { return s + Number(r.amount || 0); }, 0);
+
+      // Build dynamic color/short/decimals maps for the current TF-managed set
+      buildMaps(configData);
+
+      // Fetch live prices only for the coins TF actually owns
+      var tfSymbols = configData.map(function(c) { return c.symbol; });
+      await fetchLivePrices(tfSymbols);
+
+      // Filter reserve_ledger to TF symbols only
+      var tfSet = {};
+      configData.forEach(function(c) { tfSet[c.symbol] = true; });
+      var filteredSkim = skimRows.filter(function(r) { return tfSet[r.symbol]; });
+      skimReserveTotal = filteredSkim.reduce(function(s, r) { return s + Number(r.amount || 0); }, 0);
       skimBySymbol = {};
-      adminSkim.forEach(function(r) {
+      filteredSkim.forEach(function(r) {
         if (r.symbol) skimBySymbol[r.symbol] = (skimBySymbol[r.symbol] || 0) + Number(r.amount || 0);
       });
+
       totalRealizedAll = tradesData
         .filter(function(t) { return t.side === 'sell'; })
         .reduce(function(s, r) { return s + Number(r.realized_pnl || 0); }, 0);
+
+      // Update mode indicator (LIVE green / SHADOW yellow)
+      var modeDot = document.getElementById('tf-mode-dot');
+      var modeLabel = document.getElementById('tf-mode-label');
+      if (modeDot && modeLabel) {
+        if (TF_DRY_RUN) {
+          modeDot.style.color = 'var(--yellow)';
+          modeLabel.textContent = 'SHADOW — dry run';
+        } else {
+          modeDot.style.color = 'var(--green)';
+          modeLabel.textContent = 'LIVE — writing to bot_config';
+        }
+      }
+
       render();
       document.getElementById('refresh-time').textContent = new Date().toLocaleTimeString();
       document.getElementById('refresh-status').textContent = 'auto every 5m';
@@ -511,11 +561,15 @@
       var el = document.getElementById('alerts');
       var alerts = [];
 
-      // Check unallocated capital
+      if (TF_DRY_RUN) {
+        alerts.push({ type: 'yellow', text: 'TF in SHADOW mode — decisions logged, nothing written to bot_config.' });
+      }
+
+      // Check unallocated TF budget
       var totalAlloc = configData.reduce(function(s, c) { return s + Number(c.capital_allocation); }, 0);
-      var unalloc = 500 - totalAlloc;
-      if (unalloc > 50) {
-        alerts.push({ type: 'yellow', text: '$' + fmt(unalloc, 0) + ' unallocated (' + fmt(unalloc / 5, 0) + '% of portfolio doing nothing)' });
+      var unalloc = TF_BUDGET - totalAlloc;
+      if (TF_BUDGET > 0 && unalloc > TF_BUDGET * 0.5) {
+        alerts.push({ type: 'yellow', text: '$' + fmt(unalloc, 0) + ' TF budget unallocated (' + fmt(unalloc / TF_BUDGET * 100, 0) + '% of $' + fmt(TF_BUDGET, 0) + ' idle)' });
       }
 
       // Check per-coin cash
@@ -529,8 +583,10 @@
         }
       });
 
-      if (alerts.length === 0) {
-        alerts.push({ type: 'green', text: 'All systems nominal. Bots have cash to operate.' });
+      if (configData.length === 0) {
+        alerts.push({ type: 'green', text: 'No TF-managed coins right now. TF is ' + (TF_DRY_RUN ? 'watching in shadow' : 'live and searching') + '.' });
+      } else if (alerts.length === 0) {
+        alerts.push({ type: 'green', text: 'All TF bots nominal. ' + configData.length + ' coin(s) active of max ' + TF_MAX_COINS + '.' });
       }
 
       el.innerHTML = alerts.map(function(a) {
@@ -610,7 +666,7 @@
 
     function renderOverview() {
       var totalAlloc = configData.reduce(function(s, c) { return s + Number(c.capital_allocation); }, 0);
-      var unalloc = 500 - totalAlloc;
+      var unalloc = TF_BUDGET - totalAlloc;
 
       var totalCash = 0;
       var totalDeployed = 0;
@@ -740,6 +796,12 @@
 
     function renderCoinCards() {
       var el = document.getElementById('coin-cards');
+      if (!configData.length) {
+        el.innerHTML = '<div class="card" style="text-align:center;color:var(--text-dim);font-family:var(--mono);font-size:12px;">' +
+          'No TF-managed coins yet. ' + (TF_DRY_RUN ? 'TF runs in shadow mode — flip trend_config.dry_run=false to go live.' : 'Waiting for the next TF scan to allocate.') +
+          '</div>';
+        return;
+      }
       el.innerHTML = configData.map(function(cfg) {
         var sym = cfg.symbol;
         var short = SHORT[sym] || sym;
@@ -979,6 +1041,10 @@
       });
 
       var recent = tradesData.slice(0, 20);
+      if (!recent.length) {
+        body.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-dim);padding:12px;">No TF trades yet.</td></tr>';
+        return;
+      }
       body.innerHTML = recent.map(function(t) {
         var cls = t.side === 'buy' ? 'buy-row' : 'sell-row';
         var dt = new Date(t.created_at);
