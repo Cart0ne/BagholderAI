@@ -109,6 +109,8 @@ class GridBot:
         self.skim_pct = skim_pct
         self.idle_reentry_hours = idle_reentry_hours
         self.is_active: bool = True  # controlled via Supabase bot_config
+        self.pending_liquidation: bool = False  # TF rotation trigger
+        self.managed_by: str = "manual"  # "manual" or "trend_follower"
         self._exchange_filters: dict = {}  # populated at startup via set_exchange_filters()
         self.state: Optional[GridState] = None
         self._daily_trade_count = 0
@@ -564,6 +566,7 @@ class GridBot:
             "mode": self.mode,
             "cash_before": cash_before,
             "capital_allocated": self.capital,
+            "managed_by": getattr(self, "managed_by", "manual"),
         }
 
         # Log to database
@@ -667,6 +670,7 @@ class GridBot:
             "mode": self.mode,
             "realized_pnl": realized_pnl,
             "holdings_value_before": holdings_value_before,
+            "managed_by": getattr(self, "managed_by", "manual"),
         }
 
         # Log to database
@@ -953,6 +957,7 @@ class GridBot:
             "mode": self.mode,
             "cash_before": cash_before,
             "capital_allocated": self.capital,
+            "managed_by": getattr(self, "managed_by", "manual"),
         }
 
         try:
@@ -1094,12 +1099,14 @@ class GridBot:
             "trade_pnl_pct": trade_pnl_pct,  # for Telegram only, filtered before DB log
             "capital_allocated": self.capital,
             "holdings_value_before": holdings_value_before,
+            "managed_by": getattr(self, "managed_by", "manual"),
         }
 
         _LOG_TRADE_KEYS = {
             "symbol", "side", "amount", "price", "fee", "strategy", "brain", "reason",
             "mode", "exchange_order_id", "realized_pnl", "buy_trade_id", "cost",
             "config_version", "cash_before", "capital_allocated", "holdings_value_before",
+            "managed_by",
         }
         trade_db_row = {}
         try:

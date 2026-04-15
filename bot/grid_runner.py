@@ -90,6 +90,10 @@ def _sync_config_to_bot(reader: "SupabaseConfigReader", bot: "GridBot", symbol: 
         bot.min_profit_pct = float(sb_cfg["profit_target_pct"])
     if "is_active" in sb_cfg:
         bot.is_active = bool(sb_cfg["is_active"])
+    if "pending_liquidation" in sb_cfg:
+        bot.pending_liquidation = bool(sb_cfg.get("pending_liquidation", False))
+    if "managed_by" in sb_cfg and sb_cfg.get("managed_by"):
+        bot.managed_by = sb_cfg["managed_by"]
 
 
 def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = False):
@@ -97,6 +101,9 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
 
     # Load local config for this symbol (fallback / initial values)
     cfg = get_grid_config(symbol)
+    # Unknown symbols fall back to BTC config; force the requested symbol so
+    # TF-created grids don't accidentally trade BTC.
+    cfg.symbol = symbol
 
     # --- Read config from Supabase (Task 2) ---
     config_reader = SupabaseConfigReader(own_symbol=cfg.symbol)
@@ -198,6 +205,13 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
         skim_pct=cfg.skim_pct,
     )
 
+    # Initial managed_by from Supabase (default "manual")
+    try:
+        _initial_cfg = config_reader.get_config(cfg.symbol)
+        bot.managed_by = (_initial_cfg.get("managed_by") or "manual") if _initial_cfg else "manual"
+    except Exception:
+        bot.managed_by = "manual"
+
     # Fetch initial price and setup grid
     try:
         price = fetch_price(exchange, cfg.symbol)
@@ -289,6 +303,21 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
                 notifier.send_message(
                     f"🛑 <b>{cfg.symbol} grid bot stopped</b> (is_active=false)"
                 )
+                break
+
+            # Forced liquidation (e.g., TF rotation): dump all holdings at market and exit
+            if getattr(bot, "pending_liquidation", False):
+                logger.info(f"[{cfg.symbol}] pending_liquidation=true — force-selling all positions")
+                _force_liquidate(bot, exchange, trade_logger, notifier, cfg.symbol)
+                try:
+                    from db.client import get_client
+                    sb = get_client()
+                    sb.table("bot_config").update({
+                        "is_active": False,
+                        "pending_liquidation": False,
+                    }).eq("symbol", cfg.symbol).execute()
+                except Exception as e:
+                    logger.error(f"[{cfg.symbol}] Failed to clear bot_config after liquidation: {e}")
                 break
 
             price = fetch_price(exchange, cfg.symbol)
@@ -543,6 +572,63 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
     logger.info("FINAL STATUS")
     _print_status(bot)
     logger.info("=" * 50)
+
+
+def _force_liquidate(bot, exchange, trade_logger, notifier, symbol: str):
+    """Force-sell all holdings at market price (used when TF rotates to another coin)."""
+    holdings = bot.state.holdings if bot.state else 0
+
+    if holdings <= 0:
+        logger.info(f"[{symbol}] No holdings to liquidate")
+        notifier.send_message(f"🔴 <b>{symbol} liquidation</b>: no holdings, clean exit")
+        return
+
+    try:
+        price = fetch_price(exchange, symbol)
+        avg_buy = bot.state.avg_buy_price if bot.state and bot.state.avg_buy_price else 0
+        cost_basis = avg_buy * holdings
+        proceeds = price * holdings
+        realized_pnl = proceeds - cost_basis
+
+        managed_by = getattr(bot, "managed_by", "manual")
+
+        if trade_logger:
+            try:
+                trade_logger.log_trade(
+                    symbol=symbol,
+                    side="sell",
+                    amount=holdings,
+                    price=price,
+                    cost=proceeds,
+                    fee=0,
+                    strategy="A",
+                    brain="grid",
+                    mode="paper",
+                    reason="FORCED_LIQUIDATION (TF rotation)",
+                    realized_pnl=realized_pnl,
+                    config_version="v3",
+                    managed_by=managed_by,
+                )
+            except Exception as e:
+                logger.error(f"[{symbol}] Failed to log liquidation trade: {e}")
+
+        pnl_emoji = "📈" if realized_pnl >= 0 else "📉"
+        notifier.send_message(
+            f"🔴 <b>{symbol} LIQUIDATED</b>\n"
+            f"Sold {holdings:.6f} at ${price:.4f}\n"
+            f"Proceeds: ${proceeds:.2f}\n"
+            f"{pnl_emoji} PnL: ${realized_pnl:.2f}"
+        )
+        logger.info(
+            f"[{symbol}] Liquidation complete: sold {holdings} at {price}, PnL: ${realized_pnl:.2f}"
+        )
+    except Exception as e:
+        logger.error(f"[{symbol}] Liquidation FAILED: {e}")
+        notifier.send_message(
+            f"🚨 <b>{symbol} LIQUIDATION FAILED</b>\n"
+            f"<code>{str(e)[:300]}</code>\n"
+            f"Manual intervention needed!"
+        )
 
 
 def _build_portfolio_summary(trade_logger, exchange, current_bot, current_symbol: str) -> dict:

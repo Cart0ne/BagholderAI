@@ -43,6 +43,7 @@ class TradeLogger:
         cash_before: Optional[float] = None,
         capital_allocated: Optional[float] = None,
         holdings_value_before: Optional[float] = None,
+        managed_by: Optional[str] = None,
     ) -> dict:
         """Log a trade to the database."""
         data = {
@@ -61,6 +62,8 @@ class TradeLogger:
             "buy_trade_id": buy_trade_id,
             "config_version": config_version,
         }
+        if managed_by is not None:
+            data["managed_by"] = managed_by
         
         result = self.client.table("trades").insert(data).execute()
         return result.data[0] if result.data else {}

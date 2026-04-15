@@ -20,7 +20,8 @@ CONFIG_REFRESH_INTERVAL = 300  # seconds between config refreshes
 _CONFIG_FIELDS = (
     "symbol,capital_allocation,grid_levels,grid_lower,grid_upper,"
     "profit_target_pct,reserve_floor_pct,capital_per_trade,"
-    "is_active,buy_pct,sell_pct,grid_mode,skim_pct,idle_reentry_hours"
+    "is_active,buy_pct,sell_pct,grid_mode,skim_pct,idle_reentry_hours,"
+    "pending_liquidation,managed_by"
 )
 
 

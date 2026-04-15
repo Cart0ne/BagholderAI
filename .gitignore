@@ -11,6 +11,9 @@ venv_office/
 # Old files
 *_old*
 
+# Orchestrator subprocess logs
+logs/
+
 # Completed briefs archive
 config/.mdcompletati/
 
