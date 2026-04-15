@@ -306,7 +306,7 @@
       <div class="card" style="overflow-x: auto;">
         <table class="trades-table" id="trades-table">
           <thead>
-            <tr><th>Side</th><th>Coin</th><th>Price</th><th>Cost</th><th>Time</th></tr>
+            <tr><th>Side</th><th>Coin</th><th>Price</th><th>Cost</th><th>Buy @</th><th>P&amp;L</th><th>Time</th></tr>
           </thead>
           <tbody id="trades-body"></tbody>
         </table>
@@ -912,16 +912,65 @@
 
     function renderTrades() {
       var body = document.getElementById('trades-body');
+
+      // FIFO match: for each sell, compute weighted-avg buy price of consumed lots.
+      // Annotates each sell row with _buyPriceAvg. Processed per-symbol, chronologically.
+      var bySym = {};
+      tradesData.forEach(function(t) {
+        (bySym[t.symbol] = bySym[t.symbol] || []).push(t);
+      });
+      Object.keys(bySym).forEach(function(sym) {
+        var sorted = bySym[sym].slice().sort(function(a, b) {
+          return new Date(a.created_at) - new Date(b.created_at);
+        });
+        var queue = [];
+        sorted.forEach(function(t) {
+          if (t.side === 'buy') {
+            queue.push({ amount: Number(t.amount), price: Number(t.price || 0) });
+          } else {
+            var remaining = Number(t.amount);
+            var consumedCost = 0;
+            var consumedAmt = 0;
+            while (remaining > 0.000001 && queue.length > 0) {
+              var lot = queue[0];
+              if (lot.amount <= remaining + 0.000001) {
+                consumedCost += lot.amount * lot.price;
+                consumedAmt += lot.amount;
+                remaining -= lot.amount;
+                queue.shift();
+              } else {
+                consumedCost += remaining * lot.price;
+                consumedAmt += remaining;
+                lot.amount -= remaining;
+                remaining = 0;
+              }
+            }
+            t._buyPriceAvg = consumedAmt > 0 ? consumedCost / consumedAmt : 0;
+          }
+        });
+      });
+
       var recent = tradesData.slice(0, 20);
       body.innerHTML = recent.map(function(t) {
         var cls = t.side === 'buy' ? 'buy-row' : 'sell-row';
         var dt = new Date(t.created_at);
         var timeStr = dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' ' + dt.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+        var buyAtCell = '<td style="color:var(--text-dim);">—</td>';
+        var pnlCell = '<td style="color:var(--text-dim);">—</td>';
+        if (t.side === 'sell') {
+          buyAtCell = '<td>' + (t._buyPriceAvg > 0 ? fmtPrice(t._buyPriceAvg) : '—') + '</td>';
+          var pnl = Number(t.realized_pnl || 0);
+          var pnlColor = pnl >= 0 ? 'var(--green)' : 'var(--red)';
+          var pnlSign = pnl >= 0 ? '+' : '';
+          pnlCell = '<td style="color:' + pnlColor + ';">' + pnlSign + fmtUsd(pnl) + '</td>';
+        }
         return '<tr class="' + cls + '">' +
           '<td>' + t.side.toUpperCase() + '</td>' +
           '<td>' + (SHORT[t.symbol] || t.symbol) + '</td>' +
           '<td>' + fmtPrice(t.price) + '</td>' +
           '<td>' + fmtUsd(t.cost) + '</td>' +
+          buyAtCell +
+          pnlCell +
           '<td>' + timeStr + '</td>' +
         '</tr>';
       }).join('');
