@@ -244,6 +244,10 @@ def apply_allocations(supabase, decisions: list[dict], config: dict) -> None:
                 # min_profit_pct as a raw decimal (1.0 → +100% required to sell),
                 # which would freeze every TF sell. Force 0 to disable the guard.
                 "profit_target_pct": 0,
+                # Match the manual bots' skim: 30% of each sell's profit goes
+                # to the reserve ledger. Prevents TF from cycling 100% of gains
+                # back into positions.
+                "skim_pct": 30,
             }
 
             try:
