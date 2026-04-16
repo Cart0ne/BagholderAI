@@ -100,6 +100,23 @@ def decide_allocations(
     ]
     bullish.sort(key=lambda c: c["signal_strength"], reverse=True)
 
+    # Equal-split allocation for TF (bypasses coin_tiers MAX_ALLOC_PCT).
+    # The tier table was sized for the manual 5-grid / $500 system, where
+    # T3 10% = $50/coin. Applied to TF with $100 budget and tf_max_coins=2
+    # it degenerates to $10/coin and the grid taps out on the first buy.
+    # Here we split the remaining budget equally across the slots that
+    # will actually be filled this scan. Sanity cap prevents any single
+    # coin from eating more than 1.5× the equal share (e.g. if only one
+    # BULLISH is available and tf_max_coins > 1, it still caps at 1.5×
+    # unless it's the very last slot).
+    slots_remaining = max(0, max_grids - active_count)
+    num_new = min(len(bullish), slots_remaining)
+    sanity_cap = (total_capital / max_grids) * 1.5 if max_grids > 0 else total_capital
+    if num_new <= 1:
+        per_coin_target = unallocated
+    else:
+        per_coin_target = min(unallocated / num_new, sanity_cap)
+
     for coin in bullish:
         if active_count >= max_grids:
             decisions.append(_make_decision(
@@ -109,7 +126,7 @@ def decide_allocations(
             continue
 
         tier, max_pct = _get_tier_info(coin["symbol"], coin_tiers)
-        alloc_amount = min(unallocated, total_capital * max_pct / 100)
+        alloc_amount = min(per_coin_target, unallocated)
 
         if alloc_amount <= 0:
             decisions.append(_make_decision(
@@ -132,7 +149,8 @@ def decide_allocations(
             ))
             continue
 
-        # Build config snapshot (what WOULD be written)
+        # Build config snapshot (what WOULD be written). max_allocation_pct
+        # is kept for telemetry only — it no longer gates the allocation.
         config_snapshot = {
             "symbol": coin["symbol"],
             "capital_allocation": round(alloc_amount, 2),
@@ -144,7 +162,7 @@ def decide_allocations(
 
         decisions.append(_make_decision(
             scan_ts, coin["symbol"], coin, "ALLOCATE",
-            f"BULLISH T{tier} — ${alloc_amount:.0f} ({max_pct}% cap)",
+            f"BULLISH T{tier} — ${alloc_amount:.0f} (equal-split {num_new}/{max_grids})",
             config_snapshot=config_snapshot,
         ))
 
