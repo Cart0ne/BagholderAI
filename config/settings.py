@@ -136,7 +136,7 @@ class GridInstanceConfig:
     order_amount: float = 20.0
     check_interval_seconds: int = 60   # Task 6: per-asset check interval
     buy_cooldown_seconds: int = 0      # Task 5: min seconds between consecutive buys
-    min_profit_pct: float = 0.0        # Task 10: min gross margin to allow a sell (e.g. 0.01 = 1%)
+    min_profit_pct: float = 0.0        # Task 10: min gross margin % to allow a sell (e.g. 1.0 = 1%)
     # Percentage mode (Session 18)
     grid_mode: str = "fixed"           # "fixed" or "percentage"
     buy_pct: float = 0.0               # % drop from last buy to trigger next buy
@@ -156,7 +156,7 @@ GRID_INSTANCES = [
         order_amount=20.0,
         check_interval_seconds=60,     # check ogni 1 min
         buy_cooldown_seconds=1800,     # cooldown 30 min tra buy
-        min_profit_pct=0.01,           # 1% min profit before selling
+        min_profit_pct=1.0,            # 1% min profit before selling (1.0 = 1% after S36d unit fix)
         grid_mode="fixed",
         buy_pct=1.80,
         sell_pct=1.00,

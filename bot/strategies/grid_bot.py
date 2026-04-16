@@ -80,7 +80,7 @@ class GridBot:
         range_percent: float = 0.04,  # 4% range (2% above and below)
         mode: str = "paper",
         buy_cooldown_seconds: int = 0,  # Task 5: min seconds between buys
-        min_profit_pct: float = 0.0,    # Task 10: min gross margin to allow a sell (e.g. 0.01 = 1%)
+        min_profit_pct: float = 0.0,    # Task 10: min gross margin % to allow a sell (e.g. 1.0 = 1%)
         grid_mode: str = "fixed",       # "fixed" or "percentage"
         buy_pct: float = 0.0,           # % drop from last buy to trigger next buy
         sell_pct: float = 0.0,          # % rise from avg buy to trigger sell
@@ -588,13 +588,14 @@ class GridBot:
 
         HARDCODED RULE: Strategy A NEVER sells at a loss.
         """
-        # Task 10: enforce minimum profit target before selling
+        # Task 10: enforce minimum profit target before selling.
+        # min_profit_pct is a percentage (e.g. 1.0 = 1%), aligned with buy_pct / sell_pct.
         if self.min_profit_pct > 0 and self.state.avg_buy_price > 0:
-            min_price = self.state.avg_buy_price * (1 + self.min_profit_pct)
+            min_price = self.state.avg_buy_price * (1 + self.min_profit_pct / 100)
             if price < min_price:
                 logger.info(
                     f"SKIP: sell at {fmt_price(price)} below min profit target "
-                    f"(need {fmt_price(min_price)}, {self.min_profit_pct * 100:.1f}% above avg buy)"
+                    f"(need {fmt_price(min_price)}, {self.min_profit_pct:.1f}% above avg buy)"
                 )
                 return None
 
@@ -992,11 +993,11 @@ class GridBot:
 
         # Mirror the same guards as _execute_sell
         if self.min_profit_pct > 0 and self.state.avg_buy_price > 0:
-            min_price = self.state.avg_buy_price * (1 + self.min_profit_pct)
+            min_price = self.state.avg_buy_price * (1 + self.min_profit_pct / 100)
             if price < min_price:
                 logger.info(
                     f"SKIP: pct sell at {fmt_price(price)} below min profit target "
-                    f"(need {fmt_price(min_price)}, {self.min_profit_pct * 100:.1f}% above avg buy)"
+                    f"(need {fmt_price(min_price)}, {self.min_profit_pct:.1f}% above avg buy)"
                 )
                 return None
 

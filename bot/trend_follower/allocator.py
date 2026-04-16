@@ -258,9 +258,9 @@ def apply_allocations(supabase, decisions: list[dict], config: dict) -> None:
                 "grid_levels": 10,
                 "grid_lower": 0,
                 "grid_upper": 0,
-                # The DB default for profit_target_pct is 1.0. grid_bot interprets
-                # min_profit_pct as a raw decimal (1.0 → +100% required to sell),
-                # which would freeze every TF sell. Force 0 to disable the guard.
+                # TF does not want a min-profit gate (sell_pct is the sole
+                # sell threshold for this strategy). Force 0 explicitly so
+                # the behavior is independent of the bot_config column default.
                 "profit_target_pct": 0,
                 # Match the manual bots' skim: 30% of each sell's profit goes
                 # to the reserve ledger. Prevents TF from cycling 100% of gains

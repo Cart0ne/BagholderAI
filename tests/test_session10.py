@@ -315,7 +315,7 @@ def test_min_profit_sell_blocked():
         capital=100.0,
         num_levels=10,
         range_percent=0.04,
-        min_profit_pct=0.01,  # 1% minimum
+        min_profit_pct=1.0,  # 1% minimum (% after S36d unit fix)
     )
 
     bot.setup_grid(84000.0)
@@ -368,7 +368,7 @@ def test_min_profit_sell_allowed():
         capital=100.0,
         num_levels=10,
         range_percent=0.04,
-        min_profit_pct=0.01,  # 1% minimum
+        min_profit_pct=1.0,  # 1% minimum (% after S36d unit fix)
     )
 
     bot.setup_grid(84000.0)
