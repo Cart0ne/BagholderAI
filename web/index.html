@@ -659,22 +659,25 @@
         '<span>Initial: ' + fmtUsd(state.initialCapital) + '</span>' +
         '<span>Day ' + dayNum(today) + '</span>';
 
-      // P&L breakdown — realized net is derived so breakdown always sums to totalPnl
-      var realizedNet = state.totalPnl - state.totalUnrealized + state.skimTotal;
-      var reinvested = realizedNet - state.skimTotal;
+      // P&L breakdown — stacks so Realized (net) + Unrealized ≈ Total P&L.
+      // Fees is informational (already deducted in realized net). Skim is a
+      // subset of gross that's been sidelined — not a separate cost.
+      var realizedGross = state.totalRealized;
+      var realizedNet = realizedGross - state.totalFees;
+      var skimPctOfGross = realizedGross > 0 ? (state.skimTotal / realizedGross * 100) : 0;
       document.getElementById('pnl-breakdown').innerHTML =
         '<div class="breakdown-item"><div class="label">Realized (net)</div>' +
         '<div class="value ' + pcls(realizedNet) + '">' + sign(realizedNet) + fmtUsd(realizedNet) + '</div>' +
-        '<div class="sub">' + fmtUsd(reinvested) + ' reinvested · ' + fmtUsd(state.skimTotal) + ' skimmed</div></div>' +
+        '<div class="sub">' + fmtUsd(realizedGross) + ' gross − ' + fmtUsd(Math.abs(state.totalFees)) + ' fees</div></div>' +
         '<div class="breakdown-item"><div class="label">Unrealized</div>' +
         '<div class="value ' + pcls(state.totalUnrealized) + '">' + sign(state.totalUnrealized) + fmtUsd(state.totalUnrealized) + '</div>' +
-        '<div class="sub">still on paper</div></div>' +
+        '<div class="sub">on paper, open positions</div></div>' +
         '<div class="breakdown-item"><div class="label">Fees paid</div>' +
         '<div class="value negative">-' + fmtUsd(Math.abs(state.totalFees)) + '</div>' +
-        '<div class="sub">deducted from realized</div></div>' +
+        '<div class="sub">already subtracted above</div></div>' +
         '<div class="breakdown-item"><div class="label">Skim reserved</div>' +
-        '<div class="value positive">+$' + state.skimTotal.toFixed(4) + (realizedNet > 0 ? ' (' + (state.skimTotal / (realizedNet + state.skimTotal) * 100).toFixed(1) + '% of gross)' : '') + '</div>' +
-        '<div class="sub">set aside from profits</div></div>';
+        '<div class="value positive">+$' + state.skimTotal.toFixed(4) + (skimPctOfGross > 0 ? ' (' + skimPctOfGross.toFixed(1) + '% of gross)' : '') + '</div>' +
+        '<div class="sub">subset of gross, sidelined</div></div>';
 
       // Cash allocation bar
       document.getElementById('cash-pct-label').textContent = fmt(cashPct, 0) + '% cash';
