@@ -16,7 +16,6 @@ Usage:
 """
 
 import argparse
-import json
 import logging
 import sys
 from datetime import datetime, timezone
@@ -31,15 +30,17 @@ logger = logging.getLogger("bagholderai.x_poster")
 from utils.x_poster import (
     generate_post,
     post_to_x,
-    get_latest_unposted_diary,
-    mark_as_posted,
+    get_latest_diary,
+    get_recent_config_changes,
+    save_pending_draft,
+    get_pending_draft,
+    clear_pending_draft,
     already_posted_today,
     log_post,
     DEFAULT_SIGNATURE,
+    DIARY_STALE_HOURS,
 )
 from utils.telegram_notifier import SyncTelegramNotifier
-
-PENDING_FILE = "/tmp/pending_x_post.json"
 
 
 def cmd_cli(args):
@@ -59,67 +60,79 @@ def cmd_cli(args):
         sys.exit(1)
 
 
+def _parse_ts(ts: str) -> datetime:
+    """Parse a Supabase-style timestamptz string (handles both 'Z' and '+00:00')."""
+    return datetime.fromisoformat(ts.replace("Z", "+00:00"))
+
+
 def cmd_cron(args):
-    """Cron mode: read diary -> generate -> save pending -> notify Telegram."""
+    """Cron mode: read latest diary + 24h config changes -> generate -> save pending -> notify."""
     notifier = SyncTelegramNotifier()
 
+    # 1. Anti-dupe check (once per calendar day)
     if already_posted_today():
         logger.info("Already posted today. Skipping.")
         notifier.send_message("⏸ <b>X post skip</b> — già postato oggi.")
         return
 
-    # Check for expired pending post (>24h)
-    import os
-    if os.path.exists(PENDING_FILE):
-        with open(PENDING_FILE) as f:
-            pending = json.load(f)
-        gen_time = datetime.fromisoformat(pending["generated_at"])
-        age_hours = (datetime.now(timezone.utc) - gen_time.replace(tzinfo=timezone.utc)).total_seconds() / 3600
-        if age_hours < 24:
-            logger.info("Pending post already exists (waiting for approval). Skipping.")
+    # 2. Existing pending draft?
+    pending = get_pending_draft()
+    if pending:
+        age_h = (datetime.now(timezone.utc) - _parse_ts(pending["generated_at"])).total_seconds() / 3600
+        if age_h < 24:
+            logger.info(f"Pending draft exists ({age_h:.1f}h old). Skipping regeneration.")
             notifier.send_message(
                 f"⏸ <b>X post skip</b> — bozza Session {pending.get('session', '?')} "
-                f"ancora in attesa di approvazione ({age_hours:.1f}h).\n"
-                f"Usa /approve · /discard · /rewrite"
+                f"ancora in attesa di approvazione ({age_h:.1f}h).\n"
+                f"Comandi: /approve · /discard · /rewrite"
             )
             return
-        else:
-            logger.info("Pending post expired (>24h). Generating new one.")
-            os.remove(PENDING_FILE)
+        logger.info(f"Pending draft is stale ({age_h:.1f}h > 24h). Regenerating.")
+        clear_pending_draft()
 
-    # Get unposted diary entry
-    diary = get_latest_unposted_diary()
-    if not diary:
-        logger.info("No unposted diary entries found. Nothing to do.")
-        notifier.send_message("ℹ️ <b>X post skip</b> — nessuna diary entry nuova da postare.")
+    # 3. Load inputs
+    diary = get_latest_diary()
+    config_changes = get_recent_config_changes()
+
+    # 4. Decide if diary is fresh enough to headline the post
+    use_diary = False
+    if diary:
+        diary_age_h = (datetime.now(timezone.utc) - _parse_ts(diary["created_at"])).total_seconds() / 3600
+        use_diary = diary_age_h < DIARY_STALE_HOURS
+        logger.info(
+            f"Latest diary: Session {diary['session']} ({diary_age_h:.1f}h old) "
+            f"-- {'USE' if use_diary else 'STALE'}"
+        )
+    else:
+        logger.warning("No diary entry found in DB at all.")
+
+    # 5. Skip if nothing worth saying
+    if not use_diary and not config_changes:
+        logger.info("Stale diary + no config changes. Skipping.")
+        notifier.send_message(
+            "ℹ️ <b>X post skip</b> — diary vecchio e nessuna modifica config nelle ultime 24h. "
+            "Nulla di nuovo oggi."
+        )
         return
 
-    session = diary["session"]
-    title = diary["title"]
-    summary = diary["summary"]
+    # 6. Generate draft
+    logger.info(
+        f"Generating post (use_diary={use_diary}, {len(config_changes)} config changes)"
+    )
+    draft = generate_post(diary, config_changes, use_diary)
 
-    logger.info(f"Generating post for Session {session}: {title}")
-    draft = generate_post(summary, title)
+    # 7. Persist pending + notify Max
+    session = diary["session"] if (diary and use_diary) else None
+    title = diary["title"] if (diary and use_diary) else None
+    summary = diary["summary"] if (diary and use_diary) else None
+    save_pending_draft(session, title, summary, draft, DEFAULT_SIGNATURE)
 
-    # Save pending
-    pending = {
-        "session": session,
-        "title": title,
-        "summary": summary,
-        "draft": draft,
-        "generated_at": datetime.now(timezone.utc).isoformat(),
-        "signature": DEFAULT_SIGNATURE,
-    }
-    with open(PENDING_FILE, "w") as f:
-        json.dump(pending, f, indent=2)
-
-    # Calculate char count with signature
     full_text = f"{draft}\n\n{DEFAULT_SIGNATURE}"
     char_count = len(full_text)
+    session_tag = f"Session {session}" if session else "Config summary"
 
-    # Notify Telegram
     msg = (
-        f"🐦 Bozza post X (Session {session}):\n"
+        f"🐦 Bozza post X ({session_tag}):\n"
         f"\n"
         f"{draft}\n"
         f"\n"
@@ -134,21 +147,28 @@ def cmd_cron(args):
 
 
 def cmd_generate_only(args):
-    """Generate a draft without posting or sending to Telegram."""
-    diary = get_latest_unposted_diary()
-    if not diary:
-        print("No unposted diary entries found.")
+    """Generate a draft without posting or sending to Telegram — for ispezione."""
+    diary = get_latest_diary()
+    config_changes = get_recent_config_changes()
+
+    use_diary = False
+    if diary:
+        diary_age_h = (datetime.now(timezone.utc) - _parse_ts(diary["created_at"])).total_seconds() / 3600
+        use_diary = diary_age_h < DIARY_STALE_HOURS
+        print(f"--- Latest diary: Session {diary['session']} ({diary_age_h:.1f}h) → "
+              f"{'USE' if use_diary else 'STALE'} ---")
+    else:
+        print("--- No diary in DB ---")
+    print(f"--- Config changes (24h): {len(config_changes)} ---")
+
+    if not use_diary and not config_changes:
+        print("Nothing to post — stale diary + no config changes.")
         return
 
-    session = diary["session"]
-    title = diary["title"]
-    summary = diary["summary"]
-
-    print(f"--- Session {session}: {title} ---")
-    draft = generate_post(summary, title)
+    draft = generate_post(diary, config_changes, use_diary)
     full_text = f"{draft}\n\n{DEFAULT_SIGNATURE}"
     print(f"\n{draft}")
-    print(f"\n📏 {len(full_text)}/280 chars (con firma)")
+    print(f"\n📏 {len(full_text)}/270 chars (con firma)")
 
 
 def main():

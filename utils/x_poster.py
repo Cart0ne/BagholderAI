@@ -9,7 +9,7 @@ Usage:
 import json
 import os
 import logging
-from datetime import date, datetime
+from datetime import date, datetime, timezone, timedelta
 
 import anthropic
 import tweepy
@@ -18,6 +18,10 @@ from config.settings import XConfig, SentinelConfig, DatabaseConfig
 from db.client import get_client
 
 logger = logging.getLogger("bagholderai.x_poster")
+
+# If the latest diary is older than this many hours at cron time, ignore it
+# and build the post from config changes only. Prevents recycling old sessions.
+DIARY_STALE_HOURS = 36
 
 # ---------------------------------------------------------------------------
 # Post generation (Haiku)
@@ -64,11 +68,41 @@ Output ONLY the post text. No explanations, no options, no preamble."""
 MAX_POST_CHARS = 250  # post body only, signature added separately
 
 
-def generate_post(session_summary: str, session_title: str, max_retries: int = 3) -> str:
-    """Generate an X post from a diary session summary using Haiku.
-    Retries up to max_retries times if the output exceeds MAX_POST_CHARS."""
+def _build_user_msg(diary: dict | None, config_changes: list[dict], use_diary: bool) -> str:
+    parts = []
+    if use_diary and diary:
+        parts.append(
+            f"Session title: {diary['title']}\n\nSession summary:\n{diary['summary']}"
+        )
+    elif diary:
+        parts.append(
+            "(Diary is stale — last session too old to feature. Background only, "
+            "do not make it the topic.)\n"
+            f"Old session title: {diary['title']}"
+        )
+    if config_changes:
+        changes_lines = [
+            f"- {c['symbol']} {c['parameter']}: {c['old_value']} -> {c['new_value']}"
+            for c in config_changes
+        ]
+        parts.append("Bot config changes (last 24h):\n" + "\n".join(changes_lines))
+    if not parts:
+        # Defensive — cmd_cron should have skipped before reaching here
+        parts.append("Quiet day. No session, no config changes.")
+    return "\n\n".join(parts)
+
+
+def generate_post(
+    diary: dict | None,
+    config_changes: list[dict],
+    use_diary: bool,
+    max_retries: int = 3,
+) -> str:
+    """Generate an X post using Haiku. Keeps the existing SYSTEM_PROMPT voice;
+    user_msg carries the diary (if fresh) and/or the recent config changes.
+    Retries up to max_retries if output exceeds MAX_POST_CHARS."""
     client = anthropic.Anthropic(api_key=SentinelConfig.ANTHROPIC_API_KEY)
-    user_msg = f"Session title: {session_title}\n\nSession summary:\n{session_summary}"
+    user_msg = _build_user_msg(diary, config_changes, use_diary)
 
     for attempt in range(1, max_retries + 1):
         response = client.messages.create(
@@ -86,15 +120,15 @@ def generate_post(session_summary: str, session_title: str, max_retries: int = 3
             f"Draft too long ({len(draft)} chars, max {MAX_POST_CHARS}), "
             f"attempt {attempt}/{max_retries}. Retrying..."
         )
-        # On retry, ask explicitly for shorter output
-        user_msg = (
-            f"Session title: {session_title}\n\n"
-            f"Session summary:\n{session_summary}\n\n"
-            f"IMPORTANT: Your last draft was {len(draft)} characters. "
-            f"Maximum is {MAX_POST_CHARS}. Write a SHORTER version."
+        user_msg += (
+            f"\n\nYour last draft was {len(draft)} chars. "
+            f"Max {MAX_POST_CHARS}. Write a SHORTER version."
         )
 
-    logger.warning(f"Could not get post under {MAX_POST_CHARS} chars after {max_retries} retries. Returning last draft.")
+    logger.warning(
+        f"Could not get post under {MAX_POST_CHARS} chars after {max_retries} retries. "
+        f"Returning last draft."
+    )
     return draft
 
 
@@ -159,27 +193,91 @@ def post_to_x(text: str, signature: str = DEFAULT_SIGNATURE, image_path: str = N
 # Diary helpers (Supabase)
 # ---------------------------------------------------------------------------
 
-def get_latest_unposted_diary() -> dict | None:
-    """Get the latest diary entry not yet posted to X."""
+def get_latest_diary() -> dict | None:
+    """Always return the most recent diary by session. No status / posted_to_x
+    filter — the old filter would skip a freshly-written DRAFT diary and post
+    the previous one, causing session-34-after-35 type mistakes."""
     sb = get_client()
     result = (
         sb.table("diary_entries")
-        .select("session, title, summary")
-        .eq("status", "COMPLETE")
-        .eq("posted_to_x", False)
+        .select("session, title, summary, created_at")
         .order("session", desc=True)
         .limit(1)
         .execute()
     )
-    if result.data:
-        return result.data[0]
-    return None
+    return result.data[0] if result.data else None
 
 
 def mark_as_posted(session: int):
     """Mark a diary entry as posted to X."""
     sb = get_client()
     sb.table("diary_entries").update({"posted_to_x": True}).eq("session", session).execute()
+
+
+# ---------------------------------------------------------------------------
+# Config-changes context (last 24h) — enriches the Haiku prompt
+# ---------------------------------------------------------------------------
+
+def get_recent_config_changes() -> list[dict]:
+    """Modifiche a bot_config nelle ultime 24h. Real DB columns are
+    `parameter` and `created_at` (NOT field_name / changed_at)."""
+    sb = get_client()
+    since = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()
+    try:
+        result = (
+            sb.table("config_changes_log")
+            .select("symbol, parameter, old_value, new_value, created_at")
+            .gte("created_at", since)
+            .order("created_at", desc=True)
+            .limit(10)
+            .execute()
+        )
+        return result.data or []
+    except Exception as e:
+        logger.warning(f"config_changes_log read failed: {e}")
+        return []
+
+
+# ---------------------------------------------------------------------------
+# Pending draft storage (Supabase) — replaces /tmp/pending_x_post.json
+# ---------------------------------------------------------------------------
+
+PENDING_KEY = "pending_x_post"
+
+
+def save_pending_draft(session: int | None, title: str | None, summary: str | None,
+                       draft: str, signature: str) -> None:
+    sb = get_client()
+    try:
+        sb.table("pending_x_posts").upsert({
+            "key": PENDING_KEY,
+            "session": session,
+            "title": title,
+            "summary": summary,
+            "draft": draft,
+            "signature": signature,
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+        }).execute()
+    except Exception as e:
+        logger.error(f"save_pending_draft failed: {e}")
+
+
+def get_pending_draft() -> dict | None:
+    sb = get_client()
+    try:
+        r = sb.table("pending_x_posts").select("*").eq("key", PENDING_KEY).execute()
+        return r.data[0] if r.data else None
+    except Exception as e:
+        logger.error(f"get_pending_draft failed: {e}")
+        return None
+
+
+def clear_pending_draft() -> None:
+    sb = get_client()
+    try:
+        sb.table("pending_x_posts").delete().eq("key", PENDING_KEY).execute()
+    except Exception as e:
+        logger.error(f"clear_pending_draft failed: {e}")
 
 
 # ---------------------------------------------------------------------------
