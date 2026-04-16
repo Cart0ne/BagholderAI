@@ -789,8 +789,11 @@
     // === FETCH + BUILD LIVE STATE ===
     async function fetchLiveData() {
       var res = await Promise.all([
-        sbq('bot_config', 'select=symbol,capital_allocation&order=symbol'),
-        sbq('trades', 'select=symbol,side,amount,price,cost,fee,realized_pnl,created_at&config_version=eq.v3&order=created_at.desc'),
+        // Home shows the public "$500 manual project" only. TF-managed coins
+        // live on /tf with their own $100 budget — mixing them here broke the
+        // $500 baseline math (unalloc went negative, portfolio value understated).
+        sbq('bot_config', 'select=symbol,capital_allocation&managed_by=neq.trend_follower&order=symbol'),
+        sbq('trades', 'select=symbol,side,amount,price,cost,fee,realized_pnl,created_at&config_version=eq.v3&managed_by=neq.trend_follower&order=created_at.desc'),
         sbq('reserve_ledger', 'select=symbol,amount&config_version=eq.v3'),
         fetchLivePrices()
       ]);
@@ -799,9 +802,14 @@
       var skimRows = res[2];
       var prices = res[3];
 
+      // reserve_ledger has no managed_by column, so filter to the manual
+      // symbols present in configData (TF skim is shown on /tf only).
+      var manualSymSet = {};
+      configData.forEach(function(c) { manualSymSet[c.symbol] = true; });
       var skimBySymbol = {};
       var skimTotal = 0;
       skimRows.forEach(function(r) {
+        if (!manualSymSet[r.symbol]) return;
         var amt = Number(r.amount || 0);
         skimTotal += amt;
         if (r.symbol) skimBySymbol[r.symbol] = (skimBySymbol[r.symbol] || 0) + amt;
