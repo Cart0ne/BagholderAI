@@ -46,6 +46,35 @@ capital_per_trade = max(6.0, round(capital / 4, 2))
 
 Formula OK per capital≥$24, ma con $10 è degenerata.
 
+### 3. Unit mismatch su `profit_target_pct` (bug pre-esistente, emerso con TF)
+
+Tre viste sullo stesso campo, tre unità diverse:
+
+| Livello | Label / valore | Significato atteso |
+|---|---|---|
+| Admin UI (`admin.html`) | "Min Profit %" | numero in % (es. `1` = 1%) |
+| DB (`bot_config.profit_target_pct`) | default `1.0` | ambiguo — non documentato |
+| grid_bot (`min_profit_pct` in `_execute_percentage_sell`) | `min_price = avg_buy * (1 + min_profit_pct)` | frazione (es. `0.01` = 1%) |
+
+Conseguenza: per BIO/ORDI il DB default 1.0 è stato interpretato dal codice come **+100%** richiesto sopra l'avg_buy. Risultato: sell bloccato per sempre, anche con +55% di gain reale.
+
+**Hotfix applicato 16 apr 2026 (commit 0695972)**: `apply_allocations` forza `profit_target_pct=0` nell'INSERT. I 3 bot manuali hanno sempre avuto 0 → problema dormiente fino all'arrivo di TF.
+
+**Fix strutturale da fare in questo brief o in uno dedicato**:
+
+Opzione A — adeguare il codice alla UI (il DB diventa "1 = 1%"):
+```python
+# grid_bot.py
+min_price = avg_buy * (1 + min_profit_pct / 100)
+```
+Più intuitivo per l'utente, ma cambia il contratto in tutti i punti che leggono `min_profit_pct`.
+
+Opzione B — adeguare la UI al codice (il DB diventa "0.01 = 1%"):
+- Label admin: "Min Profit (decimal, 0.01 = 1%)"
+- Convertire ogni valore esistente × 0.01
+
+Opzione A è probabilmente più user-friendly. Da coordinare con il campo `sell_pct`/`buy_pct` che **già** sono trattati come % (`/100` nel codice) per coerenza.
+
 ## Proposta di fix
 
 ### 1. Budget splitting per TF (ignore tier caps in live allocation)
@@ -147,6 +176,10 @@ Post-flip (dry_run=false):
 - [ ] `/tf` dashboard mostra "Capacity usage: 25%" dopo primo buy, non 100%
 - [ ] `bot_config` di un TF coin volatile (ATR>3%) ha `buy_pct>2` e `sell_pct>3` — non più 1.5/1.2 fisso
 - [ ] `bot_config` di un TF coin stabile (ATR<1.5%) ha `buy_pct<2` e `sell_pct<2.5` — adattivo ma non ambizioso
+
+Se in questo brief si risolve anche l'unit mismatch di `profit_target_pct`:
+- [ ] Admin UI: impostare `profit_target_pct=1` su un bot test → grid_bot richiede +1% (non +100%) per vendere
+- [ ] TF INSERT può rimuovere il forzato `profit_target_pct=0` (o lasciarlo per sicurezza)
 
 ## Scope rules
 
