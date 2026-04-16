@@ -192,3 +192,21 @@ Se in questo brief si risolve anche l'unit mismatch di `profit_target_pct`:
 ```
 feat(trend-follower): deploy full tf_budget — equal split across tf_max_coins
 ```
+
+---
+
+## Nota — limite strutturale del grid (out of scope per 36c)
+
+Anche con il 36c applicato, il grid_bot resta **strutturalmente conservativo**. Cattura piccoli cicli (buy al −buy_pct, sell al +sell_pct) ma quando capita un pump grosso come BIO +55% lo perde comunque, perché vende al primo tick del `sell_pct` (che in 36c max vale ~5% sui coin più volatili).
+
+Con il 36c:
+- Passiamo da +1.2% fisso a max +5% adattivo → qualche punto percentuale in più ma sempre limitato al primo trigger
+- Non cattura i movimenti >5% nella stessa ondata
+
+Per cavalcare pump veri serve logica diversa, fuori dal grid puro:
+
+- **Trailing stop**: vendi quando il prezzo torna −X% dal massimo locale (es. −2%). Così se BIO pumpava a +55% poi ritracciava, il bot vendeva a +53% invece di +5%.
+- **Take-profit scalato**: vendi 25% a +5%, 25% a +10%, 50% con trailing. Cattura sia il ciclo breve sia il pump.
+- **Modalità "riding"**: opzionale per i soli coin TF con signal_strength molto alto, disabilitando temporaneamente il grid e attivando trailing.
+
+Candidato brief futuro: **36d — TF riding mode for strong bullish**. Da valutare dopo qualche settimana di dati TF con 36c, così si capisce se i pump catturati giustificano la complessità.
