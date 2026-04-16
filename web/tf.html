@@ -126,6 +126,7 @@
       background: var(--surface); border: 1px solid var(--border);
       border-radius: 8px; padding: 16px; margin-bottom: 10px;
     }
+    .coin-card-inactive { opacity: 0.65; }
     .coin-header {
       display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;
     }
@@ -802,35 +803,41 @@
           '</div>';
         return;
       }
-      el.innerHTML = configData.map(function(cfg) {
+      // Active coins first (alphabetical inside each group — the API
+      // already returns them sorted by symbol, and Array.sort is stable).
+      var sortedData = configData.slice().sort(function(a, b) {
+        return (b.is_active ? 1 : 0) - (a.is_active ? 1 : 0);
+      });
+
+      el.innerHTML = sortedData.map(function(cfg) {
         var sym = cfg.symbol;
         var short = SHORT[sym] || sym;
         var color = COLORS[sym] || '#888';
         var a = analyzeCoin(sym, cfg);
+        var isActive = !!cfg.is_active;
 
         var positionClosed = a.netHoldings <= 0.000001;
-        var statusClass = positionClosed ? 'status-ok' : a.buysLeft === 0 ? 'status-dead' : a.buysLeft <= 1 ? 'status-low' : 'status-ok';
-        var statusText = positionClosed ? 'CLOSED — awaiting re-entry' : a.buysLeft === 0 ? 'TAPPED OUT' : a.buysLeft + ' buys left';
+        var statusClass, statusText;
+        if (!isActive) {
+          statusClass = 'status-dead';
+          statusText = 'INACTIVE — deallocated';
+        } else if (positionClosed) {
+          statusClass = 'status-ok';
+          statusText = 'CLOSED — awaiting re-entry';
+        } else if (a.buysLeft === 0) {
+          statusClass = 'status-dead';
+          statusText = 'TAPPED OUT';
+        } else if (a.buysLeft <= 1) {
+          statusClass = 'status-low';
+          statusText = a.buysLeft + ' buys left';
+        } else {
+          statusClass = 'status-ok';
+          statusText = a.buysLeft + ' buys left';
+        }
 
         var barColor = a.buysLeft === 0 ? 'var(--red)' : a.buysLeft <= 1 ? 'var(--yellow)' : color;
 
-        return '<div class="coin-card" id="card-' + short + '">' +
-          '<div class="coin-header">' +
-            '<span class="coin-name" style="color:' + color + ';">' + short + '</span>' +
-            '<span class="coin-status ' + statusClass + '">' + statusText + '</span>' +
-          '</div>' +
-          '<div class="coin-grid">' +
-            '<div class="coin-stat"><div class="cs-label">Cash</div><div class="cs-value">' + fmtUsd(a.cashLeft) + '</div></div>' +
-            '<div class="coin-stat"><div class="cs-label">Open cost basis</div><div class="cs-value">' + fmtUsd(a.openCost) + '</div></div>' +
-            '<div class="coin-stat"><div class="cs-label">Realized</div><div class="cs-value" style="color:' + (a.realizedPnl >= 0 ? 'var(--green)' : 'var(--red)') + ';">' + (a.realizedPnl >= 0 ? '+' : '') + fmtUsd(a.realizedPnl) + '</div></div>' +
-            '<div class="coin-stat"><div class="cs-label">Trades</div><div class="cs-value">' + a.buyCount + 'B / ' + a.sellCount + 'S</div></div>' +
-            '<div class="coin-stat"><div class="cs-label">Open lots</div><div class="cs-value">' + (positionClosed ? 'Position closed' : a.openLots + ' / ' + a.maxCapacity + ' filled') + '</div></div>' +
-            '<div class="coin-stat"><div class="cs-label">Last trade</div><div class="cs-value">' + (a.lastTrade ? timeAgo(a.lastTrade.created_at) : '—') + '</div></div>' +
-          '</div>' +
-          '<div class="cap-bar-wrap">' +
-            '<div class="cap-bar-label"><span>Capital usage</span><span>' + fmt(a.capacityPct, 0) + '%</span></div>' +
-            '<div class="cap-bar"><div class="cap-bar-fill" style="width:' + a.capacityPct + '%; background:' + barColor + ';"></div></div>' +
-          '</div>' +
+        var configBlock = isActive ? (
           '<div class="config-section">' +
             '<div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-bottom:8px;">PARAMETERS</div>' +
             '<div class="param-group-label">Trading Parameters</div>' +
@@ -860,12 +867,33 @@
               '<button class="btn-save" id="save-' + short + '" onclick="saveConfig(\'' + sym + '\', \'' + short + '\')" disabled>Save changes</button>' +
               '<span class="save-status" id="status-' + short + '"></span>' +
             '</div>' +
+          '</div>'
+        ) : '';
+
+        return '<div class="coin-card' + (isActive ? '' : ' coin-card-inactive') + '" id="card-' + short + '">' +
+          '<div class="coin-header">' +
+            '<span class="coin-name" style="color:' + color + ';">' + short + '</span>' +
+            '<span class="coin-status ' + statusClass + '">' + statusText + '</span>' +
           '</div>' +
+          '<div class="coin-grid">' +
+            '<div class="coin-stat"><div class="cs-label">Cash</div><div class="cs-value">' + fmtUsd(a.cashLeft) + '</div></div>' +
+            '<div class="coin-stat"><div class="cs-label">Open cost basis</div><div class="cs-value">' + fmtUsd(a.openCost) + '</div></div>' +
+            '<div class="coin-stat"><div class="cs-label">Realized</div><div class="cs-value" style="color:' + (a.realizedPnl >= 0 ? 'var(--green)' : 'var(--red)') + ';">' + (a.realizedPnl >= 0 ? '+' : '') + fmtUsd(a.realizedPnl) + '</div></div>' +
+            '<div class="coin-stat"><div class="cs-label">Trades</div><div class="cs-value">' + a.buyCount + 'B / ' + a.sellCount + 'S</div></div>' +
+            '<div class="coin-stat"><div class="cs-label">Open lots</div><div class="cs-value">' + (positionClosed ? 'Position closed' : a.openLots + ' / ' + a.maxCapacity + ' filled') + '</div></div>' +
+            '<div class="coin-stat"><div class="cs-label">Last trade</div><div class="cs-value">' + (a.lastTrade ? timeAgo(a.lastTrade.created_at) : '—') + '</div></div>' +
+          '</div>' +
+          '<div class="cap-bar-wrap">' +
+            '<div class="cap-bar-label"><span>Capital usage</span><span>' + fmt(a.capacityPct, 0) + '%</span></div>' +
+            '<div class="cap-bar"><div class="cap-bar-fill" style="width:' + a.capacityPct + '%; background:' + barColor + ';"></div></div>' +
+          '</div>' +
+          configBlock +
         '</div>';
       }).join('');
 
-      // Mark original values and attach change listeners
-      configData.forEach(function(cfg) {
+      // Mark original values and attach change listeners (active coins only —
+      // inactive cards don't render the parameter inputs)
+      configData.filter(function(cfg) { return cfg.is_active; }).forEach(function(cfg) {
         var short = SHORT[cfg.symbol];
         var allFields = ['grid_mode', 'buy_pct', 'sell_pct', 'profit_target_pct', 'skim_pct',
           'capital_allocation', 'grid_levels', 'grid_lower', 'grid_upper',
