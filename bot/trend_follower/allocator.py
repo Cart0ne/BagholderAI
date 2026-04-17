@@ -431,6 +431,89 @@ def _make_decision(
     return d
 
 
+def resize_active_allocations(
+    supabase,
+    current_allocations: list[dict],
+    tf_total_capital: float,
+    config: dict,
+    is_shadow: bool = True,
+) -> list[dict]:
+    """
+    Session 36g Phase 2: propagate compound to live TF bots.
+
+    Each active TF bot gets target_alloc = tf_total_capital / tf_max_coins,
+    with capital_per_trade = min(CAP, max($6, target_alloc / tf_lots_per_coin)).
+    Skip UPDATE if the delta vs current is below tf_resize_threshold_usd
+    or if the bot is pending_liquidation.
+
+    Returns a list of resize actions (for logging + Telegram).
+    """
+    max_coins = int(config.get("tf_max_coins") or config.get("max_active_grids", 5))
+    if max_coins <= 0:
+        return []
+
+    lots_per_coin = int(config.get("tf_lots_per_coin", 4))
+    threshold = float(config.get("tf_resize_threshold_usd", 10))
+    cpt_cap = float(config.get("tf_capital_per_trade_cap_usd", 50))
+
+    # Equal split across max_coins (not active count), so leftover stays in
+    # the pool for new allocations rather than inflating live bots.
+    target_alloc = tf_total_capital / max_coins
+    target_cpt = min(cpt_cap, max(6.0, round(target_alloc / lots_per_coin, 2)))
+
+    tf_active = [
+        a for a in current_allocations
+        if a.get("is_active") and a.get("managed_by") == "trend_follower"
+        and not a.get("pending_liquidation")
+    ]
+
+    resize_actions: list[dict] = []
+    for alloc in tf_active:
+        symbol = alloc["symbol"]
+        if symbol in MANUAL_WHITELIST:
+            continue
+
+        current_alloc = float(alloc.get("capital_allocation") or 0)
+        delta = target_alloc - current_alloc
+
+        if abs(delta) < threshold:
+            continue
+
+        action = {
+            "symbol": symbol,
+            "current_alloc": round(current_alloc, 2),
+            "target_alloc": round(target_alloc, 2),
+            "target_cpt": target_cpt,
+            "delta": round(delta, 2),
+        }
+
+        if is_shadow:
+            action["applied"] = False
+            logger.info(
+                f"[RESIZE] [SHADOW] {symbol}: ${current_alloc:.2f} → "
+                f"${target_alloc:.2f} (Δ ${delta:+.2f}, cpt ${target_cpt:.2f}) — not written"
+            )
+        else:
+            try:
+                supabase.table("bot_config").update({
+                    "capital_allocation": target_alloc,
+                    "capital_per_trade": target_cpt,
+                }).eq("symbol", symbol).execute()
+                action["applied"] = True
+                logger.info(
+                    f"[RESIZE] {symbol}: ${current_alloc:.2f} → ${target_alloc:.2f} "
+                    f"(Δ ${delta:+.2f}, cpt ${target_cpt:.2f})"
+                )
+            except Exception as e:
+                action["applied"] = False
+                action["error"] = str(e)
+                logger.error(f"[RESIZE] {symbol}: UPDATE failed — {e}")
+
+        resize_actions.append(action)
+
+    return resize_actions
+
+
 def apply_allocations(
     supabase, decisions: list[dict], config: dict,
     coin_lookup: dict | None = None,
@@ -471,9 +554,13 @@ def apply_allocations(
             })
             buy_pct, sell_pct = _adaptive_steps(coin, signal)
 
-            # capital_per_trade: 1/4 of allocation, floor $6 (> Binance min_notional $5).
-            # Prevents grid from defaulting to BTC's $25 per-trade when TF allocates $10.
-            capital_per_trade = max(6.0, round(capital / 4, 2))
+            # capital_per_trade: 1/tf_lots_per_coin of allocation, capped at
+            # tf_capital_per_trade_cap_usd, floor $6 (> Binance min_notional $5).
+            # Prevents grid from defaulting to BTC's $25 per-trade when TF allocates $10
+            # and guards against over-concentration when compound explodes.
+            lots_per_coin = int(config.get("tf_lots_per_coin", 4))
+            cpt_cap = float(config.get("tf_capital_per_trade_cap_usd", 50))
+            capital_per_trade = min(cpt_cap, max(6.0, round(capital / lots_per_coin, 2)))
 
             row_fields = {
                 "is_active": True,

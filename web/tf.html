@@ -316,6 +316,7 @@
 
       <!-- Portfolio Overview -->
       <div class="section-title">Portfolio overview</div>
+      <div id="tf-budget-line" style="font-family: var(--mono); font-size: 12px; color: var(--text-dim); margin: -4px 0 12px 0;"></div>
       <div id="overview-row1" class="stats-row"></div>
       <div id="overview-row2" class="stats-row"></div>
       <div id="overview-row3" class="stats-row"></div>
@@ -704,6 +705,43 @@
         return s + (c.is_active ? Number(c.capital_allocation) : 0);
       }, 0);
       var unalloc = TF_BUDGET - totalAlloc;
+
+      // Session 36g Phase 1: effective TF budget = nominal + floating from
+      // fully-liquidated deallocated TF bots. Mirrors compute_tf_floating_cash().
+      var tfFloating = 0;
+      var floatingParts = [];
+      configData.forEach(function(cfg) {
+        if (cfg.is_active) return;
+        var coinTrades = tradesData.filter(function(t) { return t.symbol === cfg.symbol; });
+        var bought = 0, sold = 0, buyAmt = 0, sellAmt = 0;
+        coinTrades.forEach(function(t) {
+          var c = Number(t.cost) || 0;
+          var a = Number(t.amount) || 0;
+          if (t.side === 'buy')  { bought += c; buyAmt += a; }
+          if (t.side === 'sell') { sold   += c; sellAmt += a; }
+        });
+        if (Math.abs(buyAmt - sellAmt) > 1e-6) return;  // not fully liquidated
+        var skim = skimBySymbol[cfg.symbol] || 0;
+        var retained = sold - bought - skim;
+        tfFloating += retained;
+        floatingParts.push({ sym: cfg.symbol.split('/')[0], val: retained });
+      });
+      var tfEffective = TF_BUDGET + tfFloating;
+      var budgetLine = document.getElementById('tf-budget-line');
+      if (budgetLine) {
+        if (Math.abs(tfFloating) < 0.01) {
+          budgetLine.textContent = 'Effective TF budget: $' + fmt(TF_BUDGET) + ' (no floating)';
+        } else {
+          var sign = tfFloating >= 0 ? '+' : '-';
+          floatingParts.sort(function(a, b) { return Math.abs(b.val) - Math.abs(a.val); });
+          var parts = floatingParts.map(function(p) {
+            return p.sym + ' ' + (p.val >= 0 ? '+$' : '-$') + Math.abs(p.val).toFixed(2);
+          }).join(' · ');
+          budgetLine.innerHTML = 'Effective TF budget: <span style="color:var(--text);">$' + fmt(tfEffective) +
+            '</span> = $' + fmt(TF_BUDGET) + ' base ' + sign + ' $' + Math.abs(tfFloating).toFixed(2) +
+            ' floating <span style="color:var(--text-dim);">(' + parts + ')</span>';
+        }
+      }
 
       var totalCash = 0;
       var totalDeployed = 0;

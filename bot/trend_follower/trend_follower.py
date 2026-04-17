@@ -26,7 +26,10 @@ from utils.exchange_filters import fetch_and_cache_filters
 
 from bot.trend_follower.scanner import scan_top_coins, fmt_volume
 from bot.trend_follower.classifier import classify_signal
-from bot.trend_follower.allocator import decide_allocations, apply_allocations
+from bot.trend_follower.allocator import (
+    decide_allocations, apply_allocations, resize_active_allocations,
+)
+from bot.trend_follower.floating import compute_tf_floating_cash
 
 
 # ---------------------------------------------------------------------------
@@ -209,7 +212,9 @@ def log_full_scan(supabase, coins: list[dict]):
 # ---------------------------------------------------------------------------
 
 def send_scan_report(notifier: SyncTelegramNotifier, coins: list[dict],
-                     current_allocs: list[dict], config: dict):
+                     current_allocs: list[dict], config: dict,
+                     tf_budget_nominal: float = 100.0,
+                     tf_floating: float = 0.0):
     """Send tiered scan report to Telegram."""
     now = datetime.now(timezone.utc).strftime("%B %d, %Y %H:%M UTC")
 
@@ -259,7 +264,10 @@ def send_scan_report(notifier: SyncTelegramNotifier, coins: list[dict],
         + "\n\n".join(tier_sections) + "\n"
         f"\n"
         f"Active grids: {active_count}/{max_grids}\n"
-        f"Capital deployed: ${deployed:.0f}"
+        f"Capital deployed: ${deployed:.0f}\n"
+        f"TF budget: ${tf_budget_nominal:.0f} base"
+        + (f" + ${tf_floating:.2f} floating = ${tf_budget_nominal + tf_floating:.2f} effective"
+           if abs(tf_floating) > 0.01 else "")
     )
     notifier.send_message(text)
 
@@ -298,6 +306,31 @@ def send_tf_decision(notifier: SyncTelegramNotifier, decision: dict, is_shadow: 
     else:
         return
 
+    notifier.send_message(text)
+
+
+def send_resize_report(notifier: SyncTelegramNotifier, resize_actions: list[dict],
+                       is_shadow: bool):
+    """Send a consolidated resize notification for the scan (Phase 2 compound)."""
+    if not resize_actions:
+        return
+
+    tag = "[SHADOW] " if is_shadow else ""
+    verb = "WOULD RESIZE" if is_shadow else "RESIZED"
+    lines = []
+    for a in resize_actions:
+        sym = a["symbol"].split("/")[0]
+        arrow = "↑" if a["delta"] > 0 else "↓"
+        lines.append(
+            f"  {arrow} {sym}: ${a['current_alloc']:.2f} → ${a['target_alloc']:.2f} "
+            f"(cpt ${a['target_cpt']:.2f})"
+        )
+    text = (
+        f"{tag}⚙️ <b>{verb} — TF compound propagate</b>\n"
+        + "\n".join(lines)
+    )
+    if is_shadow:
+        text += "\n⚠️ Shadow mode — bot_config not updated"
     notifier.send_message(text)
 
 
@@ -366,7 +399,41 @@ def run_trend_follower():
             # decide_allocations never sees them as "existing" and never tries
             # to DEALLOCATE them.
             tf_allocs = [a for a in current_allocs if a.get("managed_by") == "trend_follower"]
-            tf_total_capital = float(config.get("tf_budget", 100))
+            tf_budget_nominal = float(config.get("tf_budget", 100))
+
+            # Session 36g Phase 1: compound retained profits from deallocated
+            # TF bots into the effective budget. Only fully-liquidated dead
+            # bots count.
+            tf_floating, floating_breakdown = compute_tf_floating_cash(supabase)
+            tf_raw = tf_budget_nominal + tf_floating
+
+            # Phase 2: hard sanity cap (CEO: $300 = 3× tf_budget nominal).
+            # If compound exceeds the cap, clamp and log for visibility.
+            sanity_cap = float(config.get("tf_sanity_cap_usd", 300))
+            tf_total_capital = min(tf_raw, sanity_cap)
+            tf_capped = tf_raw > sanity_cap
+
+            if floating_breakdown:
+                parts = [
+                    f"{b['symbol'].split('/')[0]} ${b['retained']:+.2f}"
+                    for b in floating_breakdown
+                ]
+                cap_note = f" (capped from ${tf_raw:.2f} at ${sanity_cap:.0f})" if tf_capped else ""
+                logger.info(
+                    f"TF budget: ${tf_budget_nominal:.2f} base + "
+                    f"${tf_floating:.2f} floating = ${tf_total_capital:.2f} effective"
+                    f"{cap_note} [{' · '.join(parts)}]"
+                )
+            else:
+                logger.info(
+                    f"TF budget: ${tf_total_capital:.2f} (no floating)"
+                )
+
+            if tf_capped:
+                logger.warning(
+                    f"TF compound hit sanity cap: raw ${tf_raw:.2f} > cap "
+                    f"${sanity_cap:.0f}. Raise tf_sanity_cap_usd in trend_config if intentional."
+                )
 
             # Decide allocations (exchange + supabase enable on-demand rescan
             # and the SWAP profit gate; see allocator 36e v2).
@@ -376,18 +443,32 @@ def run_trend_follower():
                 exchange=exchange, supabase=supabase,
             )
 
+            # Phase 2: resize active TF bots so compound propagates to per-bot
+            # capital_allocation / capital_per_trade. Runs AFTER rotation
+            # decisions (pending_liquidation bots are excluded inside) and
+            # BEFORE new ALLOCATEs so the fresh equal-split includes survivors.
+            is_shadow = config.get("dry_run", True)
+            resize_actions = resize_active_allocations(
+                supabase, tf_allocs, tf_total_capital, config,
+                is_shadow=is_shadow,
+            )
+
             # Log to Supabase
-            log_decisions(supabase, decisions, is_shadow=config.get("dry_run", True))
+            log_decisions(supabase, decisions, is_shadow=is_shadow)
 
             # Report to Telegram (TF-only view: active/deployed count reflects TF's universe)
-            send_scan_report(notifier, coins, tf_allocs, config)
+            send_scan_report(notifier, coins, tf_allocs, config,
+                             tf_budget_nominal=tf_budget_nominal,
+                             tf_floating=tf_floating)
             for d in decisions:
                 if d["action_taken"] in ("ALLOCATE", "DEALLOCATE"):
-                    send_tf_decision(notifier, d, is_shadow=config.get("dry_run", True))
+                    send_tf_decision(notifier, d, is_shadow=is_shadow)
+            if resize_actions:
+                send_resize_report(notifier, resize_actions, is_shadow=is_shadow)
 
             # Apply allocations if live mode. Pass the classified coin dict
             # so _adaptive_steps sees fresh ATR/price at allocation time.
-            if not config.get("dry_run", True):
+            if not is_shadow:
                 coin_lookup = {c["symbol"]: c for c in coins}
                 apply_allocations(supabase, decisions, config, coin_lookup=coin_lookup)
 
