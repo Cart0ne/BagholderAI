@@ -94,13 +94,17 @@ def run_orchestrator():
         except Exception:
             pass
 
+        # Send SIGINT (not SIGTERM) so each subprocess hits its
+        # KeyboardInterrupt handler and gets to send a farewell Telegram.
+        # External kill paths are still covered by the SIGTERM handler in
+        # grid_runner / trend_follower (identical behavior, belt + suspenders).
         for sym, info in grid_processes.items():
             if info.process.poll() is None:
                 logger.info(f"Stopping {sym}...")
-                info.process.terminate()
+                info.process.send_signal(signal.SIGINT)
         if tf_process is not None and tf_process.poll() is None:
             logger.info("Stopping Trend Follower...")
-            tf_process.terminate()
+            tf_process.send_signal(signal.SIGINT)
 
         for sym, info in grid_processes.items():
             try:

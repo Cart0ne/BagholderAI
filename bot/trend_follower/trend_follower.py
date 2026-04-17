@@ -8,6 +8,7 @@ Usage:
     python3.13 -m bot.trend_follower.trend_follower
 """
 
+import signal
 import time
 import logging
 from datetime import datetime, timezone
@@ -18,6 +19,13 @@ logging.basicConfig(
     datefmt="%H:%M:%S",
 )
 logger = logging.getLogger("bagholderai.trend")
+
+
+def _sigterm_to_keyboard_interrupt(signum, frame):
+    """Map SIGTERM to KeyboardInterrupt so the farewell path (Telegram
+    message + clean exit) runs when the orchestrator or any external
+    supervisor terminates us."""
+    raise KeyboardInterrupt()
 
 from bot.exchange import create_exchange
 from db.client import get_client
@@ -340,6 +348,9 @@ def send_resize_report(notifier: SyncTelegramNotifier, resize_actions: list[dict
 
 def run_trend_follower():
     """Main loop for the Trend Follower."""
+    # SIGTERM → KeyboardInterrupt so the existing shutdown path runs.
+    signal.signal(signal.SIGTERM, _sigterm_to_keyboard_interrupt)
+
     exchange = create_exchange()
     exchange.load_markets()
     notifier = SyncTelegramNotifier()

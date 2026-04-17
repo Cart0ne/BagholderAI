@@ -10,6 +10,7 @@ Usage:
 """
 
 import sys
+import signal
 import time
 import logging
 import argparse
@@ -17,6 +18,13 @@ from datetime import datetime, date
 from utils.telegram_notifier import SyncTelegramNotifier
 from utils.formatting import fmt_price
 from commentary import generate_daily_commentary
+
+
+def _sigterm_to_keyboard_interrupt(signum, frame):
+    """Map SIGTERM to KeyboardInterrupt so the shutdown path (farewell
+    Telegram + final status log) runs when the orchestrator or any
+    external supervisor terminates us."""
+    raise KeyboardInterrupt()
 
 # Setup logging
 logging.basicConfig(
@@ -98,6 +106,9 @@ def _sync_config_to_bot(reader: "SupabaseConfigReader", bot: "GridBot", symbol: 
 
 def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = False):
     """Main loop."""
+
+    # Ensure SIGTERM drops into the farewell path (see _sigterm handler above).
+    signal.signal(signal.SIGTERM, _sigterm_to_keyboard_interrupt)
 
     # Load local config for this symbol (fallback / initial values)
     cfg = get_grid_config(symbol)
