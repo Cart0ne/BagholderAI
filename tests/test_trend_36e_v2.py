@@ -139,15 +139,24 @@ def check(name, cond, detail=""):
 # --- ATR adaptive (Fix 2) -------------------------------------------------
 print("\n=== ATR adaptive steps ===")
 
+buy, sell = _adaptive_steps(make_coin("X", atr=1.5, price=100.0), "BULLISH")
+check("ATR 1.5%: buy=1.2 sell=1.8 (both inside clamps)",
+      buy == 1.2 and sell == 1.8, f"buy={buy} sell={sell}")
+
+buy, sell = _adaptive_steps(make_coin("X", atr=3.0, price=100.0), "BULLISH")
+check("ATR 3%: buy clamps to 2.0, sell=3.6",
+      buy == 2.0 and sell == 3.6, f"buy={buy} sell={sell}")
+
 buy, sell = _adaptive_steps(make_coin("X", atr=6.0, price=100.0), "BULLISH")
-check("ATR 6%: buy=4.8 sell=7.2", buy == 4.8 and sell == 7.2, f"buy={buy} sell={sell}")
+check("ATR 6%: sell clamps to 6.0, buy clamps to 2.0",
+      buy == 2.0 and sell == 6.0, f"buy={buy} sell={sell}")
 
 buy, sell = _adaptive_steps(make_coin("X", atr=0.5, price=100.0), "BULLISH")
 check("ATR 0.5% clamps to min 1.0/1.0", buy == 1.0 and sell == 1.0, f"buy={buy} sell={sell}")
 
-buy, sell = _adaptive_steps(make_coin("X", atr=15.0, price=100.0), "BULLISH")
-check("ATR 15%: sell clamps to 8.0 and buy stays <=10.0",
-      sell == 8.0 and buy <= 10.0, f"buy={buy} sell={sell}")
+buy, sell = _adaptive_steps(make_coin("X", atr=13.0, price=100.0), "BULLISH")
+check("ATR 13%: sell=6.0 (clamp), buy=2.0 (clamp)",
+      buy == 2.0 and sell == 6.0, f"buy={buy} sell={sell}")
 
 buy, sell = _adaptive_steps(make_coin("X", atr=0, price=100.0), "BULLISH")
 check("ATR=0 fallback BULLISH → 1.5/1.2", buy == 1.5 and sell == 1.2)
@@ -155,10 +164,12 @@ check("ATR=0 fallback BULLISH → 1.5/1.2", buy == 1.5 and sell == 1.2)
 buy, sell = _adaptive_steps(make_coin("X", atr=0, price=100.0), "BEARISH")
 check("ATR=0 fallback BEARISH → 2.0/0.8", buy == 2.0 and sell == 0.8)
 
+# BEARISH tweak (+10% on buy) still subject to the tighter buy clamp.
+# 3%×0.8=2.4 → clamped to 2.0 BEFORE the *1.1 tweak, then tweak=2.2 which
+# exceeds clamp and is re-clamped to 2.0.
 buy, sell = _adaptive_steps(make_coin("X", atr=3.0, price=100.0), "BEARISH")
-# buy = max(1.0, min(10.0, 3 * 0.8)) * 1.1 = 2.4 * 1.1 = 2.64
-check("ATR 3% BEARISH: buy=2.64 sell=3.6", buy == 2.64 and sell == 3.6,
-      f"buy={buy} sell={sell}")
+check("ATR 3% BEARISH: buy=2.0 (clamp) sell=3.6",
+      buy == 2.0 and sell == 3.6, f"buy={buy} sell={sell}")
 
 
 # --- _hours_since sanity ---------------------------------------------------

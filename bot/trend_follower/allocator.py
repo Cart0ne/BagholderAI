@@ -31,8 +31,11 @@ SWAP_MIN_PROFIT_PCT = -1.0   # % of allocation — negative allows small loss
 
 K_SELL = 1.2                 # ATR multiplier for sell_pct (hold longer)
 K_BUY = 0.8                  # ATR multiplier for buy_pct (buy aggressive on dips)
-SELL_PCT_MIN, SELL_PCT_MAX = 1.0, 8.0
-BUY_PCT_MIN, BUY_PCT_MAX = 1.0, 10.0
+# 36e integration (2026-04-17): clamps tightened to enforce CEO trading
+# philosophy ("buy small dips ≤2%, sell target ≤6%"). Above ATR% ≈ 2.5%
+# the buy side saturates at 2.0 — intentional, matches the manual bots.
+SELL_PCT_MIN, SELL_PCT_MAX = 1.0, 6.0
+BUY_PCT_MIN, BUY_PCT_MAX = 1.0, 2.0
 
 
 def _hours_since(ts) -> float:
