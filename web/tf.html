@@ -575,8 +575,11 @@
         alerts.push({ type: 'yellow', text: '$' + fmt(unalloc, 0) + ' TF budget unallocated (' + fmt(unalloc / TF_BUDGET * 100, 0) + '% of $' + fmt(TF_BUDGET, 0) + ' idle)' });
       }
 
-      // Check per-coin cash
+      // Check per-coin cash — only for active coins. Inactive rows legitimately
+      // have 0 cash (capital returned to the TF pool) and must not trigger the
+      // "tapped out" alert.
       configData.forEach(function(cfg) {
+        if (!cfg.is_active) return;
         var sym = cfg.symbol;
         var analysis = analyzeCoin(sym, cfg);
         if (analysis.buysLeft === 0) {
