@@ -490,7 +490,7 @@
       // 2. Load the TF-only slice of state
       var settled = await Promise.allSettled([
         sbGet('bot_config', 'managed_by=eq.trend_follower&order=symbol'),
-        sbGet('trades', 'select=symbol,side,amount,price,cost,realized_pnl,created_at&config_version=eq.v3&managed_by=eq.trend_follower&order=created_at.desc'),
+        sbGet('trades', 'select=symbol,side,amount,price,cost,fee,realized_pnl,created_at&config_version=eq.v3&managed_by=eq.trend_follower&order=created_at.desc'),
         sbGet('daily_pnl', 'order=date.desc&limit=10'),
         sbGet('reserve_ledger', 'select=symbol,amount&config_version=eq.v3')
       ]);
@@ -761,11 +761,16 @@
       });
 
       var portfolioVal = totalCash + unalloc + holdingsValue;
-      var totalPnl = totalRealizedAll + totalUnrealized;
+      // Authoritative Total P&L = actual portfolio delta vs TF starting budget.
+      // Using (realized + unrealized) alone would ignore trade fees and
+      // overstate P&L by the cumulative fee total (matches admin.html).
+      var totalPnl = portfolioVal - TF_BUDGET;
+      var totalFees = tradesData.reduce(function(s, t) { return s + Number(t.fee || 0); }, 0);
 
       var pnlColor = totalPnl >= 0 ? 'var(--green)' : 'var(--red)';
       var realSign = totalRealizedAll >= 0 ? '+' : '';
       var unrSign = totalUnrealized >= 0 ? '+' : '';
+      var feeSign = totalFees > 0 ? '-' : '';
 
       var unrBreakdown = unrealizedBySymbol.map(function(x) {
         var s = x.val >= 0 ? '+$' : '-$';
@@ -783,7 +788,7 @@
         '<div class="stat-box">' +
           '<div class="stat-label">Total P&L</div>' +
           '<div class="stat-value" style="color:' + pnlColor + ';">' + (totalPnl >= 0 ? '+' : '') + '$' + fmt(totalPnl) + '</div>' +
-          '<div class="stat-sub">realized ' + realSign + '$' + fmt(totalRealizedAll) + ' · unrealized ' + unrSign + '$' + fmt(totalUnrealized) + '</div>' +
+          '<div class="stat-sub">realized ' + realSign + '$' + fmt(totalRealizedAll) + ' · unrealized ' + unrSign + '$' + fmt(totalUnrealized) + ' · fees ' + feeSign + '$' + fmt(totalFees) + '</div>' +
         '</div>' +
         '<div class="stat-box">' +
           '<div class="stat-label">Skim Reserve</div>' +
@@ -799,8 +804,8 @@
         '</div>' +
         '<div class="stat-box">' +
           '<div class="stat-label">Deployed</div>' +
-          '<div class="stat-value">$' + fmt(totalDeployed) + '</div>' +
-          '<div class="stat-sub">in open positions</div>' +
+          '<div class="stat-value">$' + fmt(holdingsValue) + '</div>' +
+          '<div class="stat-sub">market value · cost $' + fmt(totalDeployed) + ' ' + (totalUnrealized >= 0 ? '+' : '') + '$' + fmt(totalUnrealized) + ' unrealized</div>' +
         '</div>' +
         '<div class="stat-box">' +
           '<div class="stat-label">Unrealized P&L</div>' +
