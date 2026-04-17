@@ -123,10 +123,11 @@ def load_exchange_filters(supabase, exchange=None) -> dict:
 
 
 def load_current_allocations(supabase) -> list[dict]:
-    """Load active bot configs from Supabase."""
+    """Load active bot configs from Supabase. Includes updated_at/created_at
+    so the allocator's SWAP cooldown gate can compute held hours."""
     try:
         result = supabase.table("bot_config").select(
-            "symbol,is_active,capital_allocation,managed_by"
+            "symbol,is_active,capital_allocation,managed_by,updated_at,created_at"
         ).execute()
         return [r for r in (result.data or []) if r.get("is_active")]
     except Exception as e:
@@ -367,10 +368,12 @@ def run_trend_follower():
             tf_allocs = [a for a in current_allocs if a.get("managed_by") == "trend_follower"]
             tf_total_capital = float(config.get("tf_budget", 100))
 
-            # Decide allocations
+            # Decide allocations (exchange + supabase enable on-demand rescan
+            # and the SWAP profit gate; see allocator 36e v2).
             decisions = decide_allocations(
                 coins, tf_allocs, coin_tiers,
                 exchange_filters, config, tf_total_capital,
+                exchange=exchange, supabase=supabase,
             )
 
             # Log to Supabase
@@ -382,9 +385,11 @@ def run_trend_follower():
                 if d["action_taken"] in ("ALLOCATE", "DEALLOCATE"):
                     send_tf_decision(notifier, d, is_shadow=config.get("dry_run", True))
 
-            # Apply allocations if live mode
+            # Apply allocations if live mode. Pass the classified coin dict
+            # so _adaptive_steps sees fresh ATR/price at allocation time.
             if not config.get("dry_run", True):
-                apply_allocations(supabase, decisions, config)
+                coin_lookup = {c["symbol"]: c for c in coins}
+                apply_allocations(supabase, decisions, config, coin_lookup=coin_lookup)
 
             scan_interval = config.get("scan_interval_hours", 4)
             logger.info(f"Scan complete. Sleeping {scan_interval}h...")

@@ -66,6 +66,46 @@ def calc_atr(highs: list[float], lows: list[float], closes: list[float], period:
 # Main scanner
 # ---------------------------------------------------------------------------
 
+def fetch_indicators_for_symbol(exchange, symbol: str, ticker: dict | None = None) -> dict:
+    """
+    Fetch OHLCV for one symbol and compute EMA/RSI/ATR indicators.
+    Returns a coin dict with the same shape produced by scan_top_coins
+    (minus rank/tier, which are assigned by the caller when ranking a batch).
+
+    If `ticker` is None, fetches it on demand — needed by the on-demand
+    rescan path for active coins that have dropped out of the top-N scan.
+
+    Raises on failure (timeout, malformed data, insufficient candles) so
+    callers can decide whether to skip or fallback.
+    """
+    if ticker is None:
+        ticker = exchange.fetch_ticker(symbol)
+
+    ohlcv = exchange.fetch_ohlcv(symbol, timeframe="4h", limit=100)
+    if len(ohlcv) < 50:
+        raise ValueError(f"Only {len(ohlcv)} candles, need >=50")
+
+    closes = [c[4] for c in ohlcv]
+    highs = [c[2] for c in ohlcv]
+    lows = [c[3] for c in ohlcv]
+
+    ema_fast = calc_ema(closes, 20)
+    ema_slow = calc_ema(closes, 50)
+    rsi = calc_rsi(closes, 14)
+    atr, atr_avg = calc_atr(highs, lows, closes, 14)
+
+    return {
+        "symbol": symbol,
+        "price": ticker["last"],
+        "volume_24h": ticker.get("quoteVolume", 0),
+        "ema_fast": round(ema_fast, 6),
+        "ema_slow": round(ema_slow, 6),
+        "rsi": round(rsi, 2),
+        "atr": round(atr, 6),
+        "atr_avg": round(atr_avg, 6),
+    }
+
+
 def scan_top_coins(exchange, top_n: int = 50) -> list[dict]:
     """
     1. Fetch all USDT tickers from Binance
@@ -99,33 +139,8 @@ def scan_top_coins(exchange, top_n: int = 50) -> list[dict]:
     coins = []
     for symbol, ticker in sorted_tickers:
         try:
-            ohlcv = exchange.fetch_ohlcv(symbol, timeframe="4h", limit=100)
-            if len(ohlcv) < 50:
-                logger.warning(f"[{symbol}] Only {len(ohlcv)} candles, need >=50. Skipping.")
-                continue
-
-            closes = [c[4] for c in ohlcv]
-            highs = [c[2] for c in ohlcv]
-            lows = [c[3] for c in ohlcv]
-
-            ema_fast = calc_ema(closes, 20)
-            ema_slow = calc_ema(closes, 50)
-            rsi = calc_rsi(closes, 14)
-            atr, atr_avg = calc_atr(highs, lows, closes, 14)
-
-            coins.append({
-                "symbol": symbol,
-                "price": ticker["last"],
-                "volume_24h": ticker.get("quoteVolume", 0),
-                "ema_fast": round(ema_fast, 6),
-                "ema_slow": round(ema_slow, 6),
-                "rsi": round(rsi, 2),
-                "atr": round(atr, 6),
-                "atr_avg": round(atr_avg, 6),
-            })
-
+            coins.append(fetch_indicators_for_symbol(exchange, symbol, ticker=ticker))
             time.sleep(0.2)  # rate limit: 200ms between kline requests
-
         except Exception as e:
             logger.warning(f"[{symbol}] Failed to scan: {e}")
             continue

@@ -21,6 +21,149 @@ DEFAULT_MAX_ALLOC_PCT = 10  # T3 = 10%
 T1_COINS = {"BTC", "ETH"}
 T1_MAX_ALLOC_PCT = 40
 
+# ---------------------------------------------------------------------------
+# CEO-locked constants (session 36e v2, 2026-04-17)
+# TODO: move to trend_config in a future session for dynamic tuning.
+# ---------------------------------------------------------------------------
+SWAP_STRENGTH_DELTA = 20.0   # points of signal_strength advantage required
+SWAP_COOLDOWN_HOURS = 8      # min hours a coin must be held before a swap
+SWAP_MIN_PROFIT_PCT = -1.0   # % of allocation — negative allows small loss
+
+K_SELL = 1.2                 # ATR multiplier for sell_pct (hold longer)
+K_BUY = 0.8                  # ATR multiplier for buy_pct (buy aggressive on dips)
+SELL_PCT_MIN, SELL_PCT_MAX = 1.0, 8.0
+BUY_PCT_MIN, BUY_PCT_MAX = 1.0, 10.0
+
+
+def _hours_since(ts) -> float:
+    """Hours elapsed since a datetime/ISO string, or +inf if None/invalid."""
+    if not ts:
+        return float("inf")
+    try:
+        if isinstance(ts, str):
+            ts = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+        if ts.tzinfo is None:
+            ts = ts.replace(tzinfo=timezone.utc)
+        return (datetime.now(timezone.utc) - ts).total_seconds() / 3600.0
+    except Exception:
+        return float("inf")
+
+
+def _fetch_unrealized_pnl(supabase, symbol: str, current_price: float) -> float:
+    """
+    Compute unrealized PnL for a TF-managed symbol:
+      (current_price - avg_buy_price) * holdings
+
+    Reconstructs holdings + weighted-avg cost basis by replaying every
+    TF trade (managed_by='trend_follower', config_version='v3') for the
+    symbol in chronological order — matching grid_bot's own cost accounting.
+
+    Returns 0.0 on any failure or when no open position exists, which is
+    the safe default for the SWAP profit gate (neither blocks nor forces).
+    """
+    if current_price <= 0:
+        return 0.0
+    try:
+        result = (
+            supabase.table("trades")
+            .select("side,amount,price")
+            .eq("symbol", symbol)
+            .eq("managed_by", "trend_follower")
+            .eq("config_version", "v3")
+            .order("created_at", desc=False)
+            .execute()
+        )
+        trades = result.data or []
+    except Exception as e:
+        logger.warning(f"[ALLOCATOR] unrealized PnL fetch failed for {symbol}: {e}")
+        return 0.0
+
+    holdings = 0.0
+    avg_buy_price = 0.0
+    for t in trades:
+        side = t.get("side")
+        amount = float(t.get("amount") or 0)
+        price = float(t.get("price") or 0)
+        if side == "buy":
+            old = holdings
+            holdings += amount
+            if holdings > 0:
+                avg_buy_price = (avg_buy_price * old + price * amount) / holdings
+        elif side == "sell":
+            holdings -= amount
+            if holdings <= 1e-12:
+                holdings = 0.0
+                avg_buy_price = 0.0
+
+    if holdings <= 0 or avg_buy_price <= 0:
+        return 0.0
+    return (current_price - avg_buy_price) * holdings
+
+
+def _rescan_active_if_missing(
+    exchange, coin_lookup: dict, active_symbols: set, config: dict,
+) -> dict:
+    """
+    For each active symbol not in the scan top-N, fetch fresh OHLCV +
+    indicators on-demand so downstream logic can always decide
+    HOLD/DEALLOCATE/SWAP with fresh signal data.
+
+    On failure: log warning and leave the symbol absent from the
+    augmented lookup — the legacy HOLD path then takes over (Opzione A,
+    CEO decision 36e v2). No preventive DEALLOCATE.
+    """
+    from bot.trend_follower.scanner import fetch_indicators_for_symbol
+    from bot.trend_follower.classifier import classify_signal
+
+    augmented = dict(coin_lookup)
+    for sym in active_symbols:
+        if sym in augmented:
+            continue
+        try:
+            coin = fetch_indicators_for_symbol(exchange, sym)
+            classify_signal(coin, config)
+            augmented[sym] = coin
+            logger.info(
+                f"[ALLOCATOR] On-demand rescan succeeded for {sym}: "
+                f"signal={coin['signal']}, strength={coin.get('signal_strength', 0):.1f}"
+            )
+        except Exception as e:
+            logger.warning(
+                f"[ALLOCATOR] On-demand rescan FAILED for {sym}: {e} — "
+                f"falling back to HOLD (will retry next scan)"
+            )
+    return augmented
+
+
+def _adaptive_steps(coin: dict, signal: str) -> tuple[float, float]:
+    """
+    Returns (buy_pct, sell_pct) scaled by coin volatility (ATR / price).
+    Falls back to fixed legacy steps if ATR or price unavailable.
+
+    CEO decision 36e v2: k_sell > k_buy means we hold positions longer
+    before realizing (catch more of the BULLISH trend) and enter dips
+    more aggressively (shorter retracement needed to buy).
+    """
+    atr = coin.get("atr", 0) or 0
+    price = coin.get("price", 0) or 0
+    if atr <= 0 or price <= 0:
+        if signal == "BULLISH":
+            return 1.5, 1.2
+        if signal == "BEARISH":
+            return 2.0, 0.8
+        return 1.5, 1.0
+
+    atr_pct = (atr / price) * 100
+
+    sell_pct = max(SELL_PCT_MIN, min(SELL_PCT_MAX, atr_pct * K_SELL))
+    buy_pct = max(BUY_PCT_MIN, min(BUY_PCT_MAX, atr_pct * K_BUY))
+
+    # Bearish allocations widen buys slightly to avoid catching a falling knife.
+    if signal == "BEARISH":
+        buy_pct = min(BUY_PCT_MAX, buy_pct * 1.1)
+
+    return round(buy_pct, 2), round(sell_pct, 2)
+
 
 def _get_tier_info(symbol: str, coin_tiers: dict) -> tuple[int, float]:
     """
@@ -46,10 +189,16 @@ def decide_allocations(
     exchange_filters: dict,
     config: dict,
     total_capital: float,
+    exchange=None,
+    supabase=None,
 ) -> list[dict]:
     """
     Returns a list of decisions (ALLOCATE / DEALLOCATE / HOLD / SKIP) for each coin.
     In shadow mode, these are logged but not acted upon.
+
+    `exchange` + `supabase` are required to enable on-demand rescan (Problema 0)
+    and the SWAP profit gate (Fix 1). Passing None degrades gracefully: rescan
+    is skipped and unrealized PnL is treated as 0 for any SWAP check.
     """
     scan_ts = datetime.now(timezone.utc).isoformat()
     max_grids = config.get("tf_max_coins") or config.get("max_active_grids", 5)
@@ -67,7 +216,16 @@ def decide_allocations(
     # Build lookup: symbol -> coin data
     coin_lookup = {c["symbol"]: c for c in classified_coins}
 
-    # 1. Check existing active grids for signal reversal → DEALLOCATE or HOLD
+    # Problema 0: on-demand rescan for active coins that fell off the top-N
+    # scan. Fresh indicators let SWAP/DEALLOCATE see their real signal.
+    if exchange is not None:
+        coin_lookup = _rescan_active_if_missing(
+            exchange, coin_lookup, active_symbols, config,
+        )
+
+    # 1a. DEALLOCATE on BEARISH; defer HOLD until after SWAP evaluation so
+    # we don't double-emit a decision for a symbol that gets swapped out.
+    surviving_active: list[tuple[dict, dict]] = []  # [(alloc, coin), ...]
     for alloc in current_allocations:
         sym = alloc["symbol"]
         if not alloc.get("is_active"):
@@ -75,7 +233,7 @@ def decide_allocations(
 
         coin = coin_lookup.get(sym)
         if not coin:
-            # Coin not in scan (maybe dropped out of top N) → HOLD
+            # Rescan failed (or exchange unavailable) → legacy HOLD path.
             decisions.append(_make_decision(
                 scan_ts, sym, coin, "HOLD",
                 f"Not in current scan top — keeping existing grid",
@@ -88,10 +246,7 @@ def decide_allocations(
                 f"Signal reversed to BEARISH (RSI={coin['rsi']:.1f}, EMA cross down)",
             ))
         else:
-            decisions.append(_make_decision(
-                scan_ts, sym, coin, "HOLD",
-                f"Signal: {coin['signal']} (strength={coin['signal_strength']:.1f})",
-            ))
+            surviving_active.append((alloc, coin))
 
     # 2. Find new BULLISH candidates, ranked by signal strength
     bullish = [
@@ -99,6 +254,72 @@ def decide_allocations(
         if c["signal"] == "BULLISH" and c["symbol"] not in active_symbols
     ]
     bullish.sort(key=lambda c: c["signal_strength"], reverse=True)
+
+    # 1b. Hybrid rotation SWAP (Fix 1 — CEO-locked gates, session 36e v2).
+    # At most one swap per scan. A swapped-out coin is DEALLOCATEd here; its
+    # budget is virtually returned to `unallocated` so the downstream bullish
+    # allocation loop can hand it to the replacement candidate in the same scan.
+    swapped_out: set[str] = set()
+    best_new = next(
+        (c for c in bullish if c["symbol"] not in active_symbols),
+        None,
+    )
+    if best_new is not None:
+        for alloc, active_coin in surviving_active:
+            sym = alloc["symbol"]
+            delta = best_new["signal_strength"] - active_coin["signal_strength"]
+            if delta < SWAP_STRENGTH_DELTA:
+                continue
+
+            allocated_at = alloc.get("updated_at") or alloc.get("created_at")
+            held_hours = _hours_since(allocated_at)
+            if held_hours < SWAP_COOLDOWN_HOURS:
+                logger.debug(
+                    f"[ALLOCATOR] SWAP skip {sym}: held {held_hours:.1f}h < "
+                    f"{SWAP_COOLDOWN_HOURS}h cooldown (candidate {best_new['symbol']} +{delta:.1f})"
+                )
+                continue
+
+            capital_allocation = float(alloc.get("capital_allocation", 0) or 0)
+            min_profit_usd = capital_allocation * (SWAP_MIN_PROFIT_PCT / 100.0)
+            unrealized = (
+                _fetch_unrealized_pnl(supabase, sym, active_coin.get("price", 0))
+                if supabase is not None else 0.0
+            )
+            if unrealized < min_profit_usd:
+                logger.debug(
+                    f"[ALLOCATOR] SWAP skip {sym}: unrealized ${unrealized:.2f} < "
+                    f"threshold ${min_profit_usd:.2f} ({SWAP_MIN_PROFIT_PCT}% of "
+                    f"${capital_allocation:.2f})"
+                )
+                continue
+
+            logger.info(
+                f"[ALLOCATOR] SWAP triggered: {sym} (strength "
+                f"{active_coin['signal_strength']:.1f}, held {held_hours:.1f}h, "
+                f"unrealized ${unrealized:.2f}) → replaced by {best_new['symbol']} "
+                f"(+{delta:.1f} strength)"
+            )
+            decisions.append(_make_decision(
+                scan_ts, sym, active_coin, "DEALLOCATE",
+                f"SWAP: replaced by {best_new['symbol']} (+{delta:.1f} strength, "
+                f"held {held_hours:.1f}h, unrealized ${unrealized:.2f})",
+            ))
+            swapped_out.add(sym)
+            # Virtually free the budget so the replacement can be allocated
+            # in the same scan without waiting for grid_runner to liquidate.
+            unallocated += capital_allocation
+            active_count -= 1
+            break  # one swap per scan (CEO decision 36e v2)
+
+    # Emit HOLD for the active coins that survived both BEARISH and SWAP checks.
+    for alloc, coin in surviving_active:
+        if alloc["symbol"] in swapped_out:
+            continue
+        decisions.append(_make_decision(
+            scan_ts, alloc["symbol"], coin, "HOLD",
+            f"Signal: {coin['signal']} (strength={coin['signal_strength']:.1f})",
+        ))
 
     # Equal-split allocation for TF (bypasses coin_tiers MAX_ALLOC_PCT).
     # The tier table was sized for the manual 5-grid / $500 system, where
@@ -207,15 +428,23 @@ def _make_decision(
     return d
 
 
-def apply_allocations(supabase, decisions: list[dict], config: dict) -> None:
+def apply_allocations(
+    supabase, decisions: list[dict], config: dict,
+    coin_lookup: dict | None = None,
+) -> None:
     """
     Apply TF allocation decisions to bot_config. Called only when dry_run=False.
 
     ALLOCATE   → INSERT or UPDATE bot_config (is_active=True, managed_by='trend_follower')
     DEALLOCATE → SET pending_liquidation=True (grid_runner forces sell + self-stop)
 
+    `coin_lookup` (symbol → classified coin dict) is used to compute
+    ATR-adaptive buy_pct/sell_pct at allocation time. If absent, falls
+    back to the legacy fixed-step behavior.
+
     Never touches symbols in MANUAL_WHITELIST.
     """
+    coin_lookup = coin_lookup or {}
     for d in decisions:
         symbol = d["symbol"]
         action = d["action_taken"]
@@ -233,12 +462,11 @@ def apply_allocations(supabase, decisions: list[dict], config: dict) -> None:
                 continue
 
             signal = d.get("signal", "SIDEWAYS")
-            if signal == "BULLISH":
-                buy_pct, sell_pct = 1.5, 1.2
-            elif signal == "BEARISH":
-                buy_pct, sell_pct = 2.0, 0.8
-            else:
-                buy_pct, sell_pct = 1.5, 1.0
+            coin = coin_lookup.get(symbol, {
+                "atr": d.get("atr", 0),
+                "price": snapshot.get("price", 0),
+            })
+            buy_pct, sell_pct = _adaptive_steps(coin, signal)
 
             # capital_per_trade: 1/4 of allocation, floor $6 (> Binance min_notional $5).
             # Prevents grid from defaulting to BTC's $25 per-trade when TF allocates $10.
@@ -271,16 +499,20 @@ def apply_allocations(supabase, decisions: list[dict], config: dict) -> None:
             try:
                 existing = supabase.table("bot_config").select("symbol").eq("symbol", symbol).execute()
                 if existing.data:
-                    supabase.table("bot_config").update(row_fields).eq("symbol", symbol).execute()
+                    # Reset updated_at so the SWAP cooldown clock starts on re-allocation.
+                    update_fields = {**row_fields, "updated_at": datetime.now(timezone.utc).isoformat()}
+                    supabase.table("bot_config").update(update_fields).eq("symbol", symbol).execute()
                     logger.info(
                         f"[ALLOCATOR] UPDATED {symbol} in bot_config "
-                        f"(${capital:.0f}, per_trade=${capital_per_trade:.2f})"
+                        f"(${capital:.0f}, per_trade=${capital_per_trade:.2f}, "
+                        f"buy={buy_pct}%, sell={sell_pct}%)"
                     )
                 else:
                     supabase.table("bot_config").insert({"symbol": symbol, **row_fields}).execute()
                     logger.info(
                         f"[ALLOCATOR] INSERTED {symbol} in bot_config "
-                        f"(${capital:.0f}, per_trade=${capital_per_trade:.2f})"
+                        f"(${capital:.0f}, per_trade=${capital_per_trade:.2f}, "
+                        f"buy={buy_pct}%, sell={sell_pct}%)"
                     )
             except Exception as e:
                 logger.error(f"[ALLOCATOR] Failed to apply ALLOCATE for {symbol}: {e}")
