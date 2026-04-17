@@ -290,6 +290,7 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
     _last_sell_skip_notification: dict = {}
 
     cycle = 0
+    stop_reason = "manual"
     while True:
         try:
             cycle += 1
@@ -303,6 +304,7 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
                 notifier.send_message(
                     f"🛑 <b>{cfg.symbol} grid bot stopped</b> (is_active=false)"
                 )
+                stop_reason = "is_active=false"
                 break
 
             # Forced liquidation (e.g., TF rotation): dump all holdings at market and exit
@@ -318,6 +320,7 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
                     }).eq("symbol", cfg.symbol).execute()
                 except Exception as e:
                     logger.error(f"[{cfg.symbol}] Failed to clear bot_config after liquidation: {e}")
+                stop_reason = "liquidation"
                 break
 
             price = fetch_price(exchange, cfg.symbol)
@@ -565,7 +568,7 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
                 logger.info("\nStopping grid bot (Ctrl+C during error sleep)...")
                 break
 
-    notifier.send_bot_stopped(bot.get_status(), reason="manual")
+    notifier.send_bot_stopped(bot.get_status(), reason=stop_reason)
 
     # Final status
     logger.info("\n" + "=" * 50)
@@ -611,6 +614,16 @@ def _force_liquidate(bot, exchange, trade_logger, notifier, symbol: str):
                 )
             except Exception as e:
                 logger.error(f"[{symbol}] Failed to log liquidation trade: {e}")
+
+        # Reflect the sell in the in-memory bot state so get_status() and the
+        # final stop notification don't report stale holdings. Mirrors the
+        # state updates in GridBot._execute_sell.
+        if bot.state:
+            bot.state.total_received += proceeds
+            bot.state.realized_pnl += realized_pnl
+            bot.state.daily_realized_pnl += realized_pnl
+            bot.state.holdings = 0
+            bot.state.avg_buy_price = 0
 
         pnl_emoji = "📈" if realized_pnl >= 0 else "📉"
         notifier.send_message(
