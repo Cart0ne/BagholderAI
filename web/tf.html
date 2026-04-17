@@ -620,14 +620,23 @@
       // Deallocated coins: their capital went back to the TF pool, so the
       // per-coin cash/capacity metrics should reflect that. Keep historical
       // trade counts and realized P&L — those are still true.
+      //
+      // cashLeft=0 is what we show on the card (matches reality: nothing is
+      // allocated to this coin anymore). cashReturned tracks what actually
+      // flowed back to the TF pool when the coin was deallocated: the
+      // realized profit net of skim. The overview adds cashReturned to the
+      // global totalCash so Portfolio Value stays consistent with
+      // "TF_BUDGET + realized − skim" when all profits are counted.
       if (!isActive) {
+        var skimForCoin = skimBySymbol[symbol] || 0;
         return {
           alloc: 0, costPerTrade: costPerTrade,
           totalBought: totalBought, totalSold: totalSold,
           realizedPnl: realizedPnl, netHoldings: netHoldings,
           buyCount: buyCount, sellCount: sellCount,
           netSpent: 0, openCost: 0, openLots: 0,
-          cashLeft: 0, buysLeft: 0, capacityPct: 0,
+          cashLeft: 0, cashReturned: realizedPnl - skimForCoin,
+          buysLeft: 0, capacityPct: 0,
           maxCapacity: 0,
           lastTrade: coinTrades.length > 0 ? coinTrades[0] : null
         };
@@ -698,7 +707,11 @@
       var totalDeployed = 0;
       configData.forEach(function(cfg) {
         var a = analyzeCoin(cfg.symbol, cfg);
-        totalCash += a.cashLeft;
+        // Active coins: cashLeft is their per-bot liquid cash.
+        // Inactive coins: cashLeft=0 (displayed on card), but cashReturned
+        // captures the realized profit net of skim that flowed back to the
+        // TF pool when the coin was deallocated.
+        totalCash += a.cashLeft + (a.cashReturned || 0);
         if (a.netHoldings > 0.000001) totalDeployed += a.openCost;
       });
 
