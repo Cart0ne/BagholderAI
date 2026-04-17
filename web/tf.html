@@ -668,15 +668,17 @@
       var openLots = buyQueue.length;
       var openCost = buyQueue.reduce(function(s, l) { return s + l.cost; }, 0);
 
+      var skimForCoin = skimBySymbol[symbol] || 0;
       var cashLeft;
       if (positionClosed) {
         netSpent = 0;
-        var skimForCoin = skimBySymbol[symbol] || 0;
         cashLeft = alloc + realizedPnl - skimForCoin;
       } else {
-        // Cash = alloc − net cash out (bought − sold). Includes realized profits
-        // already cycled back into the pool.
-        cashLeft = alloc - netSpent;
+        // Mirrors bot._available_cash(): alloc − invested + received − reserve.
+        // netSpent = invested − received; skim is physically moved to
+        // reserve_ledger on every profitable sell and must be subtracted here
+        // to match the bot's real operational cash.
+        cashLeft = alloc - netSpent - skimForCoin;
       }
       var buysLeft = costPerTrade > 0 ? Math.floor(cashLeft / costPerTrade) : 0;
       // Capacity bar reflects how much of the allocation is committed to open lots,
@@ -760,11 +762,14 @@
         unrealizedBySymbol.push({ sym: cfg.symbol.split('/')[0], val: unr });
       });
 
-      var portfolioVal = totalCash + unalloc + holdingsValue;
-      // Authoritative Total P&L = actual portfolio delta vs TF starting budget.
+      // Net Worth = cash (after skim) + unalloc + holdings + skim reserve.
+      // Skim is physically moved out of bot cash to reserve_ledger, but it's
+      // still ours — adding it back gives the full TF patrimony.
+      var netWorth = totalCash + unalloc + holdingsValue + skimReserveTotal;
+      // Authoritative Total P&L = actual net worth delta vs TF starting budget.
       // Using (realized + unrealized) alone would ignore trade fees and
       // overstate P&L by the cumulative fee total (matches admin.html).
-      var totalPnl = portfolioVal - TF_BUDGET;
+      var totalPnl = netWorth - TF_BUDGET;
       var totalFees = tradesData.reduce(function(s, t) { return s + Number(t.fee || 0); }, 0);
 
       var pnlColor = totalPnl >= 0 ? 'var(--green)' : 'var(--red)';
@@ -781,26 +786,26 @@
 
       document.getElementById('overview-row1').innerHTML =
         '<div class="stat-box">' +
-          '<div class="stat-label">Portfolio Value</div>' +
-          '<div class="stat-value">$' + fmt(portfolioVal) + '</div>' +
-          '<div class="stat-sub">cash + holdings</div>' +
+          '<div class="stat-label">Net Worth</div>' +
+          '<div class="stat-value">$' + fmt(netWorth) + '</div>' +
+          '<div class="stat-sub">cash + holdings + skim reserve</div>' +
         '</div>' +
         '<div class="stat-box">' +
           '<div class="stat-label">Total P&L</div>' +
           '<div class="stat-value" style="color:' + pnlColor + ';">' + (totalPnl >= 0 ? '+' : '') + '$' + fmt(totalPnl) + '</div>' +
-          '<div class="stat-sub">realized ' + realSign + '$' + fmt(totalRealizedAll) + ' · unrealized ' + unrSign + '$' + fmt(totalUnrealized) + ' · fees ' + feeSign + '$' + fmt(totalFees) + '</div>' +
+          '<div class="stat-sub">realized (net) ' + realSign + '$' + fmt(totalRealizedAll) + ' · unrealized ' + unrSign + '$' + fmt(totalUnrealized) + ' · fees ' + feeSign + '$' + fmt(totalFees) + ' already in realized</div>' +
         '</div>' +
         '<div class="stat-box">' +
           '<div class="stat-label">Skim Reserve</div>' +
           '<div class="stat-value" style="color:var(--green);">+$' + skimReserveTotal.toFixed(4) + '</div>' +
-          '<div class="stat-sub">set aside from profits · ' + (portfolioVal > 0 ? (skimReserveTotal / portfolioVal * 100).toFixed(2) + '% of portfolio' : '—') + '</div>' +
+          '<div class="stat-sub">set aside from profits · ' + (netWorth > 0 ? (skimReserveTotal / netWorth * 100).toFixed(2) + '% of net worth' : '—') + '</div>' +
         '</div>';
 
       document.getElementById('overview-row2').innerHTML =
         '<div class="stat-box">' +
-          '<div class="stat-label">Cash Available</div>' +
+          '<div class="stat-label">Cash to reinvest</div>' +
           '<div class="stat-value">$' + fmt(totalCash + unalloc) + '</div>' +
-          '<div class="stat-sub">ready for trading</div>' +
+          '<div class="stat-sub">operational, ready for trading</div>' +
         '</div>' +
         '<div class="stat-box">' +
           '<div class="stat-label">Deployed</div>' +

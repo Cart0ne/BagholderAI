@@ -354,6 +354,7 @@
 
         <!-- Portfolio card -->
         <div class="card" style="padding: 20px;">
+          <div style="font-family: var(--mono); font-size: 11px; color: var(--text-dim); margin-bottom: 4px;">Net worth</div>
           <div style="display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;">
             <span class="portfolio-value" id="pv">—</span>
             <span class="pnl" id="pp"></span>
@@ -378,14 +379,14 @@
         <!-- Asset cards -->
         <div class="assets-grid" id="assets-grid"></div>
 
-        <!-- Portfolio Value Chart -->
+        <!-- Net Worth Chart -->
         <div class="card">
-          <div class="chart-label">Portfolio value</div>
+          <div class="chart-label">Net worth</div>
           <div class="chart-wrap" style="height: 160px;">
             <canvas id="portChart"></canvas>
           </div>
           <div class="chart-legend">
-            <span><span class="chart-legend-line" style="background: #22c55e;"></span> Portfolio</span>
+            <span><span class="chart-legend-line" style="background: #22c55e;"></span> Net worth</span>
             <span><span class="chart-legend-line" style="border-top: 1px dashed rgba(255,255,255,0.2);"></span> Initial ($500)</span>
           </div>
         </div>
@@ -521,8 +522,8 @@
     }
 
     // === LIVE STATE COMPUTATION ===
-    // Mirrors the admin page: FIFO reconstruction of holdings from trades,
-    // cash = alloc - netSpent (open) or alloc + realized - skim (closed).
+    // Mirrors the bot's _available_cash(): alloc − invested + received − reserve
+    // (skim physically leaves the bot's cash and sits in reserve_ledger).
     function analyzeCoin(symbol, cfg, trades, skimBySymbol) {
       var alloc = Number(cfg.capital_allocation);
       var coinTrades = trades.filter(function(t) { return t.symbol === symbol; });
@@ -534,13 +535,13 @@
       }, 0);
       var netSpent = totalBought - totalSold;
       var positionClosed = netHoldings <= 0.000001;
+      var skimForCoin = skimBySymbol[symbol] || 0;
       var cashLeft;
       if (positionClosed) {
         netSpent = 0;
-        var skimForCoin = skimBySymbol[symbol] || 0;
         cashLeft = alloc + realizedPnl - skimForCoin;
       } else {
-        cashLeft = alloc - netSpent;
+        cashLeft = alloc - netSpent - skimForCoin;
       }
       return { alloc: alloc, netSpent: netSpent, netHoldings: netHoldings, realizedPnl: realizedPnl, cashLeft: cashLeft, positionClosed: positionClosed };
     }
@@ -552,6 +553,7 @@
 
       var totalCash = 0;
       var holdingsValue = 0;
+      var totalInvested = 0;  // cost basis of still-open lots
       var totalUnrealized = 0;
       var totalRealized = 0;
       var perCoin = {};
@@ -596,13 +598,18 @@
           unr = (livePrice - avgBuy) * openAmt;
           unrPct = avgBuy > 0 ? (livePrice / avgBuy - 1) * 100 : 0;
           holdingsValue += value;
+          totalInvested += openCost;
           totalUnrealized += unr;
         }
         perCoin[sym] = { value: value, unrealized: unr, unrealizedPct: unrPct, avgBuy: avgBuy, netHoldings: openAmt };
       });
 
       var cash = totalCash + unalloc;
-      var totalValue = cash + holdingsValue;
+      // Net Worth includes skim reserve (physically set aside but still owned).
+      // cash here already excludes skim (analyzeCoin subtracts it), so adding
+      // skimTotal back gives the full patrimony. Keeps the P&L math consistent
+      // across active / closed / deallocated positions.
+      var totalValue = cash + holdingsValue + skimTotal;
       var totalPnl = totalValue - initialCapital;
       var totalFees = trades.reduce(function(s, t) { return s + Number(t.fee || 0); }, 0);
 
@@ -617,6 +624,7 @@
         initialCapital: initialCapital,
         cash: cash,
         holdingsValue: holdingsValue,
+        totalInvested: totalInvested,
         totalValue: totalValue,
         totalPnl: totalPnl,
         totalRealized: totalRealized,
@@ -655,16 +663,22 @@
 
       // Meta
       var today = new Date().toISOString().slice(0, 10);
+      var cashToReinvest = state.cash;  // totalCash + unalloc (already excludes skim)
       document.getElementById('pmeta').innerHTML =
         '<span>Initial: ' + fmtUsd(state.initialCapital) + '</span>' +
-        '<span>Day ' + dayNum(today) + '</span>';
+        '<span>Day ' + dayNum(today) + '</span>' +
+        '<span>Cash to reinvest: ' + fmtUsd(cashToReinvest) + '</span>' +
+        '<span>Cash invested: ' + fmtUsd(state.totalInvested) + '</span>';
 
       // P&L breakdown — stacks so Realized (net) + Unrealized ≈ Total P&L.
-      // Fees is informational (already deducted in realized net). Skim is a
-      // subset of gross that's been sidelined — not a separate cost.
-      var realizedGross = state.totalRealized;
-      var realizedNet = realizedGross - state.totalFees;
-      var skimPctOfGross = realizedGross > 0 ? (state.skimTotal / realizedGross * 100) : 0;
+      // trades.realized_pnl is already NET of buy+sell fees (see grid_bot._execute_sell):
+      // realized_pnl = revenue − cost_basis − sell_fee − buy_fee. We reconstruct
+      // gross by adding fees back, purely for display. Skim is a subset of
+      // Realized (net) that's been physically moved to reserve_ledger — already
+      // counted inside Net Worth, shown separately for transparency.
+      var realizedNet = state.totalRealized;
+      var realizedGross = realizedNet + state.totalFees;
+      var skimPctOfNet = realizedNet > 0 ? (state.skimTotal / realizedNet * 100) : 0;
       document.getElementById('pnl-breakdown').innerHTML =
         '<div class="breakdown-item"><div class="label">Realized (net)</div>' +
         '<div class="value ' + pcls(realizedNet) + '">' + sign(realizedNet) + fmtUsd(realizedNet) + '</div>' +
@@ -676,8 +690,8 @@
         '<div class="value negative">-' + fmtUsd(Math.abs(state.totalFees)) + '</div>' +
         '<div class="sub">already subtracted above</div></div>' +
         '<div class="breakdown-item"><div class="label">Skim reserved</div>' +
-        '<div class="value positive">+$' + state.skimTotal.toFixed(4) + (skimPctOfGross > 0 ? ' (' + skimPctOfGross.toFixed(1) + '% of gross)' : '') + '</div>' +
-        '<div class="sub">subset of gross, sidelined</div></div>';
+        '<div class="value positive">+$' + state.skimTotal.toFixed(4) + (skimPctOfNet > 0 ? ' (' + skimPctOfNet.toFixed(1) + '% of realized)' : '') + '</div>' +
+        '<div class="sub">subset of realized, set aside</div></div>';
 
       // Cash allocation bar
       document.getElementById('cash-pct-label').textContent = fmt(cashPct, 0) + '% cash';
