@@ -589,10 +589,11 @@
         }
       });
 
-      if (configData.length === 0) {
+      var activeCount = configData.filter(function(c) { return c.is_active; }).length;
+      if (activeCount === 0) {
         alerts.push({ type: 'green', text: 'No TF-managed coins right now. TF is ' + (TF_DRY_RUN ? 'watching in shadow' : 'live and searching') + '.' });
       } else if (alerts.length === 0) {
-        alerts.push({ type: 'green', text: 'All TF bots nominal. ' + configData.length + ' coin(s) active of max ' + TF_MAX_COINS + '.' });
+        alerts.push({ type: 'green', text: 'All TF bots nominal. ' + activeCount + ' coin(s) active of max ' + TF_MAX_COINS + '.' });
       }
 
       el.innerHTML = alerts.map(function(a) {
