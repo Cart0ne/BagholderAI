@@ -400,9 +400,11 @@
     var TF_DRY_RUN = true;     // overridden from trend_config.dry_run at load
     // 39b: full trend_config row for the safety-params editor (id required for PATCH)
     var TF_CONFIG_ROW = null;
-    // Fields rendered in the ⚠️ TF Safety parameters section. 39c will append tf_take_profit_pct here.
+    // Fields rendered in the ⚠️ TF Safety parameters section.
+    // Order: stop-loss + take-profit together (the exit pair), scan cadence last.
     var TF_SAFETY_FIELDS = [
       { key: 'tf_stop_loss_pct', label: 'TF stop-loss %', sub: 'TF bots force-sell when unrealized loss exceeds this % of allocation. Applies only to TF-managed bots, never to manual.' },
+      { key: 'tf_take_profit_pct', label: 'TF take-profit %', sub: 'Takes profit on the full position when unrealized P&L exceeds this % of capital_allocation. Only applies to TF-managed bots. Set 0 to disable.' },
       { key: 'scan_interval_hours', label: 'Scan interval (hours)', sub: 'How often the TF evaluates rotation opportunities. Lower = faster reaction to bearish signals but more API calls.' }
     ];
 
@@ -527,7 +529,7 @@
     async function loadAll() {
       // 1. Load trend_config first (needed to know tf_budget, tf_max_coins, dry_run)
       try {
-        var tc = await sbGet('trend_config', 'select=id,dry_run,tf_budget,tf_max_coins,tf_stop_loss_pct,scan_interval_hours&limit=1');
+        var tc = await sbGet('trend_config', 'select=id,dry_run,tf_budget,tf_max_coins,tf_stop_loss_pct,tf_take_profit_pct,scan_interval_hours&limit=1');
         if (tc && tc.length) {
           TF_CONFIG_ROW = tc[0];
           TF_BUDGET = Number(tc[0].tf_budget) || 100;

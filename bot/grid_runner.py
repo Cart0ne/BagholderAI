@@ -205,19 +205,26 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
     # Initialize Telegram
     notifier = SyncTelegramNotifier()
 
-    # 39a: TF stop-loss threshold lives in trend_config (global policy, not
-    # per-bot). Read once at startup; hot-reload requires restart. Manual
-    # bots set stop_loss_pct=0 implicitly (only TF bots arm the check inside
-    # grid_bot), so reading it unconditionally is safe.
+    # 39a/39c: TF stop-loss + take-profit thresholds live in trend_config
+    # (global policy, not per-bot). Read once at startup; hot-reload
+    # requires restart. Manual bots ignore both (only TF bots arm the
+    # checks inside grid_bot), so reading them unconditionally is safe.
     tf_stop_loss_pct = 0.0
+    tf_take_profit_pct = 0.0
     try:
         from db.client import get_client
         _sb = get_client()
-        _tc = _sb.table("trend_config").select("tf_stop_loss_pct").limit(1).execute()
-        if _tc.data and _tc.data[0].get("tf_stop_loss_pct") is not None:
-            tf_stop_loss_pct = float(_tc.data[0]["tf_stop_loss_pct"])
+        _tc = _sb.table("trend_config").select(
+            "tf_stop_loss_pct,tf_take_profit_pct"
+        ).limit(1).execute()
+        if _tc.data:
+            row = _tc.data[0]
+            if row.get("tf_stop_loss_pct") is not None:
+                tf_stop_loss_pct = float(row["tf_stop_loss_pct"])
+            if row.get("tf_take_profit_pct") is not None:
+                tf_take_profit_pct = float(row["tf_take_profit_pct"])
     except Exception as e:
-        logger.warning(f"Could not read trend_config.tf_stop_loss_pct: {e}. Defaulting to 0.")
+        logger.warning(f"Could not read trend_config safety params: {e}. Defaulting to 0.")
 
     # 39b: manual stop-buy threshold is per-coin (lives in bot_config).
     # TF bots ignore it (gated by managed_by != 'trend_follower' in grid_bot).
@@ -250,6 +257,7 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
         skim_pct=cfg.skim_pct,
         tf_stop_loss_pct=tf_stop_loss_pct,
         stop_buy_drawdown_pct=stop_buy_drawdown_pct,
+        tf_take_profit_pct=tf_take_profit_pct,
     )
 
     # Initial managed_by from Supabase (default "manual")
@@ -387,40 +395,46 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
             # Run grid logic
             trades = bot.check_price_and_execute(price)
 
-            # 39a: stop-loss inside check_price_and_execute may have flagged
-            # pending_liquidation. Handle it NOW (before the daily-PnL guard
-            # can short-circuit to an is_active=True exit that would trigger
-            # an orchestrator respawn). Mirrors the top-of-loop branch.
+            # 39a/39c: stop-loss or take-profit inside check_price_and_execute
+            # may have flagged pending_liquidation. Handle it NOW (before the
+            # daily-PnL guard can short-circuit to an is_active=True exit
+            # that would trigger an orchestrator respawn). Mirrors the
+            # top-of-loop branch.
             #
-            # CEO preference: ONE summary Telegram per stop-loss event
+            # CEO preference: ONE summary Telegram per forced-exit event
             # (not one-per-sell). Build it from the `trades` list we just
-            # got back — already has all 4 lots + their PnL — then break
+            # got back — already has all lots + their PnL — then break
             # before the individual-trade alert loop below.
             if getattr(bot, "pending_liquidation", False):
+                is_tp = getattr(bot, "_take_profit_triggered", False)
+                event_label = "TAKE-PROFIT" if is_tp else "STOP-LOSS"
+                event_emoji = "🟢" if is_tp else "🔴"
+                stop_reason_tag = "take_profit" if is_tp else "stop_loss"
+
                 logger.info(
-                    f"[{cfg.symbol}] pending_liquidation triggered mid-tick (stop-loss) — closing bot"
+                    f"[{cfg.symbol}] pending_liquidation triggered mid-tick ({event_label.lower()}) — closing bot"
                 )
 
-                stop_loss_sells = [t for t in (trades or []) if t.get("side") == "sell"]
-                if stop_loss_sells:
-                    total_amount = sum(float(t["amount"]) for t in stop_loss_sells)
-                    total_proceeds = sum(float(t["cost"]) for t in stop_loss_sells)
-                    total_pnl = sum(float(t.get("realized_pnl", 0)) for t in stop_loss_sells)
+                forced_sells = [t for t in (trades or []) if t.get("side") == "sell"]
+                if forced_sells:
+                    total_amount = sum(float(t["amount"]) for t in forced_sells)
+                    total_proceeds = sum(float(t["cost"]) for t in forced_sells)
+                    total_pnl = sum(float(t.get("realized_pnl", 0)) for t in forced_sells)
                     avg_sell_price = total_proceeds / total_amount if total_amount > 0 else 0
                     pnl_emoji = "📈" if total_pnl >= 0 else "📉"
                     pnl_sign = "+" if total_pnl >= 0 else ""
                     try:
                         notifier.send_message(
-                            f"🔴 <b>{cfg.symbol} STOP-LOSS LIQUIDATED</b>\n"
-                            f"{len(stop_loss_sells)} lots sold @ ${avg_sell_price:.4f} avg\n"
+                            f"{event_emoji} <b>{cfg.symbol} {event_label} LIQUIDATED</b>\n"
+                            f"{len(forced_sells)} lots sold @ ${avg_sell_price:.4f} avg\n"
                             f"Proceeds: ${total_proceeds:.2f}\n"
                             f"{pnl_emoji} Realized PnL: {pnl_sign}${total_pnl:.2f}"
                         )
                     except Exception as e:
-                        logger.warning(f"[{cfg.symbol}] Failed to send stop-loss summary: {e}")
+                        logger.warning(f"[{cfg.symbol}] Failed to send {event_label.lower()} summary: {e}")
 
                 _force_liquidate(bot, exchange, trade_logger, notifier, cfg.symbol,
-                                 reason="STOP-LOSS")
+                                 reason=event_label)
                 try:
                     from db.client import get_client
                     sb = get_client()
@@ -429,8 +443,8 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
                         "pending_liquidation": False,
                     }).eq("symbol", cfg.symbol).execute()
                 except Exception as e:
-                    logger.error(f"[{cfg.symbol}] Failed to clear bot_config after stop-loss: {e}")
-                stop_reason = "stop_loss"
+                    logger.error(f"[{cfg.symbol}] Failed to clear bot_config after {event_label.lower()}: {e}")
+                stop_reason = stop_reason_tag
                 break
 
             # Idle re-entry / recalibrate alert: send BEFORE trade alerts so context arrives first
