@@ -323,8 +323,8 @@
   <script>
     // Roadmap data — update this JSON each session
     const ROADMAP = {
-      version: "Versione 1.28 — Aprile 2026",
-      last_updated: "2026-04-14",
+      version: "Versione 1.29 — Aprile 2026",
+      last_updated: "2026-04-18",
       phases: [
         {
           id: 0,
@@ -385,7 +385,7 @@
             { text: "Scanner: top 50 coins by volume + signal classifier", status: "done", who: "AI", comment: "Session 31 + 35 (tiered scanning A/B/C)." },
             { text: "Allocator: select top N, respect tiers, write bot_config", status: "done", who: "AI", comment: "Session 36a. Now uses tf_max_coins (default 2) instead of fixed 5. MANUAL_WHITELIST protects BTC/SOL/BONK." },
             { text: "Dashboard: Trend Follower status", status: "done", who: "AI", comment: "Session 36b. /tf control room — budget, deployed, decisions log, TF-only view." },
-            { text: "Parameter calibration from data", status: "todo", who: "BOTH", comment: "Brief 36c: ATR-based buy_pct/sell_pct + full tf_budget deployment." },
+            { text: "Parameter calibration from data", status: "done", who: "BOTH", comment: "Brief 36c: ATR-based buy_pct/sell_pct + full tf_budget deployment. Extended in 36e (rotation + ATR clamps) and 36g (compound via floating cash)." },
             { text: "Auto-clean policy for trend_decisions_log (90 days)", status: "todo", who: "AI" },
           ]
         },
@@ -434,6 +434,7 @@
             { text: "Final assembly into PDF", status: "done", who: "BOTH", comment: "Session 26. Almost there — last typographic passes pending." },
             { text: "Editorial plan X: first 5-10 posts from diary", status: "active", who: "BOTH", comment: "9 posts published, schema defined. Ongoing." },
             { text: "Publish Volume 1", status: "done", who: "BOTH", comment: "Session 34. Live on Payhip at €4.99. payhip.com/b/a4yMc" },
+            { text: "Volume 2 prep: batch convert diaries S24→last + preface + interlude (S34) from .docx to .md", status: "todo", who: "AI", comment: "Trigger when Volume 2 publication is scheduled. One-shot script using mammoth (Python), output to diary/md/." },
           ]
         },
         {
@@ -582,12 +583,21 @@
             { text: "TF hotfix: profit_target_pct=0 on INSERT (unblocks sells)", status: "done", who: "AI", comment: "2026-04-16. DB default 1.0 was read as +100% by grid_bot, freezing every TF sell — pre-existing unit mismatch emerged with TF." },
             { text: "TF hotfix: skim_pct=30 on INSERT (match manual bots)", status: "done", who: "AI", comment: "2026-04-16. TF profits were fully reinvested, reserve stayed $0." },
             { text: "Home + Admin: filter TF coins/trades to preserve $500 manual baseline", status: "done", who: "AI", comment: "2026-04-16. managed_by=neq.trend_follower on queries. /tf owns the TF view." },
-            { text: "TF full budget deployment: equal-split + dynamic capital_per_trade", status: "todo", who: "AI", comment: "Brief 36c. Currently $20 of $100 budget used; aim to deploy all with multi-lot per coin." },
-            { text: "TF ATR-based buy_pct/sell_pct (adaptive grid widths)", status: "todo", who: "AI", comment: "Brief 36c. Volatile coins → wider grid, stable coins → tighter. Cap 1.0–5.0%." },
-            { text: "profit_target_pct unit mismatch: UI label vs DB value vs grid_bot decimal", status: "todo", who: "AI", comment: "Brief 36c optional. Admin UI says 'Min Profit %' but code treats value as fraction. Align via /100 fix or UI change." },
-            { text: "TF riding mode (trailing stop) for strong bullish pumps", status: "todo", who: "BOTH", comment: "Candidate brief 36d. Grid misses >5% moves in single wave; trailing stop would let TF ride pumps beyond sell_pct." },
+            { text: "TF full budget deployment: equal-split + dynamic capital_per_trade", status: "done", who: "AI", comment: "Brief 36c. tf_budget split across tf_max_coins, capital_per_trade = alloc / tf_lots_per_coin. Deployed 2026-04-16." },
+            { text: "TF ATR-based buy_pct/sell_pct (adaptive grid widths)", status: "done", who: "AI", comment: "Brief 36c + 36e_v2. ATR-adaptive widths clamped to CEO philosophy: buy 1–2%, sell 1–6%." },
+            { text: "profit_target_pct unit mismatch: UI label vs DB value vs grid_bot decimal", status: "done", who: "AI", comment: "Brief 36d. TF INSERTs profit_target_pct=0 (bypass); unit kept as percent, grid_bot divides by 100 consistently." },
+            { text: "TF coin rotation: SWAP on stronger BULLISH + DEALLOCATE on BEARISH", status: "done", who: "AI", comment: "Brief 36e + 36e_v2. Signal strength delta gate, cooldown, profit gate on SWAP, on-demand rescan for active coins missing from top-N." },
+            { text: "TF compounding via floating cash lookup", status: "done", who: "AI", comment: "Brief 36g. tf_total_capital = tf_budget + retained profits from deallocated TF bots. Phase 2: resize active allocations on each scan when compound delta > threshold (CEO-tuned: lots=4, sanity cap $300, resize threshold $10, per-trade cap $50)." },
+            { text: "TF stop-loss + bearish exit override Strategy A", status: "done", who: "AI", comment: "Brief 39a. Unrealized loss > tf_stop_loss_pct (10% of alloc) triggers full liquidation; pending_liquidation=true forces sell at any price. Manual bots keep Strategy A intact. Scan drops to 1h + idle_reentry 1h for TF." },
+            { text: "MBOX phantom skim audit (realized_net vs gross cash flow mismatch)", status: "done", who: "AI", comment: "Brief 36j. Documented $2.63 phantom profit on MBOX from suspected _pct_open_positions desync. Decision: leave as-is ($0.19 skim drift, self-heals on reallocation)." },
+            { text: "TF riding mode (trailing stop) for strong bullish pumps", status: "todo", who: "BOTH", comment: "Brief 36f. Grid misses >5% moves in single wave; trailing stop would let TF ride pumps beyond sell_pct. Parked post-39a stabilization." },
+            { text: "TF idle re-entry fast for active bots", status: "todo", who: "AI", comment: "Brief 36i. Accelerate re-alignment when holdings>0 and no trade in N hours (vs existing holdings=0 path). Parked." },
+            { text: "Haiku sees TF (commentary on rotation + stop-loss events)", status: "todo", who: "AI", comment: "Brief 36h. Feed TF decision log + stop-loss reasons into daily Haiku commentary. Parked until 1 week stable post-39a." },
             { section: "Phase 3 — AI Sentinel" },
             { section: "Phase 4 — Dashboard & Monetization" },
+            { text: "Dashboards: Portfolio Value → Net Worth (includes skim reserve)", status: "done", who: "AI", comment: "2026-04-17. Consistent across index/admin/tf. cashLeft for active coins now subtracts skim (matches bot._available_cash). Adds Cash to reinvest + Cash invested stats. Fix fees double-subtraction in index P&L breakdown." },
+            { text: "TF dashboard: compact row for deallocated coins", status: "done", who: "AI", comment: "2026-04-18. One-liner per deallocated coin (name · DEALLOCATED · profit) under 'Previous coins', ~40px vs 300px full card." },
+            { text: "TF dashboard: effective budget line (tf_budget + floating)", status: "done", who: "AI", comment: "Brief 36g telemetry. Shows 'TF budget: $100 base + $X floating = $Y effective' on scan reports + /tf overview." },
             { text: "Site analytics (Umami Cloud)", status: "done", who: "BOTH", comment: "2h the hard way, 5min the right way." },
             { text: "Volume 1: structure defined (preface, intro, 23 sessions, appendices, glossary)", status: "done", who: "BOTH", comment: "Session 23." },
             { text: "Editorial template approved (EB Garamond, uniform styles)", status: "done", who: "AI", comment: "Session 24." },
@@ -636,6 +646,11 @@
             { text: "Cover image optimized for web (4.3MB PNG → 54KB JPEG)", status: "done", who: "AI", comment: "Session 30. sips resize 600px, quality 85." },
             { text: "Umami: data-domains restricted to bagholderai.lol (no local dev tracking)", status: "done", who: "AI", comment: "Session 30. All 6 pages updated." },
             { text: "Uniform bottom bar on all pages + footer mailto link", status: "done", who: "AI", comment: "Session 30. Consistent cta-link bar before footer on all 7 pages." },
+            { section: "Phase 9 — Infrastructure & Observability" },
+            { text: "Orchestrator graceful shutdown propagates to subprocesses", status: "done", who: "AI", comment: "2026-04-17. SIGINT to children (not SIGTERM) so their KeyboardInterrupt handlers run; grid_runner + trend_follower install SIGTERM→KeyboardInterrupt handlers as fallback for external kills." },
+            { text: "Orchestrator shutdown race: stop-loss vs daily-PnL floor", status: "done", who: "AI", comment: "2026-04-18. Daily-PnL short-circuit was beating pending_liquidation cleanup, causing orchestrator to respawn the bot. Fix: post-sell pending_liquidation branch runs before daily-PnL check; flag treated as monotonic-sticky in _sync_config_to_bot." },
+            { text: "Logs unified under /Volumes/Archivio/bagholderai/logs/", status: "done", who: "AI", comment: "2026-04-18. x_poster/ subfolder joins grid_*.log + orchestrator.log + trend_follower.log. FDA for /usr/sbin/cron verified live." },
+            { text: "Quieter Telegram: single summary on orchestrator start/stop", status: "done", who: "AI", comment: "2026-04-18. Per-bot started/stopped suppressed; orchestrator's 🚀 started + 🛑 shutting down enough. Exceptional events (crash, liquidation, disabled) still notify." },
           ]
         },
       ]
