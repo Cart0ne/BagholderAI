@@ -377,13 +377,33 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
             # can short-circuit to an is_active=True exit that would trigger
             # an orchestrator respawn). Mirrors the top-of-loop branch.
             #
-            # The stop-loss has already sold every lot; force_liquidate sees
-            # holdings ≈ 0 and skips its noisy Telegram (39a fix). The per-sell
-            # "STOP-LOSS: ..." notifications already carry the real PnL.
+            # CEO preference: ONE summary Telegram per stop-loss event
+            # (not one-per-sell). Build it from the `trades` list we just
+            # got back — already has all 4 lots + their PnL — then break
+            # before the individual-trade alert loop below.
             if getattr(bot, "pending_liquidation", False):
                 logger.info(
                     f"[{cfg.symbol}] pending_liquidation triggered mid-tick (stop-loss) — closing bot"
                 )
+
+                stop_loss_sells = [t for t in (trades or []) if t.get("side") == "sell"]
+                if stop_loss_sells:
+                    total_amount = sum(float(t["amount"]) for t in stop_loss_sells)
+                    total_proceeds = sum(float(t["cost"]) for t in stop_loss_sells)
+                    total_pnl = sum(float(t.get("realized_pnl", 0)) for t in stop_loss_sells)
+                    avg_sell_price = total_proceeds / total_amount if total_amount > 0 else 0
+                    pnl_emoji = "📈" if total_pnl >= 0 else "📉"
+                    pnl_sign = "+" if total_pnl >= 0 else ""
+                    try:
+                        notifier.send_message(
+                            f"🔴 <b>{cfg.symbol} STOP-LOSS LIQUIDATED</b>\n"
+                            f"{len(stop_loss_sells)} lots sold @ ${avg_sell_price:.4f} avg\n"
+                            f"Proceeds: ${total_proceeds:.2f}\n"
+                            f"{pnl_emoji} Realized PnL: {pnl_sign}${total_pnl:.2f}"
+                        )
+                    except Exception as e:
+                        logger.warning(f"[{cfg.symbol}] Failed to send stop-loss summary: {e}")
+
                 _force_liquidate(bot, exchange, trade_logger, notifier, cfg.symbol,
                                  reason="STOP-LOSS")
                 try:
