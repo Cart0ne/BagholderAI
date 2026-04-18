@@ -99,7 +99,13 @@ def _sync_config_to_bot(reader: "SupabaseConfigReader", bot: "GridBot", symbol: 
     if "is_active" in sb_cfg:
         bot.is_active = bool(sb_cfg["is_active"])
     if "pending_liquidation" in sb_cfg:
-        bot.pending_liquidation = bool(sb_cfg.get("pending_liquidation", False))
+        # pending_liquidation is monotonic-sticky: once the bot flags itself
+        # for cleanup (e.g. 39a stop-loss), don't let a DB poll overwrite it
+        # back to False. Clearing happens via the grid_runner UPDATE after the
+        # liquidation branch runs + bot exit + fresh start.
+        db_flag = bool(sb_cfg.get("pending_liquidation", False))
+        if db_flag and not bot.pending_liquidation:
+            bot.pending_liquidation = True
     if "managed_by" in sb_cfg and sb_cfg.get("managed_by"):
         bot.managed_by = sb_cfg["managed_by"]
 
@@ -361,6 +367,27 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
 
             # Run grid logic
             trades = bot.check_price_and_execute(price)
+
+            # 39a: stop-loss inside check_price_and_execute may have flagged
+            # pending_liquidation. Handle it NOW (before the daily-PnL guard
+            # can short-circuit to an is_active=True exit that would trigger
+            # an orchestrator respawn). Mirrors the top-of-loop branch.
+            if getattr(bot, "pending_liquidation", False):
+                logger.info(
+                    f"[{cfg.symbol}] pending_liquidation triggered mid-tick (stop-loss) — closing bot"
+                )
+                _force_liquidate(bot, exchange, trade_logger, notifier, cfg.symbol)
+                try:
+                    from db.client import get_client
+                    sb = get_client()
+                    sb.table("bot_config").update({
+                        "is_active": False,
+                        "pending_liquidation": False,
+                    }).eq("symbol", cfg.symbol).execute()
+                except Exception as e:
+                    logger.error(f"[{cfg.symbol}] Failed to clear bot_config after stop-loss: {e}")
+                stop_reason = "stop_loss"
+                break
 
             # Idle re-entry / recalibrate alert: send BEFORE trade alerts so context arrives first
             for alert in bot.idle_reentry_alerts:
