@@ -200,13 +200,9 @@ def run_orchestrator():
                 grid_processes[sym] = ProcessInfo(sym, proc, managed_by)
                 source = "TF" if managed_by == "trend_follower" else "manual"
                 logger.info(f"[{sym}] Grid bot spawned (pid={proc.pid}, {source})")
-                if not first_run:
-                    try:
-                        notifier.send_message(
-                            f"🆕 <b>{sym} grid bot started</b> ({source})"
-                        )
-                    except Exception:
-                        pass
+                # Per-bot spawn notification suppressed — the orchestrator-level
+                # summary message is enough; new TF allocations still surface via
+                # the scan-report Telegram sent by the Trend Follower itself.
 
             # 5. Reconcile Trend Follower
             if tf_enabled:

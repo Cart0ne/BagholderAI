@@ -295,7 +295,9 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
             logger.info(f"  {fmt_price(level.price):>14}  {marker}{amount_str}")
         logger.info(f"  Current price:  {fmt_price(price)}")
 
-    notifier.send_bot_started(bot.get_status())
+    # Per-bot start notification suppressed: the orchestrator's single
+    # "🚀 Orchestrator started" summary is enough — less Telegram noise.
+    # Status is still logged to grid_<symbol>.log for audit.
 
     if once:
         logger.info("Single cycle mode — checking once and exiting.")
@@ -621,11 +623,14 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
                 logger.info("\nStopping grid bot (Ctrl+C during error sleep)...")
                 break
 
-    notifier.send_bot_stopped(bot.get_status(), reason=stop_reason)
+    # Per-bot farewell suppressed: the orchestrator's
+    # "🛑 Orchestrator shutting down" covers the collective case,
+    # and special events (liquidation, stop-loss, is_active=false)
+    # still fire targeted notifications via their own paths.
 
     # Final status
     logger.info("\n" + "=" * 50)
-    logger.info("FINAL STATUS")
+    logger.info(f"FINAL STATUS (reason: {stop_reason})")
     _print_status(bot)
     logger.info("=" * 50)
 

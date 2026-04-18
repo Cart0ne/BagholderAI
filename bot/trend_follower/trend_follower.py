@@ -365,19 +365,9 @@ def run_trend_follower():
         return
 
     logger.info(f"Trend Follower starting — dry_run={config.get('dry_run', True)}")
-    notifier.send_message(
-        f"🧠 <b>Trend Follower started</b>\n"
-        f"Mode: {'SHADOW (dry run)' if config.get('dry_run') else 'LIVE'}\n"
-        f"Scan interval: {config.get('scan_interval_hours', 4)}h\n"
-        f"Max grids: {config.get('tf_max_coins') or config.get('max_active_grids', 5)}"
-    )
-
-    if not config.get("dry_run", True):
-        notifier.send_message(
-            f"⚡ <b>TF LIVE MODE</b>\n"
-            f"Budget: ${float(config.get('tf_budget', 100)):.0f} | "
-            f"Max coins: {config.get('tf_max_coins', 2)}"
-        )
+    # Startup notification suppressed: the orchestrator's single summary
+    # message already confirms "Trend Follower: on/off". Log still carries
+    # full config details for audit.
 
     # Main loop
     while True:
@@ -489,7 +479,8 @@ def run_trend_follower():
 
         except KeyboardInterrupt:
             logger.info("Trend Follower stopped by user.")
-            notifier.send_message("🛑 Trend Follower stopped (manual).")
+            # Farewell suppressed: covered by "Orchestrator shutting down"
+            # when shutdown is driven by the orchestrator.
             break
         except Exception as e:
             logger.error(f"Trend Follower error: {e}", exc_info=True)

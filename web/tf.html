@@ -127,6 +127,27 @@
       border-radius: 8px; padding: 16px; margin-bottom: 10px;
     }
     .coin-card-inactive { opacity: 0.65; }
+
+    /* Compact row for deallocated coins (39a) — one-liner with P&L */
+    .inactive-section-label {
+      font-family: var(--mono); font-size: 10px; color: var(--text-dim);
+      text-transform: uppercase; letter-spacing: 0.05em;
+      margin: 16px 0 8px; padding-left: 4px;
+    }
+    .inactive-row {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 6px; padding: 10px 14px; margin-bottom: 6px;
+      display: flex; align-items: center; gap: 12px; opacity: 0.7;
+    }
+    .inactive-row .ir-name { font-weight: 700; font-size: 14px; min-width: 64px; }
+    .inactive-row .ir-status {
+      font-family: var(--mono); font-size: 10px;
+      background: rgba(239,68,68,0.15); color: var(--red);
+      padding: 2px 8px; border-radius: 10px;
+    }
+    .inactive-row .ir-spacer { flex: 1; }
+    .inactive-row .ir-label { font-family: var(--mono); font-size: 10px; color: var(--text-dim); }
+    .inactive-row .ir-pnl { font-family: var(--mono); font-size: 13px; font-weight: 600; }
     .coin-header {
       display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;
     }
@@ -889,25 +910,20 @@
           '</div>';
         return;
       }
-      // Active coins first (alphabetical inside each group — the API
-      // already returns them sorted by symbol, and Array.sort is stable).
-      var sortedData = configData.slice().sort(function(a, b) {
-        return (b.is_active ? 1 : 0) - (a.is_active ? 1 : 0);
-      });
+      // Active coins rendered as full cards; deallocated ones condensed
+      // into single-line rows below (39a: less visual noise, one P&L number).
+      var activeConfigs = configData.filter(function(c) { return c.is_active; });
+      var inactiveConfigs = configData.filter(function(c) { return !c.is_active; });
 
-      el.innerHTML = sortedData.map(function(cfg) {
+      var activeHtml = activeConfigs.map(function(cfg) {
         var sym = cfg.symbol;
         var short = SHORT[sym] || sym;
         var color = COLORS[sym] || '#888';
         var a = analyzeCoin(sym, cfg);
-        var isActive = !!cfg.is_active;
 
         var positionClosed = a.netHoldings <= 0.000001;
         var statusClass, statusText;
-        if (!isActive) {
-          statusClass = 'status-dead';
-          statusText = 'INACTIVE — deallocated';
-        } else if (positionClosed) {
+        if (positionClosed) {
           statusClass = 'status-ok';
           statusText = 'CLOSED — awaiting re-entry';
         } else if (a.buysLeft === 0) {
@@ -923,7 +939,7 @@
 
         var barColor = a.buysLeft === 0 ? 'var(--red)' : a.buysLeft <= 1 ? 'var(--yellow)' : color;
 
-        var configBlock = isActive ? (
+        var configBlock = (
           '<div class="config-section">' +
             '<div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-bottom:8px;">PARAMETERS</div>' +
             '<div class="param-group-label">Trading Parameters</div>' +
@@ -954,9 +970,9 @@
               '<span class="save-status" id="status-' + short + '"></span>' +
             '</div>' +
           '</div>'
-        ) : '';
+        );
 
-        return '<div class="coin-card' + (isActive ? '' : ' coin-card-inactive') + '" id="card-' + short + '">' +
+        return '<div class="coin-card" id="card-' + short + '">' +
           '<div class="coin-header">' +
             '<span class="coin-name" style="color:' + color + ';">' + short + '</span>' +
             '<span class="coin-status ' + statusClass + '">' + statusText + '</span>' +
@@ -976,6 +992,34 @@
           configBlock +
         '</div>';
       }).join('');
+
+      // 39a: compact one-liner rows for deallocated coins.
+      // Profit shown = realized_net (already fees-deducted in DB, includes
+      // the portion routed to skim reserve — "totale, fees dedotte").
+      var inactiveHtml = '';
+      if (inactiveConfigs.length) {
+        var rows = inactiveConfigs.map(function(cfg) {
+          var sym = cfg.symbol;
+          var short = SHORT[sym] || sym;
+          var color = COLORS[sym] || '#888';
+          var a = analyzeCoin(sym, cfg);
+          var pnl = Number(a.realizedPnl || 0);
+          var pnlColor = pnl >= 0 ? 'var(--green)' : 'var(--red)';
+          var pnlSign = pnl >= 0 ? '+' : '';
+          return '<div class="inactive-row">' +
+            '<span class="ir-name" style="color:' + color + ';">' + short + '</span>' +
+            '<span class="ir-status">DEALLOCATED</span>' +
+            '<span class="ir-spacer"></span>' +
+            '<span class="ir-label">profit</span>' +
+            '<span class="ir-pnl" style="color:' + pnlColor + ';">' + pnlSign + fmtUsd(pnl) + '</span>' +
+          '</div>';
+        }).join('');
+        inactiveHtml =
+          '<div class="inactive-section-label">Previous coins (' + inactiveConfigs.length + ')</div>' +
+          rows;
+      }
+
+      el.innerHTML = activeHtml + inactiveHtml;
 
       // Mark original values and attach change listeners (active coins only —
       // inactive cards don't render the parameter inputs)
