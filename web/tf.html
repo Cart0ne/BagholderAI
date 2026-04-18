@@ -266,6 +266,16 @@
       border-bottom: 1px solid var(--border);
     }
     .param-group-label.pct-label { color: var(--teal); }
+    .param-group-label.safety-label { color: var(--yellow); }
+
+    /* TF safety grid: sublabels have different heights, so align inputs
+       by their top edge and let labels stretch. Each field column is a
+       flex column with the input anchored to the bottom. */
+    .tf-safety-grid .config-field {
+      display: flex; flex-direction: column;
+    }
+    .tf-safety-grid .config-field label { flex: 1; }
+    .tf-safety-grid .config-field input { margin-top: auto; }
 
     /* Fixed grid fields: dim when pct mode is active */
     .fixed-grid-fields { transition: opacity 0.3s; }
@@ -346,6 +356,17 @@
       <div class="section-title">Grid status per coin</div>
       <div id="coin-cards"></div>
 
+      <!-- TF Safety parameters (39b: edit trend_config from UI) -->
+      <div class="section-title">TF safety parameters</div>
+      <div class="card" id="tf-safety-card">
+        <div class="param-group-label safety-label">⚠️ TF Safety parameters</div>
+        <div class="config-grid tf-safety-grid" id="tf-safety-grid"></div>
+        <div class="save-row">
+          <button class="btn-save" id="tf-safety-save" onclick="saveTfSafety()" disabled>Save TF params</button>
+          <span class="save-status" id="tf-safety-status"></span>
+        </div>
+      </div>
+
       <!-- Recent Trades -->
       <div class="section-title">Recent trades</div>
       <div class="card" style="overflow-x: auto;">
@@ -377,6 +398,13 @@
     var TF_BUDGET = 100;       // overridden from trend_config.tf_budget at load
     var TF_MAX_COINS = 2;      // overridden from trend_config.tf_max_coins at load
     var TF_DRY_RUN = true;     // overridden from trend_config.dry_run at load
+    // 39b: full trend_config row for the safety-params editor (id required for PATCH)
+    var TF_CONFIG_ROW = null;
+    // Fields rendered in the ⚠️ TF Safety parameters section. 39c will append tf_take_profit_pct here.
+    var TF_SAFETY_FIELDS = [
+      { key: 'tf_stop_loss_pct', label: 'TF stop-loss %', sub: 'TF bots force-sell when unrealized loss exceeds this % of allocation. Applies only to TF-managed bots, never to manual.' },
+      { key: 'scan_interval_hours', label: 'Scan interval (hours)', sub: 'How often the TF evaluates rotation opportunities. Lower = faster reaction to bearish signals but more API calls.' }
+    ];
 
     // === AUTH ===
     async function sha256(msg) {
@@ -499,8 +527,9 @@
     async function loadAll() {
       // 1. Load trend_config first (needed to know tf_budget, tf_max_coins, dry_run)
       try {
-        var tc = await sbGet('trend_config', 'select=dry_run,tf_budget,tf_max_coins&limit=1');
+        var tc = await sbGet('trend_config', 'select=id,dry_run,tf_budget,tf_max_coins,tf_stop_loss_pct,scan_interval_hours&limit=1');
         if (tc && tc.length) {
+          TF_CONFIG_ROW = tc[0];
           TF_BUDGET = Number(tc[0].tf_budget) || 100;
           TF_MAX_COINS = Number(tc[0].tf_max_coins) || 2;
           TF_DRY_RUN = !!tc[0].dry_run;
@@ -578,6 +607,112 @@
       renderOverview();
       renderCoinCards();
       renderTrades();
+      renderTfSafety();
+    }
+
+    function renderTfSafety() {
+      var grid = document.getElementById('tf-safety-grid');
+      var btn = document.getElementById('tf-safety-save');
+      var status = document.getElementById('tf-safety-status');
+      if (!grid || !btn) return;
+      if (!TF_CONFIG_ROW) {
+        grid.innerHTML = '<div style="color:var(--text-dim);font-family:var(--mono);font-size:11px;grid-column:1/-1;">trend_config unavailable — refresh to retry.</div>';
+        btn.disabled = true;
+        return;
+      }
+      grid.innerHTML = TF_SAFETY_FIELDS.map(function(f) {
+        var val = TF_CONFIG_ROW[f.key];
+        var sub = f.sub ? '<small style="display:block;color:var(--text-dim);font-size:9px;margin-top:2px;line-height:1.3;">' + f.sub + '</small>' : '';
+        return '<div class="config-field">' +
+          '<label>' + f.label + sub + '</label>' +
+          '<input type="text" inputmode="decimal" id="tfs-' + f.key + '" value="' + (val != null ? val : '') + '">' +
+        '</div>';
+      }).join('');
+      if (status) status.textContent = '';
+      TF_SAFETY_FIELDS.forEach(function(f) {
+        var input = document.getElementById('tfs-' + f.key);
+        if (!input) return;
+        input.dataset.original = input.value;
+        input.addEventListener('input', function() {
+          var changed = this.value !== this.dataset.original;
+          this.classList.toggle('changed', changed);
+          checkTfSafetyChanges();
+        });
+      });
+      btn.disabled = true;
+    }
+
+    function checkTfSafetyChanges() {
+      var hasChanges = TF_SAFETY_FIELDS.some(function(f) {
+        var input = document.getElementById('tfs-' + f.key);
+        return input && input.value !== input.dataset.original;
+      });
+      var btn = document.getElementById('tf-safety-save');
+      if (btn) btn.disabled = !hasChanges;
+    }
+
+    async function saveTfSafety() {
+      var btn = document.getElementById('tf-safety-save');
+      var status = document.getElementById('tf-safety-status');
+      if (!TF_CONFIG_ROW || !TF_CONFIG_ROW.id) {
+        if (status) { status.textContent = 'No trend_config row loaded'; status.style.color = 'var(--red)'; }
+        return;
+      }
+      btn.disabled = true;
+      status.textContent = 'Saving...';
+      status.style.color = 'var(--yellow)';
+
+      var data = {};
+      var changes = [];
+      var invalidField = null;
+      TF_SAFETY_FIELDS.forEach(function(f) {
+        if (invalidField) return;
+        var input = document.getElementById('tfs-' + f.key);
+        if (!input) return;
+        var rawVal = input.value;
+        var normVal = typeof rawVal === 'string' ? rawVal.replace(',', '.') : rawVal;
+        var newVal = parseFloat(normVal);
+        if (isNaN(newVal)) { invalidField = f.key; return; }
+        data[f.key] = newVal;
+        if (input.value !== input.dataset.original) {
+          // symbol stays null for global trend_config changes — matches how other
+          // global config edits are logged.
+          changes.push({ symbol: null, parameter: f.key, old_value: input.dataset.original, new_value: normVal, changed_by: 'manual-ceo' });
+        }
+      });
+
+      if (invalidField) {
+        status.textContent = 'Invalid number in ' + invalidField;
+        status.style.color = 'var(--red)';
+        btn.disabled = false;
+        return;
+      }
+
+      try {
+        await sbPatch('trend_config', 'id', TF_CONFIG_ROW.id, data);
+
+        var auditOk = true;
+        if (changes.length > 0) {
+          try {
+            await Promise.all(changes.map(function(c) { return sbInsert('config_changes_log', c); }));
+          } catch (logErr) {
+            console.warn('config_changes_log write failed:', logErr);
+            auditOk = false;
+          }
+        }
+
+        status.textContent = auditOk ? 'Saved ✓' : 'Saved (audit log failed)';
+        status.style.color = auditOk ? 'var(--green)' : 'var(--yellow)';
+        TF_SAFETY_FIELDS.forEach(function(f) {
+          var input = document.getElementById('tfs-' + f.key);
+          if (input) { input.dataset.original = input.value; input.classList.remove('changed'); }
+        });
+        setTimeout(function() { loadAll(); }, 1000);
+      } catch (e) {
+        status.textContent = 'Error — ' + e.message;
+        status.style.color = 'var(--red)';
+        btn.disabled = false;
+      }
     }
 
     function renderAlerts() {

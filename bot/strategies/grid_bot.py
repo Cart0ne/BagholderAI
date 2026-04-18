@@ -89,6 +89,7 @@ class GridBot:
         skim_pct: float = 0.0,          # % of sell profit to skim into reserve
         idle_reentry_hours: float = 24.0,  # hours idle (holdings=0) before forced re-entry
         tf_stop_loss_pct: float = 0.0,  # 39a: TF stop-loss threshold as % of allocation (0 = disabled)
+        stop_buy_drawdown_pct: float = 0.0,  # 39b: manual stop-buy threshold as % of allocation (0 = disabled)
     ):
         self.exchange = exchange
         self.trade_logger = trade_logger
@@ -110,10 +111,12 @@ class GridBot:
         self.skim_pct = skim_pct
         self.idle_reentry_hours = idle_reentry_hours
         self.tf_stop_loss_pct = tf_stop_loss_pct
+        self.stop_buy_drawdown_pct = stop_buy_drawdown_pct
         self.is_active: bool = True  # controlled via Supabase bot_config
         self.pending_liquidation: bool = False  # TF rotation trigger
         self.managed_by: str = "manual"  # "manual" or "trend_follower"
         self._stop_loss_triggered: bool = False  # 39a: latched once threshold is breached
+        self._stop_buy_active: bool = False  # 39b: latched once drawdown breached, resets on profitable sell
         self._exchange_filters: dict = {}  # populated at startup via set_exchange_filters()
         self.state: Optional[GridState] = None
         self._daily_trade_count = 0
@@ -493,6 +496,15 @@ class GridBot:
 
     def _execute_buy(self, level: GridLevel, price: float) -> Optional[dict]:
         """Execute a buy at a grid level."""
+        # 39b: manual stop-buy gate also for fixed-grid mode (for parity,
+        # even if manual bots run percentage today).
+        if self._stop_buy_active:
+            logger.info(
+                f"[{self.symbol}] BUY BLOCKED: stop-buy active "
+                f"(drawdown > {self.stop_buy_drawdown_pct}% of allocation)."
+            )
+            return None
+
         standard_cost = level.order_amount * price
 
         # Snapshot for Telegram verification (reserve-aware)
@@ -663,6 +675,14 @@ class GridBot:
         self.state.realized_pnl += realized_pnl
         self.state.daily_realized_pnl += realized_pnl
 
+        # 39b: profitable sell releases the manual stop-buy gate.
+        if self._stop_buy_active and realized_pnl > 0:
+            self._stop_buy_active = False
+            logger.info(
+                f"[{self.symbol}] STOP-BUY RESET: profitable sell ${realized_pnl:.2f} "
+                f"cleared the block. Buys re-enabled."
+            )
+
         # Reset avg_buy_price when fully sold out
         if self.state.holdings <= 0:
             self.state.holdings = 0
@@ -751,6 +771,27 @@ class GridBot:
                     f"Liquidating all {len(self._pct_open_positions)} lots."
                 )
                 self._stop_loss_triggered = True
+
+        # --- 39b: manual stop-buy check ---
+        # Speculare al 39a ma per i bot manuali (BTC/SOL/BONK): quando il
+        # drawdown totale eccede la soglia, blocca NUOVE buy — i lot esistenti
+        # restano sotto Strategy A (mai sell in perdita). Il flag è latched
+        # finché una sell in profit lo resetta (isteresi event-based).
+        if (self.managed_by != "trend_follower"
+                and self.stop_buy_drawdown_pct > 0
+                and self.state.holdings > 0
+                and self.state.avg_buy_price > 0
+                and not self._stop_buy_active):
+            unrealized = (current_price - self.state.avg_buy_price) * self.state.holdings
+            buy_block_threshold = -(self.capital * self.stop_buy_drawdown_pct / 100)
+            if unrealized <= buy_block_threshold:
+                logger.warning(
+                    f"[{self.symbol}] STOP-BUY TRIGGERED: unrealized ${unrealized:.2f} "
+                    f"<= threshold ${buy_block_threshold:.2f} "
+                    f"({self.stop_buy_drawdown_pct:.0f}% of allocation ${self.capital:.2f}). "
+                    f"New buys blocked until profitable sell."
+                )
+                self._stop_buy_active = True
 
         # --- SELL CHECK ---
         # Iterate ALL open lots; sell any whose trigger is hit.
@@ -918,6 +959,17 @@ class GridBot:
         """Execute a percentage-mode buy: spend capital_per_trade USDT at current price."""
         if price <= 0:
             logger.error(f"Invalid price {price} for {self.symbol}, skipping pct buy")
+            return None
+
+        # 39b: manual stop-buy gate. When drawdown threshold has been breached
+        # on this manual bot, reject any new buy until a profitable sell
+        # resets the flag. Existing lots continue to follow Strategy A.
+        if self._stop_buy_active:
+            logger.info(
+                f"[{self.symbol}] BUY BLOCKED: stop-buy active "
+                f"(drawdown > {self.stop_buy_drawdown_pct}% of allocation). "
+                f"Waiting for profitable sell to reset."
+            )
             return None
 
         standard_cost = self.capital_per_trade
@@ -1130,6 +1182,16 @@ class GridBot:
         self.state.holdings -= amount
         self.state.realized_pnl += realized_pnl
         self.state.daily_realized_pnl += realized_pnl
+
+        # 39b: a profitable sell releases the stop-buy gate (event-based
+        # hysteresis). A rebound in price alone does NOT re-enable buys —
+        # we wait for a real profit event to confirm the cycle is digested.
+        if self._stop_buy_active and realized_pnl > 0:
+            self._stop_buy_active = False
+            logger.info(
+                f"[{self.symbol}] STOP-BUY RESET: profitable sell ${realized_pnl:.2f} "
+                f"cleared the block. Buys re-enabled."
+            )
 
         if self.state.holdings <= 0:
             self.state.holdings = 0

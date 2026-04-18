@@ -96,6 +96,11 @@ def _sync_config_to_bot(reader: "SupabaseConfigReader", bot: "GridBot", symbol: 
         bot.idle_reentry_hours = float(sb_cfg["idle_reentry_hours"])
     if "profit_target_pct" in sb_cfg and sb_cfg["profit_target_pct"] is not None:
         bot.min_profit_pct = float(sb_cfg["profit_target_pct"])
+    if "stop_buy_drawdown_pct" in sb_cfg and sb_cfg["stop_buy_drawdown_pct"] is not None:
+        # 39b: per-coin manual stop-buy threshold (hot-reload via config refresh).
+        # Changing the value does NOT reset _stop_buy_active — the flag clears
+        # only on a profitable sell (event-based hysteresis).
+        bot.stop_buy_drawdown_pct = float(sb_cfg["stop_buy_drawdown_pct"])
     if "is_active" in sb_cfg:
         bot.is_active = bool(sb_cfg["is_active"])
     if "pending_liquidation" in sb_cfg:
@@ -214,6 +219,15 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
     except Exception as e:
         logger.warning(f"Could not read trend_config.tf_stop_loss_pct: {e}. Defaulting to 0.")
 
+    # 39b: manual stop-buy threshold is per-coin (lives in bot_config).
+    # TF bots ignore it (gated by managed_by != 'trend_follower' in grid_bot).
+    stop_buy_drawdown_pct = 0.0
+    try:
+        if sb_cfg and sb_cfg.get("stop_buy_drawdown_pct") is not None:
+            stop_buy_drawdown_pct = float(sb_cfg["stop_buy_drawdown_pct"])
+    except Exception as e:
+        logger.warning(f"Could not read bot_config.stop_buy_drawdown_pct for {cfg.symbol}: {e}. Defaulting to 0.")
+
     # Create grid bot
     bot = GridBot(
         exchange=exchange,
@@ -235,6 +249,7 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
         reserve_ledger=reserve_ledger,
         skim_pct=cfg.skim_pct,
         tf_stop_loss_pct=tf_stop_loss_pct,
+        stop_buy_drawdown_pct=stop_buy_drawdown_pct,
     )
 
     # Initial managed_by from Supabase (default "manual")

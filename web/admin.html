@@ -244,6 +244,7 @@
       border-bottom: 1px solid var(--border);
     }
     .param-group-label.pct-label { color: var(--teal); }
+    .param-group-label.safety-label { color: var(--yellow); }
 
     /* Fixed grid fields: dim when pct mode is active */
     .fixed-grid-fields { transition: opacity 0.3s; }
@@ -796,6 +797,10 @@
               configField(short, 'profit_target_pct', 'Min Profit %', cfg.profit_target_pct) +
               configField(short, 'idle_reentry_hours', 'Idle re-entry (hours)', cfg.idle_reentry_hours) +
             '</div>' +
+            '<div class="param-group-label safety-label">⚠️ Safety</div>' +
+            '<div class="config-grid">' +
+              configField(short, 'stop_buy_drawdown_pct', 'Stop-buy drawdown %', cfg.stop_buy_drawdown_pct) +
+            '</div>' +
             '<div class="param-group-label" id="fixed-label-' + short + '">Fixed Grid</div>' +
             '<div class="fixed-grid-fields' + (cfg.grid_mode === 'percentage' ? ' dimmed' : '') + '" id="fixed-fields-' + short + '">' +
               '<div class="config-grid">' +
@@ -818,7 +823,8 @@
         var short = SHORT[cfg.symbol];
         var allFields = ['grid_mode', 'buy_pct', 'sell_pct', 'profit_target_pct', 'skim_pct',
           'capital_allocation', 'grid_levels', 'grid_lower', 'grid_upper',
-          'capital_per_trade', 'reserve_floor_pct', 'idle_reentry_hours'];
+          'capital_per_trade', 'reserve_floor_pct', 'idle_reentry_hours',
+        'stop_buy_drawdown_pct'];
         allFields.forEach(function(field) {
           var input = document.getElementById('cfg-' + short + '-' + field);
           if (input) {
@@ -839,7 +845,8 @@
       'sell_pct': 'Per-lot trigger: sells when price rises this % above that lot\'s buy price',
       'profit_target_pct': 'Safety gate: blocks ALL sells unless price is this % above avg buy. 0 = disabled.',
       'buy_pct': 'Buys when price drops this % below the last buy price',
-      'skim_pct': '% of each sell\'s profit routed to reserve instead of reinvested'
+      'skim_pct': '% of each sell\'s profit routed to reserve instead of reinvested',
+      'stop_buy_drawdown_pct': 'Blocks NEW buys when total unrealized loss exceeds this % of allocation. Existing lots unaffected (Strategy A still applies). Re-enables after first profitable sell. 0 = disabled.'
     };
 
     function configField(short, field, label, value) {
@@ -868,7 +875,8 @@
     function checkChanges(short) {
       var fields = ['grid_mode', 'buy_pct', 'sell_pct', 'profit_target_pct', 'skim_pct',
         'capital_allocation', 'grid_levels', 'grid_lower', 'grid_upper',
-        'capital_per_trade', 'reserve_floor_pct', 'idle_reentry_hours'];
+        'capital_per_trade', 'reserve_floor_pct', 'idle_reentry_hours',
+        'stop_buy_drawdown_pct'];
       var hasChanges = fields.some(function(f) {
         var input = document.getElementById('cfg-' + short + '-' + f);
         return input && input.value !== input.dataset.original;
@@ -886,7 +894,8 @@
 
       var allFields = ['grid_mode', 'buy_pct', 'sell_pct', 'profit_target_pct', 'skim_pct',
         'capital_allocation', 'grid_levels', 'grid_lower', 'grid_upper',
-        'capital_per_trade', 'reserve_floor_pct', 'idle_reentry_hours'];
+        'capital_per_trade', 'reserve_floor_pct', 'idle_reentry_hours',
+        'stop_buy_drawdown_pct'];
 
       var data = {};
       var changes = [];
