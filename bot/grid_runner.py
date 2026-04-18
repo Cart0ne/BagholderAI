@@ -194,6 +194,20 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
     # Initialize Telegram
     notifier = SyncTelegramNotifier()
 
+    # 39a: TF stop-loss threshold lives in trend_config (global policy, not
+    # per-bot). Read once at startup; hot-reload requires restart. Manual
+    # bots set stop_loss_pct=0 implicitly (only TF bots arm the check inside
+    # grid_bot), so reading it unconditionally is safe.
+    tf_stop_loss_pct = 0.0
+    try:
+        from db.client import get_client
+        _sb = get_client()
+        _tc = _sb.table("trend_config").select("tf_stop_loss_pct").limit(1).execute()
+        if _tc.data and _tc.data[0].get("tf_stop_loss_pct") is not None:
+            tf_stop_loss_pct = float(_tc.data[0]["tf_stop_loss_pct"])
+    except Exception as e:
+        logger.warning(f"Could not read trend_config.tf_stop_loss_pct: {e}. Defaulting to 0.")
+
     # Create grid bot
     bot = GridBot(
         exchange=exchange,
@@ -214,6 +228,7 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
         capital_per_trade=cfg.capital_per_trade,
         reserve_ledger=reserve_ledger,
         skim_pct=cfg.skim_pct,
+        tf_stop_loss_pct=tf_stop_loss_pct,
     )
 
     # Initial managed_by from Supabase (default "manual")

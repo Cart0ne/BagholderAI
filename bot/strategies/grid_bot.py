@@ -88,6 +88,7 @@ class GridBot:
         reserve_ledger=None,            # ReserveLedger instance (Session 20b)
         skim_pct: float = 0.0,          # % of sell profit to skim into reserve
         idle_reentry_hours: float = 24.0,  # hours idle (holdings=0) before forced re-entry
+        tf_stop_loss_pct: float = 0.0,  # 39a: TF stop-loss threshold as % of allocation (0 = disabled)
     ):
         self.exchange = exchange
         self.trade_logger = trade_logger
@@ -108,9 +109,11 @@ class GridBot:
         self.reserve_ledger = reserve_ledger
         self.skim_pct = skim_pct
         self.idle_reentry_hours = idle_reentry_hours
+        self.tf_stop_loss_pct = tf_stop_loss_pct
         self.is_active: bool = True  # controlled via Supabase bot_config
         self.pending_liquidation: bool = False  # TF rotation trigger
         self.managed_by: str = "manual"  # "manual" or "trend_follower"
+        self._stop_loss_triggered: bool = False  # 39a: latched once threshold is breached
         self._exchange_filters: dict = {}  # populated at startup via set_exchange_filters()
         self.state: Optional[GridState] = None
         self._daily_trade_count = 0
@@ -600,11 +603,23 @@ class GridBot:
                 return None
 
         if self.strategy == "A" and price < self.state.avg_buy_price:
-            logger.info(
-                f"BLOCKED: Sell at {fmt_price(price)} < avg buy {fmt_price(self.state.avg_buy_price)}. "
-                f"Strategy A never sells at loss."
+            # 39a: TF bots can override Strategy A on stop-loss / bearish exit.
+            tf_override = (
+                self.managed_by == "trend_follower"
+                and (self._stop_loss_triggered or self.pending_liquidation)
             )
-            return None
+            if tf_override:
+                reason = "STOP-LOSS" if self._stop_loss_triggered else "BEARISH EXIT"
+                logger.warning(
+                    f"{reason} OVERRIDE: Sell at {fmt_price(price)} < "
+                    f"avg buy {fmt_price(self.state.avg_buy_price)} ({self.symbol})."
+                )
+            else:
+                logger.info(
+                    f"BLOCKED: Sell at {fmt_price(price)} < avg buy {fmt_price(self.state.avg_buy_price)}. "
+                    f"Strategy A never sells at loss."
+                )
+                return None
 
         # Sell the amount that was bought at the corresponding buy level
         amount = level.order_amount
@@ -717,6 +732,26 @@ class GridBot:
             logger.warning("Daily operation limit reached (50). Stopping.")
             return trades
 
+        # --- 39a: TF stop-loss check ---
+        # Evaluated on the entire position (not per-lot) so a partial rebound
+        # on one lot doesn't mask the overall bleed. Only armed for TF bots
+        # (manual bots keep Strategy A's unconditional "never sell at loss").
+        if (self.managed_by == "trend_follower"
+                and self.tf_stop_loss_pct > 0
+                and self.state.holdings > 0
+                and self.state.avg_buy_price > 0
+                and not self._stop_loss_triggered):
+            unrealized = (current_price - self.state.avg_buy_price) * self.state.holdings
+            loss_threshold = -(self.capital * self.tf_stop_loss_pct / 100)
+            if unrealized <= loss_threshold:
+                logger.warning(
+                    f"[{self.symbol}] STOP-LOSS TRIGGERED: unrealized ${unrealized:.2f} "
+                    f"<= threshold ${loss_threshold:.2f} "
+                    f"({self.tf_stop_loss_pct:.0f}% of allocation ${self.capital:.2f}). "
+                    f"Liquidating all {len(self._pct_open_positions)} lots."
+                )
+                self._stop_loss_triggered = True
+
         # --- SELL CHECK ---
         # Iterate ALL open lots; sell any whose trigger is hit.
         # FIFO order: among triggered lots, sell oldest first.
@@ -739,10 +774,19 @@ class GridBot:
                 )
 
         if self.state.holdings > 0 and self._pct_open_positions:
-            lots_to_sell = [
-                lot for lot in self._pct_open_positions
-                if current_price >= lot["price"] * (1 + self.sell_pct / 100)
-            ]
+            # 39a: stop-loss or pending-liquidation overrides the per-lot
+            # trigger — sell every open lot in one pass, even underwater.
+            force_liquidate = (
+                self.managed_by == "trend_follower"
+                and (self._stop_loss_triggered or self.pending_liquidation)
+            )
+            if force_liquidate:
+                lots_to_sell = list(self._pct_open_positions)
+            else:
+                lots_to_sell = [
+                    lot for lot in self._pct_open_positions
+                    if current_price >= lot["price"] * (1 + self.sell_pct / 100)
+                ]
             if lots_to_sell:
                 # Reorder queue: triggered lots first (FIFO), then untriggered (FIFO)
                 sell_ids = {id(lot) for lot in lots_to_sell}
@@ -752,6 +796,16 @@ class GridBot:
                     trade = self._execute_percentage_sell(current_price)
                     if trade:
                         trades.append(trade)
+                # 39a: after a stop-loss liquidation, flag for cleanup so the
+                # grid_runner closes the bot and the TF deallocates next scan.
+                if (self._stop_loss_triggered
+                        and self.state.holdings <= 1e-10
+                        and not self.pending_liquidation):
+                    logger.warning(
+                        f"[{self.symbol}] Stop-loss liquidation complete (holdings=0). "
+                        f"Flagging pending_liquidation for TF cleanup."
+                    )
+                    self.pending_liquidation = True
             else:
                 nearest_trigger = min(
                     lot["price"] * (1 + self.sell_pct / 100)
@@ -1001,13 +1055,26 @@ class GridBot:
                 )
                 return None
 
-        # Strategy A never sells at a loss on the specific lot being sold
+        # Strategy A never sells at a loss on the specific lot being sold —
+        # UNLESS this is a TF-managed bot under stop-loss or bearish exit
+        # (39a: override so the TF can rotate out of losing positions).
         if self.strategy == "A" and price < lot_buy_price:
-            logger.info(
-                f"BLOCKED: Pct sell at {fmt_price(price)} < lot buy {fmt_price(lot_buy_price)}. "
-                f"Strategy A never sells at loss."
+            tf_override = (
+                self.managed_by == "trend_follower"
+                and (self._stop_loss_triggered or self.pending_liquidation)
             )
-            return None
+            if tf_override:
+                reason = "STOP-LOSS" if self._stop_loss_triggered else "BEARISH EXIT"
+                logger.warning(
+                    f"{reason} OVERRIDE: Pct sell at {fmt_price(price)} < "
+                    f"lot buy {fmt_price(lot_buy_price)} ({self.symbol})."
+                )
+            else:
+                logger.info(
+                    f"BLOCKED: Pct sell at {fmt_price(price)} < lot buy {fmt_price(lot_buy_price)}. "
+                    f"Strategy A never sells at loss."
+                )
+                return None
 
         if amount > self.state.holdings + 1e-10:
             logger.warning(
@@ -1082,6 +1149,24 @@ class GridBot:
 
         trade_pnl_pct = (realized_pnl / cost_basis * 100) if cost_basis > 0 else 0
 
+        # 39a: tag the reason so the trade log + Haiku commentary can
+        # distinguish forced exits from normal pct sells.
+        if self._stop_loss_triggered:
+            reason = (
+                f"STOP-LOSS: price {fmt_price(price)} forces liquidation "
+                f"(lot buy {fmt_price(lot_buy_price)}, threshold {self.tf_stop_loss_pct:.0f}% of alloc)"
+            )
+        elif self.pending_liquidation and self.managed_by == "trend_follower":
+            reason = (
+                f"BEARISH EXIT: TF rotation, sell at {fmt_price(price)} "
+                f"(lot buy {fmt_price(lot_buy_price)})"
+            )
+        else:
+            reason = (
+                f"Pct sell: price {fmt_price(price)} is {self.sell_pct}% "
+                f"above lot buy {fmt_price(lot_buy_price)}"
+            )
+
         trade_data = {
             "symbol": self.symbol,
             "side": "sell",
@@ -1091,10 +1176,7 @@ class GridBot:
             "fee": fee,
             "strategy": self.strategy,
             "brain": "grid",
-            "reason": (
-                f"Pct sell: price {fmt_price(price)} is {self.sell_pct}% "
-                f"above lot buy {fmt_price(lot_buy_price)}"
-            ),
+            "reason": reason,
             "mode": self.mode,
             "realized_pnl": realized_pnl,
             "trade_pnl_pct": trade_pnl_pct,  # for Telegram only, filtered before DB log

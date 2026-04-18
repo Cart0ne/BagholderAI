@@ -584,6 +584,10 @@ def apply_allocations(
                 # to the reserve ledger. Prevents TF from cycling 100% of gains
                 # back into positions.
                 "skim_pct": 30,
+                # 39a: TF is a rotator, not a holder — re-align the reference
+                # price after 1 hour of no trades (vs. 24h manual default) so
+                # a fresh buy lands at current market instead of a stale level.
+                "idle_reentry_hours": 1,
             }
 
             try:
