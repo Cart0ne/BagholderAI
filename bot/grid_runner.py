@@ -341,10 +341,12 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
                 stop_reason = "is_active=false"
                 break
 
-            # Forced liquidation (e.g., TF rotation): dump all holdings at market and exit
+            # Forced liquidation (e.g., TF BEARISH rotation): pending_liquidation
+            # set in DB by the allocator — dump all holdings at market and exit.
             if getattr(bot, "pending_liquidation", False):
                 logger.info(f"[{cfg.symbol}] pending_liquidation=true — force-selling all positions")
-                _force_liquidate(bot, exchange, trade_logger, notifier, cfg.symbol)
+                _force_liquidate(bot, exchange, trade_logger, notifier, cfg.symbol,
+                                 reason="BEARISH EXIT")
                 try:
                     from db.client import get_client
                     sb = get_client()
@@ -374,11 +376,16 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
             # pending_liquidation. Handle it NOW (before the daily-PnL guard
             # can short-circuit to an is_active=True exit that would trigger
             # an orchestrator respawn). Mirrors the top-of-loop branch.
+            #
+            # The stop-loss has already sold every lot; force_liquidate sees
+            # holdings ≈ 0 and skips its noisy Telegram (39a fix). The per-sell
+            # "STOP-LOSS: ..." notifications already carry the real PnL.
             if getattr(bot, "pending_liquidation", False):
                 logger.info(
                     f"[{cfg.symbol}] pending_liquidation triggered mid-tick (stop-loss) — closing bot"
                 )
-                _force_liquidate(bot, exchange, trade_logger, notifier, cfg.symbol)
+                _force_liquidate(bot, exchange, trade_logger, notifier, cfg.symbol,
+                                 reason="STOP-LOSS")
                 try:
                     from db.client import get_client
                     sb = get_client()
@@ -635,13 +642,24 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
     logger.info("=" * 50)
 
 
-def _force_liquidate(bot, exchange, trade_logger, notifier, symbol: str):
-    """Force-sell all holdings at market price (used when TF rotates to another coin)."""
+def _force_liquidate(bot, exchange, trade_logger, notifier, symbol: str,
+                     reason: str = "TF rotation"):
+    """Force-sell all holdings at market price.
+
+    reason is used in the Telegram message + DB trade.reason so it's clear
+    WHY the bot is being drained ("STOP-LOSS", "BEARISH EXIT", "TF rotation").
+
+    Holdings below 1e-6 are treated as "already empty" — avoids firing a
+    noisy Telegram with floating-point dust after a stop-loss has already
+    liquidated (the meaningful PnL is in the individual sell notifications).
+    """
     holdings = bot.state.holdings if bot.state else 0
 
-    if holdings <= 0:
-        logger.info(f"[{symbol}] No holdings to liquidate")
-        notifier.send_message(f"🔴 <b>{symbol} liquidation</b>: no holdings, clean exit")
+    if holdings <= 1e-6:
+        logger.info(f"[{symbol}] No holdings to liquidate (reason: {reason})")
+        # Suppress the "no holdings, clean exit" Telegram — it's redundant
+        # with the stop-loss sell notifications that already told the full
+        # story. The orchestrator-level shutdown summary (if any) covers it.
         return
 
     try:
@@ -665,7 +683,7 @@ def _force_liquidate(bot, exchange, trade_logger, notifier, symbol: str):
                     strategy="A",
                     brain="grid",
                     mode="paper",
-                    reason="FORCED_LIQUIDATION (TF rotation)",
+                    reason=f"FORCED_LIQUIDATION ({reason})",
                     realized_pnl=realized_pnl,
                     config_version="v3",
                     managed_by=managed_by,
@@ -685,13 +703,13 @@ def _force_liquidate(bot, exchange, trade_logger, notifier, symbol: str):
 
         pnl_emoji = "📈" if realized_pnl >= 0 else "📉"
         notifier.send_message(
-            f"🔴 <b>{symbol} LIQUIDATED</b>\n"
+            f"🔴 <b>{symbol} LIQUIDATED</b> ({reason})\n"
             f"Sold {holdings:.6f} at ${price:.4f}\n"
             f"Proceeds: ${proceeds:.2f}\n"
             f"{pnl_emoji} PnL: ${realized_pnl:.2f}"
         )
         logger.info(
-            f"[{symbol}] Liquidation complete: sold {holdings} at {price}, PnL: ${realized_pnl:.2f}"
+            f"[{symbol}] Liquidation complete ({reason}): sold {holdings} at {price}, PnL: ${realized_pnl:.2f}"
         )
     except Exception as e:
         logger.error(f"[{symbol}] Liquidation FAILED: {e}")
