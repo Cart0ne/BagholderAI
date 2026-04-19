@@ -303,14 +303,21 @@ def send_tf_decision(notifier: SyncTelegramNotifier, decision: dict, is_shadow: 
         if is_shadow:
             text += "⚠️ Shadow mode — no config written"
     elif action == "DEALLOCATE":
+        # 39e: in LIVE mode, suppress this notification. The grid_runner
+        # sends a single consolidated "LIQUIDATED + cycle summary" Telegram
+        # when _force_liquidate actually closes the position (tens of
+        # seconds later). Two messages ("decision" + "result") were
+        # redundant — the CEO can't intervene in the gap anyway. Shadow
+        # mode still fires because there's no subsequent liquidation path.
+        if not is_shadow:
+            return
         emoji = "🔴"
-        verb = "WOULD DEALLOCATE" if is_shadow else "DEALLOCATE"
+        verb = "WOULD DEALLOCATE"
         text = (
-            f"{'[SHADOW] ' if is_shadow else ''}{emoji} <b>{verb} — {symbol}</b>\n"
+            f"[SHADOW] {emoji} <b>{verb} — {symbol}</b>\n"
             f"Reason: {reason}\n"
+            f"⚠️ Shadow mode — grid not stopped"
         )
-        if is_shadow:
-            text += "⚠️ Shadow mode — grid not stopped"
     else:
         return
 

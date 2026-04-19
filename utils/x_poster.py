@@ -136,7 +136,9 @@ def generate_post(
 # Post to X (Tweepy)
 # ---------------------------------------------------------------------------
 
-DEFAULT_SIGNATURE = "🤖 AI · bagholderai.lol"
+# Middle dot instead of "." in the TLD so X doesn't detect it as a URL
+# and avoids the empty preview card. Visually near-identical to the domain.
+DEFAULT_SIGNATURE = "🤖 AI · bagholderai·lol"
 
 
 def post_to_x(text: str, signature: str = DEFAULT_SIGNATURE, image_path: str = None) -> str | None:

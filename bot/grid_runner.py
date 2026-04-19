@@ -14,7 +14,7 @@ import signal
 import time
 import logging
 import argparse
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from utils.telegram_notifier import SyncTelegramNotifier
 from utils.formatting import fmt_price
 from commentary import generate_daily_commentary
@@ -408,31 +408,47 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
             if getattr(bot, "pending_liquidation", False):
                 is_tp = getattr(bot, "_take_profit_triggered", False)
                 event_label = "TAKE-PROFIT" if is_tp else "STOP-LOSS"
-                event_emoji = "🟢" if is_tp else "🔴"
                 stop_reason_tag = "take_profit" if is_tp else "stop_loss"
 
                 logger.info(
                     f"[{cfg.symbol}] pending_liquidation triggered mid-tick ({event_label.lower()}) — closing bot"
                 )
 
-                forced_sells = [t for t in (trades or []) if t.get("side") == "sell"]
-                if forced_sells:
-                    total_amount = sum(float(t["amount"]) for t in forced_sells)
-                    total_proceeds = sum(float(t["cost"]) for t in forced_sells)
+                # 39f Section B: close the TF cycle formally by writing a
+                # DEALLOCATE row to trend_decisions_log. Without this row
+                # the cycle never ends in TF's eyes and the next ALLOCATE
+                # would attribute its trades to the wrong window. Mirrors
+                # what the allocator does for SWAP / BEARISH dealloc paths.
+                managed_by = getattr(bot, "managed_by", "manual")
+                if managed_by == "trend_follower" and trade_logger is not None:
+                    forced_sells = [t for t in (trades or []) if t.get("side") == "sell"]
                     total_pnl = sum(float(t.get("realized_pnl", 0)) for t in forced_sells)
-                    avg_sell_price = total_proceeds / total_amount if total_amount > 0 else 0
-                    pnl_emoji = "📈" if total_pnl >= 0 else "📉"
-                    pnl_sign = "+" if total_pnl >= 0 else ""
+                    dealloc_reason = (
+                        f"{event_label} exhausted (cycle closed after "
+                        f"{len(forced_sells)} sells, realized ${total_pnl:+.2f})"
+                    )
                     try:
-                        notifier.send_message(
-                            f"{event_emoji} <b>{cfg.symbol} {event_label} LIQUIDATED</b>\n"
-                            f"{len(forced_sells)} lots sold @ ${avg_sell_price:.4f} avg\n"
-                            f"Proceeds: ${total_proceeds:.2f}\n"
-                            f"{pnl_emoji} Realized PnL: {pnl_sign}${total_pnl:.2f}"
-                        )
+                        trade_logger.client.table("trend_decisions_log").insert({
+                            "scan_timestamp": datetime.now(timezone.utc).isoformat(),
+                            "symbol": cfg.symbol,
+                            "ema_fast_value": 0, "ema_slow_value": 0,
+                            "rsi_value": 0, "atr_value": 0,
+                            "signal": "", "signal_strength": 0,
+                            "action_taken": "DEALLOCATE",
+                            "is_shadow": False,
+                            "reason": dealloc_reason,
+                            "config_written": None,
+                        }).execute()
                     except Exception as e:
-                        logger.warning(f"[{cfg.symbol}] Failed to send {event_label.lower()} summary: {e}")
+                        logger.warning(
+                            f"[{cfg.symbol}] Failed to log DEALLOCATE decision: {e}"
+                        )
 
+                # 39f Section B: no more per-event "X LIQUIDATED" Telegram
+                # here — the unified dealloc + cycle summary message comes
+                # from _force_liquidate. For stop-loss/TP, holdings is
+                # already 0 (grid_bot sold per-lot), so _force_liquidate
+                # takes the "no-sell cycle close" branch.
                 _force_liquidate(bot, exchange, trade_logger, notifier, cfg.symbol,
                                  reason=event_label)
                 try:
@@ -691,6 +707,144 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
     logger.info("=" * 50)
 
 
+def _build_cycle_summary(supabase, symbol: str, liquidation_trade_id: str | None) -> dict | None:
+    """Build a per-cycle summary for the TF DEALLOCATE notification (39e Fix 3).
+
+    A "cycle" is the window between the most recent ALLOCATE for this symbol
+    in trend_decisions_log and NOW. Returns a dict with all fields needed to
+    render the summary, or None if anything fails (caller falls back to the
+    minimal LIQUIDATED message).
+
+    liquidation_trade_id: id of the FORCED_LIQUIDATION sell row just written,
+    used to split grid vs exit PnL and find the liquidation's skim row.
+    """
+    if supabase is None:
+        return None
+    try:
+        last_alloc = (
+            supabase.table("trend_decisions_log")
+            .select("scan_timestamp,reason,config_written")
+            .eq("symbol", symbol)
+            .eq("action_taken", "ALLOCATE")
+            .eq("is_shadow", False)
+            .order("scan_timestamp", desc=True)
+            .limit(1)
+            .execute()
+        )
+        if not last_alloc.data:
+            return None
+        cycle_start = last_alloc.data[0]["scan_timestamp"]
+        alloc_snapshot = last_alloc.data[0].get("config_written") or {}
+        initial_capital = float(alloc_snapshot.get("capital_allocation") or 0)
+        cycle_end_iso = datetime.now(timezone.utc).isoformat()
+
+        trades_res = (
+            supabase.table("trades")
+            .select("id,side,amount,cost,realized_pnl,created_at,reason")
+            .eq("symbol", symbol)
+            .eq("config_version", "v3")
+            .gte("created_at", cycle_start)
+            .order("created_at", desc=False)
+            .execute()
+        )
+        cycle_trades = trades_res.data or []
+        buys = [t for t in cycle_trades if t.get("side") == "buy"]
+        sells = [t for t in cycle_trades if t.get("side") == "sell"]
+
+        realized_pnl_total = sum(float(t.get("realized_pnl") or 0) for t in sells)
+        # Split: the liquidation row (matched by id) vs everything else.
+        liquidation_pnl = 0.0
+        grid_pnl = 0.0
+        for t in sells:
+            p = float(t.get("realized_pnl") or 0)
+            if liquidation_trade_id and t.get("id") == liquidation_trade_id:
+                liquidation_pnl += p
+            else:
+                grid_pnl += p
+
+        sell_ids = [t["id"] for t in sells if t.get("id")]
+        skim_total = 0.0
+        if sell_ids:
+            try:
+                skim_res = (
+                    supabase.table("reserve_ledger")
+                    .select("amount,trade_id")
+                    .in_("trade_id", sell_ids)
+                    .execute()
+                )
+                skim_total = sum(float(r.get("amount") or 0) for r in (skim_res.data or []))
+            except Exception as e:
+                logger.warning(f"[{symbol}] cycle summary: skim query failed: {e}")
+
+        return {
+            "cycle_start": cycle_start,
+            "cycle_end": cycle_end_iso,
+            "initial_capital": initial_capital,
+            "buys_count": len(buys),
+            "sells_count": len(sells),
+            "realized_pnl": realized_pnl_total,
+            "grid_pnl": grid_pnl,
+            "liquidation_pnl": liquidation_pnl,
+            "skim_total": skim_total,
+        }
+    except Exception as e:
+        logger.warning(f"[{symbol}] cycle summary build failed: {e}")
+        return None
+
+
+def _format_cycle_summary(s: dict) -> str:
+    """Render a cycle summary dict into the Telegram message block (39e Fix 3)."""
+    try:
+        start = datetime.fromisoformat(s["cycle_start"].replace("Z", "+00:00"))
+        end = datetime.fromisoformat(s["cycle_end"].replace("Z", "+00:00"))
+        duration = end - start
+        total_minutes = int(duration.total_seconds() // 60)
+        hours = total_minutes // 60
+        mins = total_minutes % 60
+        duration_str = f"{hours}h {mins}m" if hours else f"{mins}m"
+        window = f"{start.strftime('%H:%M')} → {end.strftime('%H:%M')} ({duration_str})"
+    except Exception:
+        window = "—"
+
+    realized = s["realized_pnl"]
+    grid = s["grid_pnl"]
+    liq = s["liquidation_pnl"]
+    skim = s["skim_total"]
+    net = realized - skim
+    alloc = s["initial_capital"]
+    returned = alloc + realized
+
+    def money(v: float) -> str:
+        # Render as "+$1.21" / "-$1.21" (sign before $, standard accounting).
+        return f"{'+' if v >= 0 else '-'}${abs(v):.2f}"
+
+    def pct(v: float) -> str:
+        return f"{'+' if v >= 0 else ''}{v:.1f}%"
+
+    lines = [
+        "━━━━━━━━━━━━━━━━━━━━",
+        f"Cycle: {window}",
+        f"Trades: {s['buys_count']} buys · {s['sells_count']} sells",
+        f"Realized P&L: {money(realized)}",
+    ]
+    # Only show the split when both components are meaningful (avoid a
+    # single-line breakdown that adds noise). grid_pnl and liquidation_pnl
+    # are independent sums; we consider each "present" if its magnitude is
+    # above a cent, to filter out rounding artefacts.
+    if abs(grid) >= 0.01 and abs(liq) >= 0.01:
+        lines.append(f"  ├─ Grid profits:     {money(grid)}")
+        lines.append(f"  └─ Exit liquidation: {money(liq)}")
+    lines.append(f"Skimmed to reserve: {money(skim)}")
+    lines.append(f"Net to trading pool: {money(net)}")
+    lines.append("━━━━━━━━━━━━━━━━━━━━")
+    if alloc > 0:
+        pct_val = (realized / alloc) * 100
+        lines.append(
+            f"Allocated: ${alloc:.2f} → Returned: ${returned:.2f} ({pct(pct_val)})"
+        )
+    return "\n".join(lines)
+
+
 def _force_liquidate(bot, exchange, trade_logger, notifier, symbol: str,
                      reason: str = "TF rotation"):
     """Force-sell all holdings at market price.
@@ -701,34 +855,89 @@ def _force_liquidate(bot, exchange, trade_logger, notifier, symbol: str,
     Holdings below 1e-6 are treated as "already empty" — avoids firing a
     noisy Telegram with floating-point dust after a stop-loss has already
     liquidated (the meaningful PnL is in the individual sell notifications).
+
+    39e: realized_pnl is computed as revenue − Σ(lot cost bases) − fees,
+    not against a single avg_buy_price. The old formula was approximately
+    equivalent when avg_buy_price was perfectly weighted — but after
+    partial sells, dust rounding, or FIFO consumption the two diverge
+    and the liquidation's PnL diverges from reality (today's API3 case:
+    recorded +$0.18 vs actual −$1.21). Also routes skim on positive PnL,
+    which the old flow bypassed unconditionally.
     """
     holdings = bot.state.holdings if bot.state else 0
+    managed_by = getattr(bot, "managed_by", "manual")
 
     if holdings <= 1e-6:
+        # 39f Section B: the stop-loss / take-profit paths already
+        # liquidated every lot per-lot via _execute_percentage_sell. So
+        # this branch is "no sell to execute, but still a real cycle
+        # close". For TF bots emit the unified dealloc + cycle summary
+        # Telegram so the CEO gets one consistent message regardless of
+        # which exit trigger fired. For manual bots (or orchestrator
+        # shutdown) keep the silent return — there's no TF cycle to
+        # summarize.
         logger.info(f"[{symbol}] No holdings to liquidate (reason: {reason})")
-        # Suppress the "no holdings, clean exit" Telegram — it's redundant
-        # with the stop-loss sell notifications that already told the full
-        # story. The orchestrator-level shutdown summary (if any) covers it.
+        if managed_by == "trend_follower" and trade_logger is not None:
+            try:
+                summary = _build_cycle_summary(trade_logger.client, symbol, None)
+                if summary:
+                    # The cycle summary block already reports Realized P&L,
+                    # skim, net, and allocated→returned. The header just
+                    # states WHICH trigger closed the cycle — no duplicate
+                    # PnL line.
+                    msg = (
+                        f"🔴 <b>{symbol} DEALLOCATED</b> ({reason})\n"
+                        f"Cycle closed — all lots exited via per-lot sells\n"
+                        + _format_cycle_summary(summary)
+                    )
+                    notifier.send_message(msg)
+            except Exception as e:
+                logger.warning(f"[{symbol}] Failed to emit cycle summary on empty-liquidation: {e}")
         return
 
     try:
         price = fetch_price(exchange, symbol)
-        avg_buy = bot.state.avg_buy_price if bot.state and bot.state.avg_buy_price else 0
-        cost_basis = avg_buy * holdings
-        proceeds = price * holdings
-        realized_pnl = proceeds - cost_basis
 
-        managed_by = getattr(bot, "managed_by", "manual")
+        # 39e Fix 1: cost basis = sum of (lot.amount × lot.buy_price) over
+        # the FIFO queue. Fallback to avg_buy_price × holdings only if the
+        # queue is empty (shouldn't happen for a live TF bot, but keep the
+        # safety net for fixed-mode or edge states).
+        open_lots = getattr(bot, "_pct_open_positions", None) or []
+        if open_lots:
+            lot_cost_basis = sum(
+                float(lot.get("amount", 0)) * float(lot.get("price", 0))
+                for lot in open_lots
+            )
+            # Use queue amounts as authoritative — bot.state.holdings can
+            # drift from queue sum by floating-point dust after repeated
+            # ops. The sell volume is the queue sum so the PnL math stays
+            # consistent with the cost basis.
+            sell_amount = sum(float(lot.get("amount", 0)) for lot in open_lots)
+        else:
+            avg_buy = bot.state.avg_buy_price if bot.state and bot.state.avg_buy_price else 0
+            lot_cost_basis = avg_buy * holdings
+            sell_amount = holdings
+
+        proceeds = price * sell_amount
+        # Fees: same rate as GridBot._execute_percentage_sell — charged on
+        # BOTH the buy legs (reconstructed from cost basis) and the sell.
+        from bot.strategies.grid_bot import GridBot
+        fee_rate = GridBot.FEE_RATE
+        sell_fee = proceeds * fee_rate
+        buy_fees = lot_cost_basis * fee_rate
+        realized_pnl = proceeds - lot_cost_basis - sell_fee - buy_fees
+
+        trade_db_row: dict = {}
 
         if trade_logger:
             try:
-                trade_logger.log_trade(
+                trade_db_row = trade_logger.log_trade(
                     symbol=symbol,
                     side="sell",
-                    amount=holdings,
+                    amount=sell_amount,
                     price=price,
                     cost=proceeds,
-                    fee=0,
+                    fee=sell_fee,
                     strategy="A",
                     brain="grid",
                     mode="paper",
@@ -736,29 +945,73 @@ def _force_liquidate(bot, exchange, trade_logger, notifier, symbol: str,
                     realized_pnl=realized_pnl,
                     config_version="v3",
                     managed_by=managed_by,
-                )
+                ) or {}
             except Exception as e:
                 logger.error(f"[{symbol}] Failed to log liquidation trade: {e}")
+
+        # 39e Fix 2: skim 30% (skim_pct) to reserve_ledger when the
+        # liquidation PnL is positive. Previously bypassed entirely —
+        # today's API3 missed a $0.054 skim because of this path.
+        skim_amount = 0.0
+        reserve_total = 0.0
+        skim_pct = float(getattr(bot, "skim_pct", 0) or 0)
+        reserve_ledger = getattr(bot, "reserve_ledger", None)
+        if realized_pnl > 0 and skim_pct > 0 and reserve_ledger is not None:
+            skim_amount = realized_pnl * (skim_pct / 100)
+            try:
+                trade_id = trade_db_row.get("id") if isinstance(trade_db_row, dict) else None
+                reserve_ledger.log_skim(symbol, skim_amount, trade_id=trade_id)
+                reserve_total = reserve_ledger.get_reserve_total(symbol, force_refresh=True)
+                logger.info(
+                    f"[{symbol}] SKIM ${skim_amount:.4f} → reserve total ${reserve_total:.2f} (liquidation)"
+                )
+            except Exception as e:
+                logger.warning(f"[{symbol}] Failed to log liquidation skim: {e}")
+                skim_amount = 0.0  # don't claim a skim that failed
 
         # Reflect the sell in the in-memory bot state so get_status() and the
         # final stop notification don't report stale holdings. Mirrors the
         # state updates in GridBot._execute_sell.
         if bot.state:
             bot.state.total_received += proceeds
+            bot.state.total_fees += sell_fee + buy_fees
             bot.state.realized_pnl += realized_pnl
             bot.state.daily_realized_pnl += realized_pnl
             bot.state.holdings = 0
             bot.state.avg_buy_price = 0
+        # Empty the FIFO queue too so any downstream read (e.g. get_status
+        # during the farewell log) sees a consistent zero state.
+        if hasattr(bot, "_pct_open_positions"):
+            bot._pct_open_positions = []
 
         pnl_emoji = "📈" if realized_pnl >= 0 else "📉"
-        notifier.send_message(
+        pnl_sign = "+" if realized_pnl >= 0 else ""
+        msg = (
             f"🔴 <b>{symbol} LIQUIDATED</b> ({reason})\n"
-            f"Sold {holdings:.6f} at ${price:.4f}\n"
+            f"Sold {sell_amount:.6f} at ${price:.4f}\n"
             f"Proceeds: ${proceeds:.2f}\n"
-            f"{pnl_emoji} PnL: ${realized_pnl:.2f}"
+            f"{pnl_emoji} PnL: {pnl_sign}${realized_pnl:.2f}"
         )
+        if skim_amount > 0:
+            msg += f"\n💰 Reserve: +${skim_amount:.2f} → total ${reserve_total:.2f}"
+
+        # 39e Fix 3: append cycle summary for TF bots. Manual bots don't
+        # have a TF "cycle" concept, so skip for them. The summary queries
+        # trend_decisions_log for the last ALLOCATE and aggregates all
+        # trades since then — including the liquidation sell we just wrote.
+        if managed_by == "trend_follower" and trade_logger is not None:
+            try:
+                liquidation_id = trade_db_row.get("id") if isinstance(trade_db_row, dict) else None
+                summary = _build_cycle_summary(trade_logger.client, symbol, liquidation_id)
+                if summary:
+                    msg += "\n" + _format_cycle_summary(summary)
+            except Exception as e:
+                logger.warning(f"[{symbol}] cycle summary append failed: {e}")
+
+        notifier.send_message(msg)
         logger.info(
-            f"[{symbol}] Liquidation complete ({reason}): sold {holdings} at {price}, PnL: ${realized_pnl:.2f}"
+            f"[{symbol}] Liquidation complete ({reason}): sold {sell_amount} at {price}, "
+            f"PnL: ${realized_pnl:.2f}, skim: ${skim_amount:.4f}"
         )
     except Exception as e:
         logger.error(f"[{symbol}] Liquidation FAILED: {e}")

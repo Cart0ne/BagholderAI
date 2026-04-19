@@ -1,0 +1,49 @@
+-- Session 39f Section A: drop tf_capital_summary view
+-- See config/brief_39f_view_fix_and_stoploss_dealloc.md.
+--
+-- The view was introduced in session 36b as a dashboard data source, but
+-- tf.html ended up computing its totals directly from bot_config + trades +
+-- reserve_ledger (richer + reusable), and no other consumer ever wired up.
+-- A repo-wide grep for "tf_capital_summary" finds only this file and the
+-- old 36b brief — no Python, no JS, no HTML reads it.
+--
+-- On top of being dead code, the view was lying: its capital_available
+-- formula was
+--    tf_budget + total_realized_pnl − SUM(bot_config.capital_allocation)
+-- where capital_allocation is the TF scanner's target ceiling per coin,
+-- not the actual free cash. After a stop-loss cascade the formula still
+-- reported ~$14 "available" while the real cash was ~$0 (session 40 PHB
+-- thrash — confirmed against the tf.html dashboard, which was correct).
+--
+-- Silent divergence between the view and the dashboard is worse than
+-- having no view at all. Drop it.
+--
+-- Apply via Supabase SQL editor.
+--
+-- Rollback (if anything external turns out to depend on it):
+--
+--   CREATE OR REPLACE VIEW tf_capital_summary AS
+--   SELECT
+--     (SELECT tf_budget FROM trend_config LIMIT 1) AS tf_budget,
+--     (SELECT tf_max_coins FROM trend_config LIMIT 1) AS tf_max_coins,
+--     COALESCE(SUM(capital_allocation) FILTER (
+--       WHERE is_active AND managed_by = 'trend_follower'
+--     ), 0) AS capital_deployed,
+--     COUNT(*) FILTER (
+--       WHERE is_active AND managed_by = 'trend_follower'
+--     ) AS active_coins,
+--     (SELECT COALESCE(SUM(realized_pnl), 0) FROM trades
+--       WHERE managed_by = 'trend_follower' AND config_version = 'v3')
+--       AS total_realized_pnl,
+--     ((SELECT tf_budget FROM trend_config LIMIT 1)
+--       + (SELECT COALESCE(SUM(realized_pnl), 0) FROM trades
+--           WHERE managed_by = 'trend_follower' AND config_version = 'v3')
+--       - COALESCE(SUM(capital_allocation) FILTER (
+--           WHERE is_active AND managed_by = 'trend_follower'
+--         ), 0)) AS capital_available
+--   FROM bot_config;
+--
+-- (Deduced from observed columns + sample values, not from the original
+-- DDL which is not checked in — session 36b brief never included it.)
+
+DROP VIEW IF EXISTS tf_capital_summary;
