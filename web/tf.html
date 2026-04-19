@@ -147,6 +147,7 @@
     }
     .inactive-row .ir-spacer { flex: 1; }
     .inactive-row .ir-label { font-family: var(--mono); font-size: 10px; color: var(--text-dim); }
+    .inactive-row .ir-date { font-family: var(--mono); font-size: 11px; color: var(--text-dim); margin-left: 4px; }
     .inactive-row .ir-pnl { font-family: var(--mono); font-size: 13px; font-weight: 600; }
     .coin-header {
       display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;
@@ -1144,9 +1145,17 @@
       // 39a: compact one-liner rows for deallocated coins.
       // Profit shown = realized_net (already fees-deducted in DB, includes
       // the portion routed to skim reserve — "totale, fees dedotte").
+      // 39j: sort most-recent-first by bot_config.updated_at, which flips
+      // to the dealloc moment when is_active=false is written. Show the
+      // date alongside the symbol so scanning the list is one-eyeball.
       var inactiveHtml = '';
       if (inactiveConfigs.length) {
-        var rows = inactiveConfigs.map(function(cfg) {
+        var sortedInactive = inactiveConfigs.slice().sort(function(a, b) {
+          var ta = a.updated_at ? new Date(a.updated_at).getTime() : 0;
+          var tb = b.updated_at ? new Date(b.updated_at).getTime() : 0;
+          return tb - ta;  // desc: most recent dealloc on top
+        });
+        var rows = sortedInactive.map(function(cfg) {
           var sym = cfg.symbol;
           var short = SHORT[sym] || sym;
           var color = COLORS[sym] || '#888';
@@ -1154,9 +1163,20 @@
           var pnl = Number(a.realizedPnl || 0);
           var pnlColor = pnl >= 0 ? 'var(--green)' : 'var(--red)';
           var pnlSign = pnl >= 0 ? '+' : '';
+          var deallocLabel = '—';
+          if (cfg.updated_at) {
+            var d = new Date(cfg.updated_at);
+            // e.g. "Apr 19, 13:28" — local time, compact, unambiguous.
+            var month = d.toLocaleDateString('en-US', { month: 'short' });
+            var day = d.getDate();
+            var hh = String(d.getHours()).padStart(2, '0');
+            var mm = String(d.getMinutes()).padStart(2, '0');
+            deallocLabel = month + ' ' + day + ', ' + hh + ':' + mm;
+          }
           return '<div class="inactive-row">' +
             '<span class="ir-name" style="color:' + color + ';">' + short + '</span>' +
             '<span class="ir-status">DEALLOCATED</span>' +
+            '<span class="ir-date">' + deallocLabel + '</span>' +
             '<span class="ir-spacer"></span>' +
             '<span class="ir-label">profit</span>' +
             '<span class="ir-pnl" style="color:' + pnlColor + ';">' + pnlSign + fmtUsd(pnl) + '</span>' +
