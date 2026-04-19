@@ -376,11 +376,36 @@ def run_trend_follower():
     # message already confirms "Trend Follower: on/off". Log still carries
     # full config details for audit.
 
+    # 39g: track safety params across cycles so we can Telegram-notify
+    # the CEO when /tf UI edits them mid-run. Mirrors how
+    # SupabaseConfigReader alerts on bot_config changes.
+    _SAFETY_KEYS = ("tf_stop_loss_pct", "tf_take_profit_pct", "scan_interval_hours")
+    prev_safety = {k: config.get(k) for k in _SAFETY_KEYS}
+
     # Main loop
     while True:
         try:
             # Reload config each cycle (allows hot changes)
             config = load_trend_config(supabase)
+
+            # 39g: detect safety param edits done via /tf UI and Telegram
+            # the delta. Config reloads every scan (default 1h), so the
+            # notification can lag up to one scan interval.
+            safety_changes = []
+            for k in _SAFETY_KEYS:
+                new_val = config.get(k)
+                old_val = prev_safety.get(k)
+                if old_val is not None and new_val != old_val:
+                    safety_changes.append((k, old_val, new_val))
+            if safety_changes:
+                lines = ["⚙️ <b>CONFIG CHANGE DETECTED — trend_config</b>"]
+                for key, old_val, new_val in safety_changes:
+                    lines.append(f"{key}: {old_val} → {new_val}")
+                try:
+                    notifier.send_message("\n".join(lines))
+                except Exception as e:
+                    logger.warning(f"Telegram alert for trend_config change failed: {e}")
+            prev_safety = {k: config.get(k) for k in _SAFETY_KEYS}
 
             if not config.get("trend_follower_enabled", True):
                 logger.info("Trend Follower disabled mid-run. Exiting.")
