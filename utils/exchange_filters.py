@@ -110,12 +110,25 @@ def validate_order(symbol: str, amount: float, price: float, filters: dict) -> t
 def round_to_step(amount: float, step_size: float) -> float:
     """
     Round amount DOWN to nearest valid step size.
-    Uses Decimal to avoid floating point artifacts (e.g. 3878984.8000000003).
+    Uses Decimal to avoid floating-point artifacts (e.g. 3878984.8000000003).
+
+    39h: naive `Decimal(str(amount))` inherits float imprecision — e.g.
+    an amount that should be exactly 807.4 can arrive as
+    807.39999999999... via an earlier `x * 10 / 10` roundtrip. A plain
+    ROUND_DOWN then snaps it to 807.3, leaking 0.1 of dust. Fix: before
+    the ROUND_DOWN, nudge the amount by a tiny ABSOLUTE epsilon
+    (1e-9 units) so float-repr artifacts snap to the right step-boundary
+    without perturbing real sub-step values (e.g. 24231428.99 BONK with
+    step=1 must stay 24231428, not round up to 24231429).
     """
     if step_size <= 0:
         return amount
     from decimal import Decimal, ROUND_DOWN
-    d_amount = Decimal(str(amount))
+
     d_step = Decimal(str(step_size))
+    # 1e-9 absolute: smaller than any real Binance step (BTC step is
+    # 1e-5, BONK step is 1), big enough to swallow the ~1e-12 epsilon
+    # that Decimal(str(float)) can carry from earlier arithmetic.
+    d_amount = Decimal(str(amount)) + Decimal("1e-9")
     result = (d_amount / d_step).to_integral_value(rounding=ROUND_DOWN) * d_step
     return float(result)

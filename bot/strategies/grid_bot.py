@@ -876,15 +876,39 @@ class GridBot:
                     trade = self._execute_percentage_sell(current_price)
                     if trade:
                         trades.append(trade)
-                # 39a/39c: after a forced liquidation (stop-loss or
+                # 39a/39c/39h: after a forced liquidation (stop-loss or
                 # take-profit), flag for cleanup so the grid_runner closes
                 # the bot and the TF deallocates next scan.
+                #
+                # 39h: the old check was holdings <= 1e-10, which missed the
+                # common case where a sub-step dust residual remains
+                # (e.g. 0.1 TST stuck because Binance step_size=0.1 but the
+                # lot's float holdings drift to 0.1 via round_to_step).
+                # Without this flag, the bot would re-buy on the next tick
+                # and thrash through more stop-losses in the same cycle
+                # (PHB/TST observed before 39f/39h).
+                #
+                # New condition: queue empty after the cascade OR residual
+                # holdings below Binance MIN_NOTIONAL (economic dust, not
+                # sellable anyway). Either way the cycle is over.
+                cycle_closed = False
+                if not self._pct_open_positions:
+                    cycle_closed = True
+                elif self._exchange_filters and self.state.holdings > 0:
+                    residual_notional = self.state.holdings * current_price
+                    min_notional = float(self._exchange_filters.get("min_notional", 0) or 0)
+                    if min_notional > 0 and residual_notional < min_notional:
+                        cycle_closed = True
+                elif self.state.holdings <= 1e-10:
+                    cycle_closed = True
+
                 if ((self._stop_loss_triggered or self._take_profit_triggered)
-                        and self.state.holdings <= 1e-10
+                        and cycle_closed
                         and not self.pending_liquidation):
                     trigger = "Stop-loss" if self._stop_loss_triggered else "Take-profit"
                     logger.warning(
-                        f"[{self.symbol}] {trigger} liquidation complete (holdings=0). "
+                        f"[{self.symbol}] {trigger} liquidation complete "
+                        f"(holdings={self.state.holdings:.6f}, queue={len(self._pct_open_positions)} lots). "
                         f"Flagging pending_liquidation for TF cleanup."
                     )
                     self.pending_liquidation = True
@@ -1196,23 +1220,39 @@ class GridBot:
             amount = round_to_step(amount, self._exchange_filters["lot_step_size"])
             if amount <= 0:
                 # Dust amount — too small to sell after rounding. Remove lot from queue.
-                dust_value = self.state.holdings * price
+                # 39h: also decrement state.holdings by the popped lot so the
+                # in-memory state stays consistent with the queue. Without
+                # this, the self-heal path (holdings>0 + queue empty) keeps
+                # resurrecting the dust lot forever and the post-stop-loss
+                # cleanup never sees holdings=0.
+                popped = self._pct_open_positions.pop(0)
+                dust_amount = float(popped.get("amount", 0))
+                dust_value = dust_amount * price
                 logger.info(
-                    f"[{self.symbol}] Dust lot removed: {self.state.holdings:.6f} units "
+                    f"[{self.symbol}] Dust lot removed: {dust_amount:.6f} units "
                     f"(${dust_value:.4f}) too small for step_size {self._exchange_filters['lot_step_size']}"
                 )
-                self._pct_open_positions.pop(0)
+                self.state.holdings = max(0.0, self.state.holdings - dust_amount)
+                if self.state.holdings <= 1e-10:
+                    self.state.holdings = 0.0
+                    self.state.avg_buy_price = 0.0
                 return None
             valid, reason_reject = validate_order(self.symbol, amount, price, self._exchange_filters)
             if not valid:
                 # Economic dust: lot above step_size but below exchange min_notional/min_qty.
                 # It will never be sellable — remove from queue to stop retry spam.
                 if "MIN_NOTIONAL" in reason_reject or "min_qty" in reason_reject:
+                    popped = self._pct_open_positions.pop(0)
+                    dust_amount = float(popped.get("amount", 0))
                     logger.info(
-                        f"[{self.symbol}] Economic dust lot removed: {amount:.8f} units "
-                        f"(${amount * price:.4f}) — {reason_reject}"
+                        f"[{self.symbol}] Economic dust lot removed: {dust_amount:.8f} units "
+                        f"(${dust_amount * price:.4f}) — {reason_reject}"
                     )
-                    self._pct_open_positions.pop(0)
+                    # 39h: same state.holdings sync as above.
+                    self.state.holdings = max(0.0, self.state.holdings - dust_amount)
+                    if self.state.holdings <= 1e-10:
+                        self.state.holdings = 0.0
+                        self.state.avg_buy_price = 0.0
                     return None
                 logger.warning(f"[{self.symbol}] SELL order rejected: {reason_reject}")
                 return None
