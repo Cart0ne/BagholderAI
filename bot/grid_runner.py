@@ -495,8 +495,24 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
     daily_report_sent = None  # Track which date we sent the report
     REPORT_HOUR = 20  # Send daily report at 20:00
 
-    # Proactive alert state
-    _capital_exhausted = False
+    # Proactive alert state.
+    # _capital_exhausted is seeded from the restored state: if the bot
+    # restarts with cash already below the last-shot floor, treat it as
+    # "already known to the user" so we don't re-notify on every restart.
+    # Alerts fire only on state TRANSITIONS during the process lifetime
+    # (exhausted → restored → exhausted again), which is what the user
+    # actually cares about.
+    try:
+        _initial_cash = bot.get_status().get("available_capital", 0.0)
+    except Exception:
+        _initial_cash = 0.0
+    _capital_exhausted = _initial_cash < HardcodedRules.MIN_LAST_SHOT_USD
+    if _capital_exhausted:
+        logger.info(
+            f"[{cfg.symbol}] Boot with cash ${_initial_cash:.2f} below "
+            f"${HardcodedRules.MIN_LAST_SHOT_USD:.2f} — capital-exhausted "
+            f"state restored silently (no Telegram)."
+        )
     _error_count = 0
     _error_last_alert = 0.0
     ERROR_ALERT_COOLDOWN = 30 * 60  # 30 minutes between repeated error alerts
