@@ -243,21 +243,27 @@ def send_scan_report(notifier: SyncTelegramNotifier, coins: list[dict],
     for tier_key in ["A", "B", "C"]:
         tier_coins = [c for c in coins if c.get("tier") == tier_key]
         tier_count = len(tier_coins)
-        tier_bullish = sum(1 for c in tier_coins if c.get("signal") == "BULLISH")
+        # Only bullish coins are ALLOCATE candidates, so the teaser should
+        # show bullish only. Previous behavior mixed bullish/bearish/no-signal
+        # in top-2 by strength, which made the final ALLOCATE look like it
+        # came from nowhere when the bullish ranking didn't match the top-2.
+        bullish_coins = [c for c in tier_coins if c.get("signal") == "BULLISH"]
+        tier_bullish = len(bullish_coins)
 
-        top2 = sorted(tier_coins, key=lambda c: c.get("signal_strength", 0), reverse=True)[:2]
+        top2 = sorted(bullish_coins, key=lambda c: c.get("signal_strength", 0), reverse=True)[:2]
 
         lines = []
         for c in top2:
             sym = c["symbol"].split("/")[0]
-            sig = c.get("signal", "?")
             strength = c.get("signal_strength", 0)
             rsi = c.get("rsi", 0)
             ema_dir = "cross up" if c.get("ema_fast", 0) > c.get("ema_slow", 0) else "cross down"
             vol = fmt_volume(c.get("volume_24h", 0)) if "volume_24h" in c else "?"
             lines.append(
-                f"  {sym} — {sig} ({strength:.1f}) — RSI {rsi:.0f}, EMA {ema_dir} — Vol {vol}"
+                f"  {sym} — BULLISH ({strength:.1f}) — RSI {rsi:.0f}, EMA {ema_dir} — Vol {vol}"
             )
+        if not lines:
+            lines.append("  (no bullish candidates)")
 
         header = f"{tier_names.get(tier_key, tier_key)} ({tier_count} coins, {tier_bullish} bullish)"
         tier_sections.append(header + "\n" + "\n".join(lines))
@@ -268,7 +274,7 @@ def send_scan_report(notifier: SyncTelegramNotifier, coins: list[dict],
         f"Scanned: {len(coins)} coins (stablecoins excluded)\n"
         f"Bullish: {bullish} | Bearish: {bearish} | Sideways: {sideways} | No signal: {no_signal}\n"
         f"\n"
-        f"<b>Top 2 per tier:</b>\n"
+        f"<b>Top 2 bullish per tier:</b>\n"
         + "\n\n".join(tier_sections) + "\n"
         f"\n"
         f"Active grids: {active_count}/{max_grids}\n"
