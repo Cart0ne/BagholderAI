@@ -1082,20 +1082,26 @@
         tfFloating += retained;
         floatingParts.push({ sym: cfg.symbol.split('/')[0], val: retained });
       });
-      var tfEffective = TF_BUDGET + tfFloating;
+      // Show the TF closed-cycles net: sum of realized PnL (net of skim) on
+      // deallocated + fully-liquidated TF coins. Label flips between loss and
+      // gain based on sign. The previous "effective TF budget" framing was
+      // misleading because it looked like "cash available to allocate" while
+      // ignoring cost basis of currently-active TF bots — now the line only
+      // speaks to closed cycles, which is unambiguous.
       var budgetLine = document.getElementById('tf-budget-line');
       if (budgetLine) {
         if (Math.abs(tfFloating) < 0.01) {
-          budgetLine.textContent = 'Effective TF budget: $' + fmt(TF_BUDGET) + ' (no floating)';
+          budgetLine.textContent = 'TF closed cycles: flat (no deallocated coins yet)';
         } else {
-          var sign = tfFloating >= 0 ? '+' : '-';
           floatingParts.sort(function(a, b) { return Math.abs(b.val) - Math.abs(a.val); });
           var parts = floatingParts.map(function(p) {
             return p.sym + ' ' + (p.val >= 0 ? '+$' : '-$') + Math.abs(p.val).toFixed(2);
           }).join(' · ');
-          budgetLine.innerHTML = 'Effective TF budget: <span style="color:var(--text);">$' + fmt(tfEffective) +
-            '</span> = $' + fmt(TF_BUDGET) + ' base ' + sign + ' $' + Math.abs(tfFloating).toFixed(2) +
-            ' floating <span style="color:var(--text-dim);">(' + parts + ')</span>';
+          var label = tfFloating >= 0 ? 'TF closed-cycles gain' : 'TF closed-cycles loss';
+          var color = tfFloating >= 0 ? 'var(--green)' : 'var(--red)';
+          var valStr = (tfFloating >= 0 ? '+$' : '-$') + Math.abs(tfFloating).toFixed(2);
+          budgetLine.innerHTML = label + ': <span style="color:' + color + ';">' + valStr +
+            '</span> <span style="color:var(--text-dim);">(' + parts + ')</span>';
         }
       }
 
