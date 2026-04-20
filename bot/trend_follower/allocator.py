@@ -6,7 +6,7 @@ exchange filters, and max active grids.
 
 import logging
 from datetime import datetime, timezone
-from utils.exchange_filters import validate_order
+from utils.exchange_filters import validate_order, round_to_step
 
 logger = logging.getLogger("bagholderai.trend.allocator")
 
@@ -360,11 +360,24 @@ def decide_allocations(
             continue
 
         # Check exchange filters: can this allocation support meaningful trades?
-        # Simulate: allocation / 5 levels = per-level amount
+        # Simulate: allocation / 5 levels = per-level amount.
+        #
+        # The raw per_level_amount almost never lands exactly on the lot
+        # step size (e.g. $7.80 / $0.1356 = 57.52 SPK, step_size=1 → not
+        # aligned). The live buy path in grid_bot._execute_percentage_buy
+        # already calls round_to_step before hitting Binance, so the real
+        # order would be 57 SPK — perfectly valid. Pre-rounding here too
+        # means we validate what Binance would actually see, not the raw
+        # pre-rounded quantity. Otherwise strong bullish candidates get
+        # SKIPPED for a few cents of rounding (SPK + BLUR observed on the
+        # 16:01 UTC scan, both lost to 287.60/242.37 vs step=1).
         base = coin["symbol"].split("/")[0] if "/" in coin["symbol"] else coin["symbol"]
         per_level_usd = alloc_amount / 5
         per_level_amount = per_level_usd / coin["price"] if coin["price"] > 0 else 0
         sym_filters = exchange_filters.get(coin["symbol"], {})
+        step_size = sym_filters.get("lot_step_size", 0)
+        if step_size > 0:
+            per_level_amount = round_to_step(per_level_amount, step_size)
         valid, reason = validate_order(coin["symbol"], per_level_amount, coin["price"], sym_filters)
         if not valid:
             decisions.append(_make_decision(
