@@ -1040,11 +1040,15 @@ class GridBot:
         first tier's tp_pct is used — greed decay is authoritative from t=0,
         not a gradual override that kicks in after N minutes.
 
+        Post-last-tier salvage (CEO decision 2026-04-20 evening): once the
+        bot outlives the highest-minutes tier, fall back to self.sell_pct
+        as a final safety threshold (if sell_pct > 0). This replaces the
+        awkward 999999-minutes placeholder tier with an actual editable
+        per-coin parameter. Setting sell_pct=0 on a TF coin disables the
+        salvage (bot stays on the last tier's tp_pct forever).
+
         For anything else (manual bots, missing allocated_at, empty/bad
         tiers), returns (self.sell_pct, None, None) — the legacy behavior.
-
-        CEO design (2026-04-20): greed decay IS the sell threshold for TF
-        bots; sell_pct is ignored. Manual bots keep sell_pct unchanged.
         """
         if self.managed_by != "trend_follower":
             return (self.sell_pct, None, None)
@@ -1085,6 +1089,18 @@ class GridBot:
         # sell_pct fallback leaking micro-trades before greed decay starts.
         if tier_used is None:
             tier_used = tiers[0]
+
+        # Post-last-tier salvage: if we're past the highest tier AND the bot
+        # has a positive sell_pct, let sell_pct take over. This is the CEO's
+        # replacement for the 999999-minutes placeholder — gives a live
+        # editable per-coin "final floor" instead of a magic constant.
+        last_tier_minutes = float(tiers[-1]["minutes"])
+        if age_minutes >= last_tier_minutes and self.sell_pct > 0:
+            return (
+                float(self.sell_pct),
+                age_minutes,
+                {"minutes": last_tier_minutes, "tp_pct": float(self.sell_pct), "source": "sell_pct"},
+            )
 
         try:
             return (float(tier_used["tp_pct"]), age_minutes, tier_used)
