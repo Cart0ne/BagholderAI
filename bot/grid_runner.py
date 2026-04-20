@@ -114,6 +114,31 @@ def _sync_config_to_bot(reader: "SupabaseConfigReader", bot: "GridBot", symbol: 
     if "managed_by" in sb_cfg and sb_cfg.get("managed_by"):
         bot.managed_by = sb_cfg["managed_by"]
 
+    # 39j: hot-reload of TF safety params from trend_config. Only TF bots use
+    # these thresholds (grid_bot gates the checks on managed_by); manual bots
+    # keep their own stop_buy_drawdown_pct (39b). Log at INFO on change —
+    # Telegram notification is owned by the TF scan loop (39g), not here.
+    if bot.managed_by == "trend_follower":
+        tf_slp = reader.get_trend_config_value("tf_stop_loss_pct")
+        if tf_slp is not None:
+            new_slp = float(tf_slp)
+            if new_slp != bot.tf_stop_loss_pct:
+                logger.info(
+                    f"[{symbol}] tf_stop_loss_pct updated: "
+                    f"{bot.tf_stop_loss_pct} → {new_slp}"
+                )
+                bot.tf_stop_loss_pct = new_slp
+
+        tf_tpp = reader.get_trend_config_value("tf_take_profit_pct")
+        if tf_tpp is not None:
+            new_tpp = float(tf_tpp)
+            if new_tpp != bot.tf_take_profit_pct:
+                logger.info(
+                    f"[{symbol}] tf_take_profit_pct updated: "
+                    f"{bot.tf_take_profit_pct} → {new_tpp}"
+                )
+                bot.tf_take_profit_pct = new_tpp
+
 
 def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = False):
     """Main loop."""

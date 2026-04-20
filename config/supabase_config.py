@@ -24,6 +24,11 @@ _CONFIG_FIELDS = (
     "pending_liquidation,managed_by"
 )
 
+# 39j: global TF params polled from trend_config alongside bot_config.
+# Kept minimal to avoid side effects with other trend_config fields that
+# are consumed only by the TF scanner (e.g. scan_interval_hours).
+_TREND_CONFIG_FIELDS = "tf_stop_loss_pct,tf_take_profit_pct,greed_decay_tiers"
+
 
 class SupabaseConfigReader:
     """
@@ -39,6 +44,7 @@ class SupabaseConfigReader:
 
     def __init__(self, own_symbol: str = None):
         self._configs: dict = {}   # symbol -> raw row dict from bot_config
+        self._trend_config: dict = {}  # 39j: key -> value from trend_config
         self._lock = threading.Lock()
         self._client = None
         self._stop_event = threading.Event()
@@ -61,14 +67,29 @@ class SupabaseConfigReader:
         )
         return result.data or []
 
+    def _fetch_trend_config(self) -> dict:
+        """39j: fetch the (single) trend_config row. Returns {} on empty table.
+        Raises on error so the caller can keep last known values."""
+        client = self._get_client()
+        result = (
+            client.table("trend_config")
+            .select(_TREND_CONFIG_FIELDS)
+            .limit(1)
+            .execute()
+        )
+        rows = result.data or []
+        return dict(rows[0]) if rows else {}
+
     def load_initial(self):
         """
         Load configuration from Supabase on startup.
         Raises if Supabase is unreachable (bot cannot start without config).
         """
         rows = self._fetch_from_supabase()
+        trend_cfg = self._fetch_trend_config()
         with self._lock:
             self._configs = {row["symbol"]: row for row in rows}
+            self._trend_config = trend_cfg
         logger.info(
             f"[bagholderai.config] Loaded config for {list(self._configs.keys())} from Supabase"
         )
@@ -82,6 +103,12 @@ class SupabaseConfigReader:
         """Return a copy of all current configs keyed by symbol."""
         with self._lock:
             return {s: dict(c) for s, c in self._configs.items()}
+
+    def get_trend_config_value(self, key: str):
+        """39j: return the latest polled value for a trend_config field,
+        or None if not present / not yet loaded. Callers must handle None."""
+        with self._lock:
+            return self._trend_config.get(key)
 
     def _get_notifier(self):
         """Lazy-load SyncTelegramNotifier (avoids import at module level)."""
@@ -124,6 +151,20 @@ class SupabaseConfigReader:
             )
             return
 
+        # 39j: trend_config polling is best-effort — failure must not drop the
+        # fresh bot_config values we just fetched. Keep last known trend_config
+        # on error, same pattern as bot_config above.
+        try:
+            new_trend_cfg = self._fetch_trend_config()
+            trend_cfg_ok = True
+        except Exception as e:
+            logger.warning(
+                f"[bagholderai.config] trend_config unreachable during refresh, "
+                f"keeping last known values. Error: {e}"
+            )
+            new_trend_cfg = None
+            trend_cfg_ok = False
+
         new_configs = {row["symbol"]: row for row in rows}
         # by_symbol: symbol -> [(key, old_val, new_val), ...]
         by_symbol: dict = {}
@@ -142,6 +183,21 @@ class SupabaseConfigReader:
                         if self._own_symbol is None or symbol == self._own_symbol:
                             by_symbol.setdefault(symbol, []).append((key, old_val, new_val))
             self._configs = new_configs
+
+            # 39j: log trend_config diffs at INFO (no Telegram — the TF scan
+            # loop already sends a consolidated alert on trend_config edits,
+            # see brief 39g). Swapping the dict under the same lock as bot_config
+            # keeps get_trend_config_value consistent with get_config.
+            if trend_cfg_ok:
+                old_trend = self._trend_config
+                for key, new_val in new_trend_cfg.items():
+                    old_val = old_trend.get(key)
+                    if old_val is not None and old_val != new_val:
+                        logger.info(
+                            f"[bagholderai.config] trend_config updated: "
+                            f"{key} {old_val} → {new_val}"
+                        )
+                self._trend_config = new_trend_cfg
 
         # Send one consolidated Telegram alert per symbol (Bug 3), outside lock
         for symbol, param_changes in by_symbol.items():
