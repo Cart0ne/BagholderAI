@@ -901,13 +901,35 @@
         alerts.push({ type: 'yellow', text: 'TF in SHADOW mode — decisions logged, nothing written to bot_config.' });
       }
 
-      // Check unallocated TF budget — only active coins hold TF capital.
-      var totalAlloc = configData.reduce(function(s, c) {
-        return s + (c.is_active ? Number(c.capital_allocation) : 0);
-      }, 0);
-      var unalloc = TF_BUDGET - totalAlloc;
-      if (TF_BUDGET > 0 && unalloc > TF_BUDGET * 0.5) {
-        alerts.push({ type: 'yellow', text: '$' + fmt(unalloc, 0) + ' TF budget unallocated (' + fmt(unalloc / TF_BUDGET * 100, 0) + '% of $' + fmt(TF_BUDGET, 0) + ' idle)' });
+      // Idle TF cash alert. The old formula (TF_BUDGET - sum(active
+      // capital_allocation)) was misleading: capital_allocation is a
+      // historical label per coin, not a snapshot of where cash actually
+      // sits. After a TF coin deallocates, its capital (minus skim, plus
+      // realized PnL) flows back to the operational pool but the
+      // bot_config row stays with the old allocation — the banner would
+      // then wildly overstate "idle". The true idle cash is:
+      //   totalCash (liquid + returned from closed coins) minus the sum of
+      //   capital_allocation currently pinned to ACTIVE TF bots (= cash
+      //   that's committed to a live position).
+      // Skim reserve is already excluded from totalCash (it lives in the
+      // separate reserve_ledger and is not reinvestable).
+      var totalCashForAlert = 0;
+      var pinnedByActiveTf = 0;
+      configData.forEach(function(cfg) {
+        var a = analyzeCoin(cfg.symbol, cfg);
+        totalCashForAlert += a.cashLeft + (a.cashReturned || 0);
+        if (cfg.is_active && cfg.managed_by === 'trend_follower') {
+          pinnedByActiveTf += Number(cfg.capital_allocation) || 0;
+        }
+      });
+      var idleCash = totalCashForAlert - pinnedByActiveTf;
+      if (totalCashForAlert > 0 && idleCash > totalCashForAlert * 0.5) {
+        alerts.push({
+          type: 'yellow',
+          text: '$' + fmt(idleCash, 2) + ' TF cash idle (' +
+            fmt(idleCash / totalCashForAlert * 100, 0) +
+            '% of $' + fmt(totalCashForAlert, 2) + ' operational cash not deployed)'
+        });
       }
 
       // Check per-coin cash — only for active coins. Inactive rows legitimately
