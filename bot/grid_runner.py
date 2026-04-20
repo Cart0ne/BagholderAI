@@ -165,17 +165,29 @@ def _sync_config_to_bot(reader: "SupabaseConfigReader", bot: "GridBot", symbol: 
 
 
 def _consume_initial_lots(reader, bot, symbol: str, price: float, notifier) -> int:
-    """42a: Multi-lot entry. If the bot_config row for this TF symbol has
-    initial_lots > 0 (written by the allocator on ALLOCATE), fire that many
-    market buys right now then reset the counter to 0 in DB so the entry
-    doesn't repeat on next cycle or on restart.
+    """42a: Multi-lot entry — a SINGLE market buy sized N×capital_per_trade.
 
-    Returns the number of lots actually bought (0 if not TF, not applicable,
-    or nothing to do). Safe to call every tick — the DB reset is the source
-    of truth.
+    On the first cycle after a TF ALLOCATE, fire one aggregated market buy
+    equivalent to N lots, where N = bot_config.initial_lots (written by the
+    allocator). This produces exactly 1 Binance order, 1 DB INSERT and 1
+    Telegram alert (unlike the earlier per-lot loop which caused duplicate
+    inserts to be rejected by the DB dedup trigger on ravvicinate calls).
+
+    Idempotency: a bot-level latch (`bot._initial_lots_done`) prevents
+    re-firing during the same process lifetime regardless of when the DB
+    UPDATE propagates back through the 300s config-reader cache.
+
+    Returns the number of logical lots bought (0 if not applicable).
     """
     if bot.managed_by != "trend_follower":
         return 0
+    # In-memory latch: once we've handled the entry for this bot instance,
+    # don't even look at the cached initial_lots again — the 300s reader
+    # refresh would otherwise keep returning the stale "3" for minutes
+    # after we've already UPDATEd the DB row to 0.
+    if getattr(bot, "_initial_lots_done", False):
+        return 0
+
     sb_cfg = reader.get_config(symbol)
     raw = sb_cfg.get("initial_lots") if sb_cfg else None
     try:
@@ -183,31 +195,33 @@ def _consume_initial_lots(reader, bot, symbol: str, price: float, notifier) -> i
     except Exception:
         lots = 0
     if lots <= 0:
+        # Mark done so subsequent ticks skip the cache lookup. DB is already
+        # 0 (or the allocator never set it); nothing to do.
+        bot._initial_lots_done = True
         return 0
 
-    logger.info(f"[{symbol}] Multi-lot entry: firing {lots} market buys at ~{fmt_price(price)}")
-    bought = 0
-    total_cost = 0.0
-    for _ in range(lots):
+    # Single aggregated buy: temporarily scale capital_per_trade so the
+    # existing _execute_percentage_buy path emits ONE trade for N lots
+    # worth of capital. Grid sell-per-lot semantics are preserved because
+    # the resulting position is one big lot in _pct_open_positions, and
+    # greed decay evaluates each lot independently against its own buy
+    # price (all lots after this carry their own price).
+    per_trade_before = bot.capital_per_trade
+    aggregate = per_trade_before * lots
+    bot.capital_per_trade = aggregate
+    logger.info(
+        f"[{symbol}] Multi-lot entry: firing 1 aggregated market buy of "
+        f"{lots} lots (~${aggregate:.2f} @ {fmt_price(price)})"
+    )
+    try:
         trade = bot._execute_percentage_buy(price)
-        if trade:
-            bought += 1
-            total_cost += float(trade.get("cost", 0.0))
-            try:
-                notifier.send_trade_alert(trade)
-            except Exception as e:
-                logger.warning(f"[{symbol}] initial-lot trade alert failed: {e}")
-        else:
-            # _execute_percentage_buy returned None → cash exhausted, dust,
-            # or filter rejection. Stop firing to avoid a spin loop.
-            logger.warning(
-                f"[{symbol}] Multi-lot entry aborted after {bought}/{lots} — "
-                f"buy returned None (likely insufficient cash)."
-            )
-            break
+    finally:
+        bot.capital_per_trade = per_trade_before
 
-    # Always clear the DB flag, even on partial success: the "entry" window
-    # only fires once. Residual lots would re-trigger on every tick.
+    # Clear DB flag + set latch regardless of buy success — the entry window
+    # is one-shot. If the single buy failed (e.g. cash insufficient), the
+    # TF bot falls through to normal grid logic on subsequent ticks.
+    bot._initial_lots_done = True
     try:
         from db.client import get_client
         get_client().table("bot_config").update(
@@ -216,15 +230,32 @@ def _consume_initial_lots(reader, bot, symbol: str, price: float, notifier) -> i
     except Exception as e:
         logger.error(f"[{symbol}] Failed to reset initial_lots to 0: {e}")
 
-    if bought > 0:
-        try:
-            notifier.send_message(
-                f"🚀 <b>{symbol} Multi-lot entry</b>\n"
-                f"Bought {bought} lots at market (~${total_cost:.2f} total)"
-            )
-        except Exception as e:
-            logger.warning(f"[{symbol}] multi-lot entry summary alert failed: {e}")
-    return bought
+    if trade is None:
+        logger.warning(
+            f"[{symbol}] Multi-lot entry skipped — aggregated buy returned "
+            f"None (likely insufficient cash)."
+        )
+        return 0
+
+    cost = float(trade.get("cost", 0.0))
+    # Annotate the trade for Telegram + log — reason override so the CEO
+    # sees it framed as a multi-lot entry, not a plain "first buy".
+    trade["reason"] = (
+        f"Multi-lot entry: {lots} lots at market "
+        f"({fmt_price(price)}, total ${cost:.2f})"
+    )
+    try:
+        notifier.send_trade_alert(trade)
+    except Exception as e:
+        logger.warning(f"[{symbol}] multi-lot entry alert failed: {e}")
+    try:
+        notifier.send_message(
+            f"🚀 <b>{symbol} Multi-lot entry</b>\n"
+            f"Bought {lots} lots at market (${cost:.2f} total)"
+        )
+    except Exception as e:
+        logger.warning(f"[{symbol}] multi-lot entry summary alert failed: {e}")
+    return lots
 
 
 def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = False):

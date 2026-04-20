@@ -1035,10 +1035,13 @@ class GridBot:
         """42a: Greed decay for TF bots. Returns (threshold_pct, age_minutes, tier_used).
 
         For TF bots with a valid allocated_at + greed_decay_tiers, returns the
-        tp_pct of the highest-minutes tier whose threshold is <= age. tier_used
-        is the tier dict picked (for logging/Telegram). For anything else
-        (manual bots, missing allocated_at, empty/bad tiers), returns
-        (self.sell_pct, None, None) — the legacy behavior.
+        tp_pct of the highest-minutes tier whose threshold is <= age. When
+        age is below the lowest tier's minutes (pre-first-tier window), the
+        first tier's tp_pct is used — greed decay is authoritative from t=0,
+        not a gradual override that kicks in after N minutes.
+
+        For anything else (manual bots, missing allocated_at, empty/bad
+        tiers), returns (self.sell_pct, None, None) — the legacy behavior.
 
         CEO design (2026-04-20): greed decay IS the sell threshold for TF
         bots; sell_pct is ignored. Manual bots keep sell_pct unchanged.
@@ -1066,6 +1069,8 @@ class GridBot:
             )
         except Exception:
             return (self.sell_pct, age_minutes, None)
+        if not tiers:
+            return (self.sell_pct, age_minutes, None)
         for tier in tiers:
             try:
                 if age_minutes >= float(tier["minutes"]):
@@ -1075,12 +1080,11 @@ class GridBot:
             except Exception:
                 continue
 
+        # Pre-first-tier window: use the first tier's tp_pct. This is the
+        # "lock-in high threshold from t=0" behavior the CEO wants — no
+        # sell_pct fallback leaking micro-trades before greed decay starts.
         if tier_used is None:
-            # Age is below the lowest tier's minutes — greed decay hasn't
-            # kicked in yet. Fall back to sell_pct so the bot still works
-            # in the pre-first-tier window (avoids "never sells" if tiers
-            # start at e.g. 15min).
-            return (self.sell_pct, age_minutes, None)
+            tier_used = tiers[0]
 
         try:
             return (float(tier_used["tp_pct"]), age_minutes, tier_used)
