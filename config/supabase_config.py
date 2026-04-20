@@ -21,7 +21,9 @@ _CONFIG_FIELDS = (
     "symbol,capital_allocation,grid_levels,grid_lower,grid_upper,"
     "profit_target_pct,reserve_floor_pct,capital_per_trade,"
     "is_active,buy_pct,sell_pct,grid_mode,skim_pct,idle_reentry_hours,"
-    "pending_liquidation,managed_by"
+    "pending_liquidation,managed_by,stop_buy_drawdown_pct,"
+    # 42a: multi-lot entry + greed decay anchor
+    "initial_lots,allocated_at"
 )
 
 # 39j: global TF params polled from trend_config alongside bot_config.

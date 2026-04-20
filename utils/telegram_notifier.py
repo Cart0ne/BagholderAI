@@ -88,6 +88,17 @@ class TelegramNotifier:
             reserve_total = trade.get("reserve_total", 0)
             skim_line = f"\n🏦 {base} Reserve: +${skim_amount:.4f} (→ total ${reserve_total:.2f})"
 
+        # 42a: greed-decay tier info on TF sells. Only present when the sell
+        # was driven by greed decay (not by stop-loss / take-profit / bearish).
+        greed_line = ""
+        if (trade["side"] == "sell"
+                and trade.get("greed_tier_age_min") is not None
+                and trade.get("greed_tier_tp_pct") is not None):
+            greed_line = (
+                f"\n⏳ Greed tier: {trade['greed_tier_age_min']:.0f}min "
+                f"→ TP {trade['greed_tier_tp_pct']}%"
+            )
+
         text = (
             f"{emoji} <b>{trade['side'].upper()}</b> {trade['symbol']}\n"
             f"Amount: {trade['amount']:.6f}\n"
@@ -97,6 +108,7 @@ class TelegramNotifier:
             f"Brain: {trade['brain']} | Mode: {trade['mode']}"
             f"{pnl_line}"
             f"{skim_line}"
+            f"{greed_line}"
             f"{verify_line}"
         )
         return await self.send_message(text)

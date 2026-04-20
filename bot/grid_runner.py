@@ -139,6 +139,93 @@ def _sync_config_to_bot(reader: "SupabaseConfigReader", bot: "GridBot", symbol: 
                 )
                 bot.tf_take_profit_pct = new_tpp
 
+        # 42a: greed_decay_tiers is global (trend_config); allocated_at is
+        # per-bot (bot_config). Both are re-read each tick so UI edits and
+        # SWAP re-allocations propagate without restart.
+        new_tiers = reader.get_trend_config_value("greed_decay_tiers")
+        if new_tiers is not None and new_tiers != bot.greed_decay_tiers:
+            logger.info(
+                f"[{symbol}] greed_decay_tiers updated: "
+                f"{bot.greed_decay_tiers} → {new_tiers}"
+            )
+            bot.greed_decay_tiers = new_tiers
+
+        raw_alloc = sb_cfg.get("allocated_at")
+        if raw_alloc:
+            try:
+                new_alloc = datetime.fromisoformat(str(raw_alloc).replace("Z", "+00:00"))
+                if new_alloc != bot.allocated_at:
+                    logger.info(
+                        f"[{symbol}] allocated_at updated: "
+                        f"{bot.allocated_at} → {new_alloc}"
+                    )
+                    bot.allocated_at = new_alloc
+            except Exception as e:
+                logger.warning(f"[{symbol}] allocated_at parse error: {e}")
+
+
+def _consume_initial_lots(reader, bot, symbol: str, price: float, notifier) -> int:
+    """42a: Multi-lot entry. If the bot_config row for this TF symbol has
+    initial_lots > 0 (written by the allocator on ALLOCATE), fire that many
+    market buys right now then reset the counter to 0 in DB so the entry
+    doesn't repeat on next cycle or on restart.
+
+    Returns the number of lots actually bought (0 if not TF, not applicable,
+    or nothing to do). Safe to call every tick — the DB reset is the source
+    of truth.
+    """
+    if bot.managed_by != "trend_follower":
+        return 0
+    sb_cfg = reader.get_config(symbol)
+    raw = sb_cfg.get("initial_lots") if sb_cfg else None
+    try:
+        lots = int(raw) if raw is not None else 0
+    except Exception:
+        lots = 0
+    if lots <= 0:
+        return 0
+
+    logger.info(f"[{symbol}] Multi-lot entry: firing {lots} market buys at ~{fmt_price(price)}")
+    bought = 0
+    total_cost = 0.0
+    for _ in range(lots):
+        trade = bot._execute_percentage_buy(price)
+        if trade:
+            bought += 1
+            total_cost += float(trade.get("cost", 0.0))
+            try:
+                notifier.send_trade_alert(trade)
+            except Exception as e:
+                logger.warning(f"[{symbol}] initial-lot trade alert failed: {e}")
+        else:
+            # _execute_percentage_buy returned None → cash exhausted, dust,
+            # or filter rejection. Stop firing to avoid a spin loop.
+            logger.warning(
+                f"[{symbol}] Multi-lot entry aborted after {bought}/{lots} — "
+                f"buy returned None (likely insufficient cash)."
+            )
+            break
+
+    # Always clear the DB flag, even on partial success: the "entry" window
+    # only fires once. Residual lots would re-trigger on every tick.
+    try:
+        from db.client import get_client
+        get_client().table("bot_config").update(
+            {"initial_lots": 0}
+        ).eq("symbol", symbol).execute()
+    except Exception as e:
+        logger.error(f"[{symbol}] Failed to reset initial_lots to 0: {e}")
+
+    if bought > 0:
+        try:
+            notifier.send_message(
+                f"🚀 <b>{symbol} Multi-lot entry</b>\n"
+                f"Bought {bought} lots at market (~${total_cost:.2f} total)"
+            )
+        except Exception as e:
+            logger.warning(f"[{symbol}] multi-lot entry summary alert failed: {e}")
+    return bought
+
 
 def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = False):
     """Main loop."""
@@ -260,6 +347,20 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
     except Exception as e:
         logger.warning(f"Could not read bot_config.stop_buy_drawdown_pct for {cfg.symbol}: {e}. Defaulting to 0.")
 
+    # 42a: greed decay anchor (per-bot) + tiers (global, from trend_config).
+    # allocated_at is the TF ALLOCATE moment; manual bots have NULL here and
+    # fall back to sell_pct. greed_decay_tiers is the JSON array polled by
+    # SupabaseConfigReader; exposed via get_trend_config_value. Both are
+    # hot-reloaded every cycle in _sync_config_to_bot.
+    allocated_at = None
+    try:
+        raw_alloc = sb_cfg.get("allocated_at") if sb_cfg else None
+        if raw_alloc:
+            allocated_at = datetime.fromisoformat(str(raw_alloc).replace("Z", "+00:00"))
+    except Exception as e:
+        logger.warning(f"Could not parse allocated_at for {cfg.symbol}: {e}. Defaulting to None.")
+    greed_decay_tiers = config_reader.get_trend_config_value("greed_decay_tiers")
+
     # Create grid bot
     bot = GridBot(
         exchange=exchange,
@@ -283,6 +384,8 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
         tf_stop_loss_pct=tf_stop_loss_pct,
         stop_buy_drawdown_pct=stop_buy_drawdown_pct,
         tf_take_profit_pct=tf_take_profit_pct,
+        allocated_at=allocated_at,
+        greed_decay_tiers=greed_decay_tiers,
     )
 
     # Initial managed_by from Supabase (default "manual")
@@ -416,6 +519,12 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
                 bot.setup_grid(price)
                 new_range = bot.get_status().get("range", "N/A")
                 notifier.send_grid_reset(old_range, new_range, price)
+
+            # 42a: fire multi-lot market entry on the first cycle after an
+            # ALLOCATE. No-op for manual bots and for TF bots with
+            # initial_lots=0. Must run BEFORE check_price_and_execute so the
+            # new lots are visible to the sell-queue logic in the same tick.
+            _consume_initial_lots(config_reader, bot, cfg.symbol, price, notifier)
 
             # Run grid logic
             trades = bot.check_price_and_execute(price)

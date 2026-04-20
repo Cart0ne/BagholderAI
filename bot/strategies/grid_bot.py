@@ -91,6 +91,8 @@ class GridBot:
         tf_stop_loss_pct: float = 0.0,  # 39a: TF stop-loss threshold as % of allocation (0 = disabled)
         stop_buy_drawdown_pct: float = 0.0,  # 39b: manual stop-buy threshold as % of allocation (0 = disabled)
         tf_take_profit_pct: float = 0.0,  # 39c: TF take-profit threshold as % of allocation (0 = disabled)
+        allocated_at: Optional[datetime] = None,  # 42a: TF allocation timestamp (anchors greed decay)
+        greed_decay_tiers: Optional[list] = None, # 42a: [{minutes, tp_pct}, ...] — None for manual bots
     ):
         self.exchange = exchange
         self.trade_logger = trade_logger
@@ -114,6 +116,8 @@ class GridBot:
         self.tf_stop_loss_pct = tf_stop_loss_pct
         self.stop_buy_drawdown_pct = stop_buy_drawdown_pct
         self.tf_take_profit_pct = tf_take_profit_pct
+        self.allocated_at: Optional[datetime] = allocated_at
+        self.greed_decay_tiers: Optional[list] = greed_decay_tiers
         self.is_active: bool = True  # controlled via Supabase bot_config
         self.pending_liquidation: bool = False  # TF rotation trigger
         self.managed_by: str = "manual"  # "manual" or "trend_follower"
@@ -863,9 +867,13 @@ class GridBot:
             if force_liquidate:
                 lots_to_sell = list(self._pct_open_positions)
             else:
+                # 42a: for TF bots the sell threshold is the greed-decay TP of
+                # the current age tier (replaces sell_pct). Manual bots keep
+                # sell_pct unchanged. See get_effective_tp() docstring.
+                threshold_pct, _age_min, _tier = self.get_effective_tp()
                 lots_to_sell = [
                     lot for lot in self._pct_open_positions
-                    if current_price >= lot["price"] * (1 + self.sell_pct / 100)
+                    if current_price >= lot["price"] * (1 + threshold_pct / 100)
                 ]
             if lots_to_sell:
                 # Reorder queue: triggered lots first (FIFO), then untriggered (FIFO)
@@ -913,14 +921,17 @@ class GridBot:
                     )
                     self.pending_liquidation = True
             else:
+                # 42a: same threshold used above for the sell decision
+                log_threshold, log_age, _ = self.get_effective_tp()
                 nearest_trigger = min(
-                    lot["price"] * (1 + self.sell_pct / 100)
+                    lot["price"] * (1 + log_threshold / 100)
                     for lot in self._pct_open_positions
                 )
+                age_str = f", age={log_age:.0f}min" if log_age is not None else ""
                 logger.debug(
                     f"[{self.symbol}] Nessuna sell: prezzo {fmt_price(current_price)} < "
                     f"trigger più vicino {fmt_price(nearest_trigger)} "
-                    f"(sell_pct={self.sell_pct}%, {len(self._pct_open_positions)} lotti)"
+                    f"(threshold={log_threshold}%{age_str}, {len(self._pct_open_positions)} lotti)"
                 )
 
         # --- BUY CHECK ---
@@ -1019,6 +1030,62 @@ class GridBot:
                     self._idle_logged_hour = -1
 
         return trades
+
+    def get_effective_tp(self) -> tuple:
+        """42a: Greed decay for TF bots. Returns (threshold_pct, age_minutes, tier_used).
+
+        For TF bots with a valid allocated_at + greed_decay_tiers, returns the
+        tp_pct of the highest-minutes tier whose threshold is <= age. tier_used
+        is the tier dict picked (for logging/Telegram). For anything else
+        (manual bots, missing allocated_at, empty/bad tiers), returns
+        (self.sell_pct, None, None) — the legacy behavior.
+
+        CEO design (2026-04-20): greed decay IS the sell threshold for TF
+        bots; sell_pct is ignored. Manual bots keep sell_pct unchanged.
+        """
+        if self.managed_by != "trend_follower":
+            return (self.sell_pct, None, None)
+        if self.allocated_at is None or not self.greed_decay_tiers:
+            return (self.sell_pct, None, None)
+
+        now = datetime.now(timezone.utc)
+        alloc = self.allocated_at
+        if alloc.tzinfo is None:
+            alloc = alloc.replace(tzinfo=timezone.utc)
+        age_minutes = (now - alloc).total_seconds() / 60.0
+
+        # Pick highest-minutes tier whose threshold <= age. Sort ascending so
+        # we can walk until we overshoot. Skip malformed tiers defensively —
+        # the UI editor is user-facing and could write garbage.
+        tier_used = None
+        try:
+            tiers = sorted(
+                (t for t in self.greed_decay_tiers
+                 if isinstance(t, dict) and "minutes" in t and "tp_pct" in t),
+                key=lambda t: float(t["minutes"]),
+            )
+        except Exception:
+            return (self.sell_pct, age_minutes, None)
+        for tier in tiers:
+            try:
+                if age_minutes >= float(tier["minutes"]):
+                    tier_used = tier
+                else:
+                    break
+            except Exception:
+                continue
+
+        if tier_used is None:
+            # Age is below the lowest tier's minutes — greed decay hasn't
+            # kicked in yet. Fall back to sell_pct so the bot still works
+            # in the pre-first-tier window (avoids "never sells" if tiers
+            # start at e.g. 15min).
+            return (self.sell_pct, age_minutes, None)
+
+        try:
+            return (float(tier_used["tp_pct"]), age_minutes, tier_used)
+        except Exception:
+            return (self.sell_pct, age_minutes, None)
 
     def _execute_percentage_buy(self, price: float) -> Optional[dict]:
         """Execute a percentage-mode buy: spend capital_per_trade USDT at current price."""
@@ -1318,10 +1385,21 @@ class GridBot:
                 f"(lot buy {fmt_price(lot_buy_price)})"
             )
         else:
-            reason = (
-                f"Pct sell: price {fmt_price(price)} is {self.sell_pct}% "
-                f"above lot buy {fmt_price(lot_buy_price)}"
-            )
+            # 42a: for TF bots, the sell threshold was the greed-decay TP;
+            # include tier info in the reason so it shows up in logs and
+            # Telegram. Manual bots keep the legacy sell_pct wording.
+            tp_pct, age_min, tier = self.get_effective_tp()
+            if self.managed_by == "trend_follower" and age_min is not None:
+                reason = (
+                    f"Greed decay sell: price {fmt_price(price)} >= lot buy "
+                    f"{fmt_price(lot_buy_price)} * (1 + {tp_pct}%) "
+                    f"(age {age_min:.0f}min, tier {tp_pct}%)"
+                )
+            else:
+                reason = (
+                    f"Pct sell: price {fmt_price(price)} is {self.sell_pct}% "
+                    f"above lot buy {fmt_price(lot_buy_price)}"
+                )
 
         trade_data = {
             "symbol": self.symbol,
@@ -1340,6 +1418,18 @@ class GridBot:
             "holdings_value_before": holdings_value_before,
             "managed_by": getattr(self, "managed_by", "manual"),
         }
+
+        # 42a: expose greed-decay tier info for Telegram alert. Skip when the
+        # sell was forced (stop-loss / take-profit / bearish) — those have
+        # their own reason tags that already dominate the message.
+        if (self.managed_by == "trend_follower"
+                and not self._stop_loss_triggered
+                and not self._take_profit_triggered
+                and not self.pending_liquidation):
+            tp_pct, age_min, _ = self.get_effective_tp()
+            if age_min is not None:
+                trade_data["greed_tier_age_min"] = age_min
+                trade_data["greed_tier_tp_pct"] = tp_pct
 
         _LOG_TRADE_KEYS = {
             "symbol", "side", "amount", "price", "fee", "strategy", "brain", "reason",

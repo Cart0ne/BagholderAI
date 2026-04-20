@@ -368,6 +368,32 @@
         </div>
       </div>
 
+      <!-- 42a: Greed decay tiers editor -->
+      <div class="section-title">Greed decay tiers</div>
+      <div class="card" id="greed-decay-card">
+        <div class="param-group-label safety-label">⏳ Greed decay tiers</div>
+        <small style="display:block;color:var(--text-dim);font-size:10px;margin-bottom:8px;line-height:1.4;">
+          Per-tier take-profit: "after this many minutes since ALLOCATE, sell lots at this % above buy price". Lower tp_pct forces earlier exits the longer a TF coin is held. Applies only to TF bots. Tiers must be sorted by minutes ascending.
+        </small>
+        <table id="greed-decay-table" style="width:100%;font-family:var(--mono);font-size:11px;border-collapse:collapse;">
+          <thead>
+            <tr>
+              <th style="text-align:left;padding:4px;color:var(--text-dim);">After (min)</th>
+              <th style="text-align:left;padding:4px;color:var(--text-dim);">TP %</th>
+              <th style="width:30px;"></th>
+            </tr>
+          </thead>
+          <tbody id="greed-decay-rows"></tbody>
+        </table>
+        <div style="margin-top:8px;">
+          <button class="btn-save" id="greed-decay-add" onclick="addGreedTier()" style="background:var(--bg-alt);color:var(--text);border:1px solid var(--text-dim);">+ Add tier</button>
+        </div>
+        <div class="save-row">
+          <button class="btn-save" id="greed-decay-save" onclick="saveGreedDecay()" disabled>Save greed decay tiers</button>
+          <span class="save-status" id="greed-decay-status"></span>
+        </div>
+      </div>
+
       <!-- Recent Trades -->
       <div class="section-title">Recent trades</div>
       <div class="card" style="overflow-x: auto;">
@@ -406,6 +432,7 @@
     var TF_SAFETY_FIELDS = [
       { key: 'tf_stop_loss_pct', label: 'TF stop-loss %', sub: 'TF bots force-sell when unrealized loss exceeds this % of allocation. Applies only to TF-managed bots, never to manual.' },
       { key: 'tf_take_profit_pct', label: 'TF take-profit %', sub: 'Takes profit on the full position when unrealized P&L exceeds this % of capital_allocation. Only applies to TF-managed bots. Set 0 to disable.' },
+      { key: 'tf_initial_lots', label: 'Initial lots on entry', sub: '42a: number of market-buy lots fired immediately on the first cycle after ALLOCATE. 0 disables multi-lot entry; TF then waits for normal grid dips. Recommended 1-4.' },
       { key: 'scan_interval_hours', label: 'Scan interval (hours)', sub: 'How often the TF evaluates rotation opportunities. Lower = faster reaction to bearish signals but more API calls.' }
     ];
 
@@ -541,7 +568,7 @@
     async function loadAll() {
       // 1. Load trend_config first (needed to know tf_budget, tf_max_coins, dry_run)
       try {
-        var tc = await sbGet('trend_config', 'select=id,dry_run,tf_budget,tf_max_coins,tf_stop_loss_pct,tf_take_profit_pct,scan_interval_hours&limit=1');
+        var tc = await sbGet('trend_config', 'select=id,dry_run,tf_budget,tf_max_coins,tf_stop_loss_pct,tf_take_profit_pct,tf_initial_lots,greed_decay_tiers,scan_interval_hours&limit=1');
         if (tc && tc.length) {
           TF_CONFIG_ROW = tc[0];
           TF_BUDGET = Number(tc[0].tf_budget) || 100;
@@ -622,6 +649,7 @@
       renderCoinCards();
       renderTrades();
       renderTfSafety();
+      renderGreedDecay();
     }
 
     function renderTfSafety() {
@@ -721,6 +749,142 @@
           var input = document.getElementById('tfs-' + f.key);
           if (input) { input.dataset.original = input.value; input.classList.remove('changed'); }
         });
+        setTimeout(function() { loadAll(); }, 1000);
+      } catch (e) {
+        status.textContent = 'Error — ' + e.message;
+        status.style.color = 'var(--red)';
+        btn.disabled = false;
+      }
+    }
+
+    // === 42a: Greed decay tiers editor ===
+    // Stored on trend_config.greed_decay_tiers as jsonb:
+    //   [{"minutes": <int>, "tp_pct": <number>}, ...]
+    // UI renders one row per tier, with add/remove. "Save" serializes to
+    // JSON and PATCHes trend_config + writes a config_changes_log row
+    // with parameter='greed_decay_tiers' (old/new values as JSON strings).
+    var GREED_ORIGINAL_JSON = null;  // canonical JSON of last-loaded tiers
+
+    function renderGreedDecay() {
+      var tbody = document.getElementById('greed-decay-rows');
+      var btn = document.getElementById('greed-decay-save');
+      var status = document.getElementById('greed-decay-status');
+      if (!tbody || !btn) return;
+      if (!TF_CONFIG_ROW) {
+        tbody.innerHTML = '<tr><td colspan="3" style="padding:4px;color:var(--text-dim);">trend_config unavailable.</td></tr>';
+        btn.disabled = true;
+        return;
+      }
+      var tiers = Array.isArray(TF_CONFIG_ROW.greed_decay_tiers) ? TF_CONFIG_ROW.greed_decay_tiers : [];
+      GREED_ORIGINAL_JSON = JSON.stringify(tiers);
+      tbody.innerHTML = '';
+      tiers.forEach(function(t) { appendGreedRow(t.minutes, t.tp_pct); });
+      if (status) status.textContent = '';
+      btn.disabled = true;
+    }
+
+    function appendGreedRow(minutes, tpPct) {
+      var tbody = document.getElementById('greed-decay-rows');
+      if (!tbody) return;
+      var tr = document.createElement('tr');
+      tr.innerHTML =
+        '<td style="padding:3px 4px;"><input type="text" inputmode="numeric" class="greed-min" value="' + (minutes != null ? minutes : '') + '" style="width:90px;"></td>' +
+        '<td style="padding:3px 4px;"><input type="text" inputmode="decimal" class="greed-tp" value="' + (tpPct != null ? tpPct : '') + '" style="width:90px;"></td>' +
+        '<td style="padding:3px 4px;text-align:right;"><button class="greed-remove" style="background:transparent;border:1px solid var(--text-dim);color:var(--red);font-size:11px;padding:2px 6px;cursor:pointer;">✕</button></td>';
+      tr.querySelectorAll('input').forEach(function(inp) {
+        inp.addEventListener('input', checkGreedChanges);
+      });
+      tr.querySelector('.greed-remove').addEventListener('click', function() {
+        // minimum 1 tier — the greed decay cannot be empty, else TF bots
+        // silently fall back to sell_pct which breaks the feature.
+        var rows = document.querySelectorAll('#greed-decay-rows tr');
+        if (rows.length <= 1) return;
+        tr.remove();
+        checkGreedChanges();
+      });
+      tbody.appendChild(tr);
+    }
+
+    function addGreedTier() {
+      appendGreedRow('', '');
+      checkGreedChanges();
+    }
+
+    function collectGreedTiers() {
+      var rows = document.querySelectorAll('#greed-decay-rows tr');
+      var out = [];
+      for (var i = 0; i < rows.length; i++) {
+        var minEl = rows[i].querySelector('.greed-min');
+        var tpEl = rows[i].querySelector('.greed-tp');
+        if (!minEl || !tpEl) continue;
+        var mRaw = (minEl.value || '').replace(',', '.');
+        var tRaw = (tpEl.value || '').replace(',', '.');
+        if (mRaw === '' && tRaw === '') continue;  // fully empty row → ignore
+        var m = parseInt(mRaw, 10);
+        var t = parseFloat(tRaw);
+        if (isNaN(m) || isNaN(t)) return { error: 'Row ' + (i + 1) + ' has invalid number' };
+        if (m < 0 || t < 0) return { error: 'Row ' + (i + 1) + ': negative values not allowed' };
+        out.push({ minutes: m, tp_pct: t });
+      }
+      if (out.length === 0) return { error: 'At least one tier required' };
+      // Tiers must be strictly ascending by minutes — the get_effective_tp
+      // loop assumes sorted order and picks the highest-minute tier <= age.
+      for (var j = 1; j < out.length; j++) {
+        if (out[j].minutes <= out[j - 1].minutes) {
+          return { error: 'Tiers must be strictly ascending by minutes (row ' + (j + 1) + ')' };
+        }
+      }
+      return { tiers: out };
+    }
+
+    function checkGreedChanges() {
+      var btn = document.getElementById('greed-decay-save');
+      if (!btn) return;
+      var parsed = collectGreedTiers();
+      if (parsed.error) { btn.disabled = true; return; }
+      var currentJson = JSON.stringify(parsed.tiers);
+      btn.disabled = (currentJson === GREED_ORIGINAL_JSON);
+    }
+
+    async function saveGreedDecay() {
+      var btn = document.getElementById('greed-decay-save');
+      var status = document.getElementById('greed-decay-status');
+      if (!TF_CONFIG_ROW || !TF_CONFIG_ROW.id) {
+        status.textContent = 'No trend_config row loaded';
+        status.style.color = 'var(--red)';
+        return;
+      }
+      var parsed = collectGreedTiers();
+      if (parsed.error) {
+        status.textContent = parsed.error;
+        status.style.color = 'var(--red)';
+        return;
+      }
+      btn.disabled = true;
+      status.textContent = 'Saving...';
+      status.style.color = 'var(--yellow)';
+
+      var newJson = JSON.stringify(parsed.tiers);
+      try {
+        await sbPatch('trend_config', 'id', TF_CONFIG_ROW.id, { greed_decay_tiers: parsed.tiers });
+        var auditOk = true;
+        if (newJson !== GREED_ORIGINAL_JSON) {
+          try {
+            await sbInsert('config_changes_log', {
+              symbol: null,
+              parameter: 'greed_decay_tiers',
+              old_value: GREED_ORIGINAL_JSON,
+              new_value: newJson,
+              changed_by: 'manual-ceo',
+            });
+          } catch (logErr) {
+            console.warn('config_changes_log write failed:', logErr);
+            auditOk = false;
+          }
+        }
+        status.textContent = auditOk ? 'Saved ✓' : 'Saved (audit log failed)';
+        status.style.color = auditOk ? 'var(--green)' : 'var(--yellow)';
+        GREED_ORIGINAL_JSON = newJson;
         setTimeout(function() { loadAll(); }, 1000);
       } catch (e) {
         status.textContent = 'Error — ' + e.message;

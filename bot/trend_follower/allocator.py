@@ -562,6 +562,13 @@ def apply_allocations(
             cpt_cap = float(config.get("tf_capital_per_trade_cap_usd", 50))
             capital_per_trade = min(cpt_cap, max(6.0, round(capital / lots_per_coin, 2)))
 
+            # 42a: multi-lot entry on first cycle + greed decay TP from
+            # allocation moment. initial_lots is consumed (reset to 0) by the
+            # grid_runner after the market buys fire; allocated_at anchors the
+            # greed decay clock (reset on every re-ALLOCATE, including SWAPs).
+            initial_lots = int(config.get("tf_initial_lots", 3))
+            allocated_at_iso = datetime.now(timezone.utc).isoformat()
+
             row_fields = {
                 "is_active": True,
                 "managed_by": "trend_follower",
@@ -588,6 +595,9 @@ def apply_allocations(
                 # price after 1 hour of no trades (vs. 24h manual default) so
                 # a fresh buy lands at current market instead of a stale level.
                 "idle_reentry_hours": 1,
+                # 42a:
+                "initial_lots": initial_lots,
+                "allocated_at": allocated_at_iso,
             }
 
             try:
