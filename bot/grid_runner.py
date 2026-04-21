@@ -44,6 +44,7 @@ from bot.exchange import create_exchange
 from bot.strategies.grid_bot import GridBot
 from db.client import TradeLogger, PortfolioManager, DailyPnLTracker, ReserveLedger
 from db.event_logger import log_event
+from db.snapshot_writer import write_state_snapshot
 
 
 STRATEGY = "A"
@@ -823,6 +824,14 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
             # Periodic status update (every 10 cycles)
             if cycle % 10 == 0:
                 _print_status(bot)
+
+            # 43b: write a bot_state_snapshot every ~15 cycles. With
+            # check_interval=60s that's ~15 min per snapshot, giving the
+            # CEO an equity-curve-grade timeline without replaying trades
+            # from scratch. The writer swallows its own errors so a slow
+            # Supabase round-trip never stalls the main loop.
+            if cycle % 15 == 0:
+                write_state_snapshot(bot, cfg.symbol)
 
             # Daily report at 20:00 — only first bot to trigger sends
             now = datetime.now()
