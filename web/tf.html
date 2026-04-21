@@ -1198,7 +1198,7 @@
         '<div class="stat-box">' +
           '<div class="stat-label">Total P&L</div>' +
           '<div class="stat-value" style="color:' + pnlColor + ';">' + (totalPnl >= 0 ? '+' : '') + '$' + fmt(totalPnl) + '</div>' +
-          '<div class="stat-sub">realized (net) ' + realSign + '$' + fmt(totalRealizedAll) + ' · unrealized ' + unrSign + '$' + fmt(totalUnrealized) + ' · fees ' + feeSign + '$' + fmt(totalFees) + ' already in realized</div>' +
+          '<div class="stat-sub">= Net Worth − $' + fmt(TF_BUDGET) + ' starting budget</div>' +
         '</div>' +
         '<div class="stat-box">' +
           '<div class="stat-label">Skim Reserve</div>' +
@@ -1223,8 +1223,12 @@
           '<div class="stat-sub">' + (unrBreakdown || '—') + '</div>' +
         '</div>';
 
-      // Dust v3 monitor: net residual per symbol (v3 only, since tradesData is already filtered).
-      // Surfaces sub-step leftovers that won't be sellable on Binance — should stay flat post-2026-04-13.
+      // Dust v3 monitor: net residual per symbol that is NOT sellable on
+      // Binance (holdings × price < MIN_NOTIONAL). Active positions above
+      // the floor are real holdings, not dust — they're already shown in
+      // the Deployed card. This filter prevents e.g. CHZ/XLM holdings
+      // ($40+ each) from inflating the dust figure.
+      var DUST_MIN_NOTIONAL_USD = 5.0;
       var dustTotalUsd = 0;
       var dustParts = [];
       configData.forEach(function(cfg) {
@@ -1232,6 +1236,7 @@
         if (a.netHoldings <= 0) return;
         var livePrice = livePrices[cfg.symbol] || 0;
         var usd = a.netHoldings * livePrice;
+        if (usd >= DUST_MIN_NOTIONAL_USD) return;  // real position, not dust
         dustTotalUsd += usd;
         var decimals = DUST_DECIMALS[cfg.symbol] || 6;
         var short = SHORT[cfg.symbol] || cfg.symbol;
@@ -1240,8 +1245,15 @@
       var dustBreakdown = dustParts.length ? dustParts.join(' · ') : '—';
       var dustColor = dustTotalUsd > 1 ? 'var(--yellow)' : 'var(--muted)';
 
+      // Two side-by-side cards in row 3: Fees Paid (cumulative, already
+      // inside Total P&L) + Dust v3 (sub-min_notional residuals).
       document.getElementById('overview-row3').innerHTML =
-        '<div class="stat-box" style="grid-column: 1 / -1;">' +
+        '<div class="stat-box">' +
+          '<div class="stat-label">Fees Paid</div>' +
+          '<div class="stat-value" style="color:var(--muted);">-$' + fmt(totalFees) + '</div>' +
+          '<div class="stat-sub">Binance + BNB discount on every buy/sell — already netted inside Total P&L</div>' +
+        '</div>' +
+        '<div class="stat-box" style="grid-column: 2 / -1;">' +
           '<div class="stat-label">Dust v3</div>' +
           '<div class="stat-value" style="color:' + dustColor + ';">$' + dustTotalUsd.toFixed(4) + '</div>' +
           '<div class="stat-sub">' + dustBreakdown + '</div>' +
