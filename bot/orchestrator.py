@@ -22,6 +22,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from db.client import get_client
+from db.event_logger import log_event
 from utils.telegram_notifier import SyncTelegramNotifier
 
 logger = logging.getLogger("bagholderai.orchestrator")
@@ -238,6 +239,16 @@ def run_orchestrator():
                 tf_process.kill()
 
         logger.info("All processes stopped.")
+        # 43a: structured event. Use critical severity if the shutdown was
+        # triggered by an unexpected signal; SIGINT/SIGTERM from the user
+        # is the normal path so severity is info.
+        log_event(
+            severity="info",
+            category="lifecycle",
+            event="orchestrator_stopped",
+            message=f"Orchestrator shutdown complete (signal={signum})",
+            details={"signal": int(signum) if signum else None},
+        )
         sys.exit(0)
 
     signal.signal(signal.SIGINT, shutdown_handler)
@@ -379,6 +390,19 @@ def run_orchestrator():
                     )
                 except Exception:
                     pass
+                # 43a: structured event for queryable history.
+                log_event(
+                    severity="info",
+                    category="lifecycle",
+                    event="orchestrator_started",
+                    message=f"Orchestrator started with {grid_count} grid bot(s), TF {tf_status}",
+                    details={
+                        "grid_count": grid_count,
+                        "symbols": sorted(grid_processes.keys()),
+                        "tf_enabled": tf_enabled,
+                        "poll_interval_s": POLL_INTERVAL,
+                    },
+                )
                 first_run = False
 
             time.sleep(POLL_INTERVAL)

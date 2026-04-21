@@ -11,6 +11,8 @@ import threading
 import logging
 import time
 
+from db.event_logger import log_event
+
 logger = logging.getLogger("bagholderai.config")
 
 CONFIG_REFRESH_INTERVAL = 300  # seconds between config refreshes
@@ -170,6 +172,8 @@ class SupabaseConfigReader:
         new_configs = {row["symbol"]: row for row in rows}
         # by_symbol: symbol -> [(key, old_val, new_val), ...]
         by_symbol: dict = {}
+        # 43a: collect trend_config diffs under the lock, emit events outside.
+        trend_diffs: list = []
 
         with self._lock:
             for symbol, new_cfg in new_configs.items():
@@ -199,11 +203,35 @@ class SupabaseConfigReader:
                             f"[bagholderai.config] trend_config updated: "
                             f"{key} {old_val} → {new_val}"
                         )
+                        trend_diffs.append((key, old_val, new_val))
                 self._trend_config = new_trend_cfg
 
         # Send one consolidated Telegram alert per symbol (Bug 3), outside lock
         for symbol, param_changes in by_symbol.items():
             self._send_config_changes(symbol, param_changes)
+            # 43a: one structured event per symbol, grouping all diffs. Avoids
+            # per-field event spam when the CEO edits several params in one save.
+            log_event(
+                severity="info",
+                category="config",
+                event="config_changed_bot_config",
+                symbol=symbol,
+                message=f"bot_config changed for {symbol}: {len(param_changes)} field(s)",
+                details={
+                    "changes": [
+                        {"key": k, "old": str(o), "new": str(n)}
+                        for k, o, n in param_changes
+                    ],
+                },
+            )
+
+        # 43a: NOTE — we intentionally do NOT emit config_changed_trend_config
+        # here. This reader runs in every grid_runner process, so emitting
+        # would produce N duplicate events per change. The trend_follower
+        # loop is the single source of truth for trend_config diffs (it
+        # already does the diff for Telegram alerts in 39g; the event is
+        # added there in this same commit).
+        _ = trend_diffs  # intentionally unused, kept for clarity
 
     def _refresh_loop(self):
         """Background thread: refresh config every CONFIG_REFRESH_INTERVAL seconds."""

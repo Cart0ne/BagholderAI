@@ -13,6 +13,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, date, timezone
 from utils.formatting import fmt_price
 from config.settings import HardcodedRules
+from db.event_logger import log_event
 
 logger = logging.getLogger("bagholderai.grid")
 
@@ -697,6 +698,14 @@ class GridBot:
                 f"[{self.symbol}] STOP-BUY RESET: profitable sell ${realized_pnl:.2f} "
                 f"cleared the block. Buys re-enabled."
             )
+            log_event(
+                severity="info",
+                category="safety",
+                event="stop_buy_cleared",
+                symbol=self.symbol,
+                message=f"Manual stop-buy reset after profitable sell ${realized_pnl:.2f}",
+                details={"realized_pnl": realized_pnl},
+            )
 
         # Reset avg_buy_price when fully sold out
         if self.state.holdings <= 0:
@@ -786,6 +795,19 @@ class GridBot:
                     f"Liquidating all {len(self._pct_open_positions)} lots."
                 )
                 self._stop_loss_triggered = True
+                log_event(
+                    severity="warn",
+                    category="safety",
+                    event="stop_loss_triggered",
+                    symbol=self.symbol,
+                    message=f"TF stop-loss: unrealized ${unrealized:.2f} ≤ ${loss_threshold:.2f}",
+                    details={
+                        "unrealized": unrealized,
+                        "threshold": loss_threshold,
+                        "pct": self.tf_stop_loss_pct,
+                        "lots": len(self._pct_open_positions),
+                    },
+                )
 
         # --- 39c: TF take-profit check ---
         # Speculare perfetto al 39a: stessa base di calcolo (unrealized vs
@@ -809,6 +831,19 @@ class GridBot:
                     f"Liquidating all {len(self._pct_open_positions)} lots."
                 )
                 self._take_profit_triggered = True
+                log_event(
+                    severity="info",
+                    category="safety",
+                    event="take_profit_triggered",
+                    symbol=self.symbol,
+                    message=f"TF take-profit: unrealized ${unrealized:.2f} ≥ ${profit_threshold:.2f}",
+                    details={
+                        "unrealized": unrealized,
+                        "threshold": profit_threshold,
+                        "pct": self.tf_take_profit_pct,
+                        "lots": len(self._pct_open_positions),
+                    },
+                )
 
         # --- 39b: manual stop-buy check ---
         # Speculare al 39a ma per i bot manuali (BTC/SOL/BONK): quando il
@@ -830,6 +865,18 @@ class GridBot:
                     f"New buys blocked until profitable sell."
                 )
                 self._stop_buy_active = True
+                log_event(
+                    severity="warn",
+                    category="safety",
+                    event="stop_buy_activated",
+                    symbol=self.symbol,
+                    message=f"Manual stop-buy: unrealized ${unrealized:.2f} ≤ ${buy_block_threshold:.2f}",
+                    details={
+                        "unrealized": unrealized,
+                        "threshold": buy_block_threshold,
+                        "pct": self.stop_buy_drawdown_pct,
+                    },
+                )
 
         # --- SELL CHECK ---
         # Iterate ALL open lots; sell any whose trigger is hit.
@@ -1367,6 +1414,14 @@ class GridBot:
             logger.info(
                 f"[{self.symbol}] STOP-BUY RESET: profitable sell ${realized_pnl:.2f} "
                 f"cleared the block. Buys re-enabled."
+            )
+            log_event(
+                severity="info",
+                category="safety",
+                event="stop_buy_cleared",
+                symbol=self.symbol,
+                message=f"Manual stop-buy reset after profitable sell ${realized_pnl:.2f}",
+                details={"realized_pnl": realized_pnl},
             )
 
         if self.state.holdings <= 0:

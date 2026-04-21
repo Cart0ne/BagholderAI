@@ -29,6 +29,7 @@ def _sigterm_to_keyboard_interrupt(signum, frame):
 
 from bot.exchange import create_exchange
 from db.client import get_client
+from db.event_logger import log_event
 from utils.telegram_notifier import SyncTelegramNotifier
 from utils.exchange_filters import fetch_and_cache_filters
 
@@ -411,6 +412,20 @@ def run_trend_follower():
                     notifier.send_message("\n".join(lines))
                 except Exception as e:
                     logger.warning(f"Telegram alert for trend_config change failed: {e}")
+                # 43a: single event per scan-diff, groups all changed safety keys.
+                log_event(
+                    severity="info",
+                    category="config",
+                    event="config_changed_trend_config",
+                    symbol=None,
+                    message=f"trend_config changed: {len(safety_changes)} field(s)",
+                    details={
+                        "changes": [
+                            {"key": k, "old": str(o), "new": str(n)}
+                            for k, o, n in safety_changes
+                        ],
+                    },
+                )
             prev_safety = {k: config.get(k) for k in _SAFETY_KEYS}
 
             if not config.get("trend_follower_enabled", True):

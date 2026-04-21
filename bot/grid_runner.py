@@ -43,6 +43,7 @@ from config.supabase_config import SupabaseConfigReader
 from bot.exchange import create_exchange
 from bot.strategies.grid_bot import GridBot
 from db.client import TradeLogger, PortfolioManager, DailyPnLTracker, ReserveLedger
+from db.event_logger import log_event
 
 
 STRATEGY = "A"
@@ -318,6 +319,14 @@ def _consume_initial_lots(reader, bot, symbol: str, price: float, notifier) -> i
         )
     except Exception as e:
         logger.warning(f"[{symbol}] multi-lot entry summary alert failed: {e}")
+    log_event(
+        severity="info",
+        category="tf",
+        event="multi_lot_entry_fired",
+        symbol=symbol,
+        message=f"Multi-lot entry: {lots} lots at ${price:.6f} (total ${cost:.2f})",
+        details={"lots": lots, "price": price, "total_cost": cost},
+    )
     return lots
 
 
@@ -555,6 +564,21 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
     logger.info(f"Starting main loop (checking every {check_interval}s)...")
     logger.info("Press Ctrl+C to stop.\n")
 
+    # 43a: structured event for bot start. managed_by is the single most
+    # useful piece of context here (tells TF vs manual at a glance).
+    log_event(
+        severity="info",
+        category="lifecycle",
+        event="bot_started",
+        symbol=cfg.symbol,
+        message=f"Grid bot entering main loop (interval {check_interval}s)",
+        details={
+            "managed_by": getattr(bot, "managed_by", "manual"),
+            "check_interval_s": check_interval,
+            "capital": cfg.capital,
+        },
+    )
+
     daily_report_sent = None  # Track which date we sent the report
     REPORT_HOUR = 20  # Send daily report at 20:00
 
@@ -762,12 +786,28 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
                     f"Tutte le posizioni sono deployed.\n"
                     f"Il bot attende un sell per ricominciare a comprare."
                 )
+                log_event(
+                    severity="warn",
+                    category="safety",
+                    event="capital_exhausted",
+                    symbol=cfg.symbol,
+                    message=f"Cash ${available:.2f} below last-shot floor ${HardcodedRules.MIN_LAST_SHOT_USD}",
+                    details={"available": available, "floor": HardcodedRules.MIN_LAST_SHOT_USD},
+                )
             elif available >= HardcodedRules.MIN_LAST_SHOT_USD and _capital_exhausted:
                 _capital_exhausted = False
                 notifier.send_message(
                     f"✅ <b>{cfg.symbol}: Capitale ripristinato</b>\n"
                     f"Cash disponibile: ${available:.2f}\n"
                     f"Il bot può tornare a comprare."
+                )
+                log_event(
+                    severity="info",
+                    category="safety",
+                    event="capital_restored",
+                    symbol=cfg.symbol,
+                    message=f"Cash restored to ${available:.2f}",
+                    details={"available": available},
                 )
 
             # Error recovery: cycle succeeded after consecutive failures
@@ -907,6 +947,14 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
         except Exception as e:
             _error_count += 1
             logger.error(f"Error in main loop: {e}")
+            log_event(
+                severity="error",
+                category="error",
+                event="error_loop",
+                symbol=cfg.symbol,
+                message=f"Main loop exception: {str(e)[:200]}",
+                details={"error": str(e)[:500], "consecutive_errors": _error_count},
+            )
             now_ts = time.time()
             if now_ts - _error_last_alert >= ERROR_ALERT_COOLDOWN:
                 _error_last_alert = now_ts
@@ -933,6 +981,17 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
     logger.info(f"FINAL STATUS (reason: {stop_reason})")
     _print_status(bot)
     logger.info("=" * 50)
+
+    # 43a: structured event for bot stop with reason tag (manual,
+    # is_active=false, liquidation, stop_loss, take_profit).
+    log_event(
+        severity="info",
+        category="lifecycle",
+        event="bot_stopped",
+        symbol=cfg.symbol,
+        message=f"Grid bot exited (reason: {stop_reason})",
+        details={"stop_reason": stop_reason},
+    )
 
 
 def _build_cycle_summary(supabase, symbol: str, liquidation_trade_id: str | None) -> dict | None:

@@ -7,6 +7,7 @@ exchange filters, and max active grids.
 import logging
 from datetime import datetime, timezone
 from utils.exchange_filters import validate_order, round_to_step
+from db.event_logger import log_event
 
 logger = logging.getLogger("bagholderai.trend.allocator")
 
@@ -302,6 +303,20 @@ def decide_allocations(
                 f"{active_coin['signal_strength']:.1f}, held {held_hours:.1f}h, "
                 f"unrealized ${unrealized:.2f}) → replaced by {best_new['symbol']} "
                 f"(+{delta:.1f} strength)"
+            )
+            log_event(
+                severity="info",
+                category="tf",
+                event="tf_swap",
+                symbol=sym,
+                message=f"SWAP {sym} → {best_new['symbol']} (+{delta:.1f} strength, held {held_hours:.1f}h)",
+                details={
+                    "swapped_out": sym,
+                    "swapped_in": best_new["symbol"],
+                    "strength_delta": delta,
+                    "held_hours": held_hours,
+                    "unrealized": unrealized,
+                },
             )
             decisions.append(_make_decision(
                 scan_ts, sym, active_coin, "DEALLOCATE",
@@ -647,6 +662,22 @@ def apply_allocations(
                         f"(${capital:.0f}, per_trade=${capital_per_trade:.2f}, "
                         f"buy={buy_pct}%, sell={sell_pct}%)"
                     )
+                log_event(
+                    severity="info",
+                    category="tf",
+                    event="tf_allocate",
+                    symbol=symbol,
+                    message=f"TF ALLOCATE {symbol} ${capital:.0f} (signal={signal}, strength={coin.get('signal_strength', 0):.2f})",
+                    details={
+                        "capital": capital,
+                        "capital_per_trade": capital_per_trade,
+                        "buy_pct": buy_pct,
+                        "sell_pct": sell_pct,
+                        "signal": signal,
+                        "signal_strength": coin.get("signal_strength", 0),
+                        "update": bool(existing.data),
+                    },
+                )
             except Exception as e:
                 # 44b: the bot_config INSERT/UPDATE just failed, but
                 # trend_decisions_log was already written with
@@ -708,5 +739,15 @@ def apply_allocations(
                     "pending_liquidation": True,
                 }).eq("symbol", symbol).execute()
                 logger.info(f"[ALLOCATOR] SET pending_liquidation=True for {symbol}")
+                # 43a: reason is attached on the decision dict from the
+                # scanner (BEARISH / SWAP / etc). Thread it into the event.
+                log_event(
+                    severity="info",
+                    category="tf",
+                    event="tf_deallocate",
+                    symbol=symbol,
+                    message=f"TF DEALLOCATE {symbol}: {d.get('reason', '')[:120]}",
+                    details={"reason": d.get("reason", "")},
+                )
             except Exception as e:
                 logger.error(f"[ALLOCATOR] Failed to apply DEALLOCATE for {symbol}: {e}")
