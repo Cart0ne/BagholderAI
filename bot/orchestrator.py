@@ -28,6 +28,12 @@ logger = logging.getLogger("bagholderai.orchestrator")
 
 POLL_INTERVAL = 30          # seconds between bot_config reconciliations
 MAX_RESTART_ATTEMPTS = 5    # consecutive crash restarts before giving up on a symbol
+# 44a: cap Telegram spam from the main-loop exception handler. Network
+# blackouts (httpx ConnectTimeout, etc.) can raise the same exception
+# every POLL_INTERVAL for tens of minutes; without a cooldown that
+# produces 20-25 identical Telegram alerts per incident. Logging is
+# not rate-limited — the local log file keeps every occurrence.
+ORCHESTRATOR_ALERT_COOLDOWN = 15 * 60  # seconds
 LOG_DIR = Path("logs")
 
 
@@ -128,6 +134,9 @@ def run_orchestrator():
     logger.info("=" * 50)
 
     first_run = True
+    # 44a: timestamp of the last "🚨 Orchestrator error" Telegram. 0 means
+    # "never sent" so the first error in a run still alerts immediately.
+    _last_error_alert_ts = 0.0
     while not shutting_down["v"]:
         try:
             # 1. Desired state from bot_config
@@ -250,12 +259,19 @@ def run_orchestrator():
             shutdown_handler(signal.SIGINT, None)
         except Exception as e:
             logger.error(f"Orchestrator error: {e}", exc_info=True)
-            try:
-                notifier.send_message(
-                    f"🚨 <b>Orchestrator error</b>\n<code>{str(e)[:300]}</code>"
-                )
-            except Exception:
-                pass
+            # 44a: only send a Telegram if enough time has passed since the
+            # previous one. A network blackout that raises the same exception
+            # every POLL_INTERVAL used to fire ~25 identical messages per
+            # incident; now it fires at most one every ORCHESTRATOR_ALERT_COOLDOWN.
+            now_ts = time.time()
+            if (now_ts - _last_error_alert_ts) >= ORCHESTRATOR_ALERT_COOLDOWN:
+                try:
+                    notifier.send_message(
+                        f"🚨 <b>Orchestrator error</b>\n<code>{str(e)[:300]}</code>"
+                    )
+                    _last_error_alert_ts = now_ts
+                except Exception:
+                    pass
             time.sleep(POLL_INTERVAL)
 
 
