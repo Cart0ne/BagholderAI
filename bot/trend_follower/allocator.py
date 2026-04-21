@@ -632,7 +632,43 @@ def apply_allocations(
                         f"buy={buy_pct}%, sell={sell_pct}%)"
                     )
             except Exception as e:
-                logger.error(f"[ALLOCATOR] Failed to apply ALLOCATE for {symbol}: {e}")
+                # 44b: the bot_config INSERT/UPDATE just failed, but
+                # trend_decisions_log was already written with
+                # action_taken='ALLOCATE' by the caller (log_decisions in
+                # trend_follower.py runs BEFORE apply_allocations). Without
+                # correction, this produces a "ghost" bot: the decision log
+                # says we allocated, but no grid_runner ever starts because
+                # bot_config doesn't have the row.
+                #
+                # Retrocede the decision row: mark it ALLOCATE_FAILED and
+                # append the DB error to the reason. ALLOCATE_FAILED is
+                # whitelisted in the trend_decisions_log.action_taken CHECK
+                # constraint (migration applied by CEO ahead of this code).
+                err_str = str(e)[:240]
+                logger.error(f"[ALLOCATOR] Failed to apply ALLOCATE for {symbol}: {err_str}")
+                try:
+                    supabase.table("trend_decisions_log").update({
+                        "action_taken": "ALLOCATE_FAILED",
+                        "reason": f"bot_config write failed: {err_str}",
+                    }).eq("scan_timestamp", d["scan_timestamp"]).eq("symbol", symbol).execute()
+                except Exception as upd_err:
+                    logger.warning(
+                        f"[ALLOCATOR] Also failed to retrocede trend_decisions_log "
+                        f"for {symbol}: {upd_err}"
+                    )
+                # Send a Telegram alert so the CEO sees the failure in real
+                # time. Lazy import the notifier to keep allocator.py free
+                # of a hard dependency (and to preserve existing unit tests
+                # that don't mock a Telegram client).
+                try:
+                    from utils.telegram_notifier import SyncTelegramNotifier
+                    SyncTelegramNotifier().send_message(
+                        f"🚨 <b>ALLOCATE FAILED: {symbol}</b>\n"
+                        f"<code>{err_str}</code>\n"
+                        f"Decision retroceded to ALLOCATE_FAILED."
+                    )
+                except Exception as tg_err:
+                    logger.warning(f"[ALLOCATOR] Telegram alert failed: {tg_err}")
 
         elif action == "DEALLOCATE":
             try:
