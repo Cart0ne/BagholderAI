@@ -294,9 +294,19 @@ def run_orchestrator():
                 logger.warning(f"Could not read trend_config: {e}")
                 tf_enabled = False
 
+            # A row is "should run" when is_active=True. The historical
+            # contract also required pending_liquidation=False, under the
+            # assumption that pending_liquidation was only ever set on an
+            # already-running bot (which would self-terminate after force
+            # liquidation). The 45 orphan reconciler breaks that assumption:
+            # it flips a non-running bot to is_active=True + pending_liquidation=True
+            # precisely so the orchestrator spawns it, lets the standard
+            # force-liquidate branch close out the residual holdings, and
+            # the grid_runner writes is_active=False on its way out. So we
+            # spawn on is_active=True regardless of pending_liquidation.
             should_run = {
                 sym for sym, cfg in desired.items()
-                if cfg.get("is_active") and not cfg.get("pending_liquidation")
+                if cfg.get("is_active")
             }
 
             # 3. Reconcile grid bots: detect crashes / clean exits first
