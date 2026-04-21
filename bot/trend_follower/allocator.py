@@ -341,11 +341,27 @@ def decide_allocations(
     else:
         per_coin_target = min(unallocated / num_new, sanity_cap)
 
+    # 44c: minimum signal_strength threshold. Prevents "desperate ALLOCATE"
+    # when the bullish pool is weak — the 2026-04-21 nightly incident saw
+    # 币安人生/USDT allocated at strength 8.94 alongside much stronger
+    # candidates, purely because there were empty TF slots. Default 15.0
+    # tracks the typical minimum observed in healthy ALLOCATE decisions;
+    # editable via /tf admin UI.
+    min_strength = float(config.get("min_allocate_strength", 15.0))
+
     for coin in bullish:
         if active_count >= max_grids:
             decisions.append(_make_decision(
                 scan_ts, coin["symbol"], coin, "SKIP",
                 f"Max active grids reached ({max_grids})",
+            ))
+            continue
+
+        coin_strength = float(coin.get("signal_strength", 0) or 0)
+        if coin_strength < min_strength:
+            decisions.append(_make_decision(
+                scan_ts, coin["symbol"], coin, "SKIP",
+                f"signal_strength {coin_strength:.2f} below min_allocate_strength {min_strength}",
             ))
             continue
 
