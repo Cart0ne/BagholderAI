@@ -1063,25 +1063,29 @@
       }, 0);
       var unalloc = TF_BUDGET - totalAlloc;
 
-      // Session 36g Phase 1: effective TF budget = nominal + floating from
-      // fully-liquidated deallocated TF bots. Mirrors compute_tf_floating_cash().
+      // TF closed-cycles accounting: sum the per-coin realized_pnl for
+      // every inactive TF coin. Uses the same realizedPnl value that the
+      // "Previous coins" list shows per-row, so the banner total matches
+      // the sum of the per-row numbers (previously the two computations
+      // diverged — cash-flow `sold - bought - skim` here vs FIFO-netted
+      // realized_pnl there — and a coin like MBOX showed +$0.19 in the
+      // banner but +$3.10 in the row).
+      //
+      // Also no longer filters on `buyAmt == sellAmt`. A coin is still
+      // "closed" (is_active=False) even when a tiny residual hangs on
+      // — either economic dust under min_notional, or a trade whose
+      // INSERT timed out during a network blackout (see brief 45). Its
+      // realized_pnl represents the PnL of the sells that DID log, and
+      // is a better number to show than hiding the coin entirely.
       var tfFloating = 0;
       var floatingParts = [];
       configData.forEach(function(cfg) {
         if (cfg.is_active) return;
-        var coinTrades = tradesData.filter(function(t) { return t.symbol === cfg.symbol; });
-        var bought = 0, sold = 0, buyAmt = 0, sellAmt = 0;
-        coinTrades.forEach(function(t) {
-          var c = Number(t.cost) || 0;
-          var a = Number(t.amount) || 0;
-          if (t.side === 'buy')  { bought += c; buyAmt += a; }
-          if (t.side === 'sell') { sold   += c; sellAmt += a; }
-        });
-        if (Math.abs(buyAmt - sellAmt) > 1e-6) return;  // not fully liquidated
-        var skim = skimBySymbol[cfg.symbol] || 0;
-        var retained = sold - bought - skim;
-        tfFloating += retained;
-        floatingParts.push({ sym: cfg.symbol.split('/')[0], val: retained });
+        var a = analyzeCoin(cfg.symbol, cfg);
+        var pnl = Number(a.realizedPnl || 0);
+        if (Math.abs(pnl) < 0.005) return;  // skip truly zero rows to keep banner readable
+        tfFloating += pnl;
+        floatingParts.push({ sym: cfg.symbol.split('/')[0], val: pnl });
       });
       // Show the TF closed-cycles net: sum of realized PnL (net of skim) on
       // deallocated + fully-liquidated TF coins. Label flips between loss and
