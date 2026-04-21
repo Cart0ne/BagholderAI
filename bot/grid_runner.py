@@ -66,6 +66,69 @@ def fetch_price(exchange, symbol: str, max_retries: int = 3) -> float:
                 raise
 
 
+def _deactivate_if_fully_liquidated(symbol: str, event_label: str) -> bool:
+    """45: after a TF bot's liquidation branch, verify DB contabilità shows
+    zero holdings before writing is_active=False. If the last sell INSERT
+    timed out on Supabase, bot memory may say 0 but DB still says
+    bought > sold — writing is_active=False there would mint an orphan
+    that the boot reconciler then has to clean up. Keep is_active=True +
+    pending_liquidation=True in that case so the next spawn retries.
+
+    Returns True if the row was deactivated, False if held active for retry.
+    """
+    try:
+        from db.client import get_client
+        sb = get_client()
+        trades_res = sb.table("trades").select(
+            "side, amount"
+        ).eq("symbol", symbol).eq("config_version", "v3").execute()
+        bought = 0.0
+        sold = 0.0
+        for t in trades_res.data or []:
+            amt = float(t.get("amount") or 0)
+            if t.get("side") == "buy":
+                bought += amt
+            elif t.get("side") == "sell":
+                sold += amt
+        holdings_db = bought - sold
+    except Exception as e:
+        # If we can't verify (Supabase unreachable), err on the side of
+        # NOT deactivating — worst case the bot stays alive one more
+        # iteration; orphan reconciler at next boot will pick up any
+        # mistake. Safer than minting an orphan with half-confidence.
+        logger.warning(
+            f"[{symbol}] Could not verify holdings_db for deactivation gate: {e}. "
+            f"Holding is_active=True, pending_liquidation=True for next retry."
+        )
+        return False
+
+    if holdings_db > 1e-6:
+        logger.warning(
+            f"[{symbol}] Post-{event_label.lower()} residual holdings_db={holdings_db:.6f} — "
+            f"holding is_active=True + pending_liquidation=True so orchestrator "
+            f"rispawns and retries the liquidation (likely a log_trade timed out)."
+        )
+        try:
+            sb.table("bot_config").update({
+                "is_active": True,
+                "pending_liquidation": True,
+            }).eq("symbol", symbol).execute()
+        except Exception as e:
+            logger.error(f"[{symbol}] Failed to hold is_active=True: {e}")
+        return False
+
+    # Clean liquidation — deactivate as before.
+    try:
+        sb.table("bot_config").update({
+            "is_active": False,
+            "pending_liquidation": False,
+        }).eq("symbol", symbol).execute()
+        return True
+    except Exception as e:
+        logger.error(f"[{symbol}] Failed to clear bot_config after {event_label.lower()}: {e}")
+        return False
+
+
 def _sync_config_to_bot(reader: "SupabaseConfigReader", bot: "GridBot", symbol: str):
     """
     Apply the latest Supabase config values to the running bot.
@@ -545,15 +608,7 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
                 logger.info(f"[{cfg.symbol}] pending_liquidation=true — force-selling all positions")
                 _force_liquidate(bot, exchange, trade_logger, notifier, cfg.symbol,
                                  reason="BEARISH EXIT")
-                try:
-                    from db.client import get_client
-                    sb = get_client()
-                    sb.table("bot_config").update({
-                        "is_active": False,
-                        "pending_liquidation": False,
-                    }).eq("symbol", cfg.symbol).execute()
-                except Exception as e:
-                    logger.error(f"[{cfg.symbol}] Failed to clear bot_config after liquidation: {e}")
+                _deactivate_if_fully_liquidated(cfg.symbol, "BEARISH EXIT")
                 stop_reason = "liquidation"
                 break
 
@@ -632,15 +687,7 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
                 # takes the "no-sell cycle close" branch.
                 _force_liquidate(bot, exchange, trade_logger, notifier, cfg.symbol,
                                  reason=event_label)
-                try:
-                    from db.client import get_client
-                    sb = get_client()
-                    sb.table("bot_config").update({
-                        "is_active": False,
-                        "pending_liquidation": False,
-                    }).eq("symbol", cfg.symbol).execute()
-                except Exception as e:
-                    logger.error(f"[{cfg.symbol}] Failed to clear bot_config after {event_label.lower()}: {e}")
+                _deactivate_if_fully_liquidated(cfg.symbol, event_label)
                 stop_reason = stop_reason_tag
                 break
 

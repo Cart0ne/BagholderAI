@@ -73,6 +73,120 @@ def _spawn_trend_follower() -> subprocess.Popen:
     )
 
 
+def _reconcile_orphan_tf_bots(supabase, notifier) -> None:
+    """45: Rescue TF bots whose bot_config says is_active=False but whose
+    DB-replayed holdings are non-zero. Typical cause: a liquidation sell
+    was executed by the bot but the trades INSERT timed out on Supabase
+    during a network blackout, leaving the DB with buys > sells and no
+    way for the bot to re-enter the liquidation path on its own.
+
+    Strategy: flip is_active=True + pending_liquidation=True on each
+    orphan row. The standard poll loop will spawn the grid_runner at
+    the next tick; its init_percentage_state_from_db will rebuild the
+    FIFO queue, see pending_liquidation, run the force-liquidate branch,
+    and close the cycle normally.
+
+    Skips manual bots (managed_by != 'trend_follower') — those are under
+    user control, auto-rianimation would be invasive. No price check
+    here; grid_bot's dust-handling will close sub-min_notional residuals
+    on the first tick after spawn.
+    """
+    try:
+        rows = supabase.table("bot_config").select(
+            "symbol, is_active, managed_by, pending_liquidation"
+        ).eq("managed_by", "trend_follower").eq("is_active", False).execute()
+    except Exception as e:
+        logger.warning(f"[RECONCILER] Could not query bot_config: {e}")
+        return
+
+    # Minimum notional estimate: below this, an orphan is sub-Binance-
+    # min_notional and would just spin (spawn → dust removal → shut down
+    # → reconciler re-flips at next boot). Skip those to break the loop.
+    # $5 is the typical Binance MIN_NOTIONAL across pairs.
+    MIN_ORPHAN_USD = 5.0
+
+    orphans_found = []
+    orphans_skipped_dust = []
+    for row in rows.data or []:
+        symbol = row["symbol"]
+        try:
+            trades_res = supabase.table("trades").select(
+                "side, amount, price, created_at"
+            ).eq("symbol", symbol).eq("config_version", "v3").order(
+                "created_at", desc=True
+            ).execute()
+        except Exception as e:
+            logger.warning(f"[RECONCILER] Could not query trades for {symbol}: {e}")
+            continue
+
+        bought = 0.0
+        sold = 0.0
+        last_price = 0.0
+        for t in trades_res.data or []:
+            amt = float(t.get("amount") or 0)
+            if last_price == 0 and t.get("price"):
+                last_price = float(t["price"])  # most-recent price (desc order)
+            if t.get("side") == "buy":
+                bought += amt
+            elif t.get("side") == "sell":
+                sold += amt
+        holdings = bought - sold
+        # Guard against tiny float imprecision (10^-8 residuals from
+        # float sums) — anything below 1e-6 is not a real position.
+        if holdings <= 1e-6:
+            continue
+
+        # Estimated notional using the last traded price (stale but adequate
+        # for deciding "is this dust or sellable"). A full Binance ticker
+        # fetch would be more accurate but the reconciler runs offline-
+        # friendly at boot; stale price is safer than skipping entirely.
+        est_usd = holdings * last_price if last_price > 0 else 0.0
+        if est_usd < MIN_ORPHAN_USD:
+            logger.info(
+                f"[RECONCILER] Sub-min_notional residual: {symbol} "
+                f"holdings={holdings:.6f} × ${last_price} ≈ ${est_usd:.2f} "
+                f"— economic dust, skipping (stays is_active=False)."
+            )
+            orphans_skipped_dust.append((symbol, holdings, est_usd))
+            continue
+
+        logger.warning(
+            f"[RECONCILER] Orphan detected: {symbol} holdings={holdings:.6f} "
+            f"(~${est_usd:.2f}). Flipping to is_active=True + "
+            f"pending_liquidation=True."
+        )
+        try:
+            supabase.table("bot_config").update({
+                "is_active": True,
+                "pending_liquidation": True,
+            }).eq("symbol", symbol).execute()
+            orphans_found.append((symbol, holdings, est_usd))
+        except Exception as e:
+            logger.error(f"[RECONCILER] Failed to flip {symbol}: {e}")
+
+    if orphans_found:
+        lines = "\n".join(
+            f"  {sym}: {qty:.6f} units (~${usd:.2f})"
+            for sym, qty, usd in orphans_found
+        )
+        try:
+            notifier.send_message(
+                f"🔧 <b>Orphan reconciler</b>\n"
+                f"Detected {len(orphans_found)} TF bot(s) with residual "
+                f"holdings after deallocate. Re-activating for liquidation:\n"
+                f"{lines}"
+            )
+        except Exception as e:
+            logger.warning(f"[RECONCILER] Telegram alert failed: {e}")
+    if not orphans_found and not orphans_skipped_dust:
+        logger.info("[RECONCILER] No TF orphans detected.")
+    elif not orphans_found:
+        logger.info(
+            f"[RECONCILER] {len(orphans_skipped_dust)} sub-min_notional "
+            f"residual(s) skipped, no actionable orphan."
+        )
+
+
 def run_orchestrator():
     logging.basicConfig(
         level=logging.INFO,
@@ -132,6 +246,20 @@ def run_orchestrator():
     logger.info("=" * 50)
     logger.info("BagHolderAI Orchestrator starting...")
     logger.info("=" * 50)
+
+    # 45: orphan-lot reconciler. Run once at boot to recover any TF bot
+    # that was deallocated while still holding sellable coin (typically
+    # because a liquidation sell's INSERT timed out on Supabase). Flips
+    # is_active=True + pending_liquidation=True so the standard spawn +
+    # BEARISH-EXIT flow liquidates them at the next poll iteration. No
+    # price-check here — the grid_bot dust-handling logic will close
+    # out sub-min_notional residuals cleanly at first tick.
+    try:
+        _reconcile_orphan_tf_bots(supabase, notifier)
+    except Exception as e:
+        logger.error(f"Orphan reconciler failed at boot: {e}", exc_info=True)
+        # Not fatal — carry on; the orphans just stay parked until a
+        # future boot retries.
 
     first_run = True
     # 44a: timestamp of the last "🚨 Orchestrator error" Telegram. 0 means
