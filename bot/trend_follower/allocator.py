@@ -164,6 +164,43 @@ def _rescan_active_if_missing(
     return augmented
 
 
+# 45b: post-greed-decay salvage threshold.
+# On TF ALLOCATE, sell_pct is NOT ATR-derived any more — it's computed
+# deterministically from greed_decay_tiers so it fits the "less greedy
+# over time" philosophy. See _compute_sell_pct_salvage below and the
+# callsite in decide_allocations.
+SALVAGE_DELTA_PCT = 0.5
+SALVAGE_FLOOR_PCT = 0.3
+
+
+def _compute_sell_pct_salvage(greed_decay_tiers) -> float:
+    """
+    45b: deterministic post-greed-decay salvage for TF bots.
+    Returns max(last_tier_tp_pct - SALVAGE_DELTA_PCT, SALVAGE_FLOOR_PCT).
+
+    "Last tier" = tier with the highest `minutes` value (sorted
+    ascending, last wins). On malformed/empty tiers, returns the floor
+    so the salvage is always positive and grid_bot never gets a
+    nonsensical sell threshold.
+    """
+    try:
+        tiers = sorted(
+            (t for t in (greed_decay_tiers or [])
+             if isinstance(t, dict)
+             and "minutes" in t and "tp_pct" in t),
+            key=lambda t: float(t["minutes"]),
+        )
+    except Exception:
+        return SALVAGE_FLOOR_PCT
+    if not tiers:
+        return SALVAGE_FLOOR_PCT
+    try:
+        last_tp = float(tiers[-1]["tp_pct"])
+    except Exception:
+        return SALVAGE_FLOOR_PCT
+    return round(max(last_tp - SALVAGE_DELTA_PCT, SALVAGE_FLOOR_PCT), 2)
+
+
 def _adaptive_steps(coin: dict, signal: str) -> tuple[float, float]:
     """
     Returns (buy_pct, sell_pct) scaled by coin volatility (ATR / price).
@@ -172,6 +209,10 @@ def _adaptive_steps(coin: dict, signal: str) -> tuple[float, float]:
     CEO decision 36e v2: k_sell > k_buy means we hold positions longer
     before realizing (catch more of the BULLISH trend) and enter dips
     more aggressively (shorter retracement needed to buy).
+
+    45b: the sell_pct output is NO LONGER USED for TF allocations — the
+    caller (decide_allocations) discards it and writes the value from
+    _compute_sell_pct_salvage instead. buy_pct remains ATR-adaptive.
     """
     atr = coin.get("atr", 0) or 0
     price = coin.get("price", 0) or 0
@@ -675,7 +716,11 @@ def apply_allocations(
                 "atr": d.get("atr", 0),
                 "price": snapshot.get("price", 0),
             })
-            buy_pct, sell_pct = _adaptive_steps(coin, signal)
+            buy_pct, _atr_sell_pct = _adaptive_steps(coin, signal)
+            # 45b: sell_pct is NOT ATR-derived — it's the post-greed-decay
+            # salvage threshold (see _compute_sell_pct_salvage). The ATR
+            # value is intentionally discarded.
+            sell_pct = _compute_sell_pct_salvage(config.get("greed_decay_tiers"))
 
             # capital_per_trade: 1/tf_lots_per_coin of allocation, capped at
             # tf_capital_per_trade_cap_usd, floor $6 (> Binance min_notional $5).
