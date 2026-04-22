@@ -53,6 +53,31 @@ def _hours_since(ts) -> float:
         return float("inf")
 
 
+def _is_in_sl_cooldown(supabase, symbol: str, cooldown_hours: float) -> tuple[bool, float]:
+    """
+    45a v2: post-stop-loss cooldown check.
+    Returns (in_cooldown, hours_since_sl). Fail-open: on query error or
+    missing data, returns (False, 0.0) so allocation proceeds — a transient
+    DB hiccup must not block the TF.
+    """
+    if cooldown_hours <= 0 or supabase is None:
+        return False, 0.0
+    try:
+        res = supabase.table("bot_config").select(
+            "last_stop_loss_at"
+        ).eq("symbol", symbol).maybe_single().execute()
+        if not res or not res.data:
+            return False, 0.0
+        sl_ts = res.data.get("last_stop_loss_at")
+        if not sl_ts:
+            return False, 0.0
+        hours_since = _hours_since(sl_ts)
+        return hours_since < cooldown_hours, hours_since
+    except Exception as e:
+        logger.warning(f"[ALLOCATOR] SL cooldown check failed for {symbol}: {e}")
+        return False, 0.0
+
+
 def _fetch_unrealized_pnl(supabase, symbol: str, current_price: float) -> float:
     """
     Compute unrealized PnL for a TF-managed symbol:
@@ -206,6 +231,8 @@ def decide_allocations(
     """
     scan_ts = datetime.now(timezone.utc).isoformat()
     max_grids = config.get("tf_max_coins") or config.get("max_active_grids", 5)
+    # 45a v2: post-stop-loss cooldown (hours). 0 = disabled, edit from /tf admin UI.
+    sl_cooldown_hours = float(config.get("tf_stop_loss_cooldown_hours") or 0)
     decisions = []
 
     # Current state
@@ -264,10 +291,35 @@ def decide_allocations(
     # budget is virtually returned to `unallocated` so the downstream bullish
     # allocation loop can hand it to the replacement candidate in the same scan.
     swapped_out: set[str] = set()
-    best_new = next(
-        (c for c in bullish if c["symbol"] not in active_symbols),
-        None,
-    )
+    # 45a v2: pick the strongest bullish candidate that isn't already active
+    # AND isn't in SL cooldown. A just-stop-hunted coin is a bad swap target
+    # regardless of signal strength. Log each cooldown-skip so the TF decision
+    # trail in bot_events_log stays self-explanatory.
+    best_new = None
+    for c in bullish:
+        if c["symbol"] in active_symbols:
+            continue
+        in_cd, hrs = _is_in_sl_cooldown(supabase, c["symbol"], sl_cooldown_hours)
+        if in_cd:
+            logger.info(
+                f"[ALLOCATOR] SWAP candidate {c['symbol']} skipped: "
+                f"SL cooldown ({hrs:.1f}h < {sl_cooldown_hours}h)"
+            )
+            log_event(
+                severity="info",
+                category="tf",
+                event="sl_cooldown_skip",
+                symbol=c["symbol"],
+                message=f"SWAP candidate skipped: {hrs:.1f}h since SL (cooldown {sl_cooldown_hours}h)",
+                details={
+                    "hours_since": hrs,
+                    "cooldown_hours": sl_cooldown_hours,
+                    "path": "SWAP",
+                },
+            )
+            continue
+        best_new = c
+        break
     if best_new is not None:
         for alloc, active_coin in surviving_active:
             sym = alloc["symbol"]
@@ -369,6 +421,33 @@ def decide_allocations(
             decisions.append(_make_decision(
                 scan_ts, coin["symbol"], coin, "SKIP",
                 f"Max active grids reached ({max_grids})",
+            ))
+            continue
+
+        # 45a v2: SL cooldown gate — skip coins stopped-out within N hours.
+        in_cooldown, hours_since = _is_in_sl_cooldown(
+            supabase, coin["symbol"], sl_cooldown_hours
+        )
+        if in_cooldown:
+            reason = (
+                f"SL cooldown: {hours_since:.1f}h since last stop-loss "
+                f"(need {sl_cooldown_hours}h)"
+            )
+            logger.info(f"[ALLOCATOR] SKIP {coin['symbol']}: {reason}")
+            log_event(
+                severity="info",
+                category="tf",
+                event="sl_cooldown_skip",
+                symbol=coin["symbol"],
+                message=reason,
+                details={
+                    "hours_since": hours_since,
+                    "cooldown_hours": sl_cooldown_hours,
+                    "path": "ALLOCATE",
+                },
+            )
+            decisions.append(_make_decision(
+                scan_ts, coin["symbol"], coin, "SKIP", reason,
             ))
             continue
 

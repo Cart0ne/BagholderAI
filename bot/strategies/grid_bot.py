@@ -795,6 +795,18 @@ class GridBot:
                     f"Liquidating all {len(self._pct_open_positions)} lots."
                 )
                 self._stop_loss_triggered = True
+                # 45a v2: record SL timestamp in bot_config for the TF cooldown.
+                # Always written (even when cooldown is disabled / 0h) so the
+                # history is available if Max later raises the value.
+                if self.trade_logger is not None:
+                    try:
+                        self.trade_logger.client.table("bot_config").update(
+                            {"last_stop_loss_at": datetime.now(timezone.utc).isoformat()}
+                        ).eq("symbol", self.symbol).execute()
+                    except Exception as e:
+                        logger.error(
+                            f"[{self.symbol}] Failed to write last_stop_loss_at: {e}"
+                        )
                 log_event(
                     severity="warn",
                     category="safety",

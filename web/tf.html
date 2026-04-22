@@ -431,6 +431,7 @@
     // Order: stop-loss + take-profit together (the exit pair), scan cadence last.
     var TF_SAFETY_FIELDS = [
       { key: 'tf_stop_loss_pct', label: 'TF stop-loss %', sub: 'TF bots force-sell when unrealized loss exceeds this % of allocation. Applies only to TF-managed bots, never to manual.' },
+      { key: 'tf_stop_loss_cooldown_hours', label: 'SL cooldown (ore)', sub: '45a: ore minime tra uno stop-loss e la riallocazione della stessa coin (anche come swap target). 0 = disattivato (TF può riallocare subito). Applicata solo ai candidati TF.' },
       { key: 'tf_take_profit_pct', label: 'TF take-profit %', sub: 'Takes profit on the full position when unrealized P&L exceeds this % of capital_allocation. Only applies to TF-managed bots. Set 0 to disable.' },
       { key: 'tf_initial_lots', label: 'Initial lots on entry', sub: '42a: number of market-buy lots fired immediately on the first cycle after ALLOCATE. 0 disables multi-lot entry; TF then waits for normal grid dips. Recommended 1-4.' },
       { key: 'min_allocate_strength', label: 'Min ALLOCATE strength', sub: '44c: candidates with signal_strength below this value are SKIPped. Prevents "desperate ALLOCATE" when the bullish pool is weak. Default 15.0; set 0 to disable the gate.' },
@@ -569,7 +570,7 @@
     async function loadAll() {
       // 1. Load trend_config first (needed to know tf_budget, tf_max_coins, dry_run)
       try {
-        var tc = await sbGet('trend_config', 'select=id,dry_run,tf_budget,tf_max_coins,tf_stop_loss_pct,tf_take_profit_pct,tf_initial_lots,min_allocate_strength,greed_decay_tiers,scan_interval_hours&limit=1');
+        var tc = await sbGet('trend_config', 'select=id,dry_run,tf_budget,tf_max_coins,tf_stop_loss_pct,tf_stop_loss_cooldown_hours,tf_take_profit_pct,tf_initial_lots,min_allocate_strength,greed_decay_tiers,scan_interval_hours&limit=1');
         if (tc && tc.length) {
           TF_CONFIG_ROW = tc[0];
           TF_BUDGET = Number(tc[0].tf_budget) || 100;
