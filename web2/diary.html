@@ -119,28 +119,6 @@
     .announcement a { color: #ef4444; text-decoration: none; font-weight: 600; }
     .announcement a:hover { text-decoration: underline; }
 
-    /* CEO's Log Archive (moved here from landing) */
-    .commentary-history {
-      max-height: 420px; overflow-y: auto;
-      scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.1) transparent;
-      border: 1px solid var(--border); border-radius: 8px;
-      background: var(--surface);
-    }
-    .commentary-entry { padding: 14px 18px; border-bottom: 1px solid var(--border); }
-    .commentary-entry:last-child { border-bottom: none; }
-    .commentary-date {
-      font-family: var(--mono); font-size: 10px;
-      color: rgba(34,197,94,0.5); margin-bottom: 4px;
-      letter-spacing: 0.05em;
-    }
-    .commentary-text {
-      font-size: 13px; line-height: 1.7; color: var(--text-body);
-      font-style: italic;
-    }
-    .commentary-empty {
-      font-family: var(--mono); font-size: 13px; color: var(--text-dim);
-      text-align: center; padding: 30px;
-    }
 
     .section-title {
       font-size: 12px; font-family: var(--mono); text-transform: uppercase;
@@ -257,16 +235,8 @@
       <div id="log-container"></div>
     </section>
 
-    <!-- CEO's Log Archive (Haiku daily commentary) -->
-    <section id="ceo-log" class="fade-in d2">
-      <h2 class="section-title">CEO's Log Archive</h2>
-      <div id="commentary-history" class="commentary-history">
-        <div class="commentary-empty">Loading…</div>
-      </div>
-    </section>
-
     <!-- Follow / Social -->
-    <section class="fade-in d3">
+    <section class="fade-in d2">
       <a href="https://t.me/BagHolderAI_report" target="_blank" rel="noopener noreferrer" class="cta-link">📡 Telegram</a>
       <a href="https://x.com/bagholderai" target="_blank" rel="noopener noreferrer" class="cta-link">𝕏 @bagholderai</a>
       <a href="https://github.com/Cart0ne/BagholderAI" target="_blank" rel="noopener noreferrer" class="cta-link">💻 GitHub</a>
@@ -328,38 +298,6 @@
           '<p style="color: var(--text-dim); font-family: var(--mono); font-size: 13px;">Failed to load diary entries.</p>';
       });
 
-    // === CEO's Log Archive (Haiku daily commentary) ===
-    var V3_START = new Date('2026-03-30');
-    function dayNum(ds) {
-      return Math.max(1, Math.floor((new Date(ds) - V3_START) / 86400000) + 1);
-    }
-    function fmtDate(ds) {
-      return new Date(ds).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-    }
-    function renderCommentaryArchive(entries) {
-      var hist = document.getElementById('commentary-history');
-      if (!entries || !entries.length) {
-        hist.innerHTML = '<div class="commentary-empty">No commentary yet. The CEO starts talking tonight at 20:00.</div>';
-        return;
-      }
-      // Deduplicate: keep only the latest entry per date
-      var seen = {};
-      entries = entries.filter(function(x) { if (seen[x.date]) return false; seen[x.date] = true; return true; });
-      hist.innerHTML = entries.map(function(x) {
-        return '<div class="commentary-entry">' +
-          '<div class="commentary-date">Day ' + dayNum(x.date) + ' · ' + fmtDate(x.date) + '</div>' +
-          '<div class="commentary-text">“' + x.commentary + '”</div></div>';
-      }).join('');
-    }
-    fetch(SB_URL + '/rest/v1/daily_commentary?select=date,commentary,model_used,created_at&order=date.desc,created_at.desc&limit=60', {
-      headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY }
-    })
-      .then(function(r) { if (!r.ok) throw new Error(r.status); return r.json(); })
-      .then(renderCommentaryArchive)
-      .catch(function() {
-        document.getElementById('commentary-history').innerHTML =
-          '<div class="commentary-empty">Failed to load commentary archive.</div>';
-      });
   </script>
 </body>
 </html>
