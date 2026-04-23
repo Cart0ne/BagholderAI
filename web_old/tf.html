@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>BagHolderAI — Admin</title>
+  <title>BagHolderAI — TF Control</title>
   <meta name="robots" content="noindex, nofollow">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔒</text></svg>">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧠</text></svg>">
   <style>
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -48,7 +48,7 @@
     }
 
     .container {
-      max-width: 880px;
+      max-width: 720px;
       margin: 0 auto;
       padding: 20px 16px 80px;
       position: relative;
@@ -126,6 +126,33 @@
       background: var(--surface); border: 1px solid var(--border);
       border-radius: 8px; padding: 16px; margin-bottom: 10px;
     }
+    .coin-card-inactive { opacity: 0.65; }
+
+    /* Compact row for deallocated coins (39a) — one-liner with P&L */
+    .inactive-section-label {
+      font-family: var(--mono); font-size: 10px; color: var(--text-dim);
+      text-transform: uppercase; letter-spacing: 0.05em;
+      margin: 16px 0 8px; padding-left: 4px;
+    }
+    .inactive-section-sub {
+      font-family: var(--mono); font-size: 11px; color: var(--text-dim);
+      margin: -4px 0 10px; padding-left: 4px; letter-spacing: 0.02em;
+    }
+    .inactive-row {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 6px; padding: 10px 14px; margin-bottom: 6px;
+      display: flex; align-items: center; gap: 12px; opacity: 0.7;
+    }
+    .inactive-row .ir-name { font-weight: 700; font-size: 14px; min-width: 64px; }
+    .inactive-row .ir-status {
+      font-family: var(--mono); font-size: 10px;
+      background: rgba(239,68,68,0.15); color: var(--red);
+      padding: 2px 8px; border-radius: 10px;
+    }
+    .inactive-row .ir-spacer { flex: 1; }
+    .inactive-row .ir-label { font-family: var(--mono); font-size: 10px; color: var(--text-dim); }
+    .inactive-row .ir-date { font-family: var(--mono); font-size: 11px; color: var(--text-dim); margin-left: 4px; }
+    .inactive-row .ir-pnl { font-family: var(--mono); font-size: 13px; font-weight: 600; }
     .coin-header {
       display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;
     }
@@ -246,6 +273,15 @@
     .param-group-label.pct-label { color: var(--teal); }
     .param-group-label.safety-label { color: var(--yellow); }
 
+    /* TF safety grid: sublabels have different heights, so align inputs
+       by their top edge and let labels stretch. Each field column is a
+       flex column with the input anchored to the bottom. */
+    .tf-safety-grid .config-field {
+      display: flex; flex-direction: column;
+    }
+    .tf-safety-grid .config-field label { flex: 1; }
+    .tf-safety-grid .config-field input { margin-top: auto; }
+
     /* Fixed grid fields: dim when pct mode is active */
     .fixed-grid-fields { transition: opacity 0.3s; }
     .fixed-grid-fields.dimmed { opacity: 0.3; pointer-events: none; }
@@ -271,7 +307,7 @@
       text-transform: uppercase; transition: color 0.2s;
     }
     .navbar a:hover { color: var(--green); }
-    .navbar a.active { color: var(--red); }
+    .navbar a.active { color: var(--green); }
 
     /* Footer */
     footer {
@@ -287,8 +323,8 @@
 
     <!-- Auth Gate -->
     <div id="auth-gate">
-      <div class="lock">🔒</div>
-      <div style="font-family: var(--mono); font-size: 12px; color: var(--text-dim);">BAGHOLDER<span style="color: var(--red);">AI</span> ADMIN</div>
+      <div class="lock">🧠</div>
+      <div style="font-family: var(--mono); font-size: 12px; color: var(--text-dim);">BAGHOLDER<span style="color: var(--green);">AI</span> TF CONTROL</div>
       <input type="password" id="pw-input" placeholder="password" autocomplete="off">
       <div class="err" id="pw-err"></div>
       <button id="pw-btn">Unlock</button>
@@ -300,16 +336,16 @@
       <!-- Navbar -->
       <nav class="navbar">
         <a href="/">← Home</a>
-        <a class="active" href="/admin">Admin</a>
-        <a href="/tf">TF Control</a>
+        <a href="/admin">Admin</a>
+        <a class="active" href="/tf">TF Control</a>
       </nav>
 
       <!-- Header -->
       <div class="top-bar">
-        <span><span class="dot">●</span> ADMIN — private</span>
+        <span><span class="dot" id="tf-mode-dot">●</span> <span id="tf-mode-label">TF — private</span></span>
         <span id="last-update"></span>
       </div>
-      <h1>🎒 BagHolder<span class="ai">AI</span> <span class="admin">ADMIN</span></h1>
+      <h1>🧠 BagHolder<span class="ai">AI</span> <span class="admin" style="color:var(--green);">TF</span></h1>
 
       <!-- Alerts -->
       <div id="alerts" style="margin-top: 16px;"></div>
@@ -323,6 +359,43 @@
       <!-- Per-Coin Status -->
       <div class="section-title">Grid status per coin</div>
       <div id="coin-cards"></div>
+
+      <!-- TF Safety parameters (39b: edit trend_config from UI) -->
+      <div class="section-title">TF safety parameters</div>
+      <div class="card" id="tf-safety-card">
+        <div class="param-group-label safety-label">⚠️ TF Safety parameters</div>
+        <div class="config-grid tf-safety-grid" id="tf-safety-grid"></div>
+        <div class="save-row">
+          <button class="btn-save" id="tf-safety-save" onclick="saveTfSafety()" disabled>Save TF params</button>
+          <span class="save-status" id="tf-safety-status"></span>
+        </div>
+      </div>
+
+      <!-- 42a: Greed decay tiers editor -->
+      <div class="section-title">Greed decay tiers</div>
+      <div class="card" id="greed-decay-card">
+        <div class="param-group-label safety-label">⏳ Greed decay tiers</div>
+        <small style="display:block;color:var(--text-dim);font-size:10px;margin-bottom:8px;line-height:1.4;">
+          Per-tier take-profit: "after this many minutes since ALLOCATE, sell lots at this % above buy price". Lower tp_pct forces earlier exits the longer a TF coin is held. Applies only to TF bots. Tiers must be sorted by minutes ascending.
+        </small>
+        <table id="greed-decay-table" style="width:100%;font-family:var(--mono);font-size:11px;border-collapse:collapse;">
+          <thead>
+            <tr>
+              <th style="text-align:left;padding:4px;color:var(--text-dim);">After (min)</th>
+              <th style="text-align:left;padding:4px;color:var(--text-dim);">TP %</th>
+              <th style="width:30px;"></th>
+            </tr>
+          </thead>
+          <tbody id="greed-decay-rows"></tbody>
+        </table>
+        <div style="margin-top:8px;">
+          <button class="btn-save" id="greed-decay-add" onclick="addGreedTier()" style="background:var(--bg-alt);color:var(--text);border:1px solid var(--text-dim);">+ Add tier</button>
+        </div>
+        <div class="save-row">
+          <button class="btn-save" id="greed-decay-save" onclick="saveGreedDecay()" disabled>Save greed decay tiers</button>
+          <span class="save-status" id="greed-decay-status"></span>
+        </div>
+      </div>
 
       <!-- Recent Trades -->
       <div class="section-title">Recent trades</div>
@@ -347,10 +420,34 @@
     var SB_URL = 'https://pxdhtmqfwjwjhtcoacsn.supabase.co';
     var SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB4ZGh0bXFmd2p3amh0Y29hY3NuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4NDI1OTIsImV4cCI6MjA4OTQxODU5Mn0.G76lvYWrqlM0z2RoSkU1uAglfMBKN_rXvBGOQhb4kdg';
     var ADMIN_HASH = '8a308134250d16e95b79019171e5cb37ed436a14e2800f22b98e0fa20ac6f9eb'; // sha256 of 'password' — CHANGE THIS
-    var COLORS = { 'BTC/USDT': '#378ADD', 'SOL/USDT': '#5DCAA5', 'BONK/USDT': '#EF9F27' };
-    var SHORT = { 'BTC/USDT': 'BTC', 'SOL/USDT': 'SOL', 'BONK/USDT': 'BONK' };
-    // Decimal precision per coin to surface sub-step dust without rounding it away
-    var DUST_DECIMALS = { 'BTC/USDT': 8, 'SOL/USDT': 6, 'BONK/USDT': 6 };
+    // Dynamic maps: TF-managed coins change over time. Built from configData at load.
+    var COLORS = {};
+    var SHORT = {};
+    var DUST_DECIMALS = {};
+    var TF_PALETTE = ['#22c55e', '#f97316', '#ec4899', '#8b5cf6', '#06b6d4', '#f43f5e', '#3b82f6', '#eab308'];
+    var TF_BUDGET = 100;       // overridden from trend_config.tf_budget at load
+    var TF_MAX_COINS = 3;      // 45c: derived (1 slot × 3 volume tiers). Overridden from trend_config.tf_max_coins at load.
+    var TF_DRY_RUN = true;     // overridden from trend_config.dry_run at load
+    // 39b: full trend_config row for the safety-params editor (id required for PATCH)
+    var TF_CONFIG_ROW = null;
+    // Fields rendered in the ⚠️ TF Safety parameters section.
+    // Order: stop-loss + take-profit together (the exit pair), scan cadence last.
+    var TF_SAFETY_FIELDS = [
+      { key: 'tf_stop_loss_pct', label: 'TF stop-loss %', sub: 'TF bots force-sell when unrealized loss exceeds this % of allocation. Applies only to TF-managed bots, never to manual.' },
+      { key: 'tf_stop_loss_cooldown_hours', label: 'SL cooldown (ore)', sub: '45a: ore minime tra uno stop-loss e la riallocazione della stessa coin (anche come swap target). 0 = disattivato (TF può riallocare subito). Applicata solo ai candidati TF.' },
+      { key: 'tf_take_profit_pct', label: 'TF take-profit %', sub: 'Takes profit on the full position when unrealized P&L exceeds this % of capital_allocation. Only applies to TF-managed bots. Set 0 to disable.' },
+      { key: 'tf_initial_lots', label: 'Initial lots on entry', sub: '42a: number of market-buy lots fired immediately on the first cycle after ALLOCATE. 0 disables multi-lot entry; TF then waits for normal grid dips. Recommended 1-4.' },
+      { key: 'min_allocate_strength', label: 'Min ALLOCATE strength', sub: '44c: candidates with signal_strength below this value are SKIPped. Prevents "desperate ALLOCATE" when the bullish pool is weak. Default 15.0; set 0 to disable the gate.' },
+      { key: 'scan_interval_hours', label: 'Scan interval (hours)', sub: 'How often the TF evaluates rotation opportunities. Lower = faster reaction to bearish signals but more API calls.' },
+      { key: 'tf_tier1_min_volume', label: 'Tier 1 min volume ($)', sub: '45c: coins with 24h quoteVolume ≥ this are Tier 1 (blue chip). Default $100M. Scanner + allocator both read this.' },
+      { key: 'tf_tier2_min_volume', label: 'Tier 2 min volume ($)', sub: '45c: ≥ this = Tier 2 (mid cap); below = Tier 3 (small cap). Default $20M.' },
+      { key: 'tf_tier1_weight', label: 'Tier 1 weight (%)', sub: '45c: % of TF budget allocated to Tier 1 slot. Default 40. Weights normalized if they don\'t sum to 100.' },
+      { key: 'tf_tier2_weight', label: 'Tier 2 weight (%)', sub: '45c: % of TF budget for Tier 2. Default 35.' },
+      { key: 'tf_tier3_weight', label: 'Tier 3 weight (%)', sub: '45c: % of TF budget for Tier 3. Default 25. Orphan budget flows to the safer tier that has a candidate. T3 exposure capped at this weight.' },
+      { key: 'tf_tier1_lots', label: 'Tier 1 lots', sub: '45c: number of lots T1 allocations split into. More lots = smoother entry. Default 4. initial_lots = lots − 1 (1 lot in reserve for dips).' },
+      { key: 'tf_tier2_lots', label: 'Tier 2 lots', sub: '45c: number of lots for T2 allocations. Default 3. initial_lots = lots − 1.' },
+      { key: 'tf_tier3_lots', label: 'Tier 3 lots', sub: '45c: number of lots for T3 allocations. Default 2. T3 fires ALL lots at entry (no reserve) because illiquid coins don\'t give second chances on dips.' }
+    ];
 
     // === AUTH ===
     async function sha256(msg) {
@@ -415,8 +512,8 @@
         return r.json();
       }).then(function(rows) {
         // 39i: PostgREST returns 200 + [] when RLS silently blocks the
-        // update. Without this guard the UI shows "Saved ✓" while the
-        // DB never changed.
+        // update (row matches filter but mutation denied). Without this
+        // guard the UI shows "Saved ✓" while the DB never changed.
         if (!Array.isArray(rows) || rows.length === 0) {
           throw new Error('no rows updated (RLS policy?)');
         }
@@ -453,10 +550,12 @@
     var skimBySymbol = {};  // symbol -> total skim amount
     var livePrices = {};  // symbol -> price
 
-    async function fetchLivePrices() {
+    async function fetchLivePrices(symbols) {
+      if (!symbols || symbols.length === 0) return;
       try {
-        var symbols = ['BTCUSDT', 'SOLUSDT', 'BONKUSDT'];
-        var res = await fetch('https://api.binance.com/api/v3/ticker/price?symbols=' + encodeURIComponent(JSON.stringify(symbols)));
+        // Build Binance-style symbol list: BTC/USDT -> BTCUSDT
+        var bnSymbols = symbols.map(function(s) { return s.replace('/', ''); });
+        var res = await fetch('https://api.binance.com/api/v3/ticker/price?symbols=' + encodeURIComponent(JSON.stringify(bnSymbols)));
         var data = await res.json();
         data.forEach(function(t) {
           // Convert BTCUSDT → BTC/USDT
@@ -468,14 +567,37 @@
       }
     }
 
+    function buildMaps(rows) {
+      COLORS = {}; SHORT = {}; DUST_DECIMALS = {};
+      rows.forEach(function(cfg, i) {
+        var sym = cfg.symbol;
+        COLORS[sym] = TF_PALETTE[i % TF_PALETTE.length];
+        SHORT[sym] = sym.split('/')[0];
+        // Default 6 decimals; bump to 8 for very-low-price coins so dust is visible
+        DUST_DECIMALS[sym] = 6;
+      });
+    }
+
     async function loadAll() {
-      // Admin shows only manually-managed bots. TF-managed bots live in /tf.html.
+      // 1. Load trend_config first (needed to know tf_budget, tf_max_coins, dry_run)
+      try {
+        var tc = await sbGet('trend_config', 'select=id,dry_run,tf_budget,tf_max_coins,tf_stop_loss_pct,tf_stop_loss_cooldown_hours,tf_take_profit_pct,tf_initial_lots,min_allocate_strength,greed_decay_tiers,scan_interval_hours,tf_tier1_min_volume,tf_tier2_min_volume,tf_tier1_weight,tf_tier2_weight,tf_tier3_weight,tf_tier1_lots,tf_tier2_lots,tf_tier3_lots&limit=1');
+        if (tc && tc.length) {
+          TF_CONFIG_ROW = tc[0];
+          TF_BUDGET = Number(tc[0].tf_budget) || 100;
+          TF_MAX_COINS = Number(tc[0].tf_max_coins) || 2;
+          TF_DRY_RUN = !!tc[0].dry_run;
+        }
+      } catch (e) {
+        console.warn('trend_config unreachable:', e);
+      }
+
+      // 2. Load the TF-only slice of state
       var settled = await Promise.allSettled([
-        sbGet('bot_config', 'managed_by=neq.trend_follower&order=symbol'),
-        sbGet('trades', 'select=symbol,side,amount,price,cost,fee,realized_pnl,created_at&config_version=eq.v3&managed_by=neq.trend_follower&order=created_at.desc'),
+        sbGet('bot_config', 'managed_by=eq.trend_follower&order=symbol'),
+        sbGet('trades', 'select=symbol,side,amount,price,cost,fee,realized_pnl,created_at&config_version=eq.v3&managed_by=eq.trend_follower&order=created_at.desc'),
         sbGet('daily_pnl', 'order=date.desc&limit=10'),
-        sbGet('reserve_ledger', 'select=symbol,amount&config_version=eq.v3'),
-        fetchLivePrices()
+        sbGet('reserve_ledger', 'select=symbol,amount&config_version=eq.v3')
       ]);
 
       var failed = settled.filter(function(r) { return r.status === 'rejected'; });
@@ -492,19 +614,41 @@
       tradesData = settled[1].value;
       pnlData = settled[2].value;
       var skimRows = settled[3].value;
-      // Restrict skim to the symbols shown here (manual bots) so TF skim
-      // doesn't leak into the admin reserve total.
-      var adminSymSet = {};
-      configData.forEach(function(c) { adminSymSet[c.symbol] = true; });
-      var adminSkim = skimRows.filter(function(r) { return adminSymSet[r.symbol]; });
-      skimReserveTotal = adminSkim.reduce(function(s, r) { return s + Number(r.amount || 0); }, 0);
+
+      // Build dynamic color/short/decimals maps for the current TF-managed set
+      buildMaps(configData);
+
+      // Fetch live prices only for the coins TF actually owns
+      var tfSymbols = configData.map(function(c) { return c.symbol; });
+      await fetchLivePrices(tfSymbols);
+
+      // Filter reserve_ledger to TF symbols only
+      var tfSet = {};
+      configData.forEach(function(c) { tfSet[c.symbol] = true; });
+      var filteredSkim = skimRows.filter(function(r) { return tfSet[r.symbol]; });
+      skimReserveTotal = filteredSkim.reduce(function(s, r) { return s + Number(r.amount || 0); }, 0);
       skimBySymbol = {};
-      adminSkim.forEach(function(r) {
+      filteredSkim.forEach(function(r) {
         if (r.symbol) skimBySymbol[r.symbol] = (skimBySymbol[r.symbol] || 0) + Number(r.amount || 0);
       });
+
       totalRealizedAll = tradesData
         .filter(function(t) { return t.side === 'sell'; })
         .reduce(function(s, r) { return s + Number(r.realized_pnl || 0); }, 0);
+
+      // Update mode indicator (LIVE green / SHADOW yellow)
+      var modeDot = document.getElementById('tf-mode-dot');
+      var modeLabel = document.getElementById('tf-mode-label');
+      if (modeDot && modeLabel) {
+        if (TF_DRY_RUN) {
+          modeDot.style.color = 'var(--yellow)';
+          modeLabel.textContent = 'SHADOW — dry run';
+        } else {
+          modeDot.style.color = 'var(--green)';
+          modeLabel.textContent = 'LIVE — writing to bot_config';
+        }
+      }
+
       render();
       document.getElementById('refresh-time').textContent = new Date().toLocaleTimeString();
       document.getElementById('refresh-status').textContent = 'auto every 5m';
@@ -517,21 +661,295 @@
       renderOverview();
       renderCoinCards();
       renderTrades();
+      renderTfSafety();
+      renderGreedDecay();
+    }
+
+    function renderTfSafety() {
+      var grid = document.getElementById('tf-safety-grid');
+      var btn = document.getElementById('tf-safety-save');
+      var status = document.getElementById('tf-safety-status');
+      if (!grid || !btn) return;
+      if (!TF_CONFIG_ROW) {
+        grid.innerHTML = '<div style="color:var(--text-dim);font-family:var(--mono);font-size:11px;grid-column:1/-1;">trend_config unavailable — refresh to retry.</div>';
+        btn.disabled = true;
+        return;
+      }
+      grid.innerHTML = TF_SAFETY_FIELDS.map(function(f) {
+        var val = TF_CONFIG_ROW[f.key];
+        var sub = f.sub ? '<small style="display:block;color:var(--text-dim);font-size:9px;margin-top:2px;line-height:1.3;">' + f.sub + '</small>' : '';
+        return '<div class="config-field">' +
+          '<label>' + f.label + sub + '</label>' +
+          '<input type="text" inputmode="decimal" id="tfs-' + f.key + '" value="' + (val != null ? val : '') + '">' +
+        '</div>';
+      }).join('');
+      if (status) status.textContent = '';
+      TF_SAFETY_FIELDS.forEach(function(f) {
+        var input = document.getElementById('tfs-' + f.key);
+        if (!input) return;
+        input.dataset.original = input.value;
+        input.addEventListener('input', function() {
+          var changed = this.value !== this.dataset.original;
+          this.classList.toggle('changed', changed);
+          checkTfSafetyChanges();
+        });
+      });
+      btn.disabled = true;
+    }
+
+    function checkTfSafetyChanges() {
+      var hasChanges = TF_SAFETY_FIELDS.some(function(f) {
+        var input = document.getElementById('tfs-' + f.key);
+        return input && input.value !== input.dataset.original;
+      });
+      var btn = document.getElementById('tf-safety-save');
+      if (btn) btn.disabled = !hasChanges;
+    }
+
+    async function saveTfSafety() {
+      var btn = document.getElementById('tf-safety-save');
+      var status = document.getElementById('tf-safety-status');
+      if (!TF_CONFIG_ROW || !TF_CONFIG_ROW.id) {
+        if (status) { status.textContent = 'No trend_config row loaded'; status.style.color = 'var(--red)'; }
+        return;
+      }
+      btn.disabled = true;
+      status.textContent = 'Saving...';
+      status.style.color = 'var(--yellow)';
+
+      var data = {};
+      var changes = [];
+      var invalidField = null;
+      TF_SAFETY_FIELDS.forEach(function(f) {
+        if (invalidField) return;
+        var input = document.getElementById('tfs-' + f.key);
+        if (!input) return;
+        var rawVal = input.value;
+        var normVal = typeof rawVal === 'string' ? rawVal.replace(',', '.') : rawVal;
+        var newVal = parseFloat(normVal);
+        if (isNaN(newVal)) { invalidField = f.key; return; }
+        data[f.key] = newVal;
+        if (input.value !== input.dataset.original) {
+          // symbol stays null for global trend_config changes — matches how other
+          // global config edits are logged.
+          changes.push({ symbol: null, parameter: f.key, old_value: input.dataset.original, new_value: normVal, changed_by: 'manual-ceo' });
+        }
+      });
+
+      if (invalidField) {
+        status.textContent = 'Invalid number in ' + invalidField;
+        status.style.color = 'var(--red)';
+        btn.disabled = false;
+        return;
+      }
+
+      try {
+        await sbPatch('trend_config', 'id', TF_CONFIG_ROW.id, data);
+
+        var auditOk = true;
+        if (changes.length > 0) {
+          try {
+            await Promise.all(changes.map(function(c) { return sbInsert('config_changes_log', c); }));
+          } catch (logErr) {
+            console.warn('config_changes_log write failed:', logErr);
+            auditOk = false;
+          }
+        }
+
+        status.textContent = auditOk ? 'Saved ✓' : 'Saved (audit log failed)';
+        status.style.color = auditOk ? 'var(--green)' : 'var(--yellow)';
+        TF_SAFETY_FIELDS.forEach(function(f) {
+          var input = document.getElementById('tfs-' + f.key);
+          if (input) { input.dataset.original = input.value; input.classList.remove('changed'); }
+        });
+        setTimeout(function() { loadAll(); }, 1000);
+      } catch (e) {
+        status.textContent = 'Error — ' + e.message;
+        status.style.color = 'var(--red)';
+        btn.disabled = false;
+      }
+    }
+
+    // === 42a: Greed decay tiers editor ===
+    // Stored on trend_config.greed_decay_tiers as jsonb:
+    //   [{"minutes": <int>, "tp_pct": <number>}, ...]
+    // UI renders one row per tier, with add/remove. "Save" serializes to
+    // JSON and PATCHes trend_config + writes a config_changes_log row
+    // with parameter='greed_decay_tiers' (old/new values as JSON strings).
+    var GREED_ORIGINAL_JSON = null;  // canonical JSON of last-loaded tiers
+
+    function renderGreedDecay() {
+      var tbody = document.getElementById('greed-decay-rows');
+      var btn = document.getElementById('greed-decay-save');
+      var status = document.getElementById('greed-decay-status');
+      if (!tbody || !btn) return;
+      if (!TF_CONFIG_ROW) {
+        tbody.innerHTML = '<tr><td colspan="3" style="padding:4px;color:var(--text-dim);">trend_config unavailable.</td></tr>';
+        btn.disabled = true;
+        return;
+      }
+      var tiers = Array.isArray(TF_CONFIG_ROW.greed_decay_tiers) ? TF_CONFIG_ROW.greed_decay_tiers : [];
+      GREED_ORIGINAL_JSON = JSON.stringify(tiers);
+      tbody.innerHTML = '';
+      tiers.forEach(function(t) { appendGreedRow(t.minutes, t.tp_pct); });
+      if (status) status.textContent = '';
+      btn.disabled = true;
+    }
+
+    function appendGreedRow(minutes, tpPct) {
+      var tbody = document.getElementById('greed-decay-rows');
+      if (!tbody) return;
+      var tr = document.createElement('tr');
+      tr.innerHTML =
+        '<td style="padding:3px 4px;"><input type="text" inputmode="numeric" class="greed-min" value="' + (minutes != null ? minutes : '') + '" style="width:90px;"></td>' +
+        '<td style="padding:3px 4px;"><input type="text" inputmode="decimal" class="greed-tp" value="' + (tpPct != null ? tpPct : '') + '" style="width:90px;"></td>' +
+        '<td style="padding:3px 4px;text-align:right;"><button class="greed-remove" style="background:transparent;border:1px solid var(--text-dim);color:var(--red);font-size:11px;padding:2px 6px;cursor:pointer;">✕</button></td>';
+      tr.querySelectorAll('input').forEach(function(inp) {
+        inp.addEventListener('input', checkGreedChanges);
+      });
+      tr.querySelector('.greed-remove').addEventListener('click', function() {
+        // minimum 1 tier — the greed decay cannot be empty, else TF bots
+        // silently fall back to sell_pct which breaks the feature.
+        var rows = document.querySelectorAll('#greed-decay-rows tr');
+        if (rows.length <= 1) return;
+        tr.remove();
+        checkGreedChanges();
+      });
+      tbody.appendChild(tr);
+    }
+
+    function addGreedTier() {
+      appendGreedRow('', '');
+      checkGreedChanges();
+    }
+
+    function collectGreedTiers() {
+      var rows = document.querySelectorAll('#greed-decay-rows tr');
+      var out = [];
+      for (var i = 0; i < rows.length; i++) {
+        var minEl = rows[i].querySelector('.greed-min');
+        var tpEl = rows[i].querySelector('.greed-tp');
+        if (!minEl || !tpEl) continue;
+        var mRaw = (minEl.value || '').replace(',', '.');
+        var tRaw = (tpEl.value || '').replace(',', '.');
+        if (mRaw === '' && tRaw === '') continue;  // fully empty row → ignore
+        var m = parseInt(mRaw, 10);
+        var t = parseFloat(tRaw);
+        if (isNaN(m) || isNaN(t)) return { error: 'Row ' + (i + 1) + ' has invalid number' };
+        if (m < 0 || t < 0) return { error: 'Row ' + (i + 1) + ': negative values not allowed' };
+        out.push({ minutes: m, tp_pct: t });
+      }
+      if (out.length === 0) return { error: 'At least one tier required' };
+      // Tiers must be strictly ascending by minutes — the get_effective_tp
+      // loop assumes sorted order and picks the highest-minute tier <= age.
+      for (var j = 1; j < out.length; j++) {
+        if (out[j].minutes <= out[j - 1].minutes) {
+          return { error: 'Tiers must be strictly ascending by minutes (row ' + (j + 1) + ')' };
+        }
+      }
+      return { tiers: out };
+    }
+
+    function checkGreedChanges() {
+      var btn = document.getElementById('greed-decay-save');
+      if (!btn) return;
+      var parsed = collectGreedTiers();
+      if (parsed.error) { btn.disabled = true; return; }
+      var currentJson = JSON.stringify(parsed.tiers);
+      btn.disabled = (currentJson === GREED_ORIGINAL_JSON);
+    }
+
+    async function saveGreedDecay() {
+      var btn = document.getElementById('greed-decay-save');
+      var status = document.getElementById('greed-decay-status');
+      if (!TF_CONFIG_ROW || !TF_CONFIG_ROW.id) {
+        status.textContent = 'No trend_config row loaded';
+        status.style.color = 'var(--red)';
+        return;
+      }
+      var parsed = collectGreedTiers();
+      if (parsed.error) {
+        status.textContent = parsed.error;
+        status.style.color = 'var(--red)';
+        return;
+      }
+      btn.disabled = true;
+      status.textContent = 'Saving...';
+      status.style.color = 'var(--yellow)';
+
+      var newJson = JSON.stringify(parsed.tiers);
+      try {
+        await sbPatch('trend_config', 'id', TF_CONFIG_ROW.id, { greed_decay_tiers: parsed.tiers });
+        var auditOk = true;
+        if (newJson !== GREED_ORIGINAL_JSON) {
+          try {
+            await sbInsert('config_changes_log', {
+              symbol: null,
+              parameter: 'greed_decay_tiers',
+              old_value: GREED_ORIGINAL_JSON,
+              new_value: newJson,
+              changed_by: 'manual-ceo',
+            });
+          } catch (logErr) {
+            console.warn('config_changes_log write failed:', logErr);
+            auditOk = false;
+          }
+        }
+        status.textContent = auditOk ? 'Saved ✓' : 'Saved (audit log failed)';
+        status.style.color = auditOk ? 'var(--green)' : 'var(--yellow)';
+        GREED_ORIGINAL_JSON = newJson;
+        setTimeout(function() { loadAll(); }, 1000);
+      } catch (e) {
+        status.textContent = 'Error — ' + e.message;
+        status.style.color = 'var(--red)';
+        btn.disabled = false;
+      }
     }
 
     function renderAlerts() {
       var el = document.getElementById('alerts');
       var alerts = [];
 
-      // Check unallocated capital
-      var totalAlloc = configData.reduce(function(s, c) { return s + Number(c.capital_allocation); }, 0);
-      var unalloc = 500 - totalAlloc;
-      if (unalloc > 50) {
-        alerts.push({ type: 'yellow', text: '$' + fmt(unalloc, 0) + ' unallocated (' + fmt(unalloc / 5, 0) + '% of portfolio doing nothing)' });
+      if (TF_DRY_RUN) {
+        alerts.push({ type: 'yellow', text: 'TF in SHADOW mode — decisions logged, nothing written to bot_config.' });
       }
 
-      // Check per-coin cash
+      // Idle TF cash alert. The old formula (TF_BUDGET - sum(active
+      // capital_allocation)) was misleading: capital_allocation is a
+      // historical label per coin, not a snapshot of where cash actually
+      // sits. After a TF coin deallocates, its capital (minus skim, plus
+      // realized PnL) flows back to the operational pool but the
+      // bot_config row stays with the old allocation — the banner would
+      // then wildly overstate "idle". The true idle cash is:
+      //   totalCash (liquid + returned from closed coins) minus the sum of
+      //   capital_allocation currently pinned to ACTIVE TF bots (= cash
+      //   that's committed to a live position).
+      // Skim reserve is already excluded from totalCash (it lives in the
+      // separate reserve_ledger and is not reinvestable).
+      var totalCashForAlert = 0;
+      var pinnedByActiveTf = 0;
       configData.forEach(function(cfg) {
+        var a = analyzeCoin(cfg.symbol, cfg);
+        totalCashForAlert += a.cashLeft + (a.cashReturned || 0);
+        if (cfg.is_active && cfg.managed_by === 'trend_follower') {
+          pinnedByActiveTf += Number(cfg.capital_allocation) || 0;
+        }
+      });
+      var idleCash = totalCashForAlert - pinnedByActiveTf;
+      if (totalCashForAlert > 0 && idleCash > totalCashForAlert * 0.5) {
+        alerts.push({
+          type: 'yellow',
+          text: '$' + fmt(idleCash, 2) + ' TF cash idle (' +
+            fmt(idleCash / totalCashForAlert * 100, 0) +
+            '% of $' + fmt(totalCashForAlert, 2) + ' operational cash not deployed)'
+        });
+      }
+
+      // Check per-coin cash — only for active coins. Inactive rows legitimately
+      // have 0 cash (capital returned to the TF pool) and must not trigger the
+      // "tapped out" alert.
+      configData.forEach(function(cfg) {
+        if (!cfg.is_active) return;
         var sym = cfg.symbol;
         var analysis = analyzeCoin(sym, cfg);
         if (analysis.buysLeft === 0) {
@@ -541,8 +959,11 @@
         }
       });
 
-      if (alerts.length === 0) {
-        alerts.push({ type: 'green', text: 'All systems nominal. Bots have cash to operate.' });
+      var activeCount = configData.filter(function(c) { return c.is_active; }).length;
+      if (activeCount === 0) {
+        alerts.push({ type: 'green', text: 'No TF-managed coins right now. TF is ' + (TF_DRY_RUN ? 'watching in shadow' : 'live and searching') + '.' });
+      } else if (alerts.length === 0) {
+        alerts.push({ type: 'green', text: 'All TF bots nominal. ' + activeCount + ' coin(s) active of max ' + TF_MAX_COINS + '.' });
       }
 
       el.innerHTML = alerts.map(function(a) {
@@ -551,6 +972,7 @@
     }
 
     function analyzeCoin(symbol, cfg) {
+      var isActive = !!cfg.is_active;
       var alloc = Number(cfg.capital_allocation);
       var costPerTrade = Number(cfg.capital_per_trade);
       var coinTrades = tradesData.filter(function(t) { return t.symbol === symbol; });
@@ -564,6 +986,31 @@
       var sellCount = coinTrades.filter(function(t) { return t.side === 'sell'; }).length;
       var netSpent = totalBought - totalSold;
       var positionClosed = netHoldings <= 0.000001; // fully sold out
+
+      // Deallocated coins: their capital went back to the TF pool, so the
+      // per-coin cash/capacity metrics should reflect that. Keep historical
+      // trade counts and realized P&L — those are still true.
+      //
+      // cashLeft=0 is what we show on the card (matches reality: nothing is
+      // allocated to this coin anymore). cashReturned tracks what actually
+      // flowed back to the TF pool when the coin was deallocated: the
+      // realized profit net of skim. The overview adds cashReturned to the
+      // global totalCash so Portfolio Value stays consistent with
+      // "TF_BUDGET + realized − skim" when all profits are counted.
+      if (!isActive) {
+        var skimForCoin = skimBySymbol[symbol] || 0;
+        return {
+          alloc: 0, costPerTrade: costPerTrade,
+          totalBought: totalBought, totalSold: totalSold,
+          realizedPnl: realizedPnl, netHoldings: netHoldings,
+          buyCount: buyCount, sellCount: sellCount,
+          netSpent: 0, openCost: 0, openLots: 0,
+          cashLeft: 0, cashReturned: realizedPnl - skimForCoin,
+          buysLeft: 0, capacityPct: 0,
+          maxCapacity: 0,
+          lastTrade: coinTrades.length > 0 ? coinTrades[0] : null
+        };
+      }
 
       // FIFO reconstruction: open lots = cost basis + count of slots actually filled
       var sortedTrades = coinTrades.slice().sort(function(a, b) {
@@ -623,14 +1070,26 @@
     }
 
     function renderOverview() {
-      var totalAlloc = configData.reduce(function(s, c) { return s + Number(c.capital_allocation); }, 0);
-      var unalloc = 500 - totalAlloc;
+      var totalAlloc = configData.reduce(function(s, c) {
+        return s + (c.is_active ? Number(c.capital_allocation) : 0);
+      }, 0);
+      var unalloc = TF_BUDGET - totalAlloc;
+
+      // Closed-cycles PnL (post-skim) is now shown as a sub-label above the
+      // "Previous coins" list in renderCoinCards() — no longer duplicated here
+      // as a long banner. The Portfolio Overview cards (Total P&L, Skim
+      // Reserve, Unrealized P&L) tell the at-a-glance story; the per-coin
+      // detail lives where the per-coin rows are.
 
       var totalCash = 0;
       var totalDeployed = 0;
       configData.forEach(function(cfg) {
         var a = analyzeCoin(cfg.symbol, cfg);
-        totalCash += a.cashLeft;
+        // Active coins: cashLeft is their per-bot liquid cash.
+        // Inactive coins: cashLeft=0 (displayed on card), but cashReturned
+        // captures the realized profit net of skim that flowed back to the
+        // TF pool when the coin was deallocated.
+        totalCash += a.cashLeft + (a.cashReturned || 0);
         if (a.netHoldings > 0.000001) totalDeployed += a.openCost;
       });
 
@@ -681,13 +1140,12 @@
 
       // Net Worth = cash (after skim) + unalloc + holdings + skim reserve.
       // Skim is physically moved out of bot cash to reserve_ledger, but it's
-      // still ours — adding it back gives the full patrimony.
+      // still ours — adding it back gives the full TF patrimony.
       var netWorth = totalCash + unalloc + holdingsValue + skimReserveTotal;
-      // Authoritative Total P&L = actual net worth delta vs initial capital.
-      // Using (realized_sum + unrealized) would ignore fees paid at every trade
-      // and overstate P&L by the cumulative fee total.
-      var INITIAL_CAPITAL = 500;
-      var totalPnl = netWorth - INITIAL_CAPITAL;
+      // Authoritative Total P&L = actual net worth delta vs TF starting budget.
+      // Using (realized + unrealized) alone would ignore trade fees and
+      // overstate P&L by the cumulative fee total (matches admin.html).
+      var totalPnl = netWorth - TF_BUDGET;
       var totalFees = tradesData.reduce(function(s, t) { return s + Number(t.fee || 0); }, 0);
 
       var pnlColor = totalPnl >= 0 ? 'var(--green)' : 'var(--red)';
@@ -711,7 +1169,7 @@
         '<div class="stat-box">' +
           '<div class="stat-label">Total P&L</div>' +
           '<div class="stat-value" style="color:' + pnlColor + ';">' + (totalPnl >= 0 ? '+' : '') + '$' + fmt(totalPnl) + '</div>' +
-          '<div class="stat-sub">= Net Worth − $' + fmt(INITIAL_CAPITAL) + ' starting capital</div>' +
+          '<div class="stat-sub">= Net Worth − $' + fmt(TF_BUDGET) + ' starting budget</div>' +
         '</div>' +
         '<div class="stat-box">' +
           '<div class="stat-label">Skim Reserve</div>' +
@@ -739,8 +1197,8 @@
       // Dust v3 monitor: net residual per symbol that is NOT sellable on
       // Binance (holdings × price < MIN_NOTIONAL). Active positions above
       // the floor are real holdings, not dust — they're already shown in
-      // the Deployed card. This filter prevents manual bots' live
-      // holdings from inflating the dust figure.
+      // the Deployed card. This filter prevents e.g. CHZ/XLM holdings
+      // ($40+ each) from inflating the dust figure.
       var DUST_MIN_NOTIONAL_USD = 5.0;
       var dustTotalUsd = 0;
       var dustParts = [];
@@ -775,17 +1233,73 @@
 
     function renderCoinCards() {
       var el = document.getElementById('coin-cards');
-      el.innerHTML = configData.map(function(cfg) {
+      if (!configData.length) {
+        el.innerHTML = '<div class="card" style="text-align:center;color:var(--text-dim);font-family:var(--mono);font-size:12px;">' +
+          'No TF-managed coins yet. ' + (TF_DRY_RUN ? 'TF runs in shadow mode — flip trend_config.dry_run=false to go live.' : 'Waiting for the next TF scan to allocate.') +
+          '</div>';
+        return;
+      }
+      // Active coins rendered as full cards; deallocated ones condensed
+      // into single-line rows below (39a: less visual noise, one P&L number).
+      var activeConfigs = configData.filter(function(c) { return c.is_active; });
+      var inactiveConfigs = configData.filter(function(c) { return !c.is_active; });
+
+      var activeHtml = activeConfigs.map(function(cfg) {
         var sym = cfg.symbol;
         var short = SHORT[sym] || sym;
         var color = COLORS[sym] || '#888';
         var a = analyzeCoin(sym, cfg);
 
         var positionClosed = a.netHoldings <= 0.000001;
-        var statusClass = positionClosed ? 'status-ok' : a.buysLeft === 0 ? 'status-dead' : a.buysLeft <= 1 ? 'status-low' : 'status-ok';
-        var statusText = positionClosed ? 'CLOSED — awaiting re-entry' : a.buysLeft === 0 ? 'TAPPED OUT' : a.buysLeft + ' buys left';
+        var statusClass, statusText;
+        if (positionClosed) {
+          statusClass = 'status-ok';
+          statusText = 'CLOSED — awaiting re-entry';
+        } else if (a.buysLeft === 0) {
+          statusClass = 'status-dead';
+          statusText = 'TAPPED OUT';
+        } else if (a.buysLeft <= 1) {
+          statusClass = 'status-low';
+          statusText = a.buysLeft + ' buys left';
+        } else {
+          statusClass = 'status-ok';
+          statusText = a.buysLeft + ' buys left';
+        }
 
         var barColor = a.buysLeft === 0 ? 'var(--red)' : a.buysLeft <= 1 ? 'var(--yellow)' : color;
+
+        var configBlock = (
+          '<div class="config-section">' +
+            '<div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-bottom:8px;">PARAMETERS</div>' +
+            '<div class="param-group-label">Trading Parameters</div>' +
+            '<div class="config-grid">' +
+              configField(short, 'capital_allocation', 'Allocation ($)', cfg.capital_allocation) +
+              configField(short, 'capital_per_trade', '$/Trade', cfg.capital_per_trade) +
+              configField(short, 'skim_pct', 'Skim % (profit reserve)', cfg.skim_pct) +
+            '</div>' +
+            '<div class="param-group-label pct-label">Percentage Grid</div>' +
+            '<div class="config-grid">' +
+              configFieldSelect(short, 'grid_mode', 'Grid mode', cfg.grid_mode, ['fixed', 'percentage']) +
+              configField(short, 'buy_pct', 'Buy %', cfg.buy_pct) +
+              configField(short, 'sell_pct', 'Sell %', cfg.sell_pct) +
+              configField(short, 'profit_target_pct', 'Min Profit %', cfg.profit_target_pct) +
+              configField(short, 'idle_reentry_hours', 'Idle re-entry (hours)', cfg.idle_reentry_hours) +
+            '</div>' +
+            '<div class="param-group-label" id="fixed-label-' + short + '">Fixed Grid</div>' +
+            '<div class="fixed-grid-fields' + (cfg.grid_mode === 'percentage' ? ' dimmed' : '') + '" id="fixed-fields-' + short + '">' +
+              '<div class="config-grid">' +
+                configField(short, 'grid_levels', 'Grid levels', cfg.grid_levels) +
+                configField(short, 'grid_lower', 'Grid lower', cfg.grid_lower) +
+                configField(short, 'grid_upper', 'Grid upper', cfg.grid_upper) +
+                configField(short, 'reserve_floor_pct', 'Reserve %', cfg.reserve_floor_pct) +
+              '</div>' +
+            '</div>' +
+            '<div class="save-row">' +
+              '<button class="btn-save" id="save-' + short + '" onclick="saveConfig(\'' + sym + '\', \'' + short + '\')" disabled>Save changes</button>' +
+              '<span class="save-status" id="status-' + short + '"></span>' +
+            '</div>' +
+          '</div>'
+        );
 
         return '<div class="coin-card" id="card-' + short + '">' +
           '<div class="coin-header">' +
@@ -804,50 +1318,78 @@
             '<div class="cap-bar-label"><span>Capital usage</span><span>' + fmt(a.capacityPct, 0) + '%</span></div>' +
             '<div class="cap-bar"><div class="cap-bar-fill" style="width:' + a.capacityPct + '%; background:' + barColor + ';"></div></div>' +
           '</div>' +
-          '<div class="config-section">' +
-            '<div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-bottom:8px;">PARAMETERS</div>' +
-            '<div class="param-group-label">Trading Parameters</div>' +
-            '<div class="config-grid">' +
-              configField(short, 'capital_allocation', 'Allocation ($)', cfg.capital_allocation) +
-              configField(short, 'capital_per_trade', '$/Trade', cfg.capital_per_trade) +
-              configField(short, 'skim_pct', 'Skim % (profit reserve)', cfg.skim_pct) +
-            '</div>' +
-            '<div class="param-group-label pct-label">Percentage Grid</div>' +
-            '<div class="config-grid">' +
-              configFieldSelect(short, 'grid_mode', 'Grid mode', cfg.grid_mode, ['fixed', 'percentage']) +
-              configField(short, 'buy_pct', 'Buy %', cfg.buy_pct) +
-              configField(short, 'sell_pct', 'Sell %', cfg.sell_pct) +
-              configField(short, 'profit_target_pct', 'Min Profit %', cfg.profit_target_pct) +
-              configField(short, 'idle_reentry_hours', 'Idle re-entry (hours)', cfg.idle_reentry_hours) +
-            '</div>' +
-            '<div class="param-group-label safety-label">⚠️ Safety</div>' +
-            '<div class="config-grid">' +
-              configField(short, 'stop_buy_drawdown_pct', 'Stop-buy drawdown %', cfg.stop_buy_drawdown_pct) +
-            '</div>' +
-            '<div class="param-group-label" id="fixed-label-' + short + '">Fixed Grid</div>' +
-            '<div class="fixed-grid-fields' + (cfg.grid_mode === 'percentage' ? ' dimmed' : '') + '" id="fixed-fields-' + short + '">' +
-              '<div class="config-grid">' +
-                configField(short, 'grid_levels', 'Grid levels', cfg.grid_levels) +
-                configField(short, 'grid_lower', 'Grid lower', cfg.grid_lower) +
-                configField(short, 'grid_upper', 'Grid upper', cfg.grid_upper) +
-                configField(short, 'reserve_floor_pct', 'Reserve %', cfg.reserve_floor_pct) +
-              '</div>' +
-            '</div>' +
-            '<div class="save-row">' +
-              '<button class="btn-save" id="save-' + short + '" onclick="saveConfig(\'' + sym + '\', \'' + short + '\')" disabled>Save changes</button>' +
-              '<span class="save-status" id="status-' + short + '"></span>' +
-            '</div>' +
-          '</div>' +
+          configBlock +
         '</div>';
       }).join('');
 
-      // Mark original values and attach change listeners
-      configData.forEach(function(cfg) {
+      // 39a: compact one-liner rows for deallocated coins.
+      // Profit shown = realized_net (already fees-deducted in DB, includes
+      // the portion routed to skim reserve — "totale, fees dedotte").
+      // 39j: sort most-recent-first by bot_config.updated_at, which flips
+      // to the dealloc moment when is_active=false is written. Show the
+      // date alongside the symbol so scanning the list is one-eyeball.
+      var inactiveHtml = '';
+      if (inactiveConfigs.length) {
+        // Sum realized PnL across all inactive TF coins. Same numbers shown
+        // per-row below, so the header total matches. Post-skim: skim reserve
+        // has already been moved out before realized_pnl is computed, so this
+        // is closed-cycles profit/loss *after* the skim protection.
+        var closedPnl = inactiveConfigs.reduce(function(s, cfg) {
+          return s + Number(analyzeCoin(cfg.symbol, cfg).realizedPnl || 0);
+        }, 0);
+        var closedColor = closedPnl >= 0 ? 'var(--green)' : 'var(--red)';
+        var closedStr = (closedPnl >= 0 ? '+$' : '-$') + Math.abs(closedPnl).toFixed(2);
+
+        var sortedInactive = inactiveConfigs.slice().sort(function(a, b) {
+          var ta = a.updated_at ? new Date(a.updated_at).getTime() : 0;
+          var tb = b.updated_at ? new Date(b.updated_at).getTime() : 0;
+          return tb - ta;  // desc: most recent dealloc on top
+        });
+        var rows = sortedInactive.map(function(cfg) {
+          var sym = cfg.symbol;
+          var short = SHORT[sym] || sym;
+          var color = COLORS[sym] || '#888';
+          var a = analyzeCoin(sym, cfg);
+          var pnl = Number(a.realizedPnl || 0);
+          var pnlColor = pnl >= 0 ? 'var(--green)' : 'var(--red)';
+          var pnlSign = pnl >= 0 ? '+' : '';
+          var deallocLabel = '—';
+          if (cfg.updated_at) {
+            var d = new Date(cfg.updated_at);
+            // e.g. "Apr 19, 13:28" — local time, compact, unambiguous.
+            var month = d.toLocaleDateString('en-US', { month: 'short' });
+            var day = d.getDate();
+            var hh = String(d.getHours()).padStart(2, '0');
+            var mm = String(d.getMinutes()).padStart(2, '0');
+            deallocLabel = month + ' ' + day + ', ' + hh + ':' + mm;
+          }
+          return '<div class="inactive-row">' +
+            '<span class="ir-name" style="color:' + color + ';">' + short + '</span>' +
+            '<span class="ir-status">DEALLOCATED</span>' +
+            '<span class="ir-date">' + deallocLabel + '</span>' +
+            '<span class="ir-spacer"></span>' +
+            '<span class="ir-label">profit</span>' +
+            '<span class="ir-pnl" style="color:' + pnlColor + ';">' + pnlSign + fmtUsd(pnl) + '</span>' +
+          '</div>';
+        }).join('');
+        inactiveHtml =
+          '<div class="inactive-section-label">Previous coins (' + inactiveConfigs.length + ')</div>' +
+          '<div class="inactive-section-sub">' +
+            'Closed-cycles PnL (post-skim): ' +
+            '<span style="color:' + closedColor + ';">' + closedStr + '</span>' +
+          '</div>' +
+          rows;
+      }
+
+      el.innerHTML = activeHtml + inactiveHtml;
+
+      // Mark original values and attach change listeners (active coins only —
+      // inactive cards don't render the parameter inputs)
+      configData.filter(function(cfg) { return cfg.is_active; }).forEach(function(cfg) {
         var short = SHORT[cfg.symbol];
         var allFields = ['grid_mode', 'buy_pct', 'sell_pct', 'profit_target_pct', 'skim_pct',
           'capital_allocation', 'grid_levels', 'grid_lower', 'grid_upper',
-          'capital_per_trade', 'reserve_floor_pct', 'idle_reentry_hours',
-        'stop_buy_drawdown_pct'];
+          'capital_per_trade', 'reserve_floor_pct', 'idle_reentry_hours'];
         allFields.forEach(function(field) {
           var input = document.getElementById('cfg-' + short + '-' + field);
           if (input) {
@@ -865,16 +1407,20 @@
     }
 
     var SUBLABELS = {
-      'sell_pct': 'Per-lot trigger: sells when price rises this % above that lot\'s buy price',
-      'profit_target_pct': 'Safety gate: blocks ALL sells unless price is this % above avg buy. 0 = disabled.',
-      'buy_pct': 'Buys when price drops this % below the last buy price',
-      'skim_pct': '% of each sell\'s profit routed to reserve instead of reinvested',
-      'stop_buy_drawdown_pct': 'Blocks NEW buys when total unrealized loss exceeds this % of allocation. Existing lots unaffected (Strategy A still applies). Re-enables after first profitable sell. 0 = disabled.'
+      'sell_pct': '45b: post-greed-decay salvage threshold. TF writes max(last_tier − 0.5, 0.3) on every ALLOCATE, so manual edits are clobbered at the next rotation.',
+      'profit_target_pct': '↑ see greed decay — always 0 on TF bots (greed decay + tf_stop_loss_pct manage the sell floor).',
+      'buy_pct': 'Buys when price drops this % below the last buy price (ATR-adaptive, TF writes this on ALLOCATE)',
+      'skim_pct': '% of each sell\'s profit routed to reserve instead of reinvested'
     };
+
+    // 45b: fields where TF will clobber manual edits on the next ALLOCATE.
+    // Rendered dimmed + with a hint so the UX is honest about it.
+    var TF_CLOBBERED_FIELDS = ['profit_target_pct'];
 
     function configField(short, field, label, value) {
       var sub = SUBLABELS[field] ? '<small style="display:block;color:var(--text-dim);font-size:9px;margin-top:2px;line-height:1.3;">' + SUBLABELS[field] + '</small>' : '';
-      return '<div class="config-field">' +
+      var dimmed = TF_CLOBBERED_FIELDS.indexOf(field) >= 0 ? ' style="opacity:0.55;"' : '';
+      return '<div class="config-field"' + dimmed + '>' +
         '<label>' + label + sub + '</label>' +
         '<input type="text" inputmode="decimal" id="cfg-' + short + '-' + field + '" value="' + (value != null ? value : '') + '">' +
       '</div>';
@@ -898,8 +1444,7 @@
     function checkChanges(short) {
       var fields = ['grid_mode', 'buy_pct', 'sell_pct', 'profit_target_pct', 'skim_pct',
         'capital_allocation', 'grid_levels', 'grid_lower', 'grid_upper',
-        'capital_per_trade', 'reserve_floor_pct', 'idle_reentry_hours',
-        'stop_buy_drawdown_pct'];
+        'capital_per_trade', 'reserve_floor_pct', 'idle_reentry_hours'];
       var hasChanges = fields.some(function(f) {
         var input = document.getElementById('cfg-' + short + '-' + f);
         return input && input.value !== input.dataset.original;
@@ -917,8 +1462,7 @@
 
       var allFields = ['grid_mode', 'buy_pct', 'sell_pct', 'profit_target_pct', 'skim_pct',
         'capital_allocation', 'grid_levels', 'grid_lower', 'grid_upper',
-        'capital_per_trade', 'reserve_floor_pct', 'idle_reentry_hours',
-        'stop_buy_drawdown_pct'];
+        'capital_per_trade', 'reserve_floor_pct', 'idle_reentry_hours'];
 
       var data = {};
       var changes = [];
@@ -1022,6 +1566,10 @@
       });
 
       var recent = tradesData.slice(0, 20);
+      if (!recent.length) {
+        body.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-dim);padding:12px;">No TF trades yet.</td></tr>';
+        return;
+      }
       body.innerHTML = recent.map(function(t) {
         var cls = t.side === 'buy' ? 'buy-row' : 'sell-row';
         var dt = new Date(t.created_at);

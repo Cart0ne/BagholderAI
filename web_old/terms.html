@@ -12,19 +12,12 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎒</text></svg>">
   <script>
     try {
-      // Skip Umami on localhost / LAN IPs / .local so dev traffic isn't counted
-      const h = location.hostname;
-      const isLocal = h === 'localhost' || h === '127.0.0.1' ||
-                      h.startsWith('192.168.') || h.startsWith('10.') ||
-                      h.startsWith('172.') || h.endsWith('.local');
-      if (!isLocal) {
-        const s = document.createElement('script');
-        s.defer = true;
-        s.src = 'https://cloud.umami.is/script.js';
-        s.dataset.websiteId = '63807366-641f-4c72-8e61-3bec7b725697';
-        s.dataset.domains = 'bagholderai.lol,www.bagholderai.lol';
-        document.head.appendChild(s);
-      }
+      const s = document.createElement('script');
+      s.defer = true;
+      s.src = 'https://cloud.umami.is/script.js';
+      s.dataset.websiteId = '63807366-641f-4c72-8e61-3bec7b725697';
+      s.dataset.domains = 'bagholderai.lol,www.bagholderai.lol';
+      document.head.appendChild(s);
     } catch(e) {}
   </script>
   <style>
@@ -72,63 +65,36 @@
     }
 
     .container {
-      max-width: 880px;
+      max-width: 720px;
       margin: 0 auto;
       padding: 40px 20px 80px;
       position: relative;
       z-index: 1;
     }
 
-    /* Top bar with inline nav (shared across pages) */
+    /* Header */
     .top-bar {
-      font-family: var(--mono); font-size: 11px; color: rgba(255,255,255,0.3);
-      margin-bottom: 40px; letter-spacing: 0.03em; padding-top: 8px;
+      font-family: var(--mono); font-size: 11px; color: var(--text-dim);
+      margin-bottom: 24px; letter-spacing: 0.05em; padding-top: 20px;
       display: flex; justify-content: space-between; align-items: center;
-      gap: 16px; flex-wrap: wrap;
     }
-    .top-bar .live { display: flex; align-items: center; gap: 6px; }
-    .top-bar .dot { color: var(--green); font-size: 8px; }
-    .top-bar .nav-inline { display: flex; gap: 16px; flex-wrap: wrap; }
-    .top-bar .nav-inline a {
-      color: rgba(255,255,255,0.35); text-decoration: none;
-      transition: color 0.2s ease;
-    }
-    .top-bar .nav-inline a:hover { color: var(--green); }
-    .top-bar .nav-inline a.home { color: var(--green); }
-    .top-bar .nav-inline a.book { color: #ef4444; }
-    .top-bar .nav-inline a.book:hover { color: #ef4444; filter: brightness(1.15); }
-
-    /* Brand */
-    .brand-header { margin-bottom: 12px; }
+    .top-bar .dot { color: var(--green); }
     h1 {
-      font-size: clamp(28px, 5.5vw, 38px); font-weight: 700; line-height: 1.1;
+      font-size: clamp(28px, 6vw, 40px); font-weight: 700; line-height: 1.1;
       letter-spacing: -0.03em; color: #fff;
     }
     h1 .ai { color: var(--green); }
-    h1 .suffix { font-size: 0.5em; font-weight: 400; color: var(--text-dim); }
     .subtitle {
       font-family: var(--mono); font-size: 13px; color: var(--text-dim);
       margin-top: 8px; line-height: 1.6;
-      min-height: calc(13px * 1.6 * 2);
     }
-    .announcement {
-      font-family: var(--mono); font-size: 12px; color: var(--text-dim);
-      text-align: center; padding: 10px 16px; margin: 0 0 32px;
-      border: 1px solid rgba(239, 68, 68, 0.25); border-radius: 6px;
-      background: rgba(239, 68, 68, 0.05);
-    }
-    .announcement a { color: #ef4444; text-decoration: none; font-weight: 600; }
-    .announcement a:hover { text-decoration: underline; }
-
-    /* Entrance fade-in */
-    @keyframes fi {
-      from { opacity: 0; transform: translateY(8px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    .fade-in { opacity: 0; animation: fi 0.5s ease-out forwards; }
-    .d1 { animation-delay: 0.15s; }
-    .d2 { animation-delay: 0.3s; }
-    .d3 { animation-delay: 0.45s; }
+    .nav { display: flex; gap: 6px; flex-wrap: wrap; margin: 20px 0 0; }
+    .nav a { font-family: var(--mono); font-size: 12px; padding: 6px 14px; border-radius: 6px; background: var(--surface); border: 1px solid var(--border); color: var(--text-dim); text-decoration: none; transition: all 0.2s ease; }
+    .nav a:hover { border-color: var(--green); color: var(--green); }
+    .nav a.home { border-color: rgba(34, 197, 94, 0.4); color: #22c55e; }
+    .nav a.home:hover { border-color: #22c55e; }
+    .nav a.book { border-color: rgba(239, 68, 68, 0.4); color: #ef4444; }
+    .nav a.book:hover { border-color: #ef4444; background: rgba(239, 68, 68, 0.08); }
 
     /* Content */
     .section-title {
@@ -185,24 +151,20 @@
 <body>
   <div class="container">
 
-    <!-- Top bar with inline nav -->
-    <nav class="top-bar">
-      <span class="live"><span class="dot">●</span> LIVE — bagholderai.lol</span>
-      <div class="nav-inline">
-        <a href="/">Home</a>
-        <a href="/dashboard">Dashboard</a>
-        <a href="/diary">Diary</a>
-        <a href="/blueprint">Blueprint</a>
-        <a href="/howwework">How We Work</a>
-        <a href="/roadmap">Roadmap</a>
-        <a class="book" href="/guide">📕 Book</a>
+    <header>
+      <div class="top-bar">
+        <span><span class="dot">●</span> TERMS OF SERVICE — bagholderai.lol</span>
       </div>
-    </nav>
-
-    <!-- Brand -->
-    <header class="brand-header">
-      <h1>🎒 BagHolder<span class="ai">AI</span> <span class="suffix">terms</span></h1>
+      <h1>🎒 BagHolder<span class="ai">AI</span> <span style="font-size: 0.5em; font-weight: 400; color: var(--text-dim);">terms of service</span></h1>
       <p class="subtitle">Last updated: April 2026</p>
+      <nav class="nav">
+        <a href="/" class="home">Dashboard</a>
+        <a href="/blueprint">Blueprint</a>
+        <a href="/diary">Diary</a>
+        <a href="/roadmap">Roadmap</a>
+        <a href="/howwework">How We Work</a>
+        <a href="/guide" class="book">📖 Guide</a>
+      </nav>
     </header>
 
     <section style="margin-top: 32px;">
