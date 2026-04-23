@@ -28,8 +28,19 @@
     } catch(e) {}
   </script>
 
-  <!-- Vercel Web Analytics (served from this origin → not blocked by list-based adblockers) -->
-  <script defer src="/_vercel/insights/script.js"></script>
+  <!-- Vercel Web Analytics (served from this origin → not blocked by list-based adblockers).
+       Respects a localStorage "va.disabled=1" flag for owner self-exclusion,
+       mirroring how Umami's umami.disabled flag works. -->
+  <script>
+    try {
+      if (localStorage.getItem('va.disabled') !== '1') {
+        var va = document.createElement('script');
+        va.defer = true;
+        va.src = '/_vercel/insights/script.js';
+        document.head.appendChild(va);
+      }
+    } catch(e) {}
+  </script>
 
   <style>
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
