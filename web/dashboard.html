@@ -350,24 +350,20 @@
 
     <div class="announcement">📖 Volume 1 — From Zero to Grid — is live. <a href="/guide">Get it now →</a></div>
 
-    <!-- Loading state -->
-    <div id="loading" class="loading" style="margin: 60px 0;">
-      $ bagholderai --status <span class="cursor">█</span>
-    </div>
-
-    <!-- Dashboard (hidden until loaded) -->
-    <div id="dashboard" style="display: none;">
+    <!-- Dashboard (always in the flow — prevents layout shift while data loads;
+         placeholders "—" show until the JS swaps in real values) -->
+    <div id="dashboard">
 
       <!-- CEO's Log (today only) -->
-      <section style="margin-top: 40px;">
+      <section class="fade-in d1" style="margin-top: 40px;">
         <h2 class="section-title">CEO's Log</h2>
         <div id="ceo-log-hero" class="card ceo-log-hero">
-          <div class="ceo-log-empty">No commentary yet. The CEO starts talking tonight at 20:00.</div>
+          <div class="ceo-log-empty">Loading today's commentary…</div>
         </div>
       </section>
 
       <!-- The Numbers -->
-      <section>
+      <section class="fade-in d2">
         <h2 class="section-title">The Numbers</h2>
         <div id="numbers-timestamp" style="font-family: var(--mono); font-size: 11px; color: var(--text-dim); margin-bottom: 12px;"></div>
 
@@ -443,13 +439,13 @@
       </section>
 
       <!-- CEO's Log Archive (Haiku daily trading commentary history) -->
-      <section id="ceo-log">
+      <section id="ceo-log" class="fade-in d3">
         <h2 class="section-title">CEO's Log Archive</h2>
         <div id="commentary-history" class="commentary-history"></div>
       </section>
 
       <!-- Follow / Social -->
-      <section>
+      <section class="fade-in d4">
         <a href="https://t.me/BagHolderAI_report" target="_blank" rel="noopener noreferrer" class="cta-link">📡 Telegram</a>
         <a href="https://x.com/bagholderai" target="_blank" rel="noopener noreferrer" class="cta-link">𝕏 @bagholderai</a>
         <a href="https://github.com/Cart0ne/BagholderAI" target="_blank" rel="noopener noreferrer" class="cta-link">💻 GitHub</a>
@@ -458,7 +454,7 @@
     </div>
 
     <!-- AADS Ad Unit -->
-    <section style="text-align: center; margin: 2rem 0 3rem 0;">
+    <section class="fade-in d5" style="text-align: center; margin: 2rem 0 3rem 0;">
       <div id="aads-frame" style="width: 100%; margin: auto; position: relative; z-index: 99998;">
         <iframe data-aa='2431743' src='//acceptable.a-ads.com/2431743/?size=Adaptive'
           style='border:0; padding:0; width:728px; max-width:100%; height:90px; overflow:hidden; display:block; margin:auto'></iframe>
@@ -886,19 +882,11 @@
         renderPortfolio(live.state, live.totalInvested);
         renderCharts(pnl);
         updateTimestamp();
-
-        document.getElementById('loading').style.display = 'none';
-        var dashEl = document.getElementById('dashboard');
-        dashEl.style.display = 'block';
-        // Force a fresh fade-in run when the dashboard becomes visible.
-        dashEl.classList.remove('fade-in');
-        void dashEl.offsetWidth;  // reflow — resets the animation
-        dashEl.classList.add('fade-in');
       } catch (err) {
         console.error('Dashboard load error:', err);
-        document.getElementById('loading').innerHTML =
-          '<span style="color: var(--red);">$ error: failed to load data</span><br>' +
-          '<span style="color: var(--text-dim); font-size: 11px;">Check console. Try refreshing.</span>';
+        var hero = document.getElementById('ceo-log-hero');
+        if (hero) hero.innerHTML =
+          '<div class="ceo-log-empty" style="color: var(--red);">Failed to load data. Check console, try refreshing.</div>';
       }
     }
     load();
