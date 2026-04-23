@@ -134,6 +134,10 @@
       text-transform: uppercase; letter-spacing: 0.05em;
       margin: 16px 0 8px; padding-left: 4px;
     }
+    .inactive-section-sub {
+      font-family: var(--mono); font-size: 11px; color: var(--text-dim);
+      margin: -4px 0 10px; padding-left: 4px; letter-spacing: 0.02em;
+    }
     .inactive-row {
       background: var(--surface); border: 1px solid var(--border);
       border-radius: 6px; padding: 10px 14px; margin-bottom: 6px;
@@ -348,7 +352,6 @@
 
       <!-- Portfolio Overview -->
       <div class="section-title">Portfolio overview</div>
-      <div id="tf-budget-line" style="font-family: var(--mono); font-size: 12px; color: var(--text-dim); margin: -4px 0 12px 0;"></div>
       <div id="overview-row1" class="stats-row"></div>
       <div id="overview-row2" class="stats-row"></div>
       <div id="overview-row3" class="stats-row"></div>
@@ -1064,52 +1067,11 @@
       }, 0);
       var unalloc = TF_BUDGET - totalAlloc;
 
-      // TF closed-cycles accounting: sum the per-coin realized_pnl for
-      // every inactive TF coin. Uses the same realizedPnl value that the
-      // "Previous coins" list shows per-row, so the banner total matches
-      // the sum of the per-row numbers (previously the two computations
-      // diverged — cash-flow `sold - bought - skim` here vs FIFO-netted
-      // realized_pnl there — and a coin like MBOX showed +$0.19 in the
-      // banner but +$3.10 in the row).
-      //
-      // Also no longer filters on `buyAmt == sellAmt`. A coin is still
-      // "closed" (is_active=False) even when a tiny residual hangs on
-      // — either economic dust under min_notional, or a trade whose
-      // INSERT timed out during a network blackout (see brief 45). Its
-      // realized_pnl represents the PnL of the sells that DID log, and
-      // is a better number to show than hiding the coin entirely.
-      var tfFloating = 0;
-      var floatingParts = [];
-      configData.forEach(function(cfg) {
-        if (cfg.is_active) return;
-        var a = analyzeCoin(cfg.symbol, cfg);
-        var pnl = Number(a.realizedPnl || 0);
-        if (Math.abs(pnl) < 0.005) return;  // skip truly zero rows to keep banner readable
-        tfFloating += pnl;
-        floatingParts.push({ sym: cfg.symbol.split('/')[0], val: pnl });
-      });
-      // Show the TF closed-cycles net: sum of realized PnL (net of skim) on
-      // deallocated + fully-liquidated TF coins. Label flips between loss and
-      // gain based on sign. The previous "effective TF budget" framing was
-      // misleading because it looked like "cash available to allocate" while
-      // ignoring cost basis of currently-active TF bots — now the line only
-      // speaks to closed cycles, which is unambiguous.
-      var budgetLine = document.getElementById('tf-budget-line');
-      if (budgetLine) {
-        if (Math.abs(tfFloating) < 0.01) {
-          budgetLine.textContent = 'TF closed cycles: flat (no deallocated coins yet)';
-        } else {
-          floatingParts.sort(function(a, b) { return Math.abs(b.val) - Math.abs(a.val); });
-          var parts = floatingParts.map(function(p) {
-            return p.sym + ' ' + (p.val >= 0 ? '+$' : '-$') + Math.abs(p.val).toFixed(2);
-          }).join(' · ');
-          var label = tfFloating >= 0 ? 'TF closed-cycles gain' : 'TF closed-cycles loss';
-          var color = tfFloating >= 0 ? 'var(--green)' : 'var(--red)';
-          var valStr = (tfFloating >= 0 ? '+$' : '-$') + Math.abs(tfFloating).toFixed(2);
-          budgetLine.innerHTML = label + ': <span style="color:' + color + ';">' + valStr +
-            '</span> <span style="color:var(--text-dim);">(' + parts + ')</span>';
-        }
-      }
+      // Closed-cycles PnL (post-skim) is now shown as a sub-label above the
+      // "Previous coins" list in renderCoinCards() — no longer duplicated here
+      // as a long banner. The Portfolio Overview cards (Total P&L, Skim
+      // Reserve, Unrealized P&L) tell the at-a-glance story; the per-coin
+      // detail lives where the per-coin rows are.
 
       var totalCash = 0;
       var totalDeployed = 0;
@@ -1360,6 +1322,16 @@
       // date alongside the symbol so scanning the list is one-eyeball.
       var inactiveHtml = '';
       if (inactiveConfigs.length) {
+        // Sum realized PnL across all inactive TF coins. Same numbers shown
+        // per-row below, so the header total matches. Post-skim: skim reserve
+        // has already been moved out before realized_pnl is computed, so this
+        // is closed-cycles profit/loss *after* the skim protection.
+        var closedPnl = inactiveConfigs.reduce(function(s, cfg) {
+          return s + Number(analyzeCoin(cfg.symbol, cfg).realizedPnl || 0);
+        }, 0);
+        var closedColor = closedPnl >= 0 ? 'var(--green)' : 'var(--red)';
+        var closedStr = (closedPnl >= 0 ? '+$' : '-$') + Math.abs(closedPnl).toFixed(2);
+
         var sortedInactive = inactiveConfigs.slice().sort(function(a, b) {
           var ta = a.updated_at ? new Date(a.updated_at).getTime() : 0;
           var tb = b.updated_at ? new Date(b.updated_at).getTime() : 0;
@@ -1394,6 +1366,10 @@
         }).join('');
         inactiveHtml =
           '<div class="inactive-section-label">Previous coins (' + inactiveConfigs.length + ')</div>' +
+          '<div class="inactive-section-sub">' +
+            'Closed-cycles PnL (post-skim): ' +
+            '<span style="color:' + closedColor + ';">' + closedStr + '</span>' +
+          '</div>' +
           rows;
       }
 
