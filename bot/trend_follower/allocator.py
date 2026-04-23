@@ -488,9 +488,13 @@ def decide_allocations(
     # "desperate ALLOCATE" on weak candidates just to fill a slot.
     min_strength = float(config.get("min_allocate_strength", 15.0))
 
-    # Step A: map tier -> active symbol. Read frozen tier from bot_config
-    # (volume_tier column); fall back to current scan data for legacy rows.
-    active_tier_map: dict[int, str] = {}
+    # Step A: identify occupied tiers + count active TF bots globally.
+    # 45d: switched from dict[int, str] to set[int] so two active bots
+    # in the same tier (common with legacy volume_tier IS NULL rows)
+    # don't silently overwrite each other. The global count is the
+    # belt-and-suspenders guard against allocating above tf_max_coins.
+    active_tiers: set[int] = set()
+    active_count_global = 0
     for alloc in current_allocations:
         if not alloc.get("is_active"):
             continue
@@ -504,14 +508,15 @@ def decide_allocations(
                 tier_n = _assign_volume_tier(match, t1_min, t2_min)
             else:
                 tier_n = 3  # safest fallback for illiquid active coin
-        active_tier_map[tier_n] = sym
+        active_tiers.add(tier_n)
+        active_count_global += 1
 
     # Step B: for each empty tier, pick the strongest BULLISH candidate
     # (not already active, not swapped out earlier). `bullish` is already
     # sorted by signal_strength desc, so `max()` per tier is cheap/clear.
     tier_best: dict[int, dict | None] = {}
     for tier_key in (1, 2, 3):
-        if tier_key in active_tier_map:
+        if tier_key in active_tiers:
             tier_best[tier_key] = None  # slot occupied by HOLD
             continue
         tier_candidates = [
@@ -543,7 +548,7 @@ def decide_allocations(
     tier_budget = dict(base_budget)
 
     def _tier_filled(t: int) -> bool:
-        return t in active_tier_map or tier_best.get(t) is not None
+        return t in active_tiers or tier_best.get(t) is not None
 
     # T3 orphan → T2 (T3's $25 stays capped; never flows further up)
     if not _tier_filled(3) and _tier_filled(2):
@@ -569,6 +574,24 @@ def decide_allocations(
         2: int(config.get("tf_tier2_lots", 3)),
         3: int(config.get("tf_tier3_lots", 2)),
     }
+
+    # 45d: global slot cap. Belt-and-suspenders guard: even if the per-tier
+    # logic thinks a slot is free (e.g. due to legacy fallback tagging
+    # oddities), we must NEVER allocate beyond tf_max_coins total TF bots.
+    # If we're already at the cap, every would-be ALLOCATE emits SKIP so the
+    # decision trail is self-explanatory.
+    max_total = int(max_grids) if max_grids else 3
+    if active_count_global >= max_total:
+        for tier_key in (1, 2, 3):
+            coin = tier_best.get(tier_key)
+            if coin is None:
+                continue
+            decisions.append(_make_decision(
+                scan_ts, coin["symbol"], coin, "SKIP",
+                f"Tier {tier_key}: global slot cap reached "
+                f"({active_count_global}/{max_total} TF bots active)",
+            ))
+        return decisions
 
     for tier_key in (1, 2, 3):
         coin = tier_best.get(tier_key)
@@ -733,9 +756,12 @@ def resize_active_allocations(
 ) -> list[dict]:
     """
     Session 36g Phase 2: propagate compound to live TF bots.
+    Session 45d: tier-weighted resize. Each bot's target is computed from
+    its frozen bot_config.volume_tier and the matching tier weight +
+    per-tier lot count. Legacy rows (volume_tier IS NULL) keep the old
+    equal-split formula so they don't thrash during the transition — they
+    get proper tier-weighted sizing once re-allocated.
 
-    Each active TF bot gets target_alloc = tf_total_capital / tf_max_coins,
-    with capital_per_trade = min(CAP, max($6, target_alloc / tf_lots_per_coin)).
     Skip UPDATE if the delta vs current is below tf_resize_threshold_usd
     or if the bot is pending_liquidation.
 
@@ -745,14 +771,35 @@ def resize_active_allocations(
     if max_coins <= 0:
         return []
 
-    lots_per_coin = int(config.get("tf_lots_per_coin", 4))
     threshold = float(config.get("tf_resize_threshold_usd", 10))
     cpt_cap = float(config.get("tf_capital_per_trade_cap_usd", 50))
 
-    # Equal split across max_coins (not active count), so leftover stays in
-    # the pool for new allocations rather than inflating live bots.
-    target_alloc = tf_total_capital / max_coins
-    target_cpt = min(cpt_cap, max(6.0, round(target_alloc / lots_per_coin, 2)))
+    # 45d: per-tier weights + lots from trend_config. Defaults match 45c.
+    t1_weight = float(config.get("tf_tier1_weight", 40))
+    t2_weight = float(config.get("tf_tier2_weight", 35))
+    t3_weight = float(config.get("tf_tier3_weight", 25))
+    weight_sum = t1_weight + t2_weight + t3_weight
+    if weight_sum <= 0:
+        weight_sum = 100
+    tier_weight_frac = {
+        1: t1_weight / weight_sum,
+        2: t2_weight / weight_sum,
+        3: t3_weight / weight_sum,
+    }
+    tier_lots_map = {
+        1: int(config.get("tf_tier1_lots", 4)),
+        2: int(config.get("tf_tier2_lots", 3)),
+        3: int(config.get("tf_tier3_lots", 2)),
+    }
+
+    # Legacy fallback (equal-split, pre-45d behaviour) for rows with
+    # volume_tier IS NULL. Same formula as before so nothing thrashes
+    # until the bot gets re-allocated and receives a proper frozen tier.
+    legacy_lots = int(config.get("tf_lots_per_coin", 4))
+    legacy_target_alloc = tf_total_capital / max_coins
+    legacy_target_cpt = min(
+        cpt_cap, max(6.0, round(legacy_target_alloc / legacy_lots, 2))
+    )
 
     tf_active = [
         a for a in current_allocations
@@ -765,6 +812,19 @@ def resize_active_allocations(
         symbol = alloc["symbol"]
         if symbol in MANUAL_WHITELIST:
             continue
+
+        # 45d: tier-weighted target when volume_tier is set; legacy
+        # equal-split otherwise.
+        stored_tier = alloc.get("volume_tier")
+        if stored_tier is not None:
+            t = int(stored_tier)
+            frac = tier_weight_frac.get(t, 1.0 / max_coins)
+            lots = tier_lots_map.get(t, legacy_lots)
+            target_alloc = tf_total_capital * frac
+            target_cpt = min(cpt_cap, max(6.0, round(target_alloc / lots, 2)))
+        else:
+            target_alloc = legacy_target_alloc
+            target_cpt = legacy_target_cpt
 
         current_alloc = float(alloc.get("capital_allocation") or 0)
         delta = target_alloc - current_alloc
