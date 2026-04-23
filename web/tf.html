@@ -426,7 +426,7 @@
     var DUST_DECIMALS = {};
     var TF_PALETTE = ['#22c55e', '#f97316', '#ec4899', '#8b5cf6', '#06b6d4', '#f43f5e', '#3b82f6', '#eab308'];
     var TF_BUDGET = 100;       // overridden from trend_config.tf_budget at load
-    var TF_MAX_COINS = 2;      // overridden from trend_config.tf_max_coins at load
+    var TF_MAX_COINS = 3;      // 45c: derived (1 slot × 3 volume tiers). Overridden from trend_config.tf_max_coins at load.
     var TF_DRY_RUN = true;     // overridden from trend_config.dry_run at load
     // 39b: full trend_config row for the safety-params editor (id required for PATCH)
     var TF_CONFIG_ROW = null;
@@ -438,7 +438,15 @@
       { key: 'tf_take_profit_pct', label: 'TF take-profit %', sub: 'Takes profit on the full position when unrealized P&L exceeds this % of capital_allocation. Only applies to TF-managed bots. Set 0 to disable.' },
       { key: 'tf_initial_lots', label: 'Initial lots on entry', sub: '42a: number of market-buy lots fired immediately on the first cycle after ALLOCATE. 0 disables multi-lot entry; TF then waits for normal grid dips. Recommended 1-4.' },
       { key: 'min_allocate_strength', label: 'Min ALLOCATE strength', sub: '44c: candidates with signal_strength below this value are SKIPped. Prevents "desperate ALLOCATE" when the bullish pool is weak. Default 15.0; set 0 to disable the gate.' },
-      { key: 'scan_interval_hours', label: 'Scan interval (hours)', sub: 'How often the TF evaluates rotation opportunities. Lower = faster reaction to bearish signals but more API calls.' }
+      { key: 'scan_interval_hours', label: 'Scan interval (hours)', sub: 'How often the TF evaluates rotation opportunities. Lower = faster reaction to bearish signals but more API calls.' },
+      { key: 'tf_tier1_min_volume', label: 'Tier 1 min volume ($)', sub: '45c: coins with 24h quoteVolume ≥ this are Tier 1 (blue chip). Default $100M. Scanner + allocator both read this.' },
+      { key: 'tf_tier2_min_volume', label: 'Tier 2 min volume ($)', sub: '45c: ≥ this = Tier 2 (mid cap); below = Tier 3 (small cap). Default $20M.' },
+      { key: 'tf_tier1_weight', label: 'Tier 1 weight (%)', sub: '45c: % of TF budget allocated to Tier 1 slot. Default 40. Weights normalized if they don\'t sum to 100.' },
+      { key: 'tf_tier2_weight', label: 'Tier 2 weight (%)', sub: '45c: % of TF budget for Tier 2. Default 35.' },
+      { key: 'tf_tier3_weight', label: 'Tier 3 weight (%)', sub: '45c: % of TF budget for Tier 3. Default 25. Orphan budget flows to the safer tier that has a candidate. T3 exposure capped at this weight.' },
+      { key: 'tf_tier1_lots', label: 'Tier 1 lots', sub: '45c: number of lots T1 allocations split into. More lots = smoother entry. Default 4. initial_lots = lots − 1 (1 lot in reserve for dips).' },
+      { key: 'tf_tier2_lots', label: 'Tier 2 lots', sub: '45c: number of lots for T2 allocations. Default 3. initial_lots = lots − 1.' },
+      { key: 'tf_tier3_lots', label: 'Tier 3 lots', sub: '45c: number of lots for T3 allocations. Default 2. T3 fires ALL lots at entry (no reserve) because illiquid coins don\'t give second chances on dips.' }
     ];
 
     // === AUTH ===
@@ -573,7 +581,7 @@
     async function loadAll() {
       // 1. Load trend_config first (needed to know tf_budget, tf_max_coins, dry_run)
       try {
-        var tc = await sbGet('trend_config', 'select=id,dry_run,tf_budget,tf_max_coins,tf_stop_loss_pct,tf_stop_loss_cooldown_hours,tf_take_profit_pct,tf_initial_lots,min_allocate_strength,greed_decay_tiers,scan_interval_hours&limit=1');
+        var tc = await sbGet('trend_config', 'select=id,dry_run,tf_budget,tf_max_coins,tf_stop_loss_pct,tf_stop_loss_cooldown_hours,tf_take_profit_pct,tf_initial_lots,min_allocate_strength,greed_decay_tiers,scan_interval_hours,tf_tier1_min_volume,tf_tier2_min_volume,tf_tier1_weight,tf_tier2_weight,tf_tier3_weight,tf_tier1_lots,tf_tier2_lots,tf_tier3_lots&limit=1');
         if (tc && tc.length) {
           TF_CONFIG_ROW = tc[0];
           TF_BUDGET = Number(tc[0].tf_budget) || 100;

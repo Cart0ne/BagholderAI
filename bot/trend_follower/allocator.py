@@ -14,6 +14,22 @@ logger = logging.getLogger("bagholderai.trend.allocator")
 # Symbols managed manually by Max — TF must NEVER touch these
 MANUAL_WHITELIST = {"BTC/USDT", "SOL/USDT", "BONK/USDT"}
 
+# 45c: Volume tier defaults (overridden by trend_config at runtime)
+DEFAULT_TIER1_MIN_VOLUME = 100_000_000   # ≥ $100M → Tier 1 (blue chip)
+DEFAULT_TIER2_MIN_VOLUME = 20_000_000    # ≥ $20M  → Tier 2 (mid cap)
+# < DEFAULT_TIER2_MIN_VOLUME → Tier 3 (small cap)
+
+
+def _assign_volume_tier(coin: dict, t1_min: float, t2_min: float) -> int:
+    """45c: returns 1, 2, or 3 based on 24h quoteVolume.
+    Uses integers (not strings) to match bot_config.volume_tier smallint."""
+    vol = float(coin.get("volume_24h", 0) or 0)
+    if vol >= t1_min:
+        return 1
+    if vol >= t2_min:
+        return 2
+    return 3
+
 # Default tier for coins not in coin_tiers table
 DEFAULT_TIER = 3
 DEFAULT_MAX_ALLOC_PCT = 10  # T3 = 10%
@@ -274,6 +290,19 @@ def decide_allocations(
     max_grids = config.get("tf_max_coins") or config.get("max_active_grids", 5)
     # 45a v2: post-stop-loss cooldown (hours). 0 = disabled, edit from /tf admin UI.
     sl_cooldown_hours = float(config.get("tf_stop_loss_cooldown_hours") or 0)
+    # 45c: volume tier thresholds and weights. Defaults mirror trend_config
+    # defaults and are overridable from the /tf dashboard.
+    t1_min = float(config.get("tf_tier1_min_volume", DEFAULT_TIER1_MIN_VOLUME))
+    t2_min = float(config.get("tf_tier2_min_volume", DEFAULT_TIER2_MIN_VOLUME))
+    t1_weight = float(config.get("tf_tier1_weight", 40))
+    t2_weight = float(config.get("tf_tier2_weight", 35))
+    t3_weight = float(config.get("tf_tier3_weight", 25))
+    weight_sum = t1_weight + t2_weight + t3_weight
+    if weight_sum <= 0:
+        weight_sum = 100  # safety fallback; won't divide by zero below
+    # 45c: tag every classified coin with its current volume tier (1/2/3)
+    for _c in classified_coins:
+        _c["volume_tier"] = _assign_volume_tier(_c, t1_min, t2_min)
     decisions = []
 
     # Current state
@@ -364,6 +393,23 @@ def decide_allocations(
     if best_new is not None:
         for alloc, active_coin in surviving_active:
             sym = alloc["symbol"]
+            # 45c: SWAP only within the same volume tier. Active tier comes
+            # from the frozen bot_config.volume_tier written at ALLOCATE
+            # time. Legacy rows (pre-45c, NULL) fall back to the current
+            # scan's tier for the symbol.
+            stored_tier = alloc.get("volume_tier")
+            if stored_tier is not None:
+                active_tier = int(stored_tier)
+            else:
+                active_tier = _assign_volume_tier(active_coin, t1_min, t2_min)
+            candidate_tier = int(best_new.get("volume_tier") or 3)
+            if candidate_tier != active_tier:
+                logger.debug(
+                    f"[ALLOCATOR] SWAP skip {best_new['symbol']} → {sym}: "
+                    f"cross-tier (candidate T{candidate_tier} vs active T{active_tier})"
+                )
+                continue
+
             delta = best_new["signal_strength"] - active_coin["signal_strength"]
             if delta < SWAP_STRENGTH_DELTA:
                 continue
@@ -432,40 +478,106 @@ def decide_allocations(
             f"Signal: {coin['signal']} (strength={coin['signal_strength']:.1f})",
         ))
 
-    # Equal-split allocation for TF (bypasses coin_tiers MAX_ALLOC_PCT).
-    # The tier table was sized for the manual 5-grid / $500 system, where
-    # T3 10% = $50/coin. Applied to TF with $100 budget and tf_max_coins=2
-    # it degenerates to $10/coin and the grid taps out on the first buy.
-    # Here we split the remaining budget equally across the slots that
-    # will actually be filled this scan. Sanity cap prevents any single
-    # coin from eating more than 1.5× the equal share (e.g. if only one
-    # BULLISH is available and tf_max_coins > 1, it still caps at 1.5×
-    # unless it's the very last slot).
-    slots_remaining = max(0, max_grids - active_count)
-    num_new = min(len(bullish), slots_remaining)
-    sanity_cap = (total_capital / max_grids) * 1.5 if max_grids > 0 else total_capital
-    if num_new <= 1:
-        per_coin_target = unallocated
-    else:
-        per_coin_target = min(unallocated / num_new, sanity_cap)
+    # 45c: Per-tier ALLOCATE with upward-only orphan redistribution.
+    # Each volume tier (1/2/3) has 1 slot. The allocator picks the strongest
+    # BULLISH candidate per empty tier. Orphan budget (empty tier) flows
+    # UPWARD only (T3 orphan → T2, T2 orphan → T1). Never flows down so
+    # small-cap exposure stays capped at its weight.
 
-    # 44c: minimum signal_strength threshold. Prevents "desperate ALLOCATE"
-    # when the bullish pool is weak — the 2026-04-21 nightly incident saw
-    # 币安人生/USDT allocated at strength 8.94 alongside much stronger
-    # candidates, purely because there were empty TF slots. Default 15.0
-    # tracks the typical minimum observed in healthy ALLOCATE decisions;
-    # editable via /tf admin UI.
+    # 44c: minimum signal_strength threshold. Applied per-tier. Prevents
+    # "desperate ALLOCATE" on weak candidates just to fill a slot.
     min_strength = float(config.get("min_allocate_strength", 15.0))
 
-    for coin in bullish:
-        if active_count >= max_grids:
-            decisions.append(_make_decision(
-                scan_ts, coin["symbol"], coin, "SKIP",
-                f"Max active grids reached ({max_grids})",
-            ))
+    # Step A: map tier -> active symbol. Read frozen tier from bot_config
+    # (volume_tier column); fall back to current scan data for legacy rows.
+    active_tier_map: dict[int, str] = {}
+    for alloc in current_allocations:
+        if not alloc.get("is_active"):
             continue
+        sym = alloc["symbol"]
+        stored_tier = alloc.get("volume_tier")
+        if stored_tier is not None:
+            tier_n = int(stored_tier)
+        else:
+            match = coin_lookup.get(sym)
+            if match is not None:
+                tier_n = _assign_volume_tier(match, t1_min, t2_min)
+            else:
+                tier_n = 3  # safest fallback for illiquid active coin
+        active_tier_map[tier_n] = sym
 
-        # 45a v2: SL cooldown gate — skip coins stopped-out within N hours.
+    # Step B: for each empty tier, pick the strongest BULLISH candidate
+    # (not already active, not swapped out earlier). `bullish` is already
+    # sorted by signal_strength desc, so `max()` per tier is cheap/clear.
+    tier_best: dict[int, dict | None] = {}
+    for tier_key in (1, 2, 3):
+        if tier_key in active_tier_map:
+            tier_best[tier_key] = None  # slot occupied by HOLD
+            continue
+        tier_candidates = [
+            c for c in bullish
+            if int(c.get("volume_tier") or 3) == tier_key
+            and c["symbol"] not in active_symbols
+        ]
+        if not tier_candidates:
+            tier_best[tier_key] = None
+            continue
+        tier_best[tier_key] = max(
+            tier_candidates,
+            key=lambda c: float(c.get("signal_strength", 0) or 0),
+        )
+
+    # Step C: compute tier budgets. Start from base weights, then route
+    # orphan budget to the SAFER tier that has a candidate. Rules:
+    #   - T3 orphan → T2 (if T2 has candidate), else idle (never flows to T1
+    #     skipping; T1 has its own budget; and NEVER flows down is a no-op here)
+    #   - T2 orphan → T1 (if T1 has candidate), else idle
+    #   - T1 orphan → T2 (if T2 has candidate), else idle
+    # Key invariant: T3 exposure is ALWAYS capped at its base weight.
+    # Small-cap risk never grows, regardless of market conditions.
+    base_budget = {
+        1: total_capital * (t1_weight / weight_sum),
+        2: total_capital * (t2_weight / weight_sum),
+        3: total_capital * (t3_weight / weight_sum),
+    }
+    tier_budget = dict(base_budget)
+
+    def _tier_filled(t: int) -> bool:
+        return t in active_tier_map or tier_best.get(t) is not None
+
+    # T3 orphan → T2 (T3's $25 stays capped; never flows further up)
+    if not _tier_filled(3) and _tier_filled(2):
+        tier_budget[2] += tier_budget[3]
+        tier_budget[3] = 0.0
+    # T2 orphan → T1
+    if not _tier_filled(2) and _tier_filled(1):
+        tier_budget[1] += tier_budget[2]
+        tier_budget[2] = 0.0
+    # T1 orphan → T2 (downgrade only to the next-safer available tier,
+    # never to T3 — small-cap exposure stays capped)
+    if not _tier_filled(1) and _tier_filled(2):
+        tier_budget[2] += tier_budget[1]
+        tier_budget[1] = 0.0
+
+    # Step D: emit ALLOCATE / SKIP decisions per tier.
+    sanity_cap_usd = float(config.get("tf_sanity_cap_usd", 300))
+    # 45c: per-tier lot counts. More lots on blue chips (smoother entry),
+    # fewer on small caps (decisive entry, smaller bag-accumulation risk).
+    # Defaults 4/3/2; overridable from /tf dashboard.
+    tier_lots = {
+        1: int(config.get("tf_tier1_lots", 4)),
+        2: int(config.get("tf_tier2_lots", 3)),
+        3: int(config.get("tf_tier3_lots", 2)),
+    }
+
+    for tier_key in (1, 2, 3):
+        coin = tier_best.get(tier_key)
+        if coin is None:
+            continue  # active HOLD or truly empty (budget already redistributed)
+
+        # Apply 45a SL cooldown gate (redundant with SWAP gate, but the
+        # ALLOCATE path is independent — a just-stop-hunted coin must not
+        # be re-picked on the same scan).
         in_cooldown, hours_since = _is_in_sl_cooldown(
             supabase, coin["symbol"], sl_cooldown_hours
         )
@@ -496,65 +608,82 @@ def decide_allocations(
         if coin_strength < min_strength:
             decisions.append(_make_decision(
                 scan_ts, coin["symbol"], coin, "SKIP",
-                f"signal_strength {coin_strength:.2f} below min_allocate_strength {min_strength}",
+                f"Tier {tier_key} best ({coin['symbol']}) strength "
+                f"{coin_strength:.2f} below min_allocate_strength {min_strength}",
             ))
             continue
 
-        tier, max_pct = _get_tier_info(coin["symbol"], coin_tiers)
-        alloc_amount = min(per_coin_target, unallocated)
-
+        alloc_amount = min(tier_budget[tier_key], sanity_cap_usd, unallocated)
         if alloc_amount <= 0:
             decisions.append(_make_decision(
                 scan_ts, coin["symbol"], coin, "SKIP",
-                f"No unallocated capital remaining",
+                f"Tier {tier_key}: no unallocated capital",
             ))
             continue
 
-        # Check exchange filters: can this allocation support meaningful trades?
-        # Simulate: allocation / 5 levels = per-level amount.
-        #
-        # The raw per_level_amount almost never lands exactly on the lot
-        # step size (e.g. $7.80 / $0.1356 = 57.52 SPK, step_size=1 → not
-        # aligned). The live buy path in grid_bot._execute_percentage_buy
-        # already calls round_to_step before hitting Binance, so the real
-        # order would be 57 SPK — perfectly valid. Pre-rounding here too
-        # means we validate what Binance would actually see, not the raw
-        # pre-rounded quantity. Otherwise strong bullish candidates get
-        # SKIPPED for a few cents of rounding (SPK + BLUR observed on the
-        # 16:01 UTC scan, both lost to 287.60/242.37 vs step=1).
-        base = coin["symbol"].split("/")[0] if "/" in coin["symbol"] else coin["symbol"]
-        per_level_usd = alloc_amount / 5
-        per_level_amount = per_level_usd / coin["price"] if coin["price"] > 0 else 0
+        # Exchange filter check — reuses round_to_step + validate_order so
+        # we validate what Binance would actually see (post-rounding).
+        # 45c: divide by per-tier lot count so the filter simulation matches
+        # TF's real per-lot spend. With defaults 4/3/2 and weights 40/35/25,
+        # T3 per-lot is $12.50 — well clear of min_notional=$5.
+        lots_for_tier = tier_lots[tier_key]
+        per_level_usd = alloc_amount / lots_for_tier
+        per_level_amount = (
+            per_level_usd / coin["price"] if coin.get("price", 0) > 0 else 0
+        )
         sym_filters = exchange_filters.get(coin["symbol"], {})
         step_size = sym_filters.get("lot_step_size", 0)
         if step_size > 0:
             per_level_amount = round_to_step(per_level_amount, step_size)
-        valid, reason = validate_order(coin["symbol"], per_level_amount, coin["price"], sym_filters)
+        valid, reason = validate_order(
+            coin["symbol"], per_level_amount, coin.get("price", 0), sym_filters,
+        )
         if not valid:
             decisions.append(_make_decision(
                 scan_ts, coin["symbol"], coin, "SKIP",
-                f"FILTER_FAIL: {reason} (per-level ${per_level_usd:.2f})",
+                f"Tier {tier_key} FILTER_FAIL: {reason} "
+                f"(per-level ${per_level_usd:.2f})",
             ))
             continue
 
-        # Build config snapshot (what WOULD be written). max_allocation_pct
-        # is kept for telemetry only — it no longer gates the allocation.
+        tier_info, max_pct = _get_tier_info(coin["symbol"], coin_tiers)
+        # 45c: initial_lots policy — T1/T2 keep 1 lot in reserve for dips;
+        # T3 fires everything at entry (illiquid coins don't wait for dips).
+        initial_lots_for_tier = (
+            lots_for_tier if tier_key == 3 else max(0, lots_for_tier - 1)
+        )
         config_snapshot = {
             "symbol": coin["symbol"],
             "capital_allocation": round(alloc_amount, 2),
-            "tier": tier,
+            "tier": tier_info,
             "max_allocation_pct": max_pct,
             "signal": coin["signal"],
             "signal_strength": coin["signal_strength"],
+            # 45c: freeze the volume tier so subsequent scans don't re-tier
+            # the active coin.
+            "volume_tier": tier_key,
+            "volume_24h": float(coin.get("volume_24h", 0) or 0),
+            # 45c: per-tier lot counts override the global tf_lots_per_coin
+            # for this specific ALLOCATE. apply_allocations reads these to
+            # set capital_per_trade + initial_lots correctly.
+            "tier_lots": lots_for_tier,
+            "tier_initial_lots": initial_lots_for_tier,
         }
 
         decisions.append(_make_decision(
             scan_ts, coin["symbol"], coin, "ALLOCATE",
-            f"BULLISH T{tier} — ${alloc_amount:.0f} (equal-split {num_new}/{max_grids})",
+            f"Tier {tier_key} (vol ${float(coin.get('volume_24h', 0) or 0)/1e6:.1f}M): "
+            f"strongest BULLISH — ${alloc_amount:.0f} "
+            f"(strength={coin_strength:.1f})",
             config_snapshot=config_snapshot,
         ))
 
-        # Track as if allocated (for shadow accounting)
+        logger.info(
+            f"[ALLOCATOR] Tier {tier_key} ALLOCATE {coin['symbol']} "
+            f"(vol ${float(coin.get('volume_24h', 0) or 0)/1e6:.1f}M, "
+            f"strength {coin_strength:.1f}, budget ${alloc_amount:.0f})"
+        )
+
         unallocated -= alloc_amount
         active_count += 1
 
@@ -722,19 +851,28 @@ def apply_allocations(
             # value is intentionally discarded.
             sell_pct = _compute_sell_pct_salvage(config.get("greed_decay_tiers"))
 
-            # capital_per_trade: 1/tf_lots_per_coin of allocation, capped at
+            # capital_per_trade: allocation / tier_lots, capped at
             # tf_capital_per_trade_cap_usd, floor $6 (> Binance min_notional $5).
-            # Prevents grid from defaulting to BTC's $25 per-trade when TF allocates $10
-            # and guards against over-concentration when compound explodes.
-            lots_per_coin = int(config.get("tf_lots_per_coin", 4))
+            # 45c: use per-tier lot count from snapshot so T3 = $25 / 2 = $12.50,
+            # T2 = $35 / 3 = $11.67, T1 = $40 / 4 = $10.00. Falls back to the
+            # global tf_lots_per_coin if snapshot lacks tier_lots (legacy
+            # shadow scans or pre-45c decisions).
+            lots_per_coin = int(
+                snapshot.get("tier_lots") or config.get("tf_lots_per_coin", 4)
+            )
             cpt_cap = float(config.get("tf_capital_per_trade_cap_usd", 50))
             capital_per_trade = min(cpt_cap, max(6.0, round(capital / lots_per_coin, 2)))
 
-            # 42a: multi-lot entry on first cycle + greed decay TP from
-            # allocation moment. initial_lots is consumed (reset to 0) by the
-            # grid_runner after the market buys fire; allocated_at anchors the
+            # 42a + 45c: multi-lot entry on first cycle + greed decay TP from
+            # allocation moment. T1/T2 keep 1 lot in reserve (initial = lots-1),
+            # T3 fires everything at entry. initial_lots is consumed (reset to 0)
+            # by grid_runner after the market buys fire; allocated_at anchors the
             # greed decay clock (reset on every re-ALLOCATE, including SWAPs).
-            initial_lots = int(config.get("tf_initial_lots", 3))
+            initial_lots = int(
+                snapshot.get("tier_initial_lots")
+                if snapshot.get("tier_initial_lots") is not None
+                else config.get("tf_initial_lots", 3)
+            )
             allocated_at_iso = datetime.now(timezone.utc).isoformat()
 
             row_fields = {
@@ -766,6 +904,9 @@ def apply_allocations(
                 # 42a:
                 "initial_lots": initial_lots,
                 "allocated_at": allocated_at_iso,
+                # 45c: freeze volume tier so subsequent volume changes don't
+                # re-tier active coin. Read back by SWAP guard + active_tier_map.
+                "volume_tier": snapshot.get("volume_tier"),
             }
 
             try:

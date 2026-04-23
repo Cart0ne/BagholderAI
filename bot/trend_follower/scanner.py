@@ -106,13 +106,23 @@ def fetch_indicators_for_symbol(exchange, symbol: str, ticker: dict | None = Non
     }
 
 
-def scan_top_coins(exchange, top_n: int = 50) -> list[dict]:
+def scan_top_coins(
+    exchange,
+    top_n: int = 50,
+    tier1_min_volume: float = 100_000_000,
+    tier2_min_volume: float = 20_000_000,
+) -> list[dict]:
     """
     1. Fetch all USDT tickers from Binance
     2. Sort by 24h quoteVolume (USDT volume), take top N
     3. For each coin, fetch 4h klines (minimum 50 candles)
     4. Calculate indicators: EMA 20, EMA 50, RSI 14, ATR 14
     5. Return list of dicts with all data
+
+    45c: `tier1_min_volume` / `tier2_min_volume` are passed in by the caller
+    (from trend_config) so scanner and allocator use the same thresholds.
+    The A/B/C labels here are cosmetic (Telegram report + trend_scans);
+    the real allocation decision reads the volume tier in the allocator.
     """
     logger.info(f"Scanning top {top_n} coins by 24h USDT volume...")
 
@@ -145,12 +155,16 @@ def scan_top_coins(exchange, top_n: int = 50) -> list[dict]:
             logger.warning(f"[{symbol}] Failed to scan: {e}")
             continue
 
-    # Assign volume tier based on rank position (coins preserves volume-desc order)
+    # 45c: volume-based tier labels (replaces rank-based A/B/C).
+    # A = ≥ tier1_min_volume (blue chip), B = ≥ tier2_min_volume (mid cap),
+    # C = < tier2_min_volume (small cap). Cosmetic only — the allocator
+    # reads its own thresholds from trend_config for the real decision.
     for i, coin in enumerate(coins):
         coin["rank"] = i + 1
-        if i < 20:
+        vol = float(coin.get("volume_24h", 0) or 0)
+        if vol >= tier1_min_volume:
             coin["tier"] = "A"
-        elif i < 40:
+        elif vol >= tier2_min_volume:
             coin["tier"] = "B"
         else:
             coin["tier"] = "C"

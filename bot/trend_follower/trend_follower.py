@@ -139,7 +139,7 @@ def load_current_allocations(supabase) -> list[dict]:
     so the allocator's SWAP cooldown gate can compute held hours."""
     try:
         result = supabase.table("bot_config").select(
-            "symbol,is_active,capital_allocation,managed_by,updated_at,created_at"
+            "symbol,is_active,capital_allocation,managed_by,updated_at,created_at,volume_tier"
         ).execute()
         return [r for r in (result.data or []) if r.get("is_active")]
     except Exception as e:
@@ -238,7 +238,12 @@ def send_scan_report(notifier: SyncTelegramNotifier, coins: list[dict],
 
     shadow_tag = "[SHADOW] " if config.get("dry_run") else ""
 
-    tier_names = {"A": "🔵 Large cap", "B": "🟡 Mid cap", "C": "🔴 Small cap"}
+    # 45c: volume-based tier labels (keys A/B/C kept for backwards compat)
+    tier_names = {
+        "A": "🔵 Tier 1 (≥$100M vol)",
+        "B": "🟡 Tier 2 ($20M–$100M)",
+        "C": "🔴 Tier 3 (<$20M)",
+    }
     tier_sections = []
 
     for tier_key in ["A", "B", "C"]:
@@ -433,8 +438,14 @@ def run_trend_follower():
                 notifier.send_message("🛑 Trend Follower stopped (disabled via config).")
                 break
 
-            # Scan
-            coins = scan_top_coins(exchange, config.get("scan_top_n", 50))
+            # Scan — 45c: pass tier thresholds so scanner and allocator
+            # agree on volume boundaries (single source of truth in trend_config).
+            coins = scan_top_coins(
+                exchange,
+                config.get("scan_top_n", 50),
+                tier1_min_volume=float(config.get("tf_tier1_min_volume", 100_000_000)),
+                tier2_min_volume=float(config.get("tf_tier2_min_volume", 20_000_000)),
+            )
 
             # Classify
             for coin in coins:
