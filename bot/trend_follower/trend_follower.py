@@ -238,11 +238,13 @@ def send_scan_report(notifier: SyncTelegramNotifier, coins: list[dict],
 
     shadow_tag = "[SHADOW] " if config.get("dry_run") else ""
 
-    # 45c: volume-based tier labels (keys A/B/C kept for backwards compat)
+    # 45c: volume-based tier labels (keys A/B/C kept for backwards compat).
+    # NB: Telegram parse_mode='HTML' interprets '<' as a tag-opener, so
+    # we escape it as '&lt;' to avoid "unsupported start tag" errors.
     tier_names = {
         "A": "🔵 Tier 1 (≥$100M vol)",
         "B": "🟡 Tier 2 ($20M–$100M)",
-        "C": "🔴 Tier 3 (<$20M)",
+        "C": "🔴 Tier 3 (&lt;$20M)",
     }
     tier_sections = []
 
