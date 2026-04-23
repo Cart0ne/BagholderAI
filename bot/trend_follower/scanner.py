@@ -94,15 +94,24 @@ def fetch_indicators_for_symbol(exchange, symbol: str, ticker: dict | None = Non
     rsi = calc_rsi(closes, 14)
     atr, atr_avg = calc_atr(highs, lows, closes, 14)
 
+    # 45e v2: distance from EMA20 — positive when price is stretched above
+    # its 20-period mean. Allocator uses this against tf_entry_max_distance_pct
+    # to skip coins too extended to enter safely.
+    price = ticker["last"]
+    distance_pct = (
+        round(((price - ema_fast) / ema_fast) * 100, 2) if ema_fast > 0 else 0.0
+    )
+
     return {
         "symbol": symbol,
-        "price": ticker["last"],
+        "price": price,
         "volume_24h": ticker.get("quoteVolume", 0),
         "ema_fast": round(ema_fast, 6),
         "ema_slow": round(ema_slow, 6),
         "rsi": round(rsi, 2),
         "atr": round(atr, 6),
         "atr_avg": round(atr_avg, 6),
+        "distance_from_ema_pct": distance_pct,
     }
 
 

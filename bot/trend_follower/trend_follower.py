@@ -276,6 +276,28 @@ def send_scan_report(notifier: SyncTelegramNotifier, coins: list[dict],
         header = f"{tier_names.get(tier_key, tier_key)} ({tier_count} coins, {tier_bullish} bullish)"
         tier_sections.append(header + "\n" + "\n".join(lines))
 
+    # 45e v2: BULLISH coins blocked by entry distance filter — show up to 5
+    # so Max can see calibration of the threshold.
+    max_dist = float(config.get("tf_entry_max_distance_pct") or 0)
+    distance_block_lines = []
+    if max_dist > 0:
+        filtered = [
+            c for c in coins
+            if c.get("signal") == "BULLISH"
+            and float(c.get("distance_from_ema_pct", 0) or 0) > max_dist
+        ]
+        if filtered:
+            filtered.sort(key=lambda c: c.get("distance_from_ema_pct", 0), reverse=True)
+            distance_block_lines.append(
+                f"\n⛔ <b>Entry distance blocked</b> ({len(filtered)} coin"
+                + ("s" if len(filtered) != 1 else "")
+                + f", max {max_dist:.0f}% above EMA20):"
+            )
+            for c in filtered[:5]:
+                sym = c["symbol"].split("/")[0]
+                d = c.get("distance_from_ema_pct", 0)
+                distance_block_lines.append(f"  • {sym}: +{d:.1f}% above EMA20")
+
     text = (
         f"{shadow_tag}📊 <b>TREND SCAN — {now}</b>\n"
         f"\n"
@@ -284,7 +306,8 @@ def send_scan_report(notifier: SyncTelegramNotifier, coins: list[dict],
         f"\n"
         f"<b>Top 2 bullish per tier:</b>\n"
         + "\n\n".join(tier_sections) + "\n"
-        f"\n"
+        + "\n".join(distance_block_lines) + ("\n" if distance_block_lines else "")
+        + f"\n"
         f"Active grids: {active_count}/{max_grids}\n"
         f"Capital deployed: ${deployed:.0f}\n"
         f"TF budget: ${tf_budget_nominal:.0f} base"

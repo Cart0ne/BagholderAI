@@ -300,6 +300,10 @@ def decide_allocations(
     weight_sum = t1_weight + t2_weight + t3_weight
     if weight_sum <= 0:
         weight_sum = 100  # safety fallback; won't divide by zero below
+    # 45e v2: entry distance filter — skip candidates too stretched above EMA20.
+    # 0 (or negative) = disabled. Historical validation on v3 losses showed
+    # threshold 10 blocks 92.4% of the loss by dollar amount.
+    max_entry_distance = float(config.get("tf_entry_max_distance_pct") or 0)
     # 45c: tag every classified coin with its current volume tier (1/2/3)
     for _c in classified_coins:
         _c["volume_tier"] = _assign_volume_tier(_c, t1_min, t2_min)
@@ -388,6 +392,32 @@ def decide_allocations(
                 },
             )
             continue
+        # 45e v2: apply entry distance filter to SWAP candidates too.
+        # The MOVR incident (2026-04-17) was a SWAP — the coin entered at
+        # +87% above EMA20. With this gate, that SWAP would have been blocked.
+        if max_entry_distance > 0:
+            dist_c = float(c.get("distance_from_ema_pct", 0) or 0)
+            if dist_c > max_entry_distance:
+                logger.info(
+                    f"[ALLOCATOR] SWAP candidate {c['symbol']} skipped: "
+                    f"distance {dist_c:.1f}% > max {max_entry_distance:.1f}%"
+                )
+                log_event(
+                    severity="info",
+                    category="tf",
+                    event="entry_distance_skip",
+                    symbol=c["symbol"],
+                    message=(
+                        f"SWAP candidate skipped: price {dist_c:.1f}% above "
+                        f"EMA20 (max {max_entry_distance:.1f}%)"
+                    ),
+                    details={
+                        "distance_pct": dist_c,
+                        "max_distance_pct": max_entry_distance,
+                        "path": "SWAP",
+                    },
+                )
+                continue
         best_new = c
         break
     if best_new is not None:
@@ -626,6 +656,34 @@ def decide_allocations(
                 scan_ts, coin["symbol"], coin, "SKIP", reason,
             ))
             continue
+
+        # 45e v2: entry distance filter — skip coins too stretched above EMA20.
+        # Historical validation (11 v3 losses) showed threshold 10 blocks
+        # 92.4% of loss by dollar amount. 0 = disabled.
+        if max_entry_distance > 0:
+            distance = float(coin.get("distance_from_ema_pct", 0) or 0)
+            if distance > max_entry_distance:
+                reason = (
+                    f"FILTER_ENTRY_DISTANCE: price {distance:.1f}% above EMA20 "
+                    f"(max {max_entry_distance:.1f}% — stretched, mean-reversion risk)"
+                )
+                logger.info(f"[ALLOCATOR] SKIP {coin['symbol']}: {reason}")
+                log_event(
+                    severity="info",
+                    category="tf",
+                    event="entry_distance_skip",
+                    symbol=coin["symbol"],
+                    message=reason,
+                    details={
+                        "distance_pct": distance,
+                        "max_distance_pct": max_entry_distance,
+                        "path": "ALLOCATE",
+                    },
+                )
+                decisions.append(_make_decision(
+                    scan_ts, coin["symbol"], coin, "SKIP", reason,
+                ))
+                continue
 
         coin_strength = float(coin.get("signal_strength", 0) or 0)
         if coin_strength < min_strength:
