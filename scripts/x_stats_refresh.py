@@ -2,13 +2,19 @@
 BagHolderAI — X Stats Refresh
 =============================
 Scans @BagHolderAI timeline via X API v2, generates a dated markdown report
-with all original posts + own replies (retweets excluded).
+with original posts + own replies (retweets excluded).
+
+Default mode is *incremental*: only posts newer than the last seen ID are
+fetched. Pass --full to force a complete history rescan (costs more, refreshes
+metrics of old posts too).
 
 Usage:
-    python3.13 -m scripts.x_stats_refresh
+    python3.13 -m scripts.x_stats_refresh           # incremental
+    python3.13 -m scripts.x_stats_refresh --full    # full history
 
 Output:
-    post_x/x_scan_YYYY-MM-DD.md
+    post_x/x_scan_YYYY-MM-DD.md       report file (one per run day)
+    post_x/.state.json                last_seen_id for incremental mode
 
 Read-only on X API. Does NOT touch Supabase or config/Posts_X_v3.md.
 The post_x/ folder is gitignored — reports stay local per machine, synced
@@ -16,6 +22,8 @@ manually on demand.
 Estimated cost: ~$0.001 per post fetched (pay-as-you-go tier).
 """
 
+import argparse
+import json
 import sys
 import os
 from datetime import datetime
@@ -35,7 +43,22 @@ from config.settings import XConfig
 
 
 REPORT_DIR = Path(__file__).parent.parent / "post_x"
+STATE_PATH = REPORT_DIR / ".state.json"
 COST_PER_POST_USD = 0.001  # X API pay-as-you-go, Owned Reads tier
+
+
+def load_state() -> dict:
+    if STATE_PATH.exists():
+        try:
+            return json.loads(STATE_PATH.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            print(f"[WARN] {STATE_PATH} is malformed — ignoring.")
+    return {}
+
+
+def save_state(state: dict) -> None:
+    REPORT_DIR.mkdir(parents=True, exist_ok=True)
+    STATE_PATH.write_text(json.dumps(state, indent=2), encoding="utf-8")
 
 
 def detect_author(text: str) -> str:
@@ -75,6 +98,14 @@ def fmt_metric(value) -> str:
 
 
 def main():
+    parser = argparse.ArgumentParser(description="Scan @BagHolderAI timeline")
+    parser.add_argument(
+        "--full",
+        action="store_true",
+        help="Rescan full history (ignore last_seen_id). Costs more; refreshes metrics on old posts.",
+    )
+    args = parser.parse_args()
+
     # 1. Auth
     # OAuth 1.0a: needed for get_me() to resolve our own user
     # Bearer token (OAuth 2.0 app-only): needed for GET /2/users/:id/tweets on pay-per-use tier
@@ -113,17 +144,31 @@ def main():
     user_id = me.data.id
     print(f"[INFO] Authenticated as @{username} (ID: {user_id})")
 
-    # 3. Fetch timeline (originals + own replies, no retweets)
+    # 3. Incremental vs full mode
+    state = load_state()
+    since_id = None if args.full else state.get("last_seen_id")
+
+    if args.full:
+        print("[INFO] FULL mode: scanning entire history (ignoring last_seen_id)")
+    elif since_id:
+        print(f"[INFO] INCREMENTAL mode: fetching posts newer than ID {since_id}")
+    else:
+        print("[INFO] INCREMENTAL mode: no prior state — first run will scan full history")
+
+    # 4. Fetch timeline (originals + own replies, no retweets)
     print("[INFO] Fetching posts + replies (excluding retweets)...")
 
+    paginator_kwargs = {
+        "id": user_id,
+        "max_results": 100,
+        "tweet_fields": ["created_at", "public_metrics", "text", "in_reply_to_user_id"],
+        "exclude": ["retweets"],
+    }
+    if since_id:
+        paginator_kwargs["since_id"] = since_id
+
     try:
-        paginator = tweepy.Paginator(
-            read_client.get_users_tweets,
-            id=user_id,
-            max_results=100,
-            tweet_fields=["created_at", "public_metrics", "text", "in_reply_to_user_id"],
-            exclude=["retweets"],
-        )
+        paginator = tweepy.Paginator(read_client.get_users_tweets, **paginator_kwargs)
         tweets = list(paginator.flatten(limit=200))
     except tweepy.TweepyException as e:
         err = str(e).lower()
@@ -137,7 +182,10 @@ def main():
 
     total = len(tweets)
     if total == 0:
-        print("[WARN] No posts fetched. Profile empty or API filtering everything out.")
+        if since_id:
+            print(f"[INFO] No new posts since ID {since_id}. Nothing to write.")
+        else:
+            print("[WARN] No posts fetched. Profile empty or API filtering everything out.")
         sys.exit(0)
 
     # 4. Process posts
@@ -201,8 +249,13 @@ def main():
     now = datetime.now().strftime("%Y-%m-%d %H:%M")
     cost = total * COST_PER_POST_USD
 
+    mode_label = "FULL" if args.full else ("DELTA" if since_id else "FULL (first run)")
+
     md = f"# X Scan — @{username} — {today}\n\n"
     md += f"**Generato:** {now}\n"
+    md += f"**Modalità:** {mode_label}\n"
+    if since_id and not args.full:
+        md += f"**Since ID:** {since_id}\n"
     md += f"**Post scaricati:** {total} ({originals_count} originali + {replies_count} reply)\n"
     md += f"**Costo stimato API:** ${cost:.3f}\n\n"
     md += "---\n\n"
@@ -253,6 +306,15 @@ def main():
     REPORT_DIR.mkdir(parents=True, exist_ok=True)
     out_path = REPORT_DIR / f"x_scan_{today}.md"
     out_path.write_text(md, encoding="utf-8")
+
+    # 9. Update state (most recent tweet ID across this batch)
+    newest_id = max(int(p["url"].rsplit("/", 1)[-1]) for p in posts)
+    prior_id = state.get("last_seen_id")
+    if prior_id is None or newest_id > int(prior_id):
+        state["last_seen_id"] = str(newest_id)
+        state["last_run_at"] = now
+        save_state(state)
+        print(f"[INFO] State updated: last_seen_id = {newest_id}")
 
     print(f"[INFO] Report saved: {out_path.relative_to(Path(__file__).parent.parent)}")
     print(f"[INFO] Estimated cost: ${cost:.3f}")
