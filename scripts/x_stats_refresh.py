@@ -8,9 +8,11 @@ Usage:
     python3.13 -m scripts.x_stats_refresh
 
 Output:
-    report_for_CEO/x_scan_YYYY-MM-DD.md
+    post_x/x_scan_YYYY-MM-DD.md
 
 Read-only on X API. Does NOT touch Supabase or config/Posts_X_v3.md.
+The post_x/ folder is gitignored — reports stay local per machine, synced
+manually on demand.
 Estimated cost: ~$0.001 per post fetched (pay-as-you-go tier).
 """
 
@@ -32,7 +34,7 @@ load_dotenv(dotenv_path=_ENV_PATH)
 from config.settings import XConfig
 
 
-REPORT_DIR = Path(__file__).parent.parent / "report_for_CEO"
+REPORT_DIR = Path(__file__).parent.parent / "post_x"
 COST_PER_POST_USD = 0.001  # X API pay-as-you-go, Owned Reads tier
 
 
