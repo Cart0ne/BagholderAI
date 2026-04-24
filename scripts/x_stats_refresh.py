@@ -73,12 +73,20 @@ def fmt_metric(value) -> str:
 
 
 def main():
-    # 1. Authenticate (OAuth 1.0a, same pattern as utils/x_poster.py)
-    if not all([XConfig.API_KEY, XConfig.API_SECRET, XConfig.ACCESS_TOKEN, XConfig.ACCESS_SECRET]):
-        print("[ERROR] Missing X credentials in .env. Required: X_API_KEY, X_API_SECRET, X_ACCESS_TOKEN, X_ACCESS_SECRET")
+    # 1. Auth
+    # OAuth 1.0a: needed for get_me() to resolve our own user
+    # Bearer token (OAuth 2.0 app-only): needed for GET /2/users/:id/tweets on pay-per-use tier
+    bearer = os.getenv("X_BEARER_TOKEN", "")
+    if not bearer:
+        print("[ERROR] Missing X_BEARER_TOKEN in config/.env. Generate one on developer.x.com → your app → Bearer Token → Generate.")
         sys.exit(1)
 
-    client = tweepy.Client(
+    if not all([XConfig.API_KEY, XConfig.API_SECRET, XConfig.ACCESS_TOKEN, XConfig.ACCESS_SECRET]):
+        print("[ERROR] Missing X OAuth 1.0a credentials in .env. Required: X_API_KEY, X_API_SECRET, X_ACCESS_TOKEN, X_ACCESS_SECRET")
+        sys.exit(1)
+
+    # OAuth 1.0a client (used to resolve our own user ID)
+    user_client = tweepy.Client(
         consumer_key=XConfig.API_KEY,
         consumer_secret=XConfig.API_SECRET,
         access_token=XConfig.ACCESS_TOKEN,
@@ -86,11 +94,17 @@ def main():
         wait_on_rate_limit=True,
     )
 
-    # 2. Get own user ID
+    # Bearer-token client (used for reading timeline)
+    read_client = tweepy.Client(
+        bearer_token=bearer,
+        wait_on_rate_limit=True,
+    )
+
+    # 2. Get own user ID (via OAuth 1.0a — only endpoint that needs it)
     try:
-        me = client.get_me()
+        me = user_client.get_me()
     except tweepy.TweepyException as e:
-        print(f"[ERROR] Authentication failed: {e}")
+        print(f"[ERROR] get_me() failed: {e}")
         sys.exit(1)
 
     username = me.data.username
@@ -102,7 +116,7 @@ def main():
 
     try:
         paginator = tweepy.Paginator(
-            client.get_users_tweets,
+            read_client.get_users_tweets,
             id=user_id,
             max_results=100,
             tweet_fields=["created_at", "public_metrics", "text", "in_reply_to_user_id"],
