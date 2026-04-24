@@ -416,7 +416,10 @@ def run_trend_follower():
     # 39g: track safety params across cycles so we can Telegram-notify
     # the CEO when /tf UI edits them mid-run. Mirrors how
     # SupabaseConfigReader alerts on bot_config changes.
-    _SAFETY_KEYS = ("tf_stop_loss_pct", "tf_take_profit_pct", "scan_interval_hours")
+    _SAFETY_KEYS = (
+        "tf_stop_loss_pct", "tf_take_profit_pct", "scan_interval_hours",
+        "tf_profit_lock_enabled", "tf_profit_lock_pct",  # 45f
+    )
     prev_safety = {k: config.get(k) for k in _SAFETY_KEYS}
 
     # Main loop

@@ -92,6 +92,8 @@ class GridBot:
         tf_stop_loss_pct: float = 0.0,  # 39a: TF stop-loss threshold as % of allocation (0 = disabled)
         stop_buy_drawdown_pct: float = 0.0,  # 39b: manual stop-buy threshold as % of allocation (0 = disabled)
         tf_take_profit_pct: float = 0.0,  # 39c: TF take-profit threshold as % of allocation (0 = disabled)
+        tf_profit_lock_enabled: bool = False,  # 45f: opt-in switch for proactive Profit Lock exit
+        tf_profit_lock_pct: float = 0.0,       # 45f: net PnL threshold (% of alloc) that triggers Profit Lock
         allocated_at: Optional[datetime] = None,  # 42a: TF allocation timestamp (anchors greed decay)
         greed_decay_tiers: Optional[list] = None, # 42a: [{minutes, tp_pct}, ...] — None for manual bots
     ):
@@ -117,6 +119,8 @@ class GridBot:
         self.tf_stop_loss_pct = tf_stop_loss_pct
         self.stop_buy_drawdown_pct = stop_buy_drawdown_pct
         self.tf_take_profit_pct = tf_take_profit_pct
+        self.tf_profit_lock_enabled = tf_profit_lock_enabled
+        self.tf_profit_lock_pct = tf_profit_lock_pct
         self.allocated_at: Optional[datetime] = allocated_at
         self.greed_decay_tiers: Optional[list] = greed_decay_tiers
         self.is_active: bool = True  # controlled via Supabase bot_config
@@ -125,6 +129,7 @@ class GridBot:
         self._stop_loss_triggered: bool = False  # 39a: latched once threshold is breached
         self._stop_buy_active: bool = False  # 39b: latched once drawdown breached, resets on profitable sell
         self._take_profit_triggered: bool = False  # 39c: latched once +pct threshold reached
+        self._profit_lock_triggered: bool = False  # 45f: latched once net-PnL threshold breached
         self._exchange_filters: dict = {}  # populated at startup via set_exchange_filters()
         self.state: Optional[GridState] = None
         self._daily_trade_count = 0
@@ -623,12 +628,13 @@ class GridBot:
                 return None
 
         if self.strategy == "A" and price < self.state.avg_buy_price:
-            # 39a/39c: TF bots can override Strategy A on stop-loss,
-            # bearish exit, or take-profit (mixed-lots liquidation).
+            # 39a/39c/45f: TF bots can override Strategy A on stop-loss,
+            # take-profit, profit-lock, or bearish exit (mixed-lots liquidation).
             tf_override = (
                 self.managed_by == "trend_follower"
                 and (self._stop_loss_triggered
                      or self._take_profit_triggered
+                     or self._profit_lock_triggered
                      or self.pending_liquidation)
             )
             if tf_override:
@@ -636,6 +642,8 @@ class GridBot:
                     reason = "STOP-LOSS"
                 elif self._take_profit_triggered:
                     reason = "TAKE-PROFIT"
+                elif self._profit_lock_triggered:
+                    reason = "PROFIT-LOCK"
                 else:
                     reason = "BEARISH EXIT"
                 logger.warning(
@@ -857,6 +865,66 @@ class GridBot:
                     },
                 )
 
+        # --- 45f: TF Profit Lock Exit ---
+        # Proactive exit: when NET PnL (realized + unrealized) crosses the
+        # threshold, liquidate before the market retraces. Unlike 39a/39c
+        # which only see unrealized, Profit Lock includes realized_pnl — so
+        # a grid that has already cashed cycles can trigger even with a
+        # slightly negative unrealized. Opt-in (tf_profit_lock_enabled).
+        #
+        # Phase 2 hook (~2 weeks after deploy): if/when 36f Trailing Stop
+        # lands, it takes priority over Profit Lock. Add the armed-check
+        # right here (e.g. `and not self._trailing_stop_armed`).
+        if (self.managed_by == "trend_follower"
+                and self.tf_profit_lock_enabled
+                and self.tf_profit_lock_pct > 0
+                and self.state.holdings > 0
+                and self.capital > 0
+                and not self._profit_lock_triggered
+                and not self._stop_loss_triggered
+                and not self._take_profit_triggered):
+            unrealized = (current_price - self.state.avg_buy_price) * self.state.holdings
+            net_pnl = float(self.state.realized_pnl or 0) + unrealized
+            net_pnl_pct = (net_pnl / self.capital) * 100
+            if net_pnl_pct >= self.tf_profit_lock_pct:
+                logger.warning(
+                    f"[{self.symbol}] PROFIT-LOCK TRIGGERED: net PnL ${net_pnl:.2f} "
+                    f"({net_pnl_pct:.1f}%) >= {self.tf_profit_lock_pct:.1f}% of alloc "
+                    f"${self.capital:.2f}. Liquidating all {len(self._pct_open_positions)} lots "
+                    f"(realized ${self.state.realized_pnl:.2f} + unrealized ${unrealized:.2f})."
+                )
+                self._profit_lock_triggered = True
+                # 45f: reuse the SL cooldown timestamp (Option A — KISS).
+                # tf_stop_loss_cooldown_hours applies identically post-lock,
+                # so the same coin isn't re-allocated immediately if the
+                # cooldown is set. With cooldown=0 (current default), the
+                # allocator is free to re-pick the coin next scan.
+                if self.trade_logger is not None:
+                    try:
+                        self.trade_logger.client.table("bot_config").update(
+                            {"last_stop_loss_at": datetime.now(timezone.utc).isoformat()}
+                        ).eq("symbol", self.symbol).execute()
+                    except Exception as e:
+                        logger.error(
+                            f"[{self.symbol}] Failed to write last_stop_loss_at (profit lock): {e}"
+                        )
+                log_event(
+                    severity="info",
+                    category="safety",
+                    event="profit_lock_triggered",
+                    symbol=self.symbol,
+                    message=f"TF profit lock: net PnL {net_pnl_pct:.1f}% ≥ {self.tf_profit_lock_pct:.1f}%",
+                    details={
+                        "realized": float(self.state.realized_pnl or 0),
+                        "unrealized": unrealized,
+                        "net_pnl": net_pnl,
+                        "net_pnl_pct": net_pnl_pct,
+                        "threshold_pct": self.tf_profit_lock_pct,
+                        "capital_allocation": self.capital,
+                        "lots": len(self._pct_open_positions),
+                    },
+                )
+
         # --- 39b: manual stop-buy check ---
         # Speculare al 39a ma per i bot manuali (BTC/SOL/BONK): quando il
         # drawdown totale eccede la soglia, blocca NUOVE buy — i lot esistenti
@@ -912,15 +980,16 @@ class GridBot:
                 )
 
         if self.state.holdings > 0 and self._pct_open_positions:
-            # 39a/39c: stop-loss, take-profit, or pending-liquidation
-            # overrides the per-lot trigger — sell every open lot in one
-            # pass. For stop-loss/bearish this includes underwater lots;
-            # for take-profit it includes lots that haven't individually
-            # hit their sell_pct yet.
+            # 39a/39c/45f: stop-loss, take-profit, profit-lock, or
+            # pending-liquidation overrides the per-lot trigger — sell every
+            # open lot in one pass. For stop-loss/bearish this includes
+            # underwater lots; for take-profit and profit-lock it includes
+            # lots that haven't individually hit their sell_pct yet.
             force_liquidate = (
                 self.managed_by == "trend_follower"
                 and (self._stop_loss_triggered
                      or self._take_profit_triggered
+                     or self._profit_lock_triggered
                      or self.pending_liquidation)
             )
             if force_liquidate:
@@ -969,10 +1038,17 @@ class GridBot:
                 elif self.state.holdings <= 1e-10:
                     cycle_closed = True
 
-                if ((self._stop_loss_triggered or self._take_profit_triggered)
+                if ((self._stop_loss_triggered
+                     or self._take_profit_triggered
+                     or self._profit_lock_triggered)
                         and cycle_closed
                         and not self.pending_liquidation):
-                    trigger = "Stop-loss" if self._stop_loss_triggered else "Take-profit"
+                    if self._stop_loss_triggered:
+                        trigger = "Stop-loss"
+                    elif self._take_profit_triggered:
+                        trigger = "Take-profit"
+                    else:
+                        trigger = "Profit-lock"
                     logger.warning(
                         f"[{self.symbol}] {trigger} liquidation complete "
                         f"(holdings={self.state.holdings:.6f}, queue={len(self._pct_open_positions)} lots). "
@@ -1319,14 +1395,15 @@ class GridBot:
                 return None
 
         # Strategy A never sells at a loss on the specific lot being sold —
-        # UNLESS this is a TF-managed bot under stop-loss, bearish exit, or
-        # take-profit (39a/39c: override so all lots liquidate in one pass
-        # even when some are locally underwater).
+        # UNLESS this is a TF-managed bot under stop-loss, bearish exit,
+        # take-profit, or profit-lock (39a/39c/45f: override so all lots
+        # liquidate in one pass even when some are locally underwater).
         if self.strategy == "A" and price < lot_buy_price:
             tf_override = (
                 self.managed_by == "trend_follower"
                 and (self._stop_loss_triggered
                      or self._take_profit_triggered
+                     or self._profit_lock_triggered
                      or self.pending_liquidation)
             )
             if tf_override:
@@ -1334,6 +1411,8 @@ class GridBot:
                     reason = "STOP-LOSS"
                 elif self._take_profit_triggered:
                     reason = "TAKE-PROFIT"
+                elif self._profit_lock_triggered:
+                    reason = "PROFIT-LOCK"
                 else:
                     reason = "BEARISH EXIT"
                 logger.warning(
@@ -1454,7 +1533,7 @@ class GridBot:
 
         trade_pnl_pct = (realized_pnl / cost_basis * 100) if cost_basis > 0 else 0
 
-        # 39a/39c: tag the reason so the trade log + Haiku commentary can
+        # 39a/39c/45f: tag the reason so the trade log + Haiku commentary can
         # distinguish forced exits from normal pct sells.
         if self._stop_loss_triggered:
             reason = (
@@ -1465,6 +1544,11 @@ class GridBot:
             reason = (
                 f"TAKE-PROFIT: price {fmt_price(price)} crystallizes gains "
                 f"(lot buy {fmt_price(lot_buy_price)}, threshold {self.tf_take_profit_pct:.0f}% of alloc)"
+            )
+        elif self._profit_lock_triggered:
+            reason = (
+                f"PROFIT-LOCK: price {fmt_price(price)} locks net gain "
+                f"(lot buy {fmt_price(lot_buy_price)}, threshold {self.tf_profit_lock_pct:.1f}% of alloc on net PnL)"
             )
         elif self.pending_liquidation and self.managed_by == "trend_follower":
             reason = (
@@ -1507,11 +1591,12 @@ class GridBot:
         }
 
         # 42a: expose greed-decay tier info for Telegram alert. Skip when the
-        # sell was forced (stop-loss / take-profit / bearish) — those have
-        # their own reason tags that already dominate the message.
+        # sell was forced (stop-loss / take-profit / profit-lock / bearish) —
+        # those have their own reason tags that already dominate the message.
         if (self.managed_by == "trend_follower"
                 and not self._stop_loss_triggered
                 and not self._take_profit_triggered
+                and not self._profit_lock_triggered
                 and not self.pending_liquidation):
             tp_pct, age_min, _ = self.get_effective_tp()
             if age_min is not None:

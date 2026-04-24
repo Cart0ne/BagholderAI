@@ -204,6 +204,28 @@ def _sync_config_to_bot(reader: "SupabaseConfigReader", bot: "GridBot", symbol: 
                 )
                 bot.tf_take_profit_pct = new_tpp
 
+        # 45f: profit lock enable + threshold — hot-reloaded so the CEO can
+        # flip the switch from the dashboard without restarting the bot.
+        tf_ple = reader.get_trend_config_value("tf_profit_lock_enabled")
+        if tf_ple is not None:
+            new_ple = bool(tf_ple)
+            if new_ple != bot.tf_profit_lock_enabled:
+                logger.info(
+                    f"[{symbol}] tf_profit_lock_enabled updated: "
+                    f"{bot.tf_profit_lock_enabled} → {new_ple}"
+                )
+                bot.tf_profit_lock_enabled = new_ple
+
+        tf_plp = reader.get_trend_config_value("tf_profit_lock_pct")
+        if tf_plp is not None:
+            new_plp = float(tf_plp)
+            if new_plp != bot.tf_profit_lock_pct:
+                logger.info(
+                    f"[{symbol}] tf_profit_lock_pct updated: "
+                    f"{bot.tf_profit_lock_pct} → {new_plp}"
+                )
+                bot.tf_profit_lock_pct = new_plp
+
         # 42a: greed_decay_tiers is global (trend_config); allocated_at is
         # per-bot (bot_config). Both are re-read each tick so UI edits and
         # SWAP re-allocations propagate without restart.
@@ -421,17 +443,20 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
     # Initialize Telegram
     notifier = SyncTelegramNotifier()
 
-    # 39a/39c: TF stop-loss + take-profit thresholds live in trend_config
-    # (global policy, not per-bot). Read once at startup; hot-reload
-    # requires restart. Manual bots ignore both (only TF bots arm the
-    # checks inside grid_bot), so reading them unconditionally is safe.
+    # 39a/39c/45f: TF stop-loss + take-profit + profit-lock thresholds live
+    # in trend_config (global policy, not per-bot). Read once at startup;
+    # hot-reload is handled inside _sync_config_to_bot. Manual bots ignore
+    # all three (only TF bots arm the checks inside grid_bot), so reading
+    # them unconditionally is safe.
     tf_stop_loss_pct = 0.0
     tf_take_profit_pct = 0.0
+    tf_profit_lock_enabled = False
+    tf_profit_lock_pct = 0.0
     try:
         from db.client import get_client
         _sb = get_client()
         _tc = _sb.table("trend_config").select(
-            "tf_stop_loss_pct,tf_take_profit_pct"
+            "tf_stop_loss_pct,tf_take_profit_pct,tf_profit_lock_enabled,tf_profit_lock_pct"
         ).limit(1).execute()
         if _tc.data:
             row = _tc.data[0]
@@ -439,6 +464,10 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
                 tf_stop_loss_pct = float(row["tf_stop_loss_pct"])
             if row.get("tf_take_profit_pct") is not None:
                 tf_take_profit_pct = float(row["tf_take_profit_pct"])
+            if row.get("tf_profit_lock_enabled") is not None:
+                tf_profit_lock_enabled = bool(row["tf_profit_lock_enabled"])
+            if row.get("tf_profit_lock_pct") is not None:
+                tf_profit_lock_pct = float(row["tf_profit_lock_pct"])
     except Exception as e:
         logger.warning(f"Could not read trend_config safety params: {e}. Defaulting to 0.")
 
@@ -488,6 +517,8 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
         tf_stop_loss_pct=tf_stop_loss_pct,
         stop_buy_drawdown_pct=stop_buy_drawdown_pct,
         tf_take_profit_pct=tf_take_profit_pct,
+        tf_profit_lock_enabled=tf_profit_lock_enabled,
+        tf_profit_lock_pct=tf_profit_lock_pct,
         allocated_at=allocated_at,
         greed_decay_tiers=greed_decay_tiers,
     )
@@ -668,8 +699,16 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
             # before the individual-trade alert loop below.
             if getattr(bot, "pending_liquidation", False):
                 is_tp = getattr(bot, "_take_profit_triggered", False)
-                event_label = "TAKE-PROFIT" if is_tp else "STOP-LOSS"
-                stop_reason_tag = "take_profit" if is_tp else "stop_loss"
+                is_pl = getattr(bot, "_profit_lock_triggered", False)
+                if is_pl:
+                    event_label = "PROFIT-LOCK"
+                    stop_reason_tag = "profit_lock"
+                elif is_tp:
+                    event_label = "TAKE-PROFIT"
+                    stop_reason_tag = "take_profit"
+                else:
+                    event_label = "STOP-LOSS"
+                    stop_reason_tag = "stop_loss"
 
                 logger.info(
                     f"[{cfg.symbol}] pending_liquidation triggered mid-tick ({event_label.lower()}) — closing bot"

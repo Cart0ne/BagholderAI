@@ -447,7 +447,9 @@
       { key: 'tf_tier1_lots', label: 'Tier 1 lots', sub: '45c: number of lots T1 allocations split into. More lots = smoother entry. Default 4. initial_lots = lots − 1 (1 lot in reserve for dips).' },
       { key: 'tf_tier2_lots', label: 'Tier 2 lots', sub: '45c: number of lots for T2 allocations. Default 3. initial_lots = lots − 1.' },
       { key: 'tf_tier3_lots', label: 'Tier 3 lots', sub: '45c: number of lots for T3 allocations. Default 2. T3 fires ALL lots at entry (no reserve) because illiquid coins don\'t give second chances on dips.' },
-      { key: 'tf_entry_max_distance_pct', label: 'Entry max distance from EMA20 (%)', sub: '45e v2: SKIP ALLOCATE/SWAP if candidate\'s price is more than X% above its EMA20 (4h). Prevents entering stretched coins due for mean reversion. Default 10. Validated on v3 losses (92.4% would have been blocked). Set 0 to disable.' }
+      { key: 'tf_entry_max_distance_pct', label: 'Entry max distance from EMA20 (%)', sub: '45e v2: SKIP ALLOCATE/SWAP if candidate\'s price is more than X% above its EMA20 (4h). Prevents entering stretched coins due for mean reversion. Default 10. Validated on v3 losses (92.4% would have been blocked). Set 0 to disable.' },
+      { key: 'tf_profit_lock_enabled', type: 'boolean', label: 'Profit Lock Exit', sub: '45f: opt-in proactive exit. When true, a TF bot liquidates as soon as NET PnL (realized + unrealized) crosses the threshold below. Default OFF (feature opt-in at deploy). Uses SL cooldown post-lock.' },
+      { key: 'tf_profit_lock_pct', label: 'Profit Lock threshold (%)', sub: '45f: NET PnL % on capital_allocation at which Profit Lock triggers. Ignored unless Profit Lock Exit is ON. Default 5 → liquidates when net gain on alloc reaches +5%. Lower = more conservative (locks earlier).' }
     ];
 
     // === AUTH ===
@@ -582,7 +584,7 @@
     async function loadAll() {
       // 1. Load trend_config first (needed to know tf_budget, tf_max_coins, dry_run)
       try {
-        var tc = await sbGet('trend_config', 'select=id,dry_run,tf_budget,tf_max_coins,tf_stop_loss_pct,tf_stop_loss_cooldown_hours,tf_take_profit_pct,tf_initial_lots,min_allocate_strength,greed_decay_tiers,scan_interval_hours,tf_tier1_min_volume,tf_tier2_min_volume,tf_tier1_weight,tf_tier2_weight,tf_tier3_weight,tf_tier1_lots,tf_tier2_lots,tf_tier3_lots,tf_entry_max_distance_pct&limit=1');
+        var tc = await sbGet('trend_config', 'select=id,dry_run,tf_budget,tf_max_coins,tf_stop_loss_pct,tf_stop_loss_cooldown_hours,tf_take_profit_pct,tf_initial_lots,min_allocate_strength,greed_decay_tiers,scan_interval_hours,tf_tier1_min_volume,tf_tier2_min_volume,tf_tier1_weight,tf_tier2_weight,tf_tier3_weight,tf_tier1_lots,tf_tier2_lots,tf_tier3_lots,tf_entry_max_distance_pct,tf_profit_lock_enabled,tf_profit_lock_pct&limit=1');
         if (tc && tc.length) {
           TF_CONFIG_ROW = tc[0];
           TF_BUDGET = Number(tc[0].tf_budget) || 100;
@@ -679,6 +681,15 @@
       grid.innerHTML = TF_SAFETY_FIELDS.map(function(f) {
         var val = TF_CONFIG_ROW[f.key];
         var sub = f.sub ? '<small style="display:block;color:var(--text-dim);font-size:9px;margin-top:2px;line-height:1.3;">' + f.sub + '</small>' : '';
+        if (f.type === 'boolean') {
+          // 45f: minimal boolean support — checkbox. dataset.original stores
+          // "0"/"1" so the generic "changed" diff + audit log keep working.
+          var checked = (val === true || val === 'true' || val === 1 || val === '1') ? 'checked' : '';
+          return '<div class="config-field">' +
+            '<label>' + f.label + sub + '</label>' +
+            '<input type="checkbox" id="tfs-' + f.key + '" ' + checked + '>' +
+          '</div>';
+        }
         return '<div class="config-field">' +
           '<label>' + f.label + sub + '</label>' +
           '<input type="text" inputmode="decimal" id="tfs-' + f.key + '" value="' + (val != null ? val : '') + '">' +
@@ -688,12 +699,21 @@
       TF_SAFETY_FIELDS.forEach(function(f) {
         var input = document.getElementById('tfs-' + f.key);
         if (!input) return;
-        input.dataset.original = input.value;
-        input.addEventListener('input', function() {
-          var changed = this.value !== this.dataset.original;
-          this.classList.toggle('changed', changed);
-          checkTfSafetyChanges();
-        });
+        if (f.type === 'boolean') {
+          input.dataset.original = input.checked ? '1' : '0';
+          input.addEventListener('change', function() {
+            var nowVal = this.checked ? '1' : '0';
+            this.classList.toggle('changed', nowVal !== this.dataset.original);
+            checkTfSafetyChanges();
+          });
+        } else {
+          input.dataset.original = input.value;
+          input.addEventListener('input', function() {
+            var changed = this.value !== this.dataset.original;
+            this.classList.toggle('changed', changed);
+            checkTfSafetyChanges();
+          });
+        }
       });
       btn.disabled = true;
     }
@@ -701,7 +721,12 @@
     function checkTfSafetyChanges() {
       var hasChanges = TF_SAFETY_FIELDS.some(function(f) {
         var input = document.getElementById('tfs-' + f.key);
-        return input && input.value !== input.dataset.original;
+        if (!input) return false;
+        if (f.type === 'boolean') {
+          var cur = input.checked ? '1' : '0';
+          return cur !== input.dataset.original;
+        }
+        return input.value !== input.dataset.original;
       });
       var btn = document.getElementById('tf-safety-save');
       if (btn) btn.disabled = !hasChanges;
@@ -725,6 +750,14 @@
         if (invalidField) return;
         var input = document.getElementById('tfs-' + f.key);
         if (!input) return;
+        if (f.type === 'boolean') {
+          var curStr = input.checked ? '1' : '0';
+          data[f.key] = input.checked;  // Postgres boolean column
+          if (curStr !== input.dataset.original) {
+            changes.push({ symbol: null, parameter: f.key, old_value: input.dataset.original, new_value: curStr, changed_by: 'manual-ceo' });
+          }
+          return;
+        }
         var rawVal = input.value;
         var normVal = typeof rawVal === 'string' ? rawVal.replace(',', '.') : rawVal;
         var newVal = parseFloat(normVal);
@@ -761,7 +794,13 @@
         status.style.color = auditOk ? 'var(--green)' : 'var(--yellow)';
         TF_SAFETY_FIELDS.forEach(function(f) {
           var input = document.getElementById('tfs-' + f.key);
-          if (input) { input.dataset.original = input.value; input.classList.remove('changed'); }
+          if (!input) return;
+          if (f.type === 'boolean') {
+            input.dataset.original = input.checked ? '1' : '0';
+          } else {
+            input.dataset.original = input.value;
+          }
+          input.classList.remove('changed');
         });
         setTimeout(function() { loadAll(); }, 1000);
       } catch (e) {
