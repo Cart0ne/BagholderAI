@@ -25,3 +25,8 @@ scripts/office/
 
 # X stats scan reports (local-only, synced manually on demand)
 post_x/
+
+# 47d backtest: OHLCV cache (~13 MB, rigenerabile) e raw trades (~4 MB)
+# I 3 file di summary (CSV piccoli) restano nel repo per leggibilità.
+scripts/output/.ohlcv_cache/
+scripts/output/backtest_trades.csv
