@@ -660,6 +660,8 @@
     function sign(n) { return Number(n) >= 0 ? '+' : ''; }
     function pcls(n) { return Number(n) >= 0 ? 'positive' : 'negative'; }
     function dayNum(ds) { return Math.max(1, Math.floor((new Date(ds) - V3_START) / 86400000) + 1); }
+    var TF_START = new Date('2026-04-15');  // first TF trade
+    function dayNumTF(ds) { return Math.max(1, Math.floor((new Date(ds) - TF_START) / 86400000) + 1); }
     function fmtDate(ds) { return new Date(ds).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }); }
 
     // === RENDER COMMENTARY ===
@@ -1379,7 +1381,7 @@
       var cashToReinvest = s.cash;
       document.getElementById('tf-pmeta').innerHTML =
         '<span>Initial: ' + fmtUsd(s.initialCapital) + '</span>' +
-        '<span>Day ' + dayNum(today) + '</span>' +
+        '<span>Day ' + dayNumTF(today) + '</span>' +
         '<span>Cash to reinvest: ' + fmtUsd(cashToReinvest) + '</span>' +
         '<span>Cash invested: ' + fmtUsd(s.totalInvested) + '</span>';
 
