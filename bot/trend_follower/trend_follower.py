@@ -39,6 +39,7 @@ from bot.trend_follower.allocator import (
     decide_allocations, apply_allocations, resize_active_allocations,
 )
 from bot.trend_follower.floating import compute_tf_floating_cash
+from bot.trend_follower.counterfactual import run_counterfactual_check
 
 
 # ---------------------------------------------------------------------------
@@ -548,6 +549,16 @@ def run_trend_follower():
 
             # Log to Supabase
             log_decisions(supabase, decisions, is_shadow=is_shadow)
+
+            # 47a: counterfactual tracker — for entry_distance_skip events
+            # >=24h old that aren't yet recorded, fetch the +24h price and
+            # peak so we can later compare "what we skipped" vs "what would
+            # have happened". Best-effort: never raises, never blocks the
+            # allocation flow. Runs once per scan cycle.
+            try:
+                run_counterfactual_check(exchange, supabase=supabase)
+            except Exception as e:
+                logger.warning(f"counterfactual_check raised unexpectedly: {e}")
 
             # Report to Telegram (TF-only view: active/deployed count reflects TF's universe)
             send_scan_report(notifier, coins, tf_allocs, config,

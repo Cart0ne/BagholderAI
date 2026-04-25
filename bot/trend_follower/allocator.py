@@ -415,6 +415,11 @@ def decide_allocations(
                         "distance_pct": dist_c,
                         "max_distance_pct": max_entry_distance,
                         "path": "SWAP",
+                        # 47a: counterfactual tracker — snapshot of price+EMA at
+                        # skip time so the post-scan job can fetch the +24h
+                        # delta without re-querying historical candles.
+                        "skip_price": float(c.get("price", 0) or 0),
+                        "skip_ema20": float(c.get("ema_fast", 0) or 0),
                     },
                 )
                 continue
@@ -678,6 +683,9 @@ def decide_allocations(
                         "distance_pct": distance,
                         "max_distance_pct": max_entry_distance,
                         "path": "ALLOCATE",
+                        # 47a: counterfactual tracker — see SWAP-path comment.
+                        "skip_price": float(coin.get("price", 0) or 0),
+                        "skip_ema20": float(coin.get("ema_fast", 0) or 0),
                     },
                 )
                 decisions.append(_make_decision(
