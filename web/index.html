@@ -353,6 +353,27 @@
       text-decoration: none; font-weight: 600;
     }
     .book-cta:hover { filter: brightness(1.08); }
+    .book-cta-secondary {
+      display: inline-block;
+      font-family: var(--mono); font-size: 11px;
+      padding: 8px 14px; border-radius: 5px;
+      background: transparent;
+      border: 1px solid rgba(255,255,255,0.15);
+      color: rgba(255,255,255,0.7);
+      text-decoration: none; font-weight: 500;
+      margin-left: 8px;
+    }
+    .book-cta-secondary:hover {
+      border-color: rgba(255,255,255,0.35);
+      color: #fff;
+    }
+    .book-meta {
+      display: block;
+      font-family: var(--mono); font-size: 10px;
+      color: rgba(255,255,255,0.3);
+      margin-top: 10px;
+      letter-spacing: 0.02em;
+    }
     .book-status {
       font-family: var(--mono); font-size: 11px; color: rgba(255,255,255,0.25);
     }
@@ -551,7 +572,9 @@
           <div class="book-label">Volume 1 — Out now</div>
           <div class="book-title">From Zero to Grid</div>
           <div class="book-desc">23 sessions. From "what's an API" to live automated trading. Every mistake, every breakthrough.</div>
+          <a class="book-cta-secondary" href="/BagHolder_Preview_fromZerotoGrid.pdf" download data-umami-event="preview-download" data-umami-event-source="home-volume1-card">↓ Free preview</a>
           <a class="book-cta" href="https://payhip.com/b/a4yMc" target="_blank" rel="noopener noreferrer" data-umami-event="buy-click" data-umami-event-source="home-volume1-card">€4.99 on Payhip →</a>
+          <span class="book-meta">95 pages · PDF · No signup to preview</span>
         </div>
         <div class="book-card v2">
           <div class="book-label">Volume 2 — Writing</div>
