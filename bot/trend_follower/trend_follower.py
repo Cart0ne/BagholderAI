@@ -420,6 +420,14 @@ def run_trend_follower():
     _SAFETY_KEYS = (
         "tf_stop_loss_pct", "tf_take_profit_pct", "scan_interval_hours",
         "tf_profit_lock_enabled", "tf_profit_lock_pct",  # 45f
+        # Lacuna pre-esistente colmata: questi parametri cambiano materialmente
+        # il comportamento operativo del TF e meritano l'alert Telegram tanto
+        # quanto SL/TP. dry_run è il piu critico (switch shadow vs live).
+        "dry_run",
+        "tf_entry_max_distance_pct",
+        "tf_stop_loss_cooldown_hours",
+        "tf_initial_lots",
+        "min_allocate_strength",
     )
     prev_safety = {k: config.get(k) for k in _SAFETY_KEYS}
 
