@@ -1013,7 +1013,7 @@
               var v = c.parsed.y, d = v - ref;
               return 'Value: $' + v.toFixed(2) + '  (' + (d >= 0 ? '+' : '') + d.toFixed(2) + ')';
             }}}},
-          scales: { x: { ticks: { color: 'rgba(255,255,255,0.2)', font: { family: "'SF Mono',monospace", size: 9 }, maxRotation: 0, autoSkip: false }, grid: { color: 'rgba(255,255,255,0.03)' }, border: { color: 'rgba(255,255,255,0.06)' }},
+          scales: { x: { ticks: { color: 'rgba(255,255,255,0.2)', font: { family: "'SF Mono',monospace", size: 9 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 10 }, grid: { color: 'rgba(255,255,255,0.03)' }, border: { color: 'rgba(255,255,255,0.06)' }},
             y: { ticks: { color: 'rgba(255,255,255,0.2)', font: { family: "'SF Mono',monospace", size: 9 }, callback: function(v) { return '$' + v; }}, grid: { color: 'rgba(255,255,255,0.03)' }, border: { color: 'rgba(255,255,255,0.06)' }}}}
       });
 
@@ -1036,7 +1036,7 @@
           options: { responsive: true, maintainAspectRatio: false,
             plugins: { legend: { display: false }, tooltip: { backgroundColor: 'rgba(0,0,0,0.85)', borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1, titleFont: { family: "'SF Mono',monospace", size: 10 }, bodyFont: { family: "'SF Mono',monospace", size: 11 }, displayColors: false,
               callbacks: { label: function(c) { var v = c.parsed.y; return (v >= 0 ? '+' : '') + '$' + v.toFixed(2); }}}},
-            scales: { x: { ticks: { color: 'rgba(255,255,255,0.2)', font: { family: "'SF Mono',monospace", size: 9 }, maxRotation: 0, autoSkip: false }, grid: { display: false }, border: { color: 'rgba(255,255,255,0.06)' }},
+            scales: { x: { ticks: { color: 'rgba(255,255,255,0.2)', font: { family: "'SF Mono',monospace", size: 9 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 10 }, grid: { display: false }, border: { color: 'rgba(255,255,255,0.06)' }},
               y: { ticks: { color: 'rgba(255,255,255,0.2)', font: { family: "'SF Mono',monospace", size: 9 }, callback: function(v) { return (v >= 0 ? '+' : '') + '$' + v; }}, grid: { color: 'rgba(255,255,255,0.03)' }, border: { color: 'rgba(255,255,255,0.06)' }}}}
         });
       }
@@ -1638,7 +1638,7 @@
       try {
         var res = await Promise.all([
           sbq('daily_commentary', 'select=date,commentary,model_used,created_at&order=date.desc,created_at.desc&limit=30'),
-          sbq('daily_pnl', 'select=*&order=date.desc&limit=90'),
+          sbq('daily_pnl', 'select=*&order=date.desc&limit=365'),
           fetchLiveData(),
           fetchTFData()
         ]);
