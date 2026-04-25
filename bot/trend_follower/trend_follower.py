@@ -11,7 +11,7 @@ Usage:
 import signal
 import time
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 logging.basicConfig(
     level=logging.INFO,
@@ -215,6 +215,37 @@ def log_full_scan(supabase, coins: list[dict]):
         logger.info(f"Logged {len(rows)} coins to trend_scans")
     except Exception as e:
         logger.warning(f"Failed to log scan data: {e}")
+
+
+def cleanup_old_trend_scans(supabase, retention_days: int = 14) -> int:
+    """Delete trend_scans rows older than retention_days. Returns rows deleted.
+
+    47c: trend_scans is "temporary for debugging" (see log_full_scan) and is
+    the largest contributor to DB growth — ~50 rows per scan. With scan_interval
+    halved (1h → 30min) we double the daily volume, so a periodic prune keeps
+    the Supabase Free tier (500 MB) viable for the foreseeable future.
+
+    Best-effort: never raises. Failure logs a warning and the loop proceeds.
+    """
+    try:
+        cutoff = (datetime.now(timezone.utc)
+                  - timedelta(days=retention_days)).isoformat()
+        # PostgREST DELETE returns the deleted rows when prefer=return=representation;
+        # supabase-py defaults to that, so result.data is the deleted set.
+        result = (supabase.table("trend_scans")
+                  .delete()
+                  .lt("scan_timestamp", cutoff)
+                  .execute())
+        deleted = len(result.data or [])
+        if deleted > 0:
+            logger.info(
+                f"trend_scans cleanup: removed {deleted} row(s) older than "
+                f"{retention_days}d (cutoff {cutoff})"
+            )
+        return deleted
+    except Exception as e:
+        logger.warning(f"trend_scans cleanup failed: {e}")
+        return 0
 
 
 # ---------------------------------------------------------------------------
@@ -431,6 +462,12 @@ def run_trend_follower():
     )
     prev_safety = {k: config.get(k) for k in _SAFETY_KEYS}
 
+    # 47c: track last cleanup so trend_scans prune runs ~1×/day regardless of
+    # scan_interval. Initial value = epoch so the first scan after a restart
+    # always triggers a cleanup (catches up on whatever piled up while the
+    # bot was down).
+    last_cleanup_at: datetime | None = None
+
     # Main loop
     while True:
         try:
@@ -567,6 +604,15 @@ def run_trend_follower():
                 run_counterfactual_check(exchange, supabase=supabase)
             except Exception as e:
                 logger.warning(f"counterfactual_check raised unexpectedly: {e}")
+
+            # 47c: prune old trend_scans rows once per day. trend_scans is the
+            # largest table by row count (~50/scan); without a TTL it would
+            # eat the Supabase Free 500 MB allowance over time. 14 days is
+            # enough to investigate any "what happened on day X?" question.
+            now = datetime.now(timezone.utc)
+            if last_cleanup_at is None or (now - last_cleanup_at).total_seconds() >= 86400:
+                cleanup_old_trend_scans(supabase, retention_days=14)
+                last_cleanup_at = now
 
             # Report to Telegram (TF-only view: active/deployed count reflects TF's universe)
             send_scan_report(notifier, coins, tf_allocs, config,
