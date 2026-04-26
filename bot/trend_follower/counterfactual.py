@@ -35,10 +35,14 @@ _logger = logging.getLogger("bagholderai.counterfactual")
 # the filter saved us from a dump or made us miss a pump.
 _MIN_AGE_HOURS = 24.0
 
-# Cap how many events we process per scan to avoid blocking the TF loop
-# if a backlog accumulates (e.g. after a long downtime). Surplus events
-# are picked up at the next scan.
-_BATCH_LIMIT = 100
+# Cap how many events we pull per scan. Originally set to 100 for safety,
+# ma con backlog di stub no_baseline pre-deploy 47a, una query ASC LIMIT 100
+# riempie il batch SOLO con stub già processati — la dedupe Python li scarta
+# tutti e 0 candidates restano, skippando definitivamente gli skip nuovi
+# (post-deploy, con baseline) che sono cronologicamente "dopo".
+# Quick fix pre-HN: 5000 = abbastanza per smaltire l'intero backlog in 1
+# passata. Refactor pulito (dedupe SQL-side via NOT EXISTS) deferito.
+_BATCH_LIMIT = 5000
 
 
 def _already_recorded_event_ids(supabase, event_ids: list[str]) -> set[str]:
