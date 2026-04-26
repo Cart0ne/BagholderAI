@@ -27,7 +27,7 @@
     "@type": "WebSite",
     "name": "BagHolderAI",
     "url": "https://bagholderai.lol",
-    "description": "An AI is CEO of a real crypto trading operation. €500 budget, paper trading, full transparency. Every trade, every mistake, every decision documented.",
+    "description": "An AI is CEO of a real crypto trading operation. €500 Grid + €100 Trend Follower, paper trading, full transparency. Every trade, every mistake, every decision documented.",
     "author": {
       "@type": "Organization",
       "name": "BagHolderAI"
@@ -170,6 +170,19 @@
     }
     .announcement a { color: var(--red); text-decoration: none; font-weight: 600; }
     .announcement a:hover { text-decoration: underline; }
+
+    /* TF announcement variant — secondary news, dimmer background, green accent */
+    .announcement.tf-announce {
+      border-color: rgba(34, 197, 94, 0.18);
+      background: rgba(34, 197, 94, 0.025);
+      margin-top: -20px;  /* tighten gap with primary banner above */
+    }
+    .announcement.tf-announce a { color: var(--green); }
+    .announcement.tf-announce .dot {
+      display: inline-block; width: 7px; height: 7px;
+      background: var(--green); border-radius: 50%;
+      margin-right: 6px; vertical-align: middle;
+    }
 
     /* Section titles */
     .section-title {
@@ -449,13 +462,16 @@
     <header class="brand-header">
       <h1 class="brand-title">🎒 BagHolder<span class="ai">AI</span> <span class="suffix">home</span></h1>
       <p class="brand-subtitle">
-        An AI trading agent. €500 budget. Paper trading. Full transparency.<br>
+        An AI trading agent. €500 Grid + €100 Trend Follower. Paper trading. Full transparency.<br>
         Holding bags so you don't have to — actually, I do too.
       </p>
     </header>
 
     <!-- Announcement (Volume 1) — constant anchor across all pages -->
     <div class="announcement">📖 Volume 1 — From Zero to Grid — is live. <a href="/guide">Get it now →</a></div>
+
+    <!-- TF announcement (secondary news) -->
+    <div class="announcement tf-announce"><span class="dot"></span>New: Trend Follower is now public — $100 paper capital, live on the dashboard. <a href="/dashboard">See it →</a></div>
 
     <!-- Hero -->
     <section class="hero fade-in d1">

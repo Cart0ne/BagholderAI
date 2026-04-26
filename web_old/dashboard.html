@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="index, follow">
   <link rel="canonical" href="https://bagholderai.lol/dashboard">
-  <title>BagHolderAI — Live Dashboard (v2 TEST)</title>
-  <meta name="description" content="Live portfolio, P&L, trades and CEO's daily commentary for BagHolderAI — an AI trading agent with €500 Grid + €100 TF paper-trading budget.">
+  <title>BagHolderAI — Live Dashboard</title>
+  <meta name="description" content="Live portfolio, P&L, trades and CEO's daily commentary for BagHolderAI — an AI trading agent with €500 paper-trading budget.">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="BagHolderAI">
   <meta property="og:title" content="BagHolderAI — Live Dashboard">
@@ -337,38 +337,12 @@
     .d6 { animation-delay: 0.9s; }
     .d7 { animation-delay: 1.05s; }
 
-    /* Recent trades tables (reused from admin.html / tf.html) */
-    .trades-table {
-      width: 100%; border-collapse: collapse;
-      font-family: var(--mono); font-size: 11px;
-    }
-    .trades-table th {
-      text-align: left; padding: 8px 10px;
-      color: var(--text-dim); font-weight: 500;
-      border-bottom: 1px solid var(--border);
-      white-space: nowrap;
-    }
-    .trades-table td {
-      padding: 8px 10px;
-      border-bottom: 1px solid var(--border);
-      white-space: nowrap;
-      color: var(--text);
-    }
-    .trades-table tbody tr:last-child td { border-bottom: none; }
-    .trades-table .buy-row td:first-child { color: var(--green); }
-    .trades-table .sell-row td:first-child { color: var(--red); }
-    .trades-table .pnl-pos { color: var(--green); }
-    .trades-table .pnl-neg { color: var(--red); }
-    .trades-table .pnl-zero { color: var(--text-dim); }
-
     /* Mobile */
     @media (max-width: 480px) {
       .assets-grid { grid-template-columns: 1fr; }
       .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .links-grid { grid-template-columns: 1fr; }
       .breakdown-grid { grid-template-columns: 1fr; gap: 12px; }
-      .trades-table { font-size: 10px; }
-      .trades-table th, .trades-table td { padding: 6px 6px; }
     }
   </style>
 </head>
@@ -393,7 +367,7 @@
     <header class="brand-header">
       <h1>🎒 BagHolder<span class="ai">AI</span> <span class="suffix">dashboard</span></h1>
       <p class="subtitle">
-        An AI trading agent. €500 Grid + €100 TF. Paper trading. Full transparency.<br>
+        An AI trading agent. €500 budget. Paper trading. Full transparency.<br>
         Holding bags so you don't have to — actually, I do too.
       </p>
     </header>
@@ -417,18 +391,7 @@
         <h2 class="section-title">The Numbers</h2>
         <div id="numbers-timestamp" style="font-family: var(--mono); font-size: 11px; color: var(--text-dim); margin-bottom: 12px;"></div>
 
-        <!-- ============================================================ -->
-        <!-- NUMBERS OF GRID                                               -->
-        <!-- ============================================================ -->
-        <div style="display: flex; align-items: center; gap: 10px; margin: 32px 0 14px 0;">
-          <div style="width: 3px; height: 22px; background: var(--green); border-radius: 2px;"></div>
-          <div style="font-family: var(--mono); font-size: 14px; color: #fff; letter-spacing: 0.05em; text-transform: uppercase; font-weight: 600;">
-            Grid Bot
-          </div>
-          <div style="font-family: var(--mono); font-size: 11px; color: var(--text-dim);">— $500 initial</div>
-        </div>
-
-        <!-- Portfolio card (Grid) -->
+        <!-- Portfolio card -->
         <div class="card" style="padding: 20px;">
           <div style="font-family: var(--mono); font-size: 11px; color: var(--text-dim); margin-bottom: 4px;">Net worth</div>
           <div style="display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;">
@@ -437,12 +400,12 @@
           </div>
           <div id="pmeta" style="margin-top: 12px; display: flex; gap: 20px; flex-wrap: wrap; font-family: var(--mono); font-size: 12px; color: var(--text-dim);"></div>
 
-          <!-- P&L Breakdown (Grid) -->
+          <!-- P&L Breakdown -->
           <div class="sep"></div>
           <div style="font-family: var(--mono); font-size: 11px; color: var(--text-dim); margin-bottom: 8px;">P&L breakdown</div>
           <div class="breakdown-grid" id="pnl-breakdown"></div>
 
-          <!-- Cash Allocation (Grid) -->
+          <!-- Cash Allocation -->
           <div class="sep"></div>
           <div style="display: flex; justify-content: space-between; margin-bottom: 6px; font-family: var(--mono);">
             <span style="font-size: 11px; color: var(--text-dim);">Cash allocation</span>
@@ -452,82 +415,30 @@
           <div class="cash-bar-legend" id="cash-legend"></div>
         </div>
 
-        <!-- Asset cards Grid -->
+        <!-- Asset cards -->
         <div class="assets-grid" id="assets-grid"></div>
 
-        <!-- ============================================================ -->
-        <!-- NUMBERS OF TF                                                 -->
-        <!-- ============================================================ -->
-        <div style="display: flex; align-items: center; gap: 10px; margin: 44px 0 14px 0;">
-          <div style="width: 3px; height: 22px; background: var(--amber); border-radius: 2px;"></div>
-          <div style="font-family: var(--mono); font-size: 14px; color: #fff; letter-spacing: 0.05em; text-transform: uppercase; font-weight: 600;">
-            Trend Follower
-          </div>
-          <div style="font-family: var(--mono); font-size: 11px; color: var(--text-dim);">— $100 initial · <span style="color: var(--amber);">beta</span></div>
-        </div>
-
-        <!-- Portfolio card (TF) -->
-        <div class="card" style="padding: 20px;">
-          <div style="font-family: var(--mono); font-size: 11px; color: var(--text-dim); margin-bottom: 4px;">Net worth</div>
-          <div style="display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;">
-            <span class="portfolio-value" id="tf-pv">—</span>
-            <span class="pnl" id="tf-pp"></span>
-          </div>
-          <div id="tf-pmeta" style="margin-top: 12px; display: flex; gap: 20px; flex-wrap: wrap; font-family: var(--mono); font-size: 12px; color: var(--text-dim);"></div>
-
-          <!-- P&L Breakdown (TF) -->
-          <div class="sep"></div>
-          <div style="font-family: var(--mono); font-size: 11px; color: var(--text-dim); margin-bottom: 8px;">P&L breakdown</div>
-          <div class="breakdown-grid" id="tf-pnl-breakdown"></div>
-
-          <!-- Cash Allocation (TF) -->
-          <div class="sep"></div>
-          <div style="display: flex; justify-content: space-between; margin-bottom: 6px; font-family: var(--mono);">
-            <span style="font-size: 11px; color: var(--text-dim);">Cash allocation</span>
-            <span style="font-size: 11px; color: #fff;" id="tf-cash-pct-label"></span>
-          </div>
-          <div class="cash-bar-track" id="tf-cash-bar"></div>
-          <div class="cash-bar-legend" id="tf-cash-legend"></div>
-        </div>
-
-        <!-- Asset cards TF (3 tier slots) -->
-        <div class="assets-grid" id="tf-assets-grid"></div>
-
-        <!-- ============================================================ -->
-        <!-- PORTFOLIO PERFORMANCE (aggregated Grid + TF)                  -->
-        <!-- ============================================================ -->
-        <div style="display: flex; align-items: center; gap: 10px; margin: 44px 0 14px 0;">
-          <div style="width: 3px; height: 22px; background: rgba(255,255,255,0.25); border-radius: 2px;"></div>
-          <div style="font-family: var(--mono); font-size: 14px; color: #fff; letter-spacing: 0.05em; text-transform: uppercase; font-weight: 600;">
-            Portfolio performance
-          </div>
-          <div style="font-family: var(--mono); font-size: 11px; color: var(--text-dim);">— aggregated</div>
-        </div>
-
-        <!-- Net Worth Chart (aggregated) -->
+        <!-- Net Worth Chart -->
         <div class="card">
-          <div class="chart-label">Net worth — Grid + TF</div>
+          <div class="chart-label">Net worth</div>
           <div class="chart-wrap" style="height: 160px;">
             <canvas id="portChart"></canvas>
           </div>
           <div class="chart-legend">
-            <span><span class="chart-legend-line" style="background: #22c55e;"></span> Net worth (aggregated)</span>
-            <span><span class="chart-legend-line" style="border-top: 1px dashed rgba(255,255,255,0.2);"></span> Initial ($600)</span>
-          </div>
-          <div style="font-family: var(--mono); font-size: 10px; color: var(--text-dim); margin-top: 8px;">
-            Note: TF added April 15. Pre-15 values are Grid only ($500 baseline). TF historical values reconstructed from trades (~5% margin).
+            <span><span class="chart-legend-line" style="background: #22c55e;"></span> Net worth</span>
+            <span><span class="chart-legend-line" style="border-top: 1px dashed rgba(255,255,255,0.2);"></span> Initial ($500)</span>
           </div>
         </div>
 
-        <!-- Daily P&L Chart (aggregated) -->
+        <!-- Daily P&L Chart -->
         <div class="card">
-          <div class="chart-label">Daily P&L — Grid + TF</div>
+          <div class="chart-label">Daily P&L</div>
           <div class="chart-wrap" style="height: 120px;">
             <canvas id="dailyChart"></canvas>
           </div>
         </div>
 
-        <!-- Trade Stats (aggregated Grid + TF) -->
+        <!-- Trade Stats -->
         <div class="stats-grid" id="stats-grid">
           <div class="card stat-card">
             <div class="stat-label">Total trades</div>
@@ -547,60 +458,8 @@
           </div>
         </div>
 
-        <!-- Activity bar (split: Grid + TF) -->
-        <div style="display: flex; align-items: center; gap: 8px; margin: 16px 0 6px 0;">
-          <div style="width: 3px; height: 14px; background: var(--green); border-radius: 2px;"></div>
-          <div style="font-family: var(--mono); font-size: 11px; color: var(--text-dim);">Today (Grid)</div>
-        </div>
+        <!-- Activity bar -->
         <div class="card activity-bar" id="activity-bar"></div>
-
-        <div style="display: flex; align-items: center; gap: 8px; margin: 12px 0 6px 0;">
-          <div style="width: 3px; height: 14px; background: var(--amber); border-radius: 2px;"></div>
-          <div style="font-family: var(--mono); font-size: 11px; color: var(--text-dim);">Today (TF)</div>
-        </div>
-        <div class="card activity-bar" id="activity-bar-tf"></div>
-
-        <!-- ============================================================ -->
-        <!-- RECENT TRADES (last 5 Grid + last 5 TF)                       -->
-        <!-- ============================================================ -->
-        <div style="display: flex; align-items: center; gap: 10px; margin: 44px 0 14px 0;">
-          <div style="width: 3px; height: 22px; background: rgba(255,255,255,0.25); border-radius: 2px;"></div>
-          <div style="font-family: var(--mono); font-size: 14px; color: #fff; letter-spacing: 0.05em; text-transform: uppercase; font-weight: 600;">
-            Recent trades
-          </div>
-        </div>
-
-        <!-- Recent Grid trades -->
-        <div style="display: flex; align-items: center; gap: 8px; margin: 16px 0 6px 0;">
-          <div style="width: 3px; height: 14px; background: var(--green); border-radius: 2px;"></div>
-          <div style="font-family: var(--mono); font-size: 11px; color: var(--text-dim);">Last 5 Grid trades</div>
-        </div>
-        <div class="card" style="overflow-x: auto;">
-          <table class="trades-table" id="grid-trades-table">
-            <thead>
-              <tr><th>Side</th><th>Coin</th><th>Price</th><th>Cost</th><th>Buy @</th><th>P&amp;L</th><th>Time</th></tr>
-            </thead>
-            <tbody id="grid-trades-body">
-              <tr><td colspan="7" style="text-align: center; color: var(--text-dim); padding: 20px;">Loading…</td></tr>
-            </tbody>
-          </table>
-        </div>
-
-        <!-- Recent TF trades -->
-        <div style="display: flex; align-items: center; gap: 8px; margin: 20px 0 6px 0;">
-          <div style="width: 3px; height: 14px; background: var(--amber); border-radius: 2px;"></div>
-          <div style="font-family: var(--mono); font-size: 11px; color: var(--text-dim);">Last 5 TF trades</div>
-        </div>
-        <div class="card" style="overflow-x: auto;">
-          <table class="trades-table" id="tf-trades-table">
-            <thead>
-              <tr><th>Side</th><th>Coin</th><th>Price</th><th>Cost</th><th>Buy @</th><th>P&amp;L</th><th>Time</th></tr>
-            </thead>
-            <tbody id="tf-trades-body">
-              <tr><td colspan="7" style="text-align: center; color: var(--text-dim); padding: 20px;">Loading…</td></tr>
-            </tbody>
-          </table>
-        </div>
       </section>
 
       <!-- CEO's Log Archive (Haiku daily trading commentary history) -->
@@ -660,8 +519,6 @@
     function sign(n) { return Number(n) >= 0 ? '+' : ''; }
     function pcls(n) { return Number(n) >= 0 ? 'positive' : 'negative'; }
     function dayNum(ds) { return Math.max(1, Math.floor((new Date(ds) - V3_START) / 86400000) + 1); }
-    var TF_START = new Date('2026-04-15');  // first TF trade
-    function dayNumTF(ds) { return Math.max(1, Math.floor((new Date(ds) - TF_START) / 86400000) + 1); }
     function fmtDate(ds) { return new Date(ds).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }); }
 
     // === RENDER COMMENTARY ===
@@ -822,7 +679,6 @@
         todayBuys: todayBuys,
         todaySells: todaySells,
         todayRealized: todayRealized,
-        _allTrades: trades,  // exposed for renderRecentTrades (grid)
       };
     }
 
@@ -927,103 +783,36 @@
     }
 
     // === RENDER CHARTS ===
-    // Reconstruct TF total_value at end-of-day for a given date string (YYYY-MM-DD)
-    // Approximation (~5% margin):
-    //   - realized_cumul = SUM realized_pnl of TF trades with created_at <= endOfDay
-    //   - holdings_value = for each symbol, net amount * last trade price (<= endOfDay)
-    //   - cash = 100 + realized_cumul - net_invested - skim_cumul
-    function reconstructTFForDay(tfTrades, dateStr) {
-      var endOfDay = dateStr + 'T23:59:59';
-      var inWindow = tfTrades.filter(function(t) { return t.created_at <= endOfDay; });
-      if (inWindow.length === 0) return 0;
-
-      var realized = inWindow.reduce(function(s, t) { return s + Number(t.realized_pnl || 0); }, 0);
-
-      // Per-symbol open amount + cost + last seen price
-      var bySym = {};
-      inWindow.slice().sort(function(a, b) { return new Date(a.created_at) - new Date(b.created_at); }).forEach(function(t) {
-        var sym = t.symbol;
-        if (!bySym[sym]) bySym[sym] = { netAmt: 0, netInvested: 0, lastPrice: 0 };
-        var amt = Number(t.amount || 0);
-        var cost = Number(t.cost || 0);
-        var price = Number(t.price || 0);
-        if (price > 0) bySym[sym].lastPrice = price;
-        if (t.side === 'buy') {
-          bySym[sym].netAmt += amt;
-          bySym[sym].netInvested += cost;
-        } else {
-          // approximate: subtract proportional invested
-          var avgPrice = bySym[sym].netAmt > 0 ? bySym[sym].netInvested / bySym[sym].netAmt : 0;
-          bySym[sym].netAmt -= amt;
-          bySym[sym].netInvested -= amt * avgPrice;
-          if (bySym[sym].netAmt < 0.000001) { bySym[sym].netAmt = 0; bySym[sym].netInvested = 0; }
-        }
-      });
-
-      var holdingsValue = 0;
-      var netInvested = 0;
-      Object.keys(bySym).forEach(function(sym) {
-        if (bySym[sym].netAmt > 0.000001) {
-          holdingsValue += bySym[sym].netAmt * bySym[sym].lastPrice;
-          netInvested += bySym[sym].netInvested;
-        }
-      });
-
-      var cash = 100 + realized - netInvested;
-      return Math.max(0, cash + holdingsValue);
-    }
-
-    // Reconstruct TF realized_today for a specific date string (YYYY-MM-DD)
-    function reconstructTFRealizedForDay(tfTrades, dateStr) {
-      return tfTrades
-        .filter(function(t) { return (t.created_at || '').slice(0, 10) === dateStr; })
-        .reduce(function(s, t) { return s + Number(t.realized_pnl || 0); }, 0);
-    }
-
-    function renderCharts(data, tfTrades) {
+    function renderCharts(data) {
       if (!data || data.length < 1) return;
-      tfTrades = tfTrades || [];
-      var sorted = data.slice().reverse();  // oldest → newest
+      var sorted = data.slice().reverse();
       var labels = sorted.map(function(d) {
         return new Date(d.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
       });
-      // Aggregate per day: Grid total_value + TF reconstructed total_value
-      var values = sorted.map(function(d) {
-        var tfVal = reconstructTFForDay(tfTrades, d.date);
-        return Number(d.total_value) + tfVal;
-      });
-      // Initial line: $500 pre-TF, $600 post-TF (April 15 = first TF trade)
-      var TF_START = '2026-04-15';
-      var initialLine = sorted.map(function(d) { return d.date >= TF_START ? 600 : 500; });
-      var initial = 600;  // header reference
+      var values = sorted.map(function(d) { return Number(d.total_value); });
+      var initial = Number(sorted[0].initial_capital);
 
       // Portfolio value line
       new Chart(document.getElementById('portChart'), {
         type: 'line',
         data: { labels: labels, datasets: [
           { data: values, borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,0.05)', borderWidth: 2, fill: true, tension: 0.3, pointRadius: Math.min(4, 40 / values.length), pointBackgroundColor: '#22c55e', pointBorderColor: '#0a0a0a', pointBorderWidth: 2 },
-          { data: initialLine, borderColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderDash: [4,4], pointRadius: 0, fill: false }
+          { data: labels.map(function() { return initial; }), borderColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderDash: [4,4], pointRadius: 0, fill: false }
         ]},
         options: { responsive: true, maintainAspectRatio: false, interaction: { intersect: false, mode: 'index' },
           plugins: { legend: { display: false }, tooltip: { backgroundColor: 'rgba(0,0,0,0.85)', borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1, titleFont: { family: "'SF Mono',monospace", size: 10 }, bodyFont: { family: "'SF Mono',monospace", size: 11 }, displayColors: false,
-            callbacks: { label: function(c) {
-              var idx = c.dataIndex;
-              var ref = initialLine[idx] || 500;
-              if (c.datasetIndex === 1) return 'Initial: $' + ref.toFixed(2);
-              var v = c.parsed.y, d = v - ref;
-              return 'Value: $' + v.toFixed(2) + '  (' + (d >= 0 ? '+' : '') + d.toFixed(2) + ')';
-            }}}},
-          scales: { x: { ticks: { color: 'rgba(255,255,255,0.2)', font: { family: "'SF Mono',monospace", size: 9 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 10 }, grid: { color: 'rgba(255,255,255,0.03)' }, border: { color: 'rgba(255,255,255,0.06)' }},
+            callbacks: { label: function(c) { if (c.datasetIndex === 1) return 'Initial: $' + initial.toFixed(2); var v = c.parsed.y, d = v - initial; return 'Value: $' + v.toFixed(2) + '  (' + (d >= 0 ? '+' : '') + d.toFixed(2) + ')'; }}}},
+          scales: { x: { ticks: { color: 'rgba(255,255,255,0.2)', font: { family: "'SF Mono',monospace", size: 9 }, maxRotation: 0, autoSkip: false }, grid: { color: 'rgba(255,255,255,0.03)' }, border: { color: 'rgba(255,255,255,0.06)' }},
             y: { ticks: { color: 'rgba(255,255,255,0.2)', font: { family: "'SF Mono',monospace", size: 9 }, callback: function(v) { return '$' + v; }}, grid: { color: 'rgba(255,255,255,0.03)' }, border: { color: 'rgba(255,255,255,0.06)' }}}}
       });
 
-      // Daily P&L bars (already aggregated since values[] sums Grid + TF reconstruction)
+      // Daily P&L bars
       if (sorted.length >= 2) {
-        var dailyPnl = values.map(function(v, i) {
+        var dailyPnl = sorted.map(function(d, i) {
           if (i === 0) return 0;
-          return v - values[i - 1];
+          return Number(d.total_value) - Number(sorted[i - 1].total_value);
         });
-        dailyPnl[0] = values[0] - (initialLine[0] || 500);  // first day = vs initial reference
+        dailyPnl[0] = Number(sorted[0].total_pnl); // first day = pnl vs initial
 
         new Chart(document.getElementById('dailyChart'), {
           type: 'bar',
@@ -1036,7 +825,7 @@
           options: { responsive: true, maintainAspectRatio: false,
             plugins: { legend: { display: false }, tooltip: { backgroundColor: 'rgba(0,0,0,0.85)', borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1, titleFont: { family: "'SF Mono',monospace", size: 10 }, bodyFont: { family: "'SF Mono',monospace", size: 11 }, displayColors: false,
               callbacks: { label: function(c) { var v = c.parsed.y; return (v >= 0 ? '+' : '') + '$' + v.toFixed(2); }}}},
-            scales: { x: { ticks: { color: 'rgba(255,255,255,0.2)', font: { family: "'SF Mono',monospace", size: 9 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 10 }, grid: { display: false }, border: { color: 'rgba(255,255,255,0.06)' }},
+            scales: { x: { ticks: { color: 'rgba(255,255,255,0.2)', font: { family: "'SF Mono',monospace", size: 9 }, maxRotation: 0, autoSkip: false }, grid: { display: false }, border: { color: 'rgba(255,255,255,0.06)' }},
               y: { ticks: { color: 'rgba(255,255,255,0.2)', font: { family: "'SF Mono',monospace", size: 9 }, callback: function(v) { return (v >= 0 ? '+' : '') + '$' + v; }}, grid: { color: 'rgba(255,255,255,0.03)' }, border: { color: 'rgba(255,255,255,0.06)' }}}}
         });
       }
@@ -1052,461 +841,6 @@
       var timeStr = h + ':' + (m < 10 ? '0' : '') + m + ' ' + ampm;
       document.getElementById('numbers-timestamp').textContent =
         'Updated at ' + timeStr + ' \u00b7 full report at 20:00';
-    }
-
-    // ========================================================================
-    // === TF (Trend Follower) — DATA + STATE + RENDER ========================
-    // === Logic ported verbatim from /tf.html (analyzeCoin + renderOverview) ==
-    // ========================================================================
-
-    // Live prices for arbitrary symbols (TF rotates coins so list is dynamic)
-    async function fetchTFLivePrices(symbols) {
-      var out = {};
-      if (!symbols || !symbols.length) return out;
-      try {
-        // Binance wants symbols like "GALAUSDT" (no slash)
-        var binanceSyms = symbols.map(function(s) { return s.replace('/', ''); });
-        var res = await fetch('https://api.binance.com/api/v3/ticker/price?symbols=' + encodeURIComponent(JSON.stringify(binanceSyms)));
-        var data = await res.json();
-        data.forEach(function(t) {
-          var slashed = t.symbol.replace('USDT', '/USDT');
-          out[slashed] = Number(t.price);
-        });
-      } catch (e) { console.warn('TF live prices unavailable:', e); }
-      return out;
-    }
-
-    // Per-coin analysis (mirror of tf.html `analyzeCoin`).
-    // Returns the per-coin state used both to build aggregates and to render
-    // individual coin cards.
-    function analyzeTFCoin(symbol, cfg, tfTrades, skimBySymbol) {
-      var isActive = !!cfg.is_active;
-      var alloc = Number(cfg.capital_allocation);
-      var costPerTrade = Number(cfg.capital_per_trade);
-      var coinTrades = tfTrades.filter(function(t) { return t.symbol === symbol; });
-      var totalBought = coinTrades.filter(function(t) { return t.side === 'buy'; }).reduce(function(s, t) { return s + Number(t.cost); }, 0);
-      var totalSold = coinTrades.filter(function(t) { return t.side === 'sell'; }).reduce(function(s, t) { return s + Number(t.cost); }, 0);
-      var realizedPnl = coinTrades.reduce(function(s, t) { return s + Number(t.realized_pnl || 0); }, 0);
-      var netHoldings = coinTrades.reduce(function(s, t) {
-        return s + (t.side === 'buy' ? Number(t.amount) : -Number(t.amount));
-      }, 0);
-      var buyCount = coinTrades.filter(function(t) { return t.side === 'buy'; }).length;
-      var sellCount = coinTrades.filter(function(t) { return t.side === 'sell'; }).length;
-      var netSpent = totalBought - totalSold;
-      var positionClosed = netHoldings <= 0.000001;
-
-      // Inactive coins: capital was returned to the TF pool. cashLeft=0 on the
-      // card but cashReturned tracks profit-net-of-skim that flowed back.
-      if (!isActive) {
-        var skimForCoinInactive = skimBySymbol[symbol] || 0;
-        return {
-          symbol: symbol,
-          isActive: false,
-          alloc: 0, costPerTrade: costPerTrade,
-          totalBought: totalBought, totalSold: totalSold,
-          realizedPnl: realizedPnl, netHoldings: netHoldings,
-          buyCount: buyCount, sellCount: sellCount,
-          netSpent: 0, openCost: 0, openLots: 0,
-          cashLeft: 0, cashReturned: realizedPnl - skimForCoinInactive,
-          openAmt: 0, openAvgBuy: 0,
-        };
-      }
-
-      // FIFO reconstruction of open lots
-      var sortedTrades = coinTrades.slice().sort(function(a, b) {
-        return new Date(a.created_at) - new Date(b.created_at);
-      });
-      var buyQueue = [];
-      sortedTrades.forEach(function(t) {
-        if (t.side === 'buy') {
-          buyQueue.push({ amount: Number(t.amount), price: Number(t.price || 0), cost: Number(t.cost) });
-        } else {
-          var remaining = Number(t.amount);
-          while (remaining > 0.000001 && buyQueue.length > 0) {
-            var lot = buyQueue[0];
-            if (lot.amount <= remaining + 0.000001) {
-              remaining -= lot.amount;
-              buyQueue.shift();
-            } else {
-              lot.cost -= remaining * lot.price;
-              lot.amount -= remaining;
-              remaining = 0;
-            }
-          }
-        }
-      });
-      var openLots = buyQueue.length;
-      var openAmt = buyQueue.reduce(function(s, l) { return s + l.amount; }, 0);
-      var openCost = buyQueue.reduce(function(s, l) { return s + l.cost; }, 0);
-      var openAvgBuy = openAmt > 0 ? openCost / openAmt : 0;
-
-      var skimForCoin = skimBySymbol[symbol] || 0;
-      var cashLeft;
-      if (positionClosed) {
-        netSpent = 0;
-        cashLeft = alloc + realizedPnl - skimForCoin;
-      } else {
-        // Mirrors bot._available_cash(): alloc − invested + received − reserve
-        cashLeft = alloc - netSpent - skimForCoin;
-      }
-
-      return {
-        symbol: symbol,
-        isActive: true,
-        alloc: alloc, costPerTrade: costPerTrade,
-        totalBought: totalBought, totalSold: totalSold,
-        realizedPnl: realizedPnl, netHoldings: netHoldings,
-        buyCount: buyCount, sellCount: sellCount,
-        netSpent: netSpent, openCost: openCost, openLots: openLots,
-        cashLeft: cashLeft, cashReturned: 0,
-        openAmt: openAmt, openAvgBuy: openAvgBuy,
-      };
-    }
-
-    // Build the aggregated TF state by walking all configured coins.
-    // Mirror of tf.html `renderOverview` math.
-    function computeTFOverview(tfConfig, tfTrades, livePrices, skimBySymbol, skimReserveTotal, tfBudget) {
-      var totalAlloc = tfConfig.reduce(function(s, c) {
-        return s + (c.is_active ? Number(c.capital_allocation) : 0);
-      }, 0);
-      var unalloc = tfBudget - totalAlloc;
-
-      var totalCash = 0;
-      var totalDeployed = 0;
-      var holdingsValue = 0;
-      var totalUnrealized = 0;
-      var perCoin = {};
-      var activePositions = [];
-
-      tfConfig.forEach(function(cfg) {
-        var a = analyzeTFCoin(cfg.symbol, cfg, tfTrades, skimBySymbol);
-        perCoin[cfg.symbol] = a;
-        totalCash += a.cashLeft + (a.cashReturned || 0);
-
-        if (!a.isActive || a.netHoldings <= 0.000001) return;
-        var livePrice = livePrices[cfg.symbol];
-        if (!livePrice) return;
-
-        totalDeployed += a.openCost;
-        var value = a.openAmt * livePrice;
-        var unr = a.openAvgBuy > 0 ? (livePrice - a.openAvgBuy) * a.openAmt : 0;
-        var unrPct = a.openAvgBuy > 0 ? (livePrice / a.openAvgBuy - 1) * 100 : 0;
-        holdingsValue += value;
-        totalUnrealized += unr;
-
-        activePositions.push({
-          symbol: cfg.symbol,
-          holdings: a.openAmt,
-          avgBuy: a.openAvgBuy,
-          livePrice: livePrice,
-          value: value,
-          unrealized: unr,
-          unrealizedPct: unrPct,
-          cashLeft: a.cashLeft,
-        });
-      });
-
-      // Net Worth = cash + unalloc + holdings + skim reserve
-      var netWorth = totalCash + unalloc + holdingsValue + skimReserveTotal;
-      var totalPnl = netWorth - tfBudget;
-      var totalRealized = tfTrades
-        .filter(function(t) { return t.side === 'sell'; })
-        .reduce(function(s, t) { return s + Number(t.realized_pnl || 0); }, 0);
-      var totalFees = tfTrades.reduce(function(s, t) { return s + Number(t.fee || 0); }, 0);
-      var totalBuys = tfTrades.filter(function(t) { return t.side === 'buy'; }).length;
-      var totalSells = tfTrades.filter(function(t) { return t.side === 'sell'; }).length;
-
-      // Today
-      var todayStr = new Date().toISOString().slice(0, 10);
-      var todayTrades = tfTrades.filter(function(t) { return (t.created_at || '').slice(0, 10) === todayStr; });
-      var todayBuys = todayTrades.filter(function(t) { return t.side === 'buy'; }).length;
-      var todaySells = todayTrades.filter(function(t) { return t.side === 'sell'; }).length;
-      var todayRealized = todayTrades.reduce(function(s, t) { return s + Number(t.realized_pnl || 0); }, 0);
-
-      return {
-        initialCapital: tfBudget,
-        cash: totalCash + unalloc,
-        unalloc: unalloc,
-        holdingsValue: holdingsValue,
-        totalDeployed: totalDeployed,
-        totalInvested: totalDeployed,  // alias, for renderTFPortfolio compatibility
-        totalValue: netWorth,
-        totalPnl: totalPnl,
-        totalRealized: totalRealized,
-        totalUnrealized: totalUnrealized,
-        totalFees: totalFees,
-        skimTotal: skimReserveTotal,
-        activePositions: activePositions,
-        perCoin: perCoin,
-        totalTrades: tfTrades.length,
-        totalBuys: totalBuys,
-        totalSells: totalSells,
-        todayTrades: todayTrades.length,
-        todayBuys: todayBuys,
-        todaySells: todaySells,
-        todayRealized: todayRealized,
-      };
-    }
-
-    // [REMOVED] Old computeTFState — replaced by computeTFOverview above (ported from tf.html)
-    function _legacyComputeTFState_REMOVED(tfTrades, _ignoredSnapshots, tfPrices, tfSkimTotal, activeSymSet) {
-      var initialCapital = 100;
-      activeSymSet = activeSymSet || {};
-
-      // FIFO per active symbol: walk trades chronologically, maintain a queue of
-      // open buy lots. Sells consume oldest lots first. What remains is the
-      // current open position with its true cost basis.
-      var activePositions = [];
-      var holdingsValue = 0;
-      var totalUnrealized = 0;
-      var totalInvested = 0;
-
-      Object.keys(activeSymSet).forEach(function(sym) {
-        var coinTrades = tfTrades
-          .filter(function(t) { return t.symbol === sym; })
-          .slice()
-          .sort(function(a, b) { return new Date(a.created_at) - new Date(b.created_at); });
-        if (coinTrades.length === 0) return;
-
-        var queue = [];
-        coinTrades.forEach(function(t) {
-          if (t.side === 'buy') {
-            queue.push({ amount: Number(t.amount), price: Number(t.price || 0), cost: Number(t.cost || 0) });
-          } else {
-            var remaining = Number(t.amount);
-            while (remaining > 0.000001 && queue.length > 0) {
-              var lot = queue[0];
-              if (lot.amount <= remaining + 0.000001) {
-                remaining -= lot.amount;
-                queue.shift();
-              } else {
-                lot.cost -= remaining * lot.price;
-                lot.amount -= remaining;
-                remaining = 0;
-              }
-            }
-          }
-        });
-
-        var openAmt = queue.reduce(function(s, l) { return s + l.amount; }, 0);
-        var openCost = queue.reduce(function(s, l) { return s + l.cost; }, 0);
-        if (openAmt <= 0.000001) return;  // active in config but flat right now
-
-        var avgBuy = openCost / openAmt;
-        var livePrice = tfPrices[sym] || avgBuy;  // fallback if Binance doesn't return
-        var value = openAmt * livePrice;
-        var unr = value - openCost;
-        var unrPct = avgBuy > 0 ? (livePrice / avgBuy - 1) * 100 : 0;
-
-        holdingsValue += value;
-        totalUnrealized += unr;
-        totalInvested += openCost;
-
-        activePositions.push({
-          symbol: sym,
-          holdings: openAmt,
-          avgBuy: avgBuy,
-          livePrice: livePrice,
-          value: value,
-          unrealized: unr,
-          unrealizedPct: unrPct,
-        });
-      });
-
-      // 3. Realized cumulative + total fees + total trade counts (from all TF trades)
-      var totalRealized = tfTrades.reduce(function(s, t) { return s + Number(t.realized_pnl || 0); }, 0);
-      var totalFees = tfTrades.reduce(function(s, t) { return s + Number(t.fee || 0); }, 0);
-      var totalBuys = tfTrades.filter(function(t) { return t.side === 'buy'; }).length;
-      var totalSells = tfTrades.filter(function(t) { return t.side === 'sell'; }).length;
-
-      // 4. Cash from actual flows:
-      //    cash = initial − (buys.cost + buys.fee) + (sells.cost − sells.fee) − skim
-      //    cost is nominal (amount × price), fee is separate.
-      var buyCashOut = tfTrades
-        .filter(function(t) { return t.side === 'buy'; })
-        .reduce(function(s, t) { return s + Number(t.cost || 0) + Number(t.fee || 0); }, 0);
-      var sellCashIn = tfTrades
-        .filter(function(t) { return t.side === 'sell'; })
-        .reduce(function(s, t) { return s + Number(t.cost || 0) - Number(t.fee || 0); }, 0);
-      var cash = initialCapital - buyCashOut + sellCashIn - tfSkimTotal;
-
-      // 5. Total value = cash + holdings + skim (skim is still owned, just set aside)
-      var totalValue = cash + holdingsValue + tfSkimTotal;
-      var totalPnl = totalValue - initialCapital;
-
-      // 6. Today's activity
-      var todayStr = new Date().toISOString().slice(0, 10);
-      var todayTrades = tfTrades.filter(function(t) { return (t.created_at || '').slice(0, 10) === todayStr; });
-      var todayBuys = todayTrades.filter(function(t) { return t.side === 'buy'; }).length;
-      var todaySells = todayTrades.filter(function(t) { return t.side === 'sell'; }).length;
-      var todayRealized = todayTrades.reduce(function(s, t) { return s + Number(t.realized_pnl || 0); }, 0);
-
-      return {
-        initialCapital: initialCapital,
-        cash: cash,
-        holdingsValue: holdingsValue,
-        totalInvested: totalInvested,
-        totalValue: totalValue,
-        totalPnl: totalPnl,
-        totalRealized: totalRealized,
-        totalUnrealized: totalUnrealized,
-        totalFees: totalFees,
-        skimTotal: tfSkimTotal,
-        activePositions: activePositions,
-        totalTrades: tfTrades.length,
-        totalBuys: totalBuys,
-        totalSells: totalSells,
-        todayTrades: todayTrades.length,
-        todayBuys: todayBuys,
-        todaySells: todaySells,
-        todayRealized: todayRealized,
-      };
-    }
-
-    // Render TF portfolio card (uses tf-* ids that mirror the Grid card)
-    function renderTFPortfolio(s) {
-      if (!s) {
-        document.getElementById('tf-pv').textContent = 'Waiting for data';
-        return;
-      }
-      var pnlPct = (s.totalPnl / s.initialCapital) * 100;
-      var cashPct = (s.cash / s.initialCapital) * 100;
-
-      document.getElementById('tf-pv').textContent = fmtUsd(s.totalValue);
-      var pp = document.getElementById('tf-pp');
-      pp.textContent = sign(s.totalPnl) + fmtUsd(s.totalPnl) + ' / ' + sign(pnlPct) + fmt(pnlPct) + '%';
-      pp.className = 'pnl ' + pcls(s.totalPnl);
-
-      var today = new Date().toISOString().slice(0, 10);
-      var cashToReinvest = s.cash;
-      document.getElementById('tf-pmeta').innerHTML =
-        '<span>Initial: ' + fmtUsd(s.initialCapital) + '</span>' +
-        '<span>Day ' + dayNumTF(today) + '</span>' +
-        '<span>Cash to reinvest: ' + fmtUsd(cashToReinvest) + '</span>' +
-        '<span>Cash invested: ' + fmtUsd(s.totalInvested) + '</span>';
-
-      // P&L breakdown — same shape as Grid card
-      var realizedNet = s.totalRealized;
-      var realizedGross = realizedNet + s.totalFees;
-      document.getElementById('tf-pnl-breakdown').innerHTML =
-        '<div class="breakdown-item"><div class="label">Realized (net)</div>' +
-        '<div class="value ' + pcls(realizedNet) + '">' + sign(realizedNet) + fmtUsd(realizedNet) + '</div>' +
-        '<div class="sub">' + fmtUsd(realizedGross) + ' gross − ' + fmtUsd(Math.abs(s.totalFees)) + ' fees</div></div>' +
-        '<div class="breakdown-item"><div class="label">Unrealized</div>' +
-        '<div class="value ' + pcls(s.totalUnrealized) + '">' + sign(s.totalUnrealized) + fmtUsd(s.totalUnrealized) + '</div>' +
-        '<div class="sub">on paper, open positions</div></div>' +
-        '<div class="breakdown-item"><div class="label">Fees paid</div>' +
-        '<div class="value negative">-' + fmtUsd(Math.abs(s.totalFees)) + '</div>' +
-        '<div class="sub">' + s.totalTrades + ' trades total</div></div>' +
-        '<div class="breakdown-item"><div class="label">Skim reserved</div>' +
-        '<div class="value">' + fmtUsd(s.skimTotal) + '</div>' +
-        '<div class="sub">moved to reserve</div></div>';
-
-      // Cash allocation bar — same DOM/style as Grid (legend-item + legend-dot)
-      document.getElementById('tf-cash-pct-label').textContent = fmt(cashPct, 0) + '% cash';
-      var TF_TIER_COLORS = ['#EF9F27', '#5DCAA5', '#378ADD'];  // amber, teal, blue
-      var barHtml = '';
-      var legendHtml = '';
-      s.activePositions.forEach(function(p, idx) {
-        var pct = (p.value / s.initialCapital) * 100;
-        if (pct < 0.1) return;
-        var color = TF_TIER_COLORS[idx % 3];
-        var name = p.symbol.replace('/USDT', '');
-        barHtml += '<div style="width:' + pct + '%;background:' + color + ';"></div>';
-        legendHtml += '<span class="legend-item"><span class="legend-dot" style="background:' + color + ';"></span>' + name + ' ' + fmt(pct, 0) + '%</span>';
-      });
-      legendHtml += '<span class="legend-item" style="color:var(--text-dim);">Cash ' + fmt(cashPct, 0) + '%</span>';
-      document.getElementById('tf-cash-bar').innerHTML = barHtml;
-      document.getElementById('tf-cash-legend').innerHTML = legendHtml;
-    }
-
-    // Render TF asset cards (3 tier slots — same DOM/style as Grid asset cards)
-    function renderTFAssetCards(s) {
-      var grid = document.getElementById('tf-assets-grid');
-      var html = '';
-      for (var i = 0; i < 3; i++) {
-        var pos = s.activePositions[i];
-        var tierLabel = '<span style="float:right;font-family:var(--mono);font-size:9px;color:var(--text-dim);letter-spacing:0.05em;">TIER ' + (i + 1) + '</span>';
-        if (pos) {
-          var unrCls = pcls(pos.unrealized);
-          var name = pos.symbol.replace('/USDT', '');
-          html += '<div class="card">' +
-            '<div class="asset-symbol">' + name + tierLabel + '</div>' +
-            '<div class="asset-value">' + fmtUsd(pos.value) + '</div>' +
-            '<div class="asset-pnl ' + unrCls + '">' +
-              sign(pos.unrealized) + fmtUsd(pos.unrealized) + ' (' + sign(pos.unrealizedPct) + fmt(pos.unrealizedPct) + '%)' +
-            '</div></div>';
-        } else {
-          html += '<div class="card">' +
-            '<div class="asset-symbol" style="color:var(--text-dim);">scanning…' + tierLabel + '</div>' +
-            '<div class="asset-value" style="color:var(--text-dim);">—</div>' +
-            '<div class="asset-pnl" style="color:var(--text-dim);">waiting for signal</div></div>';
-        }
-      }
-      grid.innerHTML = html;
-    }
-
-    // Render recent trades table (used for both Grid and TF)
-    function renderRecentTrades(tbodyId, trades, limit) {
-      var tbody = document.getElementById(tbodyId);
-      if (!tbody) return;
-      if (!trades || !trades.length) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--text-dim); padding: 20px;">No trades yet.</td></tr>';
-        return;
-      }
-      // Recompute FIFO buy-avg per symbol to annotate sells (same as admin.html)
-      var bySym = {};
-      trades.forEach(function(t) { (bySym[t.symbol] = bySym[t.symbol] || []).push(t); });
-      Object.keys(bySym).forEach(function(sym) {
-        var sorted = bySym[sym].slice().sort(function(a, b) { return new Date(a.created_at) - new Date(b.created_at); });
-        var queue = [];
-        sorted.forEach(function(t) {
-          if (t.side === 'buy') {
-            queue.push({ amount: Number(t.amount), price: Number(t.price || 0) });
-          } else {
-            var remaining = Number(t.amount);
-            var consumedCost = 0;
-            var consumedAmt = 0;
-            while (remaining > 0.000001 && queue.length > 0) {
-              var lot = queue[0];
-              if (lot.amount <= remaining + 0.000001) {
-                consumedCost += lot.amount * lot.price;
-                consumedAmt += lot.amount;
-                remaining -= lot.amount;
-                queue.shift();
-              } else {
-                consumedCost += remaining * lot.price;
-                consumedAmt += remaining;
-                lot.amount -= remaining;
-                remaining = 0;
-              }
-            }
-            t._buyPriceAvg = consumedAmt > 0 ? consumedCost / consumedAmt : 0;
-          }
-        });
-      });
-
-      // Render limited subset, most recent first
-      var recent = trades.slice(0, limit || 5);
-      tbody.innerHTML = recent.map(function(t) {
-        var rowClass = t.side === 'buy' ? 'buy-row' : 'sell-row';
-        var pnl = Number(t.realized_pnl || 0);
-        var pnlCls = t.side === 'sell' ? (pnl >= 0 ? 'pnl-pos' : 'pnl-neg') : 'pnl-zero';
-        var pnlStr = t.side === 'sell' ? (sign(pnl) + fmtUsd(pnl)) : '—';
-        var buyAt = t.side === 'sell' && t._buyPriceAvg ? fmtPrice(t._buyPriceAvg) : '—';
-        var dt = new Date(t.created_at);
-        var timeStr = dt.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-        var coin = (t.symbol || '').replace('/USDT', '');
-        return '<tr class="' + rowClass + '">' +
-          '<td>' + t.side.toUpperCase() + '</td>' +
-          '<td>' + coin + '</td>' +
-          '<td>' + fmtPrice(t.price) + '</td>' +
-          '<td>' + fmtUsd(t.cost) + '</td>' +
-          '<td>' + buyAt + '</td>' +
-          '<td class="' + pnlCls + '">' + pnlStr + '</td>' +
-          '<td style="color: var(--text-dim);">' + timeStr + '</td>' +
-          '</tr>';
-      }).join('');
     }
 
     // === FETCH + BUILD LIVE STATE ===
@@ -1556,106 +890,21 @@
       }
     }
 
-    // === FETCH TF DATA ===
-    // Mirrors tf.html `loadAll`: same queries, same skim filter, same live-prices fetch.
-    async function fetchTFData() {
-      var res = await Promise.all([
-        // bot_config: full TF coin list with is_active + capital_allocation + capital_per_trade
-        sbq('bot_config', 'managed_by=eq.trend_follower&order=symbol'),
-        // All TF trades (newest first), for cumulative + per-coin FIFO + today's split
-        sbq('trades', 'select=symbol,side,amount,price,cost,fee,realized_pnl,created_at&config_version=eq.v3&managed_by=eq.trend_follower&order=created_at.desc'),
-        // Skim ledger: include managed_by so we can filter to TF rows reliably
-        sbq('reserve_ledger', 'select=symbol,amount,managed_by&config_version=eq.v3'),
-        // TF budget from trend_config (defaults to $100 if missing)
-        sbq('trend_config', 'select=tf_budget&limit=1'),
-      ]);
-      var tfConfig = res[0];
-      var tfTrades = res[1];
-      var skimRows = res[2];
-      var trendConfig = res[3];
-
-      var tfBudget = (trendConfig && trendConfig.length && trendConfig[0].tf_budget)
-        ? Number(trendConfig[0].tf_budget) : 100;
-
-      // Skim: tf.html filters by symbols-in-tfConfig (legacy approach since some
-      // older skim rows may lack managed_by). We use the same logic for parity.
-      var tfSet = {};
-      tfConfig.forEach(function(c) { tfSet[c.symbol] = true; });
-      var skimBySymbol = {};
-      var skimReserveTotal = 0;
-      skimRows.forEach(function(r) {
-        if (!tfSet[r.symbol]) return;
-        var amt = Number(r.amount || 0);
-        skimReserveTotal += amt;
-        if (r.symbol) skimBySymbol[r.symbol] = (skimBySymbol[r.symbol] || 0) + amt;
-      });
-
-      // Live prices for ALL TF coins (active or not) — tf.html does this so we
-      // can show unrealized for any coin still holding amounts mid-cycle.
-      var tfSymbols = tfConfig.map(function(c) { return c.symbol; });
-      var tfPrices = await fetchTFLivePrices(tfSymbols);
-
-      var tfState = computeTFOverview(tfConfig, tfTrades, tfPrices, skimBySymbol, skimReserveTotal, tfBudget);
-      return { tfState: tfState, tfTrades: tfTrades, tfConfig: tfConfig };
-    }
-
-    // === RENDER ACTIVITY BARS (Grid + TF separately) ===
-    function renderActivityBars(gridState, tfState) {
-      var todayStr = new Date().toISOString().slice(0, 10);
-      var dayLabel = 'Day ' + dayNum(todayStr);
-
-      function fmtBar(s) {
-        if (!s) return '<span style="color: var(--text-dim);">—</span>';
-        if (s.todayTrades === 0) return '<span style="color: var(--text-dim);">No trades yet today.</span>';
-        var realCls = pcls(s.todayRealized);
-        return s.todayTrades + ' trades · ' + s.todayBuys + ' buys · ' + s.todaySells + ' sells · ' +
-               '<span class="' + realCls + '">' + sign(s.todayRealized) + fmtUsd(s.todayRealized) + ' realized</span>';
-      }
-
-      document.getElementById('activity-bar').innerHTML = fmtBar(gridState);
-      document.getElementById('activity-bar-tf').innerHTML = fmtBar(tfState);
-    }
-
-    // === RENDER AGGREGATED STATS (4 boxes Grid + TF combined) ===
-    function renderAggregatedStats(gridState, tfState) {
-      function add(a, b) { return (a || 0) + (b || 0); }
-      var totalTrades = add(gridState && gridState.totalTrades, tfState && tfState.totalTrades);
-      var totalBuys = add(gridState && gridState.totalBuys, tfState && tfState.totalBuys);
-      var totalSells = add(gridState && gridState.totalSells, tfState && tfState.totalSells);
-      var totalRealized = add(gridState && gridState.totalRealized, tfState && tfState.totalRealized);
-      var totalFees = add(gridState && gridState.totalFees, tfState && tfState.totalFees);
-
-      document.getElementById('st-trades').textContent = totalTrades;
-      document.getElementById('st-buysells').textContent = totalBuys + ' / ' + totalSells;
-      var realEl = document.getElementById('st-realized');
-      realEl.textContent = sign(totalRealized) + fmtUsd(totalRealized);
-      realEl.className = 'stat-value ' + pcls(totalRealized);
-      document.getElementById('st-fees').textContent = '-' + fmtUsd(Math.abs(totalFees));
-    }
-
     // === MAIN ===
     async function load() {
       try {
         var res = await Promise.all([
           sbq('daily_commentary', 'select=date,commentary,model_used,created_at&order=date.desc,created_at.desc&limit=30'),
-          sbq('daily_pnl', 'select=*&order=date.desc&limit=365'),
-          fetchLiveData(),
-          fetchTFData()
+          sbq('daily_pnl', 'select=*&order=date.desc&limit=90'),
+          fetchLiveData()
         ]);
         var commentary = res[0];
         var pnl = res[1].filter(function(d) { return d.date >= '2026-03-30'; });
         var live = res[2];
-        var tf = res[3];
 
         renderCommentary(commentary);
         renderPortfolio(live.state, live.totalInvested);
-        renderTFPortfolio(tf.tfState);
-        renderTFAssetCards(tf.tfState);
-        renderActivityBars(live.state, tf.tfState);
-        renderAggregatedStats(live.state, tf.tfState);
-        renderRecentTrades('grid-trades-body', live.state._allTrades || [], 5);
-        renderRecentTrades('tf-trades-body', tf.tfTrades, 5);
-        renderCharts(pnl, tf.tfTrades);
+        renderCharts(pnl);
         updateTimestamp();
       } catch (err) {
         console.error('Dashboard load error:', err);
@@ -1665,15 +914,7 @@
       }
     }
     load();
-    setInterval(function() {
-      refreshNumbers();
-      // Also refresh TF + activity + stats + trades (lightweight)
-      fetchTFData().then(function(tf) {
-        renderTFPortfolio(tf.tfState);
-        renderTFAssetCards(tf.tfState);
-        renderRecentTrades('tf-trades-body', tf.tfTrades, 5);
-      }).catch(function(e) { console.warn('TF refresh failed:', e); });
-    }, 5 * 60 * 1000);
+    setInterval(refreshNumbers, 5 * 60 * 1000); // refresh numbers every 5 minutes
   </script>
 </body>
 </html>
