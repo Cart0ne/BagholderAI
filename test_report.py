@@ -123,6 +123,14 @@ def main():
     except Exception:
         pass
 
+    # 47e: include TF state so test_report mirrors what grid_runner sends.
+    try:
+        from commentary import get_tf_state
+        tf_state = get_tf_state(trade_logger.client)
+    except Exception as e:
+        logger.warning(f"Could not fetch TF state: {e}")
+        tf_state = None
+
     report_data = {
         **portfolio,
         "day_number": day_number,
@@ -131,6 +139,7 @@ def main():
         "today_sells": today_sells,
         "today_fees": day_fees,
         "today_realized": day_realized,
+        "tf": tf_state,
     }
 
     # Print summary to console
@@ -166,15 +175,27 @@ def main():
     except Exception as e:
         logger.error(f"❌ Failed to send private report: {e}")
 
-    # Public report — just print preview (no bot configured yet)
-    logger.info("\n--- PUBLIC REPORT PREVIEW (not sent) ---")
-    logger.info("(Configure TELEGRAM_PUBLIC_BOT_TOKEN and TELEGRAM_PUBLIC_CHAT_ID to enable)")
+    # Send public report — same flow as 20:00 production
+    logger.info("\n--- PUBLIC REPORT ---")
     try:
         result = notifier.send_public_daily_report(report_data)
-        if not result:
-            logger.info("Public bot not configured — skipped (expected)")
+        logger.info(f"Public report sent: {result}")
     except Exception as e:
-        logger.info(f"Public bot not configured: {e}")
+        logger.warning(f"Public report failed: {e}")
+
+    # 47e: public commentary follow-up — mirrors the full 20:00 production flow
+    # (private → public → commentary echo). generate_daily_commentary returns
+    # the text it just wrote; we forward that to send_public_commentary.
+    try:
+        from commentary import generate_daily_commentary
+        commentary_text = generate_daily_commentary(report_data, trade_logger.client)
+        if commentary_text:
+            sent = notifier.send_public_commentary(commentary_text)
+            logger.info(f"✅ Public commentary echoed: {sent}")
+        else:
+            logger.info("Commentary generation returned None — skipping public echo")
+    except Exception as e:
+        logger.warning(f"Public commentary echo failed: {e}")
 
 
 if __name__ == "__main__":

@@ -17,7 +17,7 @@ import argparse
 from datetime import datetime, date, timezone
 from utils.telegram_notifier import SyncTelegramNotifier
 from utils.formatting import fmt_price
-from commentary import generate_daily_commentary
+from commentary import generate_daily_commentary, get_tf_state
 
 
 def _sigterm_to_keyboard_interrupt(signum, frame):
@@ -928,6 +928,13 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
                             except Exception:
                                 reserves[inst.symbol] = 0.0
 
+                    # Fetch TF state for inclusion in the daily reports.
+                    # Same source-of-truth used by Haiku commentary + tf.html
+                    # so private/public report numbers stay coherent with the
+                    # web dashboard. Never raises — returns safe_default on
+                    # any DB error.
+                    tf_state = get_tf_state(trade_logger.client)
+
                     # Bundle all report data
                     report_data = {
                         **portfolio_summary,
@@ -938,6 +945,7 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
                         "today_fees": day_fees,
                         "today_realized": day_realized,
                         "reserves": reserves,
+                        "tf": tf_state,  # 47e: TF section in daily reports
                     }
 
                     # Atomic write: INSERT ON CONFLICT DO NOTHING.
@@ -972,7 +980,12 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
                         # Send reports only if we were first to write (or no tracker)
                         notifier.send_private_daily_report(report_data)
                         notifier.send_public_daily_report(report_data)
-                        generate_daily_commentary(report_data, trade_logger.client)
+                        # Generate Haiku commentary; capture the text so we can
+                        # echo it on the public channel as a CEO's-Log follow-up
+                        # (same content that lands on bagholderai.lol/dashboard).
+                        commentary_text = generate_daily_commentary(report_data, trade_logger.client)
+                        if commentary_text:
+                            notifier.send_public_commentary(commentary_text)
                         logger.info("Daily P&L snapshot saved + report sent via Telegram.")
                     else:
                         logger.info("Daily snapshot already written by another bot. Skipping report.")

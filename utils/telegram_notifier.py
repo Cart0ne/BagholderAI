@@ -320,6 +320,52 @@ class TelegramNotifier:
                     text += f"  💰 Reserve {base}: ${amt:.2f}\n"
             text += f"  📊 Total: ${total_reserve:.2f}\n"
 
+        # 47e: TF (Trend Follower) section. Same numbers shown on tf.html
+        # and fed to Haiku — single source of truth via commentary.get_tf_state.
+        tf = data.get("tf") or {}
+        if tf:
+            tf_total = float(tf.get("total_value") or 0)
+            tf_pnl = float(tf.get("total_pnl") or 0)
+            tf_budget = float(tf.get("tf_budget") or 0)
+            tf_pnl_pct = (tf_pnl / tf_budget * 100) if tf_budget > 0 else 0
+            tf_pnl_emoji = "🟢" if tf_pnl >= 0 else "🔴"
+            tf_realized_total = float(tf.get("realized_total") or 0)
+            tf_unrealized = float(tf.get("unrealized_total") or 0)
+            tf_realized_today = float(tf.get("realized_today") or 0)
+            tf_today_emoji = "🟢" if tf_realized_today >= 0 else "🔴"
+            tf_trades_today = int(tf.get("trades_today") or 0)
+            tf_buys = int(tf.get("buys_today") or 0)
+            tf_sells = int(tf.get("sells_today") or 0)
+            tf_skim = float(tf.get("skim_total") or 0)
+
+            text += (
+                f"\n{'─' * 28}\n📈 <b>Trend Follower</b>\n"
+                f"Value: ${tf_total:.2f} (budget ${tf_budget:.0f}) · "
+                f"P&L: {tf_pnl_emoji} ${tf_pnl:+.2f} ({tf_pnl_pct:+.1f}%)\n"
+                f"Realized total: ${tf_realized_total:+.2f} · "
+                f"Unrealized: ${tf_unrealized:+.2f} · Skim: ${tf_skim:.2f}\n"
+                f"Today: {tf_trades_today} trades ({tf_buys}B {tf_sells}S) · "
+                f"Realized: {tf_today_emoji} ${tf_realized_today:+.2f}\n"
+            )
+
+            tf_positions = tf.get("active_positions") or []
+            if tf_positions:
+                text += "\n"
+                for p in tf_positions:
+                    sym = p.get("symbol", "?")
+                    base = sym.split("/")[0] if "/" in sym else sym
+                    val = float(p.get("value_usd") or 0)
+                    upnl = float(p.get("unrealized_pnl") or 0)
+                    upnl_pct = float(p.get("unrealized_pnl_pct") or 0)
+                    arrow = "▲" if upnl >= 0 else "▼"
+                    sign = "+" if upnl >= 0 else ""
+                    text += (
+                        f"  <b>{base}</b>  ${val:.2f} {arrow} {sign}{upnl_pct:.1f}% "
+                        f"(unr. ${upnl:+.2f})\n"
+                    )
+            else:
+                text += "  No active TF positions.\n"
+
         text += f"\n🤖 <i>Grid bot v3 · bagholderai.lol</i>"
         return await self.send_message(text)
 
@@ -370,12 +416,48 @@ class TelegramNotifier:
         tb = data.get("today_buys", 0)
         ts = data.get("today_sells", 0)
         tr = data.get("today_realized", 0)
-        tf = data.get("today_fees", 0)
+        tf_fees = data.get("today_fees", 0)
         realized_emoji = "🟢" if tr >= 0 else "🔴"
         text += (
             f"\n<b>Today:</b> {tc} trades ({tb} buys, {ts} sells)\n"
-            f"Realized: {realized_emoji} ${tr:+.2f} · Fees: ${tf:.2f}\n"
+            f"Realized: {realized_emoji} ${tr:+.2f} · Fees: ${tf_fees:.2f}\n"
         )
+
+        # 47e: TF (Trend Follower) section — public report. Same data source
+        # as the private report (commentary.get_tf_state) so the two stay
+        # coherent. Compact format; details live on the dashboard.
+        tf = data.get("tf") or {}
+        if tf:
+            tf_total = float(tf.get("total_value") or 0)
+            tf_pnl = float(tf.get("total_pnl") or 0)
+            tf_budget = float(tf.get("tf_budget") or 0)
+            tf_pnl_pct = (tf_pnl / tf_budget * 100) if tf_budget > 0 else 0
+            tf_pnl_emoji = "🟢" if tf_pnl >= 0 else "🔴"
+            tf_trades_today = int(tf.get("trades_today") or 0)
+            tf_realized_today = float(tf.get("realized_today") or 0)
+            tf_today_emoji = "🟢" if tf_realized_today >= 0 else "🔴"
+
+            text += (
+                f"\n<b>Trend Follower</b>\n"
+                f"Value: ${tf_total:.2f} (budget ${tf_budget:.0f}) · "
+                f"P&L: {tf_pnl_emoji} ${tf_pnl:+.2f} ({tf_pnl_pct:+.1f}%)\n"
+            )
+            tf_positions = tf.get("active_positions") or []
+            if tf_positions:
+                for p in tf_positions:
+                    sym = p.get("symbol", "?")
+                    base = sym.split("/")[0] if "/" in sym else sym
+                    val = float(p.get("value_usd") or 0)
+                    upnl_pct = float(p.get("unrealized_pnl_pct") or 0)
+                    arrow = "▲" if upnl_pct >= 0 else "▼"
+                    sign = "+" if upnl_pct >= 0 else ""
+                    text += f"  {base}: ${val:.2f} {arrow} {sign}{upnl_pct:.1f}%\n"
+            else:
+                text += f"  No active positions.\n"
+            text += (
+                f"Today TF: {tf_trades_today} trades · "
+                f"Realized: {tf_today_emoji} ${tf_realized_today:+.2f}\n"
+            )
 
         text += f"\n🤖 <i>PAPER MODE · bagholderai.lol</i>"
 
@@ -390,6 +472,43 @@ class TelegramNotifier:
             return True
         except Exception as e:
             logger.error(f"Failed to send public report: {e}")
+            return False
+
+    async def send_public_commentary(self, commentary_text: str) -> bool:
+        """
+        Post the daily Haiku commentary as a follow-up message on the public
+        channel, right after the daily report. Same text that lands on
+        bagholderai.lol/dashboard#ceo-log.
+        Skips silently if commentary is empty or the public bot isn't configured.
+        """
+        if not commentary_text:
+            return False
+
+        public_token = TelegramConfig.PUBLIC_BOT_TOKEN
+        public_chat = TelegramConfig.PUBLIC_CHAT_ID
+        if not public_token or not public_chat:
+            return False
+
+        # Header keeps the message clearly tagged as Haiku's voice; the body
+        # is the commentary verbatim — same content that ends up on the site.
+        text = (
+            f"💬 <b>CEO's Log</b>\n"
+            f"\n"
+            f"{commentary_text}\n"
+            f"\n"
+            f"🤖 <i>Generated by Haiku · Same as bagholderai.lol/dashboard</i>"
+        )
+
+        try:
+            public_bot = Bot(token=public_token)
+            await public_bot.send_message(
+                chat_id=public_chat,
+                text=text,
+                parse_mode=ParseMode.HTML,
+            )
+            return True
+        except Exception as e:
+            logger.error(f"Failed to send public commentary: {e}")
             return False
 
 
@@ -503,6 +622,16 @@ class SyncTelegramNotifier:
             return result
         except Exception as e:
             logger.warning(f"Telegram public daily report exception: {e}")
+            return False
+
+    def send_public_commentary(self, commentary_text: str) -> bool:
+        try:
+            result = _run_async(self._async.send_public_commentary(commentary_text))
+            if not result:
+                logger.warning("Telegram public commentary failed silently")
+            return result
+        except Exception as e:
+            logger.warning(f"Telegram public commentary exception: {e}")
             return False
 
     def send_tf_error(self, error_msg: str) -> bool:
