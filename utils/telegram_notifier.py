@@ -243,45 +243,77 @@ class TelegramNotifier:
         """
         Send Max's private daily report — one consolidated message with all assets.
         Designed for the operator: full portfolio overview + per-asset technical detail.
+
+        47e/v2: layout aggregato. Cima = Total Portfolio (Grid + TF combinati).
+        Sotto = sezioni separate Grid e TF, ciascuna con il proprio P&L vs il
+        proprio capitale di partenza ($500 + $100 = $600 in paper mode).
         """
         today = date.today().strftime("%d/%m/%Y")
         day_num = data.get("day_number", "?")
-        total_val = data.get("total_value", 0)
-        initial = data.get("initial_capital", 0)
-        total_pnl = data.get("total_pnl", 0)
-        pnl_pct = (total_pnl / initial * 100) if initial > 0 else 0
+
+        # Grid numbers
+        grid_val = data.get("total_value", 0)
+        grid_initial = data.get("initial_capital", 0)
+        grid_pnl = data.get("total_pnl", 0)
+        grid_pnl_pct = (grid_pnl / grid_initial * 100) if grid_initial > 0 else 0
+        grid_pnl_emoji = "🟢" if grid_pnl >= 0 else "🔴"
         cash = data.get("cash", 0)
         holdings_val = data.get("holdings_value", 0)
-        cash_pct = (cash / total_val * 100) if total_val > 0 else 0
-        hold_pct = (holdings_val / total_val * 100) if total_val > 0 else 0
 
-        pnl_emoji = "🟢" if total_pnl >= 0 else "🔴"
+        # TF numbers (may be empty if get_tf_state failed)
+        tf = data.get("tf") or {}
+        tf_val = float(tf.get("total_value") or 0)
+        tf_budget = float(tf.get("tf_budget") or 0)
+        tf_pnl = float(tf.get("total_pnl") or 0)
+        tf_pnl_pct = (tf_pnl / tf_budget * 100) if tf_budget > 0 else 0
+        tf_pnl_emoji = "🟢" if tf_pnl >= 0 else "🔴"
+
+        # Aggregated (Grid + TF)
+        total_val = grid_val + tf_val
+        total_initial = grid_initial + tf_budget
+        total_pnl = grid_pnl + tf_pnl
+        total_pnl_pct = (total_pnl / total_initial * 100) if total_initial > 0 else 0
+        total_pnl_emoji = "🟢" if total_pnl >= 0 else "🔴"
 
         text = (
             f"📊 <b>BagHolderAI — Daily Report</b>\n"
             f"📅 {today} · Day {day_num} · Paper mode\n"
             f"\n"
-            f"💼 <b>Portfolio: ${total_val:.2f}</b>\n"
-            f"Invested: ${initial:.2f} · P&L: {pnl_emoji} ${total_pnl:+.2f} ({pnl_pct:+.1f}%)\n"
-            f"Cash: ${cash:.2f} ({cash_pct:.1f}%) · Holdings: ${holdings_val:.2f} ({hold_pct:.1f}%)\n"
+            f"💼 <b>Total Portfolio: ${total_val:.2f}</b>\n"
+            f"Started with ${total_initial:.0f} · P&L: {total_pnl_emoji} ${total_pnl:+.2f} ({total_pnl_pct:+.1f}%)\n"
         )
 
-        # Today summary
+        # Today (Grid + TF combined)
         tc = data.get("today_trades_count", 0)
         tb = data.get("today_buys", 0)
         ts = data.get("today_sells", 0)
-        tr = data.get("today_realized", 0)
-        tf = data.get("today_fees", 0)
-        realized_emoji = "🟢" if tr >= 0 else "🔴"
+        tr_grid = data.get("today_realized", 0)
+        fees = data.get("today_fees", 0)
+        tf_trades_today = int(tf.get("trades_today") or 0)
+        tf_buys_today = int(tf.get("buys_today") or 0)
+        tf_sells_today = int(tf.get("sells_today") or 0)
+        tr_tf = float(tf.get("realized_today") or 0)
+        tr_combined = tr_grid + tr_tf
+        tc_combined = tc + tf_trades_today
+        tb_combined = tb + tf_buys_today
+        ts_combined = ts + tf_sells_today
+        realized_emoji = "🟢" if tr_combined >= 0 else "🔴"
         text += (
-            f"\n📅 <b>Today:</b> {tc} trades ({tb}B {ts}S)\n"
-            f"Realized: {realized_emoji} ${tr:+.4f} · Fees: ${tf:.4f}\n"
+            f"\n📅 <b>Today (combined):</b> {tc_combined} trades "
+            f"({tb_combined}B {ts_combined}S)\n"
+            f"Realized: {realized_emoji} ${tr_combined:+.2f} · Fees: ${fees:.2f}\n"
         )
 
-        # Per-asset cards
+        # === GRID section ===
+        text += (
+            f"\n{'─' * 28}\n"
+            f"🟢 <b>Grid: ${grid_val:.2f}</b> / ${grid_initial:.0f} · "
+            f"P&L: {grid_pnl_emoji} ${grid_pnl:+.2f} ({grid_pnl_pct:+.1f}%)\n"
+            f"Cash: ${cash:.2f} · Holdings: ${holdings_val:.2f}\n"
+        )
+
         positions = data.get("positions", [])
         if positions:
-            text += f"\n{'─' * 28}\n📈 <b>Assets</b>\n"
             for p in positions:
                 sym = p.get("symbol", "?")
                 base = sym.split("/")[0] if "/" in sym else sym
@@ -309,48 +341,25 @@ class TelegramNotifier:
                 else:
                     text += f"  Today: no trades\n"
 
-        # Reserve summary
-        reserves = data.get("reserves", {})
-        if reserves and any(v > 0 for v in reserves.values()):
-            total_reserve = sum(reserves.values())
-            text += f"\n{'─' * 28}\n🏦 <b>Accumulated Reserve</b>\n"
-            for sym, amt in reserves.items():
-                if amt > 0:
-                    base = sym.split("/")[0] if "/" in sym else sym
-                    text += f"  💰 Reserve {base}: ${amt:.2f}\n"
-            text += f"  📊 Total: ${total_reserve:.2f}\n"
-
-        # 47e: TF (Trend Follower) section. Same numbers shown on tf.html
-        # and fed to Haiku — single source of truth via commentary.get_tf_state.
-        tf = data.get("tf") or {}
+        # === TF section ===
+        # tf_val/budget/pnl already computed at the top for the aggregated header.
+        # Same single source of truth as tf.html (commentary.get_tf_state).
         if tf:
-            tf_total = float(tf.get("total_value") or 0)
-            tf_pnl = float(tf.get("total_pnl") or 0)
-            tf_budget = float(tf.get("tf_budget") or 0)
-            tf_pnl_pct = (tf_pnl / tf_budget * 100) if tf_budget > 0 else 0
-            tf_pnl_emoji = "🟢" if tf_pnl >= 0 else "🔴"
             tf_realized_total = float(tf.get("realized_total") or 0)
             tf_unrealized = float(tf.get("unrealized_total") or 0)
-            tf_realized_today = float(tf.get("realized_today") or 0)
-            tf_today_emoji = "🟢" if tf_realized_today >= 0 else "🔴"
-            tf_trades_today = int(tf.get("trades_today") or 0)
-            tf_buys = int(tf.get("buys_today") or 0)
-            tf_sells = int(tf.get("sells_today") or 0)
             tf_skim = float(tf.get("skim_total") or 0)
+            tf_today_emoji = "🟢" if tr_tf >= 0 else "🔴"
 
             text += (
-                f"\n{'─' * 28}\n📈 <b>Trend Follower</b>\n"
-                f"Value: ${tf_total:.2f} (budget ${tf_budget:.0f}) · "
+                f"\n{'─' * 28}\n"
+                f"📈 <b>Trend Follower: ${tf_val:.2f}</b> / ${tf_budget:.0f} · "
                 f"P&L: {tf_pnl_emoji} ${tf_pnl:+.2f} ({tf_pnl_pct:+.1f}%)\n"
                 f"Realized total: ${tf_realized_total:+.2f} · "
                 f"Unrealized: ${tf_unrealized:+.2f} · Skim: ${tf_skim:.2f}\n"
-                f"Today: {tf_trades_today} trades ({tf_buys}B {tf_sells}S) · "
-                f"Realized: {tf_today_emoji} ${tf_realized_today:+.2f}\n"
             )
 
             tf_positions = tf.get("active_positions") or []
             if tf_positions:
-                text += "\n"
                 for p in tf_positions:
                     sym = p.get("symbol", "?")
                     base = sym.split("/")[0] if "/" in sym else sym
@@ -365,6 +374,22 @@ class TelegramNotifier:
                     )
             else:
                 text += "  No active TF positions.\n"
+            text += (
+                f"Today TF: {tf_trades_today} trades "
+                f"({tf_buys_today}B {tf_sells_today}S) · "
+                f"Realized: {tf_today_emoji} ${tr_tf:+.2f}\n"
+            )
+
+        # Reserve summary (Grid only — TF skim is shown above in TF section)
+        reserves = data.get("reserves", {})
+        if reserves and any(v > 0 for v in reserves.values()):
+            total_reserve = sum(reserves.values())
+            text += f"\n{'─' * 28}\n🏦 <b>Grid Reserve</b>\n"
+            for sym, amt in reserves.items():
+                if amt > 0:
+                    base = sym.split("/")[0] if "/" in sym else sym
+                    text += f"  💰 {base}: ${amt:.2f}\n"
+            text += f"  📊 Total: ${total_reserve:.2f}\n"
 
         text += f"\n🤖 <i>Grid bot v3 · bagholderai.lol</i>"
         return await self.send_message(text)
@@ -381,24 +406,57 @@ class TelegramNotifier:
 
         today = date.today().strftime("%d/%m/%Y")
         day_num = data.get("day_number", "?")
-        total_val = data.get("total_value", 0)
-        initial = data.get("initial_capital", 0)
-        total_pnl = data.get("total_pnl", 0)
-        pnl_pct = (total_pnl / initial * 100) if initial > 0 else 0
-        pnl_emoji = "🟢" if total_pnl >= 0 else "🔴"
+
+        # Grid numbers
+        grid_val = data.get("total_value", 0)
+        grid_initial = data.get("initial_capital", 0)
+        grid_pnl = data.get("total_pnl", 0)
+        grid_pnl_pct = (grid_pnl / grid_initial * 100) if grid_initial > 0 else 0
+        grid_pnl_emoji = "🟢" if grid_pnl >= 0 else "🔴"
+        cash = data.get("cash", 0)
+
+        # TF numbers
+        tf = data.get("tf") or {}
+        tf_val = float(tf.get("total_value") or 0)
+        tf_budget = float(tf.get("tf_budget") or 0)
+        tf_pnl = float(tf.get("total_pnl") or 0)
+        tf_pnl_pct = (tf_pnl / tf_budget * 100) if tf_budget > 0 else 0
+        tf_pnl_emoji = "🟢" if tf_pnl >= 0 else "🔴"
+
+        # Aggregated
+        total_val = grid_val + tf_val
+        total_initial = grid_initial + tf_budget
+        total_pnl = grid_pnl + tf_pnl
+        total_pnl_pct = (total_pnl / total_initial * 100) if total_initial > 0 else 0
+        total_pnl_emoji = "🟢" if total_pnl >= 0 else "🔴"
+
+        # Today combined
+        tc = data.get("today_trades_count", 0)
+        tr_grid = data.get("today_realized", 0)
+        tf_trades_today = int(tf.get("trades_today") or 0)
+        tr_tf = float(tf.get("realized_today") or 0)
+        tc_combined = tc + tf_trades_today
+        tr_combined = tr_grid + tr_tf
+        realized_emoji = "🟢" if tr_combined >= 0 else "🔴"
 
         text = (
             f"📊 <b>BagHolderAI — Daily Report</b>\n"
             f"📅 {today} · Day {day_num} of paper trading\n"
             f"\n"
-            f"<b>Portfolio: ${total_val:.2f}</b>\n"
-            f"Started with ${initial:.2f} · P&L: {pnl_emoji} ${total_pnl:+.2f} ({pnl_pct:+.1f}%)\n"
+            f"<b>Total Portfolio: ${total_val:.2f}</b>\n"
+            f"Started with ${total_initial:.0f} · P&L: {total_pnl_emoji} "
+            f"${total_pnl:+.2f} ({total_pnl_pct:+.1f}%)\n"
+            f"\n"
+            f"Today: {tc_combined} trades · Realized: {realized_emoji} ${tr_combined:+.2f}\n"
         )
 
-        # Per-asset one-liners
+        # === GRID compact ===
+        text += (
+            f"\n🟢 <b>Grid: ${grid_val:.2f}</b> / ${grid_initial:.0f} · "
+            f"{grid_pnl_emoji} ${grid_pnl:+.2f} ({grid_pnl_pct:+.1f}%)\n"
+        )
         positions = data.get("positions", [])
         if positions:
-            text += f"\n<b>Holdings</b>\n"
             for p in positions:
                 sym = p.get("symbol", "?")
                 base = sym.split("/")[0] if "/" in sym else sym
@@ -407,40 +465,13 @@ class TelegramNotifier:
                 arrow = "▲" if upnl_pct >= 0 else "▼"
                 pnl_sign = "+" if upnl_pct >= 0 else ""
                 text += f"  {base}: ${val:.2f} {arrow} {pnl_sign}{upnl_pct:.1f}%\n"
-
-            cash = data.get("cash", 0)
             text += f"  Cash: ${cash:.2f}\n"
 
-        # Today one-liner
-        tc = data.get("today_trades_count", 0)
-        tb = data.get("today_buys", 0)
-        ts = data.get("today_sells", 0)
-        tr = data.get("today_realized", 0)
-        tf_fees = data.get("today_fees", 0)
-        realized_emoji = "🟢" if tr >= 0 else "🔴"
-        text += (
-            f"\n<b>Today:</b> {tc} trades ({tb} buys, {ts} sells)\n"
-            f"Realized: {realized_emoji} ${tr:+.2f} · Fees: ${tf_fees:.2f}\n"
-        )
-
-        # 47e: TF (Trend Follower) section — public report. Same data source
-        # as the private report (commentary.get_tf_state) so the two stay
-        # coherent. Compact format; details live on the dashboard.
-        tf = data.get("tf") or {}
+        # === TF compact ===
         if tf:
-            tf_total = float(tf.get("total_value") or 0)
-            tf_pnl = float(tf.get("total_pnl") or 0)
-            tf_budget = float(tf.get("tf_budget") or 0)
-            tf_pnl_pct = (tf_pnl / tf_budget * 100) if tf_budget > 0 else 0
-            tf_pnl_emoji = "🟢" if tf_pnl >= 0 else "🔴"
-            tf_trades_today = int(tf.get("trades_today") or 0)
-            tf_realized_today = float(tf.get("realized_today") or 0)
-            tf_today_emoji = "🟢" if tf_realized_today >= 0 else "🔴"
-
             text += (
-                f"\n<b>Trend Follower</b>\n"
-                f"Value: ${tf_total:.2f} (budget ${tf_budget:.0f}) · "
-                f"P&L: {tf_pnl_emoji} ${tf_pnl:+.2f} ({tf_pnl_pct:+.1f}%)\n"
+                f"\n📈 <b>Trend Follower: ${tf_val:.2f}</b> / ${tf_budget:.0f} · "
+                f"{tf_pnl_emoji} ${tf_pnl:+.2f} ({tf_pnl_pct:+.1f}%)\n"
             )
             tf_positions = tf.get("active_positions") or []
             if tf_positions:
@@ -454,10 +485,6 @@ class TelegramNotifier:
                     text += f"  {base}: ${val:.2f} {arrow} {sign}{upnl_pct:.1f}%\n"
             else:
                 text += f"  No active positions.\n"
-            text += (
-                f"Today TF: {tf_trades_today} trades · "
-                f"Realized: {tf_today_emoji} ${tf_realized_today:+.2f}\n"
-            )
 
         text += f"\n🤖 <i>PAPER MODE · bagholderai.lol</i>"
 
