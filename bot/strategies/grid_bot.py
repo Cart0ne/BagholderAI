@@ -514,6 +514,112 @@ class GridBot:
 
         return trades
 
+    def evaluate_gain_saturation(self, current_price: float, trigger_source: str) -> bool:
+        """
+        45g — evaluate the gain-saturation breaker for this coin.
+
+        Counts positive-PnL sells inside the current management period
+        (= since the first ALLOCATE after the last DEALLOCATE on this
+        symbol; ALLOCATE-update does NOT shift the start). When the count
+        reaches the effective N (per-coin override > global default), arms
+        the breaker: sets `_gain_saturation_triggered`, emits the
+        `tf_exit_saturated` event, and lets the existing pending_liquidation
+        pipeline in grid_runner do the actual force-sell + DEALLOCATE row.
+
+        trigger_source: "post_sell" (called from check_price_and_execute
+        after a positive sell) or "proactive_tick" (called from the main
+        loop in grid_runner, covers coins that already have counter>=N at
+        deploy time or whose holdings hit 0 with no pending sells).
+
+        Returns True if the breaker fired this call, False otherwise.
+        Idempotent: a second call after the first trigger is a no-op.
+        """
+        if self.managed_by != "trend_follower":
+            return False
+        if not self.tf_exit_after_n_enabled:
+            return False
+        if self._gain_saturation_triggered:
+            return False
+        # Mutually exclusive with the other latched exits (priority order
+        # mirrors check_price_and_execute).
+        if (self._stop_loss_triggered
+                or self._take_profit_triggered
+                or self._profit_lock_triggered):
+            return False
+        if self.trade_logger is None:
+            return False
+
+        from bot.trend_follower.gain_saturation import (
+            count_positive_sells_since,
+            get_period_start,
+            resolve_effective_n,
+        )
+
+        effective_n = resolve_effective_n(
+            self.tf_exit_after_n_default,
+            self.tf_exit_after_n_override,
+        )
+        if effective_n <= 0:
+            return False
+
+        period_start = get_period_start(self.trade_logger.client, self.symbol)
+        if period_start is None:
+            return False
+
+        pos_count = count_positive_sells_since(
+            self.trade_logger.client, self.symbol, period_start
+        )
+        if pos_count < effective_n:
+            return False
+
+        unrealized = (
+            (current_price - self.state.avg_buy_price) * self.state.holdings
+            if self.state.avg_buy_price > 0 and self.state.holdings > 0
+            else 0.0
+        )
+        was_override = self.tf_exit_after_n_override is not None
+        logger.warning(
+            f"[{self.symbol}] GAIN-SATURATION TRIGGERED ({trigger_source}): "
+            f"{pos_count} positive sells ≥ N={effective_n} "
+            f"({'override' if was_override else 'default'}). "
+            f"Holdings={self.state.holdings:.6f}, unrealized ${unrealized:.2f}."
+        )
+        # Set the flag BEFORE any side effects so a concurrent buy decision
+        # sees the breaker as already armed (race protection from §3.5 of
+        # the brief). The DEALLOCATE row to trend_decisions_log is emitted
+        # by grid_runner when pending_liquidation fires.
+        self._gain_saturation_triggered = True
+        log_event(
+            severity="info",
+            category="TF_GAIN_SATURATION",
+            event="tf_exit_saturated",
+            symbol=self.symbol,
+            message=f"TF exit after N={effective_n} positive sells",
+            details={
+                "n_threshold": effective_n,
+                "was_override": was_override,
+                "positive_sells_count": pos_count,
+                "period_started_at": period_start.isoformat(),
+                "residual_holdings": float(self.state.holdings or 0),
+                "residual_avg_buy_price": float(self.state.avg_buy_price or 0),
+                "exit_price": float(current_price),
+                "liq_value_usd": float(self.state.holdings or 0) * float(current_price),
+                "liq_pnl_usd": unrealized,
+                "total_period_realized_pnl_usd": float(self.state.realized_pnl or 0),
+                "trigger_source": trigger_source,
+            },
+        )
+        # holdings=0 case (49b ALGO scenario): no sell to ride, so flag
+        # pending_liquidation directly here. grid_runner picks it up next
+        # tick → _force_liquidate sees no holdings → emits the DEALLOCATE
+        # row + Telegram cycle-close summary → bot exits gracefully.
+        # holdings>0 case: pending_liquidation will be set by the existing
+        # cycle_closed path in _check_percentage_and_execute once the
+        # forced sells empty the queue. Either way we converge.
+        if self.state.holdings <= 1e-9:
+            self.pending_liquidation = True
+        return True
+
     def _execute_buy(self, level: GridLevel, price: float) -> Optional[dict]:
         """Execute a buy at a grid level."""
         # 39b: manual stop-buy gate also for fixed-grid mode (for parity,
@@ -943,82 +1049,12 @@ class GridBot:
                     },
                 )
 
-        # --- 45g: TF Gain-Saturation Circuit Breaker ---
-        # Counts positive-PnL sells inside the current management period
-        # (= since the first ALLOCATE after the last DEALLOCATE on this
-        # symbol). When the count reaches the effective N (per-coin override
-        # > global default), force-exit: liquidate residual holdings and
-        # write a DEALLOCATE row to trend_decisions_log so the next ALLOCATE
-        # starts a fresh period (otherwise an ALLOCATE-update would leave
-        # the counter at >=N and re-fire 45g on the next positive sell).
-        #
-        # Backtest (15-27 Apr, 27 closed periods): edge +$35.30 at N=4,
-        # 14 triggers, 10 beat / 4 worse / 0 tied. See proposal report.
-        if (self.managed_by == "trend_follower"
-                and self.tf_exit_after_n_enabled
-                and not self._gain_saturation_triggered
-                and not self._stop_loss_triggered
-                and not self._take_profit_triggered
-                and not self._profit_lock_triggered):
-            from bot.trend_follower.gain_saturation import (
-                count_positive_sells_since,
-                get_period_start,
-                resolve_effective_n,
-            )
-            effective_n = resolve_effective_n(
-                self.tf_exit_after_n_default,
-                self.tf_exit_after_n_override,
-            )
-            if effective_n > 0 and self.trade_logger is not None:
-                period_start = get_period_start(self.trade_logger.client, self.symbol)
-                pos_count = (
-                    count_positive_sells_since(
-                        self.trade_logger.client, self.symbol, period_start
-                    )
-                    if period_start is not None
-                    else 0
-                )
-                if pos_count >= effective_n:
-                    unrealized = (
-                        (current_price - self.state.avg_buy_price) * self.state.holdings
-                        if self.state.avg_buy_price > 0 and self.state.holdings > 0
-                        else 0.0
-                    )
-                    was_override = self.tf_exit_after_n_override is not None
-                    logger.warning(
-                        f"[{self.symbol}] GAIN-SATURATION TRIGGERED: "
-                        f"{pos_count} positive sells ≥ N={effective_n} "
-                        f"({'override' if was_override else 'default'}). "
-                        f"Liquidating residual {self.state.holdings:.6f} "
-                        f"(unrealized ${unrealized:.2f})."
-                    )
-                    # Set the flag BEFORE the forced sell so any concurrent
-                    # buy decision sees the breaker as already armed.
-                    # The DEALLOCATE row to trend_decisions_log is emitted
-                    # by grid_runner when pending_liquidation fires (same
-                    # path as 39a/39c/45f) — see grid_runner.py:783.
-                    self._gain_saturation_triggered = True
-                    log_event(
-                        severity="info",
-                        category="TF_GAIN_SATURATION",
-                        event="tf_exit_saturated",
-                        symbol=self.symbol,
-                        message=f"TF exit after N={effective_n} positive sells",
-                        details={
-                            "n_threshold": effective_n,
-                            "was_override": was_override,
-                            "positive_sells_count": pos_count,
-                            "period_started_at": (
-                                period_start.isoformat() if period_start else None
-                            ),
-                            "residual_holdings": float(self.state.holdings or 0),
-                            "residual_avg_buy_price": float(self.state.avg_buy_price or 0),
-                            "exit_price": float(current_price),
-                            "liq_value_usd": float(self.state.holdings or 0) * float(current_price),
-                            "liq_pnl_usd": unrealized,
-                            "total_period_realized_pnl_usd": float(self.state.realized_pnl or 0),
-                        },
-                    )
+        # --- 45g: TF Gain-Saturation Circuit Breaker (post-sell path) ---
+        # See evaluate_gain_saturation() docstring for the full logic.
+        # 49b: a second, proactive entry point lives in grid_runner main loop
+        # to cover coins that already have counter>=N at deploy time, or
+        # whose holdings hit 0 before any post-sell check could fire.
+        self.evaluate_gain_saturation(current_price, trigger_source="post_sell")
 
         # --- 39b: manual stop-buy check ---
         # Speculare al 39a ma per i bot manuali (BTC/SOL/BONK): quando il

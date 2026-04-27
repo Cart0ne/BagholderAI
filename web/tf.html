@@ -1516,7 +1516,8 @@
     function checkChanges(short) {
       var fields = ['grid_mode', 'buy_pct', 'sell_pct', 'profit_target_pct', 'skim_pct',
         'capital_allocation', 'grid_levels', 'grid_lower', 'grid_upper',
-        'capital_per_trade', 'reserve_floor_pct', 'idle_reentry_hours'];
+        'capital_per_trade', 'reserve_floor_pct', 'idle_reentry_hours',
+        'tf_exit_after_n_override'];
       var hasChanges = fields.some(function(f) {
         var input = document.getElementById('cfg-' + short + '-' + f);
         return input && input.value !== input.dataset.original;

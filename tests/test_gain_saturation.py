@@ -18,6 +18,8 @@ from bot.trend_follower.gain_saturation import (
     count_positive_sells_since,
     get_period_start,
     resolve_effective_n,
+    should_run_proactive_check,
+    _last_proactive_check,
 )
 
 
@@ -218,6 +220,21 @@ def test_resolve_effective_n_default():
     print("  [ok] override precedence resolves correctly")
 
 
+def test_proactive_check_cooldown():
+    # Wipe state so this test is hermetic
+    _last_proactive_check.clear()
+    sym = "TEST/USDT"
+    # First call: should run
+    assert should_run_proactive_check(sym, interval_s=300) is True
+    # Immediate second call: cooldown blocks
+    assert should_run_proactive_check(sym, interval_s=300) is False
+    # Different symbol: independent state
+    assert should_run_proactive_check("OTHER/USDT", interval_s=300) is True
+    # Tiny interval: same coin runs again
+    assert should_run_proactive_check(sym, interval_s=0) is True
+    print("  [ok] cooldown rate-limits per symbol, independent across symbols")
+
+
 # ---------------------------------------------------------------------------
 # Driver
 # ---------------------------------------------------------------------------
@@ -230,6 +247,7 @@ def main():
         ("get_period_start scoped per symbol", test_period_start_ignores_other_symbols),
         ("count_positive_sells filters correctly", test_count_positive_sells_basic),
         ("resolve_effective_n", test_resolve_effective_n_default),
+        ("proactive check cooldown", test_proactive_check_cooldown),
     ]
     failures = 0
     for name, fn in tests:

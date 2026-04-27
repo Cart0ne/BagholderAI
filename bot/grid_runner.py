@@ -701,6 +701,26 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
             # Sync dynamic config fields from Supabase reader to bot
             _sync_config_to_bot(config_reader, bot, cfg.symbol)
 
+            # 49b: 45g proactive check. Covers TF coins whose counter has
+            # already reached N before the post-sell check inside
+            # check_price_and_execute can ever fire (e.g. holdings=0 with
+            # closed cycle, or counter pre-existing at deploy time). Rate-
+            # limited per-symbol to avoid hammering Supabase. The check
+            # itself is idempotent against the post-sell path via the
+            # _gain_saturation_triggered flag.
+            if (bot.managed_by == "trend_follower"
+                    and bot.tf_exit_after_n_enabled
+                    and not bot._gain_saturation_triggered):
+                from bot.trend_follower.gain_saturation import should_run_proactive_check
+                if should_run_proactive_check(cfg.symbol):
+                    try:
+                        live_price = fetch_price(exchange, cfg.symbol)
+                        bot.evaluate_gain_saturation(live_price, trigger_source="proactive_tick")
+                    except Exception as e:
+                        logger.warning(
+                            f"[{cfg.symbol}] proactive 45g check failed: {e}"
+                        )
+
             # Graceful shutdown if is_active=false in Supabase
             if not bot.is_active:
                 logger.info(f"[{cfg.symbol}] is_active=false — shutting down gracefully")
@@ -712,11 +732,21 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
 
             # Forced liquidation (e.g., TF BEARISH rotation): pending_liquidation
             # set in DB by the allocator — dump all holdings at market and exit.
+            # 49b: 45g proactive trigger also routes through here when
+            # holdings=0 (no per-lot sell phase to ride), tagged with the
+            # appropriate reason so the cycle-close Telegram is honest.
             if getattr(bot, "pending_liquidation", False):
-                logger.info(f"[{cfg.symbol}] pending_liquidation=true — force-selling all positions")
+                if getattr(bot, "_gain_saturation_triggered", False):
+                    top_reason = "GAIN-SATURATION"
+                else:
+                    top_reason = "BEARISH EXIT"
+                logger.info(
+                    f"[{cfg.symbol}] pending_liquidation=true ({top_reason}) "
+                    f"— force-selling all positions"
+                )
                 _force_liquidate(bot, exchange, trade_logger, notifier, cfg.symbol,
-                                 reason="BEARISH EXIT")
-                _deactivate_if_fully_liquidated(cfg.symbol, "BEARISH EXIT")
+                                 reason=top_reason)
+                _deactivate_if_fully_liquidated(cfg.symbol, top_reason)
                 stop_reason = "liquidation"
                 break
 
