@@ -258,7 +258,22 @@ def get_tf_state(supabase_client):
                 cash_left = alloc - net_spent - skim_for_coin
             total_cash += cash_left
 
-            # Live unrealized for active coin holding open lots
+            # Per-coin "today" stats (used by the Telegram daily report so
+            # the TF section can match Grid's per-coin breakdown).
+            today_str = str(date.today())
+            coin_today_trades = [
+                t for t in coin_trades if (t.get("created_at") or "").startswith(today_str)
+            ]
+            coin_today_realized = sum(
+                float(t.get("realized_pnl") or 0)
+                for t in coin_today_trades if t["side"] == "sell"
+            )
+            coin_today_buys = sum(1 for t in coin_today_trades if t["side"] == "buy")
+            coin_today_sells = sum(1 for t in coin_today_trades if t["side"] == "sell")
+
+            # Live unrealized for active coin holding open lots. Coins with
+            # holdings=0 (closed cycle, idle re-entry) still get listed —
+            # value=0, unrealized=0, but realized + today stats are real.
             if open_amt > 0.000001:
                 avg_buy = open_cost / open_amt if open_amt else 0
                 live_price = live_prices.get(sym, avg_buy)
@@ -273,8 +288,34 @@ def get_tf_state(supabase_client):
                     "open_cost_usd": round(open_cost, 2),
                     "avg_buy_price": round(avg_buy, 8),
                     "live_price": round(live_price, 8),
+                    "holdings": round(open_amt, 8),
                     "unrealized_pnl": round(unrealized, 2),
                     "unrealized_pnl_pct": round(unrealized_pct, 2),
+                    "realized_pnl": round(realized_pnl, 4),
+                    "realized_today": round(coin_today_realized, 4),
+                    "trades_today": len(coin_today_trades),
+                    "buys_today": coin_today_buys,
+                    "sells_today": coin_today_sells,
+                    "position_closed": False,
+                })
+            else:
+                # Active TF coin but currently flat (holdings=0): still report
+                # so the user sees that yes, the bot is managing it.
+                active_positions.append({
+                    "symbol": sym,
+                    "value_usd": 0.0,
+                    "open_cost_usd": 0.0,
+                    "avg_buy_price": 0.0,
+                    "live_price": float(live_prices.get(sym, 0) or 0),
+                    "holdings": 0.0,
+                    "unrealized_pnl": 0.0,
+                    "unrealized_pnl_pct": 0.0,
+                    "realized_pnl": round(realized_pnl, 4),
+                    "realized_today": round(coin_today_realized, 4),
+                    "trades_today": len(coin_today_trades),
+                    "buys_today": coin_today_buys,
+                    "sells_today": coin_today_sells,
+                    "position_closed": True,
                 })
 
         realized_total = sum(float(t.get("realized_pnl") or 0) for t in tf_trades)

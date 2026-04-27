@@ -151,7 +151,7 @@ class TelegramNotifier:
         text = (
             f"📊 <b>BagHolderAI Daily Report — {symbol}</b>\n"
             f"📅 {today}\n"
-            f"{'─' * 28}\n"
+            f"{'─' * 15}\n"
             f"\n"
             f"<b>Trades:</b> {len(trades)} ({num_buys} buys, {num_sells} sells)\n"
             f"<b>Realized P&L:</b> ${realized:+.4f}\n"
@@ -182,7 +182,7 @@ class TelegramNotifier:
             pnl_pct = (total_pnl / initial * 100) if initial > 0 else 0
 
             text += (
-                f"\n{'─' * 28}\n"
+                f"\n{'─' * 15}\n"
                 f"💼 <b>Portfolio Totale</b>\n"
                 f"  Cash: ${cash:.2f}\n"
                 f"  Holdings: ${holdings_val:.2f}\n"
@@ -306,7 +306,7 @@ class TelegramNotifier:
 
         # === GRID section ===
         text += (
-            f"\n{'─' * 28}\n"
+            f"\n{'─' * 15}\n"
             f"🟢 <b>Grid: ${grid_val:.2f}</b> / ${grid_initial:.0f} · "
             f"P&L: {grid_pnl_emoji} ${grid_pnl:+.2f} ({grid_pnl_pct:+.1f}%)\n"
             f"Cash: ${cash:.2f} · Holdings: ${holdings_val:.2f}\n"
@@ -344,18 +344,19 @@ class TelegramNotifier:
         # === TF section ===
         # tf_val/budget/pnl already computed at the top for the aggregated header.
         # Same single source of truth as tf.html (commentary.get_tf_state).
+        # Per-coin breakdown mirrors Grid section above so the eye scans both
+        # the same way: one block per coin, holdings + avg_buy + realized
+        # cumul + today's activity.
         if tf:
             tf_realized_total = float(tf.get("realized_total") or 0)
-            tf_unrealized = float(tf.get("unrealized_total") or 0)
             tf_skim = float(tf.get("skim_total") or 0)
-            tf_today_emoji = "🟢" if tr_tf >= 0 else "🔴"
 
             text += (
-                f"\n{'─' * 28}\n"
+                f"\n{'─' * 15}\n"
                 f"📈 <b>Trend Follower: ${tf_val:.2f}</b> / ${tf_budget:.0f} · "
                 f"P&L: {tf_pnl_emoji} ${tf_pnl:+.2f} ({tf_pnl_pct:+.1f}%)\n"
                 f"Realized total: ${tf_realized_total:+.2f} · "
-                f"Unrealized: ${tf_unrealized:+.2f} · Skim: ${tf_skim:.2f}\n"
+                f"Skim: ${tf_skim:.2f}\n"
             )
 
             tf_positions = tf.get("active_positions") or []
@@ -366,25 +367,41 @@ class TelegramNotifier:
                     val = float(p.get("value_usd") or 0)
                     upnl = float(p.get("unrealized_pnl") or 0)
                     upnl_pct = float(p.get("unrealized_pnl_pct") or 0)
+                    holdings = float(p.get("holdings") or 0)
+                    avg_buy = float(p.get("avg_buy_price") or 0)
+                    realized_cumul = float(p.get("realized_pnl") or 0)
+                    realized_today_coin = float(p.get("realized_today") or 0)
+                    trades_today_coin = int(p.get("trades_today") or 0)
+                    buys_today_coin = int(p.get("buys_today") or 0)
+                    sells_today_coin = int(p.get("sells_today") or 0)
+                    closed = bool(p.get("position_closed"))
                     arrow = "▲" if upnl >= 0 else "▼"
                     sign = "+" if upnl >= 0 else ""
-                    text += (
-                        f"  <b>{base}</b>  ${val:.2f} {arrow} {sign}{upnl_pct:.1f}% "
-                        f"(unr. ${upnl:+.2f})\n"
-                    )
+
+                    text += f"\n<b>{sym}</b>  ${val:.2f} {arrow} {sign}{upnl_pct:.1f}%\n"
+                    if closed:
+                        text += "  Status: closed — awaiting re-entry\n"
+                    else:
+                        text += f"  Holdings: {holdings:.6f} {base}\n"
+                        text += f"  Avg buy: {fmt_price(avg_buy)}\n"
+                    text += f"  Realized: ${realized_cumul:+.4f}\n"
+                    if trades_today_coin > 0:
+                        coin_today_emoji = "🟢" if realized_today_coin >= 0 else "🔴"
+                        text += (
+                            f"  Today: {trades_today_coin} trades "
+                            f"({buys_today_coin}B {sells_today_coin}S) · "
+                            f"{coin_today_emoji} ${realized_today_coin:+.2f}\n"
+                        )
+                    else:
+                        text += "  Today: no trades\n"
             else:
                 text += "  No active TF positions.\n"
-            text += (
-                f"Today TF: {tf_trades_today} trades "
-                f"({tf_buys_today}B {tf_sells_today}S) · "
-                f"Realized: {tf_today_emoji} ${tr_tf:+.2f}\n"
-            )
 
         # Reserve summary (Grid only — TF skim is shown above in TF section)
         reserves = data.get("reserves", {})
         if reserves and any(v > 0 for v in reserves.values()):
             total_reserve = sum(reserves.values())
-            text += f"\n{'─' * 28}\n🏦 <b>Grid Reserve</b>\n"
+            text += f"\n{'─' * 15}\n🏦 <b>Grid Reserve</b>\n"
             for sym, amt in reserves.items():
                 if amt > 0:
                     base = sym.split("/")[0] if "/" in sym else sym
