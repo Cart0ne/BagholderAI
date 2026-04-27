@@ -468,6 +468,8 @@ class TelegramNotifier:
         )
 
         # === GRID compact ===
+        # Per-coin: value + arrow + today's trade count (or "idle" if 0).
+        # No $ figures for today realized — public stays sober.
         text += (
             f"\n🟢 <b>Grid: ${grid_val:.2f}</b> / ${grid_initial:.0f} · "
             f"{grid_pnl_emoji} ${grid_pnl:+.2f} ({grid_pnl_pct:+.1f}%)\n"
@@ -481,7 +483,14 @@ class TelegramNotifier:
                 upnl_pct = p.get("unrealized_pnl_pct", 0)
                 arrow = "▲" if upnl_pct >= 0 else "▼"
                 pnl_sign = "+" if upnl_pct >= 0 else ""
-                text += f"  {base}: ${val:.2f} {arrow} {pnl_sign}{upnl_pct:.1f}%\n"
+                pt = int(p.get("trades_today", 0) or 0)
+                today_tag = (
+                    f"{pt} trade{'s' if pt != 1 else ''} today" if pt > 0 else "idle"
+                )
+                text += (
+                    f"  {base}: ${val:.2f} {arrow} {pnl_sign}{upnl_pct:.1f}% "
+                    f"· {today_tag}\n"
+                )
             text += f"  Cash: ${cash:.2f}\n"
 
         # === TF compact ===
@@ -497,9 +506,26 @@ class TelegramNotifier:
                     base = sym.split("/")[0] if "/" in sym else sym
                     val = float(p.get("value_usd") or 0)
                     upnl_pct = float(p.get("unrealized_pnl_pct") or 0)
+                    closed = bool(p.get("position_closed"))
+                    pt = int(p.get("trades_today", 0) or 0)
                     arrow = "▲" if upnl_pct >= 0 else "▼"
                     sign = "+" if upnl_pct >= 0 else ""
-                    text += f"  {base}: ${val:.2f} {arrow} {sign}{upnl_pct:.1f}%\n"
+                    if closed:
+                        # holdings=0 idle: skip the value (it's $0 anyway)
+                        # and just show the status. Today count if any.
+                        suffix = (
+                            f" · {pt} trade{'s' if pt != 1 else ''} today"
+                            if pt > 0 else ""
+                        )
+                        text += f"  {base}: closed — awaiting re-entry{suffix}\n"
+                    else:
+                        today_tag = (
+                    f"{pt} trade{'s' if pt != 1 else ''} today" if pt > 0 else "idle"
+                )
+                        text += (
+                            f"  {base}: ${val:.2f} {arrow} {sign}{upnl_pct:.1f}% "
+                            f"· {today_tag}\n"
+                        )
             else:
                 text += f"  No active positions.\n"
 
