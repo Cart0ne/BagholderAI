@@ -153,6 +153,21 @@
     .inactive-row .ir-label { font-family: var(--mono); font-size: 10px; color: var(--text-dim); }
     .inactive-row .ir-date { font-family: var(--mono); font-size: 11px; color: var(--text-dim); margin-left: 4px; }
     .inactive-row .ir-pnl { font-family: var(--mono); font-size: 13px; font-weight: 600; }
+    .inactive-more {
+      margin-top: 4px;
+    }
+    .inactive-more > summary {
+      cursor: pointer; list-style: none;
+      font-family: var(--mono); font-size: 11px; color: var(--text-dim);
+      padding: 8px 4px; letter-spacing: 0.02em;
+      border-top: 1px dashed var(--border);
+    }
+    .inactive-more > summary::-webkit-details-marker { display: none; }
+    .inactive-more > summary::before {
+      content: '▸'; display: inline-block; margin-right: 6px;
+      transition: transform 0.15s ease;
+    }
+    .inactive-more[open] > summary::before { transform: rotate(90deg); }
     .coin-header {
       display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;
     }
@@ -360,6 +375,17 @@
       <div class="section-title">Grid status per coin</div>
       <div id="coin-cards"></div>
 
+      <!-- Recent Trades -->
+      <div class="section-title">Recent trades</div>
+      <div class="card" style="overflow-x: auto;">
+        <table class="trades-table" id="trades-table">
+          <thead>
+            <tr><th>Side</th><th>Coin</th><th>Price</th><th>Cost</th><th>Buy @</th><th>P&amp;L</th><th>Time</th></tr>
+          </thead>
+          <tbody id="trades-body"></tbody>
+        </table>
+      </div>
+
       <!-- TF Safety parameters (39b: edit trend_config from UI) -->
       <div class="section-title">TF safety parameters</div>
       <div class="card" id="tf-safety-card">
@@ -397,16 +423,8 @@
         </div>
       </div>
 
-      <!-- Recent Trades -->
-      <div class="section-title">Recent trades</div>
-      <div class="card" style="overflow-x: auto;">
-        <table class="trades-table" id="trades-table">
-          <thead>
-            <tr><th>Side</th><th>Coin</th><th>Price</th><th>Cost</th><th>Buy @</th><th>P&amp;L</th><th>Time</th></tr>
-          </thead>
-          <tbody id="trades-body"></tbody>
-        </table>
-      </div>
+      <!-- Previous coins (deallocated TF bots) -->
+      <div id="previous-coins"></div>
 
       <div class="refresh-bar">
         Last refresh: <span id="refresh-time">—</span> · <span id="refresh-status">auto every 5m</span>
@@ -1385,7 +1403,7 @@
           var tb = b.updated_at ? new Date(b.updated_at).getTime() : 0;
           return tb - ta;  // desc: most recent dealloc on top
         });
-        var rows = sortedInactive.map(function(cfg) {
+        var rowsArr = sortedInactive.map(function(cfg) {
           var sym = cfg.symbol;
           var short = SHORT[sym] || sym;
           var color = COLORS[sym] || '#888';
@@ -1411,17 +1429,28 @@
             '<span class="ir-label">profit</span>' +
             '<span class="ir-pnl" style="color:' + pnlColor + ';">' + pnlSign + fmtUsd(pnl) + '</span>' +
           '</div>';
-        }).join('');
+        });
+        // Show 3 most recent, collapse the rest under a closed <details>.
+        var topRows = rowsArr.slice(0, 3).join('');
+        var hiddenRows = rowsArr.slice(3);
+        var moreHtml = hiddenRows.length
+          ? '<details class="inactive-more">' +
+              '<summary>Show ' + hiddenRows.length + ' older</summary>' +
+              hiddenRows.join('') +
+            '</details>'
+          : '';
         inactiveHtml =
           '<div class="inactive-section-label">Previous coins (' + inactiveConfigs.length + ')</div>' +
           '<div class="inactive-section-sub">' +
             'Closed-cycles PnL (post-skim): ' +
             '<span style="color:' + closedColor + ';">' + closedStr + '</span>' +
           '</div>' +
-          rows;
+          topRows + moreHtml;
       }
 
-      el.innerHTML = activeHtml + inactiveHtml;
+      el.innerHTML = activeHtml;
+      var prevEl = document.getElementById('previous-coins');
+      if (prevEl) prevEl.innerHTML = inactiveHtml;
 
       // Mark original values and attach change listeners (active coins only —
       // inactive cards don't render the parameter inputs)
