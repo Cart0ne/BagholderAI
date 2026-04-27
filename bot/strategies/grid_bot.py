@@ -591,7 +591,7 @@ class GridBot:
         self._gain_saturation_triggered = True
         log_event(
             severity="info",
-            category="TF_GAIN_SATURATION",
+            category="safety",
             event="tf_exit_saturated",
             symbol=self.symbol,
             message=f"TF exit after N={effective_n} positive sells",

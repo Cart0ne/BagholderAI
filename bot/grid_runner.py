@@ -744,6 +744,31 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
                     f"[{cfg.symbol}] pending_liquidation=true ({top_reason}) "
                     f"— force-selling all positions"
                 )
+                # 49b: 45g via top-of-loop (holdings=0) does NOT pass through
+                # the mid-tick DEALLOCATE-writer below, so write the
+                # DEALLOCATE row here. BEARISH path skips this write because
+                # the allocator already wrote one when it set
+                # pending_liquidation=True (see allocator.py:1138).
+                if (top_reason == "GAIN-SATURATION"
+                        and getattr(bot, "managed_by", "manual") == "trend_follower"
+                        and trade_logger is not None):
+                    try:
+                        trade_logger.client.table("trend_decisions_log").insert({
+                            "scan_timestamp": datetime.now(timezone.utc).isoformat(),
+                            "symbol": cfg.symbol,
+                            "ema_fast_value": 0, "ema_slow_value": 0,
+                            "rsi_value": 0, "atr_value": 0,
+                            "signal": "NO_SIGNAL", "signal_strength": 0,
+                            "action_taken": "DEALLOCATE",
+                            "is_shadow": False,
+                            "reason": "GAIN_SATURATION (proactive trigger)",
+                            "config_written": None,
+                        }).execute()
+                    except Exception as e:
+                        logger.warning(
+                            f"[{cfg.symbol}] Failed to log GAIN_SATURATION "
+                            f"DEALLOCATE: {e}"
+                        )
                 _force_liquidate(bot, exchange, trade_logger, notifier, cfg.symbol,
                                  reason=top_reason)
                 _deactivate_if_fully_liquidated(cfg.symbol, top_reason)
