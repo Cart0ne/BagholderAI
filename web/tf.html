@@ -1334,6 +1334,7 @@
               configField(short, 'capital_allocation', 'Allocation ($)', cfg.capital_allocation) +
               configField(short, 'capital_per_trade', '$/Trade', cfg.capital_per_trade) +
               configField(short, 'skim_pct', 'Skim % (profit reserve)', cfg.skim_pct) +
+              configField(short, 'tf_exit_after_n_override', 'Exit after N positive sells', cfg.tf_exit_after_n_override) +
             '</div>' +
             '<div class="param-group-label pct-label">Percentage Grid</div>' +
             '<div class="config-grid">' +
@@ -1458,7 +1459,8 @@
         var short = SHORT[cfg.symbol];
         var allFields = ['grid_mode', 'buy_pct', 'sell_pct', 'profit_target_pct', 'skim_pct',
           'capital_allocation', 'grid_levels', 'grid_lower', 'grid_upper',
-          'capital_per_trade', 'reserve_floor_pct', 'idle_reentry_hours'];
+          'capital_per_trade', 'reserve_floor_pct', 'idle_reentry_hours',
+          'tf_exit_after_n_override'];
         allFields.forEach(function(field) {
           var input = document.getElementById('cfg-' + short + '-' + field);
           if (input) {
@@ -1479,7 +1481,8 @@
       'sell_pct': '45b: post-greed-decay salvage threshold. TF writes max(last_tier − 0.5, 0.3) on every ALLOCATE, so manual edits are clobbered at the next rotation.',
       'profit_target_pct': '↑ see greed decay — always 0 on TF bots (greed decay + tf_stop_loss_pct manage the sell floor).',
       'buy_pct': 'Buys when price drops this % below the last buy price (ATR-adaptive, TF writes this on ALLOCATE)',
-      'skim_pct': '% of each sell\'s profit routed to reserve instead of reinvested'
+      'skim_pct': '% of each sell\'s profit routed to reserve instead of reinvested',
+      'tf_exit_after_n_override': '45g: per-coin override for the gain-saturation breaker. Empty = use global default (trend_config.tf_exit_after_n_positive_sells). 0 = disable for this coin. >0 = force-exit after N positive sells in the current period. Survives ALLOCATE/UPDATE.'
     };
 
     // 45b: fields where TF will clobber manual edits on the next ALLOCATE.
@@ -1531,7 +1534,8 @@
 
       var allFields = ['grid_mode', 'buy_pct', 'sell_pct', 'profit_target_pct', 'skim_pct',
         'capital_allocation', 'grid_levels', 'grid_lower', 'grid_upper',
-        'capital_per_trade', 'reserve_floor_pct', 'idle_reentry_hours'];
+        'capital_per_trade', 'reserve_floor_pct', 'idle_reentry_hours',
+        'tf_exit_after_n_override'];
 
       var data = {};
       var changes = [];
@@ -1549,6 +1553,15 @@
         } else if (f === 'grid_levels') {
           newVal = parseInt(normVal);
           if (isNaN(newVal)) { invalidField = f; return; }
+        } else if (f === 'tf_exit_after_n_override') {
+          // 45g: empty = NULL (use global default). Otherwise must be a
+          // non-negative integer. 0 = disable for this coin.
+          if (normVal === '' || normVal === null) {
+            newVal = null;
+          } else {
+            newVal = parseInt(normVal);
+            if (isNaN(newVal) || newVal < 0) { invalidField = f; return; }
+          }
         } else {
           newVal = parseFloat(normVal);
           if (isNaN(newVal)) { invalidField = f; return; }

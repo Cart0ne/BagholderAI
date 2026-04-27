@@ -25,13 +25,22 @@ _CONFIG_FIELDS = (
     "is_active,buy_pct,sell_pct,grid_mode,skim_pct,idle_reentry_hours,"
     "pending_liquidation,managed_by,stop_buy_drawdown_pct,"
     # 42a: multi-lot entry + greed decay anchor
-    "initial_lots,allocated_at"
+    "initial_lots,allocated_at,"
+    # 45g: per-coin override for the gain-saturation breaker
+    "tf_exit_after_n_override"
 )
 
 # 39j: global TF params polled from trend_config alongside bot_config.
 # Kept minimal to avoid side effects with other trend_config fields that
 # are consumed only by the TF scanner (e.g. scan_interval_hours).
-_TREND_CONFIG_FIELDS = "tf_stop_loss_pct,tf_take_profit_pct,greed_decay_tiers"
+_TREND_CONFIG_FIELDS = (
+    "tf_stop_loss_pct,tf_take_profit_pct,greed_decay_tiers,"
+    # 45f: dormant-bug fix piggybacked on 45g — without these in the
+    # whitelist, dashboard toggles of the profit-lock flag wouldn't
+    # propagate via hot-reload (only via full orchestrator restart).
+    "tf_profit_lock_enabled,tf_profit_lock_pct,"
+    "tf_exit_after_n_enabled,tf_exit_after_n_positive_sells"
+)
 
 
 class SupabaseConfigReader:

@@ -94,6 +94,9 @@ class GridBot:
         tf_take_profit_pct: float = 0.0,  # 39c: TF take-profit threshold as % of allocation (0 = disabled)
         tf_profit_lock_enabled: bool = False,  # 45f: opt-in switch for proactive Profit Lock exit
         tf_profit_lock_pct: float = 0.0,       # 45f: net PnL threshold (% of alloc) that triggers Profit Lock
+        tf_exit_after_n_enabled: bool = True,   # 45g: kill-switch for the gain-saturation breaker
+        tf_exit_after_n_default: int = 4,       # 45g: global default N; per-coin override on bot_config
+        tf_exit_after_n_override: Optional[int] = None,  # 45g: per-coin override (NULL = use default)
         allocated_at: Optional[datetime] = None,  # 42a: TF allocation timestamp (anchors greed decay)
         greed_decay_tiers: Optional[list] = None, # 42a: [{minutes, tp_pct}, ...] — None for manual bots
     ):
@@ -121,6 +124,9 @@ class GridBot:
         self.tf_take_profit_pct = tf_take_profit_pct
         self.tf_profit_lock_enabled = tf_profit_lock_enabled
         self.tf_profit_lock_pct = tf_profit_lock_pct
+        self.tf_exit_after_n_enabled = tf_exit_after_n_enabled
+        self.tf_exit_after_n_default = tf_exit_after_n_default
+        self.tf_exit_after_n_override = tf_exit_after_n_override
         self.allocated_at: Optional[datetime] = allocated_at
         self.greed_decay_tiers: Optional[list] = greed_decay_tiers
         self.is_active: bool = True  # controlled via Supabase bot_config
@@ -130,6 +136,7 @@ class GridBot:
         self._stop_buy_active: bool = False  # 39b: latched once drawdown breached, resets on profitable sell
         self._take_profit_triggered: bool = False  # 39c: latched once +pct threshold reached
         self._profit_lock_triggered: bool = False  # 45f: latched once net-PnL threshold breached
+        self._gain_saturation_triggered: bool = False  # 45g: latched once N positive sells in current period
         self._exchange_filters: dict = {}  # populated at startup via set_exchange_filters()
         self.state: Optional[GridState] = None
         self._daily_trade_count = 0
@@ -517,6 +524,13 @@ class GridBot:
                 f"(drawdown > {self.stop_buy_drawdown_pct}% of allocation)."
             )
             return None
+        # 45g: gain-saturation latched → no new entries until next ALLOCATE.
+        if self._gain_saturation_triggered:
+            logger.info(
+                f"[{self.symbol}] BUY SKIPPED: gain-saturation latched, "
+                f"waiting for next ALLOCATE."
+            )
+            return None
 
         standard_cost = level.order_amount * price
 
@@ -628,13 +642,15 @@ class GridBot:
                 return None
 
         if self.strategy == "A" and price < self.state.avg_buy_price:
-            # 39a/39c/45f: TF bots can override Strategy A on stop-loss,
-            # take-profit, profit-lock, or bearish exit (mixed-lots liquidation).
+            # 39a/39c/45f/45g: TF bots can override Strategy A on stop-loss,
+            # take-profit, profit-lock, gain-saturation, or bearish exit
+            # (mixed-lots liquidation).
             tf_override = (
                 self.managed_by == "trend_follower"
                 and (self._stop_loss_triggered
                      or self._take_profit_triggered
                      or self._profit_lock_triggered
+                     or self._gain_saturation_triggered
                      or self.pending_liquidation)
             )
             if tf_override:
@@ -644,6 +660,8 @@ class GridBot:
                     reason = "TAKE-PROFIT"
                 elif self._profit_lock_triggered:
                     reason = "PROFIT-LOCK"
+                elif self._gain_saturation_triggered:
+                    reason = "GAIN-SATURATION"
                 else:
                     reason = "BEARISH EXIT"
                 logger.warning(
@@ -925,6 +943,83 @@ class GridBot:
                     },
                 )
 
+        # --- 45g: TF Gain-Saturation Circuit Breaker ---
+        # Counts positive-PnL sells inside the current management period
+        # (= since the first ALLOCATE after the last DEALLOCATE on this
+        # symbol). When the count reaches the effective N (per-coin override
+        # > global default), force-exit: liquidate residual holdings and
+        # write a DEALLOCATE row to trend_decisions_log so the next ALLOCATE
+        # starts a fresh period (otherwise an ALLOCATE-update would leave
+        # the counter at >=N and re-fire 45g on the next positive sell).
+        #
+        # Backtest (15-27 Apr, 27 closed periods): edge +$35.30 at N=4,
+        # 14 triggers, 10 beat / 4 worse / 0 tied. See proposal report.
+        if (self.managed_by == "trend_follower"
+                and self.tf_exit_after_n_enabled
+                and not self._gain_saturation_triggered
+                and not self._stop_loss_triggered
+                and not self._take_profit_triggered
+                and not self._profit_lock_triggered):
+            from bot.trend_follower.gain_saturation import (
+                count_positive_sells_since,
+                get_period_start,
+                resolve_effective_n,
+            )
+            effective_n = resolve_effective_n(
+                self.tf_exit_after_n_default,
+                self.tf_exit_after_n_override,
+            )
+            if effective_n > 0 and self.trade_logger is not None:
+                period_start = get_period_start(self.trade_logger.client, self.symbol)
+                pos_count = (
+                    count_positive_sells_since(
+                        self.trade_logger.client, self.symbol, period_start
+                    )
+                    if period_start is not None
+                    else 0
+                )
+                if pos_count >= effective_n:
+                    unrealized = (
+                        (current_price - self.state.avg_buy_price) * self.state.holdings
+                        if self.state.avg_buy_price > 0 and self.state.holdings > 0
+                        else 0.0
+                    )
+                    was_override = self.tf_exit_after_n_override is not None
+                    logger.warning(
+                        f"[{self.symbol}] GAIN-SATURATION TRIGGERED: "
+                        f"{pos_count} positive sells ≥ N={effective_n} "
+                        f"({'override' if was_override else 'default'}). "
+                        f"Liquidating residual {self.state.holdings:.6f} "
+                        f"(unrealized ${unrealized:.2f})."
+                    )
+                    # Set the flag BEFORE the forced sell so any concurrent
+                    # buy decision sees the breaker as already armed.
+                    # The DEALLOCATE row to trend_decisions_log is emitted
+                    # by grid_runner when pending_liquidation fires (same
+                    # path as 39a/39c/45f) — see grid_runner.py:783.
+                    self._gain_saturation_triggered = True
+                    log_event(
+                        severity="info",
+                        category="TF_GAIN_SATURATION",
+                        event="tf_exit_saturated",
+                        symbol=self.symbol,
+                        message=f"TF exit after N={effective_n} positive sells",
+                        details={
+                            "n_threshold": effective_n,
+                            "was_override": was_override,
+                            "positive_sells_count": pos_count,
+                            "period_started_at": (
+                                period_start.isoformat() if period_start else None
+                            ),
+                            "residual_holdings": float(self.state.holdings or 0),
+                            "residual_avg_buy_price": float(self.state.avg_buy_price or 0),
+                            "exit_price": float(current_price),
+                            "liq_value_usd": float(self.state.holdings or 0) * float(current_price),
+                            "liq_pnl_usd": unrealized,
+                            "total_period_realized_pnl_usd": float(self.state.realized_pnl or 0),
+                        },
+                    )
+
         # --- 39b: manual stop-buy check ---
         # Speculare al 39a ma per i bot manuali (BTC/SOL/BONK): quando il
         # drawdown totale eccede la soglia, blocca NUOVE buy — i lot esistenti
@@ -990,6 +1085,7 @@ class GridBot:
                 and (self._stop_loss_triggered
                      or self._take_profit_triggered
                      or self._profit_lock_triggered
+                     or self._gain_saturation_triggered
                      or self.pending_liquidation)
             )
             if force_liquidate:
@@ -1040,15 +1136,18 @@ class GridBot:
 
                 if ((self._stop_loss_triggered
                      or self._take_profit_triggered
-                     or self._profit_lock_triggered)
+                     or self._profit_lock_triggered
+                     or self._gain_saturation_triggered)
                         and cycle_closed
                         and not self.pending_liquidation):
                     if self._stop_loss_triggered:
                         trigger = "Stop-loss"
                     elif self._take_profit_triggered:
                         trigger = "Take-profit"
-                    else:
+                    elif self._profit_lock_triggered:
                         trigger = "Profit-lock"
+                    else:
+                        trigger = "Gain-saturation"
                     logger.warning(
                         f"[{self.symbol}] {trigger} liquidation complete "
                         f"(holdings={self.state.holdings:.6f}, queue={len(self._pct_open_positions)} lots). "
@@ -1258,6 +1357,13 @@ class GridBot:
                 f"Waiting for profitable sell to reset."
             )
             return None
+        # 45g: gain-saturation latched → no new entries until next ALLOCATE.
+        if self._gain_saturation_triggered:
+            logger.info(
+                f"[{self.symbol}] BUY SKIPPED: gain-saturation latched, "
+                f"waiting for next ALLOCATE."
+            )
+            return None
 
         standard_cost = self.capital_per_trade
         cash_before = self._available_cash()
@@ -1396,14 +1502,16 @@ class GridBot:
 
         # Strategy A never sells at a loss on the specific lot being sold —
         # UNLESS this is a TF-managed bot under stop-loss, bearish exit,
-        # take-profit, or profit-lock (39a/39c/45f: override so all lots
-        # liquidate in one pass even when some are locally underwater).
+        # take-profit, profit-lock or gain-saturation (39a/39c/45f/45g:
+        # override so all lots liquidate in one pass even when some are
+        # locally underwater).
         if self.strategy == "A" and price < lot_buy_price:
             tf_override = (
                 self.managed_by == "trend_follower"
                 and (self._stop_loss_triggered
                      or self._take_profit_triggered
                      or self._profit_lock_triggered
+                     or self._gain_saturation_triggered
                      or self.pending_liquidation)
             )
             if tf_override:
@@ -1413,6 +1521,8 @@ class GridBot:
                     reason = "TAKE-PROFIT"
                 elif self._profit_lock_triggered:
                     reason = "PROFIT-LOCK"
+                elif self._gain_saturation_triggered:
+                    reason = "GAIN-SATURATION"
                 else:
                     reason = "BEARISH EXIT"
                 logger.warning(
@@ -1533,8 +1643,8 @@ class GridBot:
 
         trade_pnl_pct = (realized_pnl / cost_basis * 100) if cost_basis > 0 else 0
 
-        # 39a/39c/45f: tag the reason so the trade log + Haiku commentary can
-        # distinguish forced exits from normal pct sells.
+        # 39a/39c/45f/45g: tag the reason so the trade log + Haiku commentary
+        # can distinguish forced exits from normal pct sells.
         if self._stop_loss_triggered:
             reason = (
                 f"STOP-LOSS: price {fmt_price(price)} forces liquidation "
@@ -1549,6 +1659,11 @@ class GridBot:
             reason = (
                 f"PROFIT-LOCK: price {fmt_price(price)} locks net gain "
                 f"(lot buy {fmt_price(lot_buy_price)}, threshold {self.tf_profit_lock_pct:.1f}% of alloc on net PnL)"
+            )
+        elif self._gain_saturation_triggered:
+            reason = (
+                f"GAIN-SATURATION: N positive sells reached, exit at {fmt_price(price)} "
+                f"(lot buy {fmt_price(lot_buy_price)})"
             )
         elif self.pending_liquidation and self.managed_by == "trend_follower":
             reason = (
@@ -1591,12 +1706,14 @@ class GridBot:
         }
 
         # 42a: expose greed-decay tier info for Telegram alert. Skip when the
-        # sell was forced (stop-loss / take-profit / profit-lock / bearish) —
-        # those have their own reason tags that already dominate the message.
+        # sell was forced (stop-loss / take-profit / profit-lock / gain-
+        # saturation / bearish) — those have their own reason tags that
+        # already dominate the message.
         if (self.managed_by == "trend_follower"
                 and not self._stop_loss_triggered
                 and not self._take_profit_triggered
                 and not self._profit_lock_triggered
+                and not self._gain_saturation_triggered
                 and not self.pending_liquidation):
             tp_pct, age_min, _ = self.get_effective_tp()
             if age_min is not None:

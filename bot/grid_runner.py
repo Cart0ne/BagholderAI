@@ -226,6 +226,39 @@ def _sync_config_to_bot(reader: "SupabaseConfigReader", bot: "GridBot", symbol: 
                 )
                 bot.tf_profit_lock_pct = new_plp
 
+        # 45g: hot-reload kill-switch and global N (so CEO can change either
+        # from the dashboard / SQL without restarting the orchestrator).
+        tf_xen = reader.get_trend_config_value("tf_exit_after_n_enabled")
+        if tf_xen is not None:
+            new_xen = bool(tf_xen)
+            if new_xen != bot.tf_exit_after_n_enabled:
+                logger.info(
+                    f"[{symbol}] tf_exit_after_n_enabled updated: "
+                    f"{bot.tf_exit_after_n_enabled} → {new_xen}"
+                )
+                bot.tf_exit_after_n_enabled = new_xen
+
+        tf_xn = reader.get_trend_config_value("tf_exit_after_n_positive_sells")
+        if tf_xn is not None:
+            new_xn = int(tf_xn)
+            if new_xn != bot.tf_exit_after_n_default:
+                logger.info(
+                    f"[{symbol}] tf_exit_after_n_positive_sells updated: "
+                    f"{bot.tf_exit_after_n_default} → {new_xn}"
+                )
+                bot.tf_exit_after_n_default = new_xn
+
+        # 45g: per-coin override lives on bot_config — re-read each tick so
+        # CEO's SQL UPDATEs propagate without restart.
+        new_override = sb_cfg.get("tf_exit_after_n_override")
+        new_override_int = int(new_override) if new_override is not None else None
+        if new_override_int != bot.tf_exit_after_n_override:
+            logger.info(
+                f"[{symbol}] tf_exit_after_n_override updated: "
+                f"{bot.tf_exit_after_n_override} → {new_override_int}"
+            )
+            bot.tf_exit_after_n_override = new_override_int
+
         # 42a: greed_decay_tiers is global (trend_config); allocated_at is
         # per-bot (bot_config). Both are re-read each tick so UI edits and
         # SWAP re-allocations propagate without restart.
@@ -452,11 +485,14 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
     tf_take_profit_pct = 0.0
     tf_profit_lock_enabled = False
     tf_profit_lock_pct = 0.0
+    tf_exit_after_n_enabled = True
+    tf_exit_after_n_default = 4
     try:
         from db.client import get_client
         _sb = get_client()
         _tc = _sb.table("trend_config").select(
-            "tf_stop_loss_pct,tf_take_profit_pct,tf_profit_lock_enabled,tf_profit_lock_pct"
+            "tf_stop_loss_pct,tf_take_profit_pct,tf_profit_lock_enabled,"
+            "tf_profit_lock_pct,tf_exit_after_n_enabled,tf_exit_after_n_positive_sells"
         ).limit(1).execute()
         if _tc.data:
             row = _tc.data[0]
@@ -468,8 +504,21 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
                 tf_profit_lock_enabled = bool(row["tf_profit_lock_enabled"])
             if row.get("tf_profit_lock_pct") is not None:
                 tf_profit_lock_pct = float(row["tf_profit_lock_pct"])
+            if row.get("tf_exit_after_n_enabled") is not None:
+                tf_exit_after_n_enabled = bool(row["tf_exit_after_n_enabled"])
+            if row.get("tf_exit_after_n_positive_sells") is not None:
+                tf_exit_after_n_default = int(row["tf_exit_after_n_positive_sells"])
     except Exception as e:
         logger.warning(f"Could not read trend_config safety params: {e}. Defaulting to 0.")
+
+    # 45g: per-coin override lives in bot_config.tf_exit_after_n_override.
+    # NULL = use the global default. CEO can SET this for individual coins.
+    tf_exit_after_n_override = None
+    try:
+        if sb_cfg and sb_cfg.get("tf_exit_after_n_override") is not None:
+            tf_exit_after_n_override = int(sb_cfg["tf_exit_after_n_override"])
+    except Exception as e:
+        logger.warning(f"Could not read bot_config.tf_exit_after_n_override for {cfg.symbol}: {e}.")
 
     # 39b: manual stop-buy threshold is per-coin (lives in bot_config).
     # TF bots ignore it (gated by managed_by != 'trend_follower' in grid_bot).
@@ -519,6 +568,9 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
         tf_take_profit_pct=tf_take_profit_pct,
         tf_profit_lock_enabled=tf_profit_lock_enabled,
         tf_profit_lock_pct=tf_profit_lock_pct,
+        tf_exit_after_n_enabled=tf_exit_after_n_enabled,
+        tf_exit_after_n_default=tf_exit_after_n_default,
+        tf_exit_after_n_override=tf_exit_after_n_override,
         allocated_at=allocated_at,
         greed_decay_tiers=greed_decay_tiers,
     )
@@ -700,7 +752,11 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
             if getattr(bot, "pending_liquidation", False):
                 is_tp = getattr(bot, "_take_profit_triggered", False)
                 is_pl = getattr(bot, "_profit_lock_triggered", False)
-                if is_pl:
+                is_gs = getattr(bot, "_gain_saturation_triggered", False)
+                if is_gs:
+                    event_label = "GAIN-SATURATION"
+                    stop_reason_tag = "gain_saturation"
+                elif is_pl:
                     event_label = "PROFIT-LOCK"
                     stop_reason_tag = "profit_lock"
                 elif is_tp:

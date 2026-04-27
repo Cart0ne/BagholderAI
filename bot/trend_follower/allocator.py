@@ -1033,6 +1033,10 @@ def apply_allocations(
                 # 45c: freeze volume tier so subsequent volume changes don't
                 # re-tier active coin. Read back by SWAP guard + active_tier_map.
                 "volume_tier": snapshot.get("volume_tier"),
+                # 45g invariant: tf_exit_after_n_override is intentionally NOT
+                # listed here. It is a CEO-set policy field that must survive
+                # ALLOCATE/UPDATE cycles. INSERT path leaves it as DB default
+                # (NULL); UPDATE path leaves whatever value the CEO set.
             }
 
             try:
