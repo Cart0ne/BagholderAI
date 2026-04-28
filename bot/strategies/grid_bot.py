@@ -1775,7 +1775,8 @@ class GridBot:
             skim_amount = realized_pnl * (self.skim_pct / 100)
             try:
                 trade_id = trade_db_row.get("id")
-                self.reserve_ledger.log_skim(self.symbol, skim_amount, trade_id=trade_id)
+                self.reserve_ledger.log_skim(self.symbol, skim_amount, trade_id=trade_id,
+                                              managed_by=self.managed_by)
                 reserve_total = self.reserve_ledger.get_reserve_total(
                     self.symbol, force_refresh=True
                 )

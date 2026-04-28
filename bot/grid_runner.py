@@ -772,7 +772,14 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
                 _force_liquidate(bot, exchange, trade_logger, notifier, cfg.symbol,
                                  reason=top_reason)
                 _deactivate_if_fully_liquidated(cfg.symbol, top_reason)
-                stop_reason = "liquidation"
+                # 50a: gain-saturation must surface as its own reason for
+                # forensics/dashboard (was previously bucketed as
+                # "liquidation"). BEARISH rotations keep "liquidation".
+                stop_reason = (
+                    "gain_saturation"
+                    if getattr(bot, "_gain_saturation_triggered", False)
+                    else "liquidation"
+                )
                 break
 
             price = fetch_price(exchange, cfg.symbol)
@@ -1419,7 +1426,8 @@ def _force_liquidate(bot, exchange, trade_logger, notifier, symbol: str,
             skim_amount = realized_pnl * (skim_pct / 100)
             try:
                 trade_id = trade_db_row.get("id") if isinstance(trade_db_row, dict) else None
-                reserve_ledger.log_skim(symbol, skim_amount, trade_id=trade_id)
+                reserve_ledger.log_skim(symbol, skim_amount, trade_id=trade_id,
+                                         managed_by=getattr(bot, "managed_by", None))
                 reserve_total = reserve_ledger.get_reserve_total(symbol, force_refresh=True)
                 logger.info(
                     f"[{symbol}] SKIM ${skim_amount:.4f} → reserve total ${reserve_total:.2f} (liquidation)"

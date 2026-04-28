@@ -1,0 +1,8 @@
+N,periods_closed,rule_triggered,rule_beat_actual,rule_worse_than_actual,rule_tied,avg_delta_when_triggered_usd,total_actual_pnl_usd,total_counterfactual_pnl_usd,delta_total_usd
+2,4,1,0,1,0,-3.6603,1.6332,-2.0271,-3.6603
+3,4,1,0,1,0,-3.5118,1.6332,-1.8786,-3.5118
+4,4,1,0,1,0,-3.4305,1.6332,-1.7973,-3.4305
+5,4,1,0,1,0,-0.7875,1.6332,0.8457,-0.7875
+6,4,1,1,0,0,1.538,1.6332,3.1712,1.538
+7,4,1,1,0,0,1.68,1.6332,3.3132,1.68
+8,4,0,0,0,0,0.0,1.6332,1.6332,0.0

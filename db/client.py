@@ -302,13 +302,14 @@ class ReserveLedger:
         self._cache: dict = {}  # symbol -> {"total": float, "ts": float}
 
     def log_skim(self, symbol: str, amount: float, trade_id: str = None,
-                 config_version: str = "v3") -> dict:
+                 config_version: str = "v3", managed_by: str = None) -> dict:
         """Insert one skim entry and invalidate the cache for this symbol."""
         data = {
             "symbol": symbol,
             "amount": round(amount, 8),
             "trade_id": trade_id,
             "config_version": config_version,
+            "managed_by": managed_by,
         }
         result = self.client.table("reserve_ledger").insert(data).execute()
         # Invalidate so next call queries fresh

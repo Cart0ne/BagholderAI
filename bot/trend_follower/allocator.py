@@ -5,7 +5,7 @@ exchange filters, and max active grids.
 """
 
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from utils.exchange_filters import validate_order, round_to_step
 from db.event_logger import log_event
 
@@ -933,6 +933,61 @@ def resize_active_allocations(
     return resize_actions
 
 
+def _close_orphan_period(supabase, symbol: str) -> None:
+    """
+    50a: write a synthetic DEALLOCATE to trend_decisions_log if the symbol's
+    most recent ALLOCATE is not followed by a DEALLOCATE. This stops a stale
+    positive-sell counter from leaking into the next management period (the
+    49c bug that made 45g re-fire on a fresh re-allocate).
+
+    No-op if the period is already closed (last DEALLOCATE post-dates last
+    ALLOCATE) or if no ALLOCATE exists yet for this symbol. Timestamp is
+    set 1 second before NOW() so the synthetic row lands strictly before
+    the new ALLOCATE that the caller is about to log.
+    """
+    last_alloc = (
+        supabase.table("trend_decisions_log")
+        .select("scan_timestamp")
+        .eq("symbol", symbol)
+        .eq("action_taken", "ALLOCATE")
+        .order("scan_timestamp", desc=True)
+        .limit(1)
+        .execute()
+    )
+    if not last_alloc.data:
+        return
+    last_alloc_ts = last_alloc.data[0]["scan_timestamp"]
+
+    last_dealloc = (
+        supabase.table("trend_decisions_log")
+        .select("scan_timestamp")
+        .eq("symbol", symbol)
+        .eq("action_taken", "DEALLOCATE")
+        .order("scan_timestamp", desc=True)
+        .limit(1)
+        .execute()
+    )
+    if last_dealloc.data and last_dealloc.data[0]["scan_timestamp"] > last_alloc_ts:
+        return  # period already closed cleanly
+
+    synth_ts = (datetime.now(timezone.utc) - timedelta(seconds=1)).isoformat()
+    supabase.table("trend_decisions_log").insert({
+        "scan_timestamp": synth_ts,
+        "symbol": symbol,
+        "ema_fast_value": 0, "ema_slow_value": 0,
+        "rsi_value": 0, "atr_value": 0,
+        "signal": "NO_SIGNAL", "signal_strength": 0,
+        "action_taken": "DEALLOCATE",
+        "is_shadow": False,
+        "reason": "ORPHAN_PERIOD_CLOSE (synthetic — previous cycle ended without DEALLOCATE row)",
+        "config_written": None,
+    }).execute()
+    logger.info(
+        f"[ALLOCATOR] {symbol}: closed orphan period with synthetic DEALLOCATE "
+        f"(last ALLOCATE was {last_alloc_ts}, no subsequent DEALLOCATE found)"
+    )
+
+
 def apply_allocations(
     supabase, decisions: list[dict], config: dict,
     coin_lookup: dict | None = None,
@@ -1019,10 +1074,9 @@ def apply_allocations(
                 # sell threshold for this strategy). Force 0 explicitly so
                 # the behavior is independent of the bot_config column default.
                 "profit_target_pct": 0,
-                # Match the manual bots' skim: 30% of each sell's profit goes
-                # to the reserve ledger. Prevents TF from cycling 100% of gains
-                # back into positions.
-                "skim_pct": 30,
+                # 50a: skim disabled — Board decision while pool capital is
+                # small. Re-evaluated when capitalization grows.
+                "skim_pct": 0,
                 # 39a: TF is a rotator, not a holder — re-align the reference
                 # price after 1 hour of no trades (vs. 24h manual default) so
                 # a fresh buy lands at current market instead of a stale level.
@@ -1033,6 +1087,11 @@ def apply_allocations(
                 # 45c: freeze volume tier so subsequent volume changes don't
                 # re-tier active coin. Read back by SWAP guard + active_tier_map.
                 "volume_tier": snapshot.get("volume_tier"),
+                # 50a: enforce manual stop-buy drawdown threshold so re-
+                # allocations don't inherit a stale value from a previous
+                # cycle (e.g. coin set to a different threshold via dashboard
+                # before being deallocated).
+                "stop_buy_drawdown_pct": 15,
                 # 45g invariant: tf_exit_after_n_override is intentionally NOT
                 # listed here. It is a CEO-set policy field that must survive
                 # ALLOCATE/UPDATE cycles. INSERT path leaves it as DB default
@@ -1042,6 +1101,26 @@ def apply_allocations(
             try:
                 existing = supabase.table("bot_config").select("symbol").eq("symbol", symbol).execute()
                 if existing.data:
+                    # 50a: orphan-period guard. If the previous management
+                    # cycle ended (bot was stopped) but no DEALLOCATE row was
+                    # written to trend_decisions_log (e.g. a 45g trigger that
+                    # raised silently while writing the dealloc, or any
+                    # equivalent gap), the next get_period_start() call would
+                    # read a counter accumulated across cycles and the 45g
+                    # would re-fire immediately on this fresh ALLOCATE — the
+                    # PENGU 28/04 15:17 scenario from session 49c. Detect by
+                    # comparing last ALLOCATE vs last DEALLOCATE timestamps;
+                    # if ALLOCATE > DEALLOCATE (or no DEALLOCATE at all
+                    # despite an inactive bot), insert a synthetic DEALLOCATE
+                    # to close the orphan period before logging the new
+                    # ALLOCATE. Best-effort: any error here must NOT block
+                    # the real allocation.
+                    try:
+                        _close_orphan_period(supabase, symbol)
+                    except Exception as e:
+                        logger.warning(
+                            f"[ALLOCATOR] {symbol}: orphan-period guard raised — {e}"
+                        )
                     # Reset updated_at so the SWAP cooldown clock starts on re-allocation.
                     update_fields = {**row_fields, "updated_at": datetime.now(timezone.utc).isoformat()}
                     supabase.table("bot_config").update(update_fields).eq("symbol", symbol).execute()
