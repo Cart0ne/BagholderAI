@@ -851,7 +851,7 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
                             "symbol": cfg.symbol,
                             "ema_fast_value": 0, "ema_slow_value": 0,
                             "rsi_value": 0, "atr_value": 0,
-                            "signal": "", "signal_strength": 0,
+                            "signal": "NO_SIGNAL", "signal_strength": 0,
                             "action_taken": "DEALLOCATE",
                             "is_shadow": False,
                             "reason": dealloc_reason,
