@@ -521,18 +521,18 @@
           <div style="font-family: var(--mono); font-size: 11px; color: var(--text-dim);">— aggregated</div>
         </div>
 
-        <!-- Net Worth Chart (aggregated) -->
+        <!-- Cumulative P&L Chart (aggregated, top-up neutralized) -->
         <div class="card">
-          <div class="chart-label">Net worth — Grid + TF</div>
+          <div class="chart-label">Cumulative P&L — Grid + TF</div>
           <div class="chart-wrap" style="height: 160px;">
             <canvas id="portChart"></canvas>
           </div>
           <div class="chart-legend">
-            <span><span class="chart-legend-line" style="background: #22c55e;"></span> Net worth (aggregated)</span>
-            <span><span class="chart-legend-line" style="border-top: 1px dashed rgba(255,255,255,0.2);"></span> Initial ($600)</span>
+            <span><span class="chart-legend-line" style="background: #22c55e;"></span> P&L cumulato (vs starting capital)</span>
+            <span><span class="chart-legend-line" style="border-top: 1px dashed rgba(255,255,255,0.2);"></span> Break-even ($0)</span>
           </div>
           <div style="font-family: var(--mono); font-size: 10px; color: var(--text-dim); margin-top: 8px;">
-            Note: TF added April 15. Pre-15 values are Grid only ($500 baseline). TF historical values reconstructed from trades (~5% margin).
+            Net worth minus starting capital ($500 pre-15/04, $600 post-TF top-up). Removes the $100 step from the chart so daily moves stay readable. TF historical values reconstructed from trades (~5% margin).
           </div>
         </div>
 
@@ -1011,36 +1011,48 @@
       });
       // Initial line: $500 pre-TF, $600 post-TF (April 15 = first TF trade)
       var TF_START = '2026-04-15';
+      var TF_TOPUP = 100;  // €100 added to TF on TF_START — not P&L, capital injection
       var initialLine = sorted.map(function(d) { return d.date >= TF_START ? 600 : 500; });
-      var initial = 600;  // header reference
 
-      // Portfolio value line
+      // Cumulative P&L: net worth minus starting capital. Stays at 0 across the
+      // 14→15 April top-up (initialLine itself jumps $500→$600 in lockstep with
+      // the value), so the chart shows trading performance only.
+      var cumPnl = values.map(function(v, i) { return v - initialLine[i]; });
+      var zeroLine = sorted.map(function() { return 0; });
+
       new Chart(document.getElementById('portChart'), {
         type: 'line',
         data: { labels: labels, datasets: [
-          { data: values, borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,0.05)', borderWidth: 2, fill: true, tension: 0.3, pointRadius: Math.min(4, 40 / values.length), pointBackgroundColor: '#22c55e', pointBorderColor: '#0a0a0a', pointBorderWidth: 2 },
-          { data: initialLine, borderColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderDash: [4,4], pointRadius: 0, fill: false }
+          { data: cumPnl, borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,0.08)', borderWidth: 2, fill: { target: 'origin' }, tension: 0.3, pointRadius: Math.min(4, 40 / cumPnl.length), pointBackgroundColor: '#22c55e', pointBorderColor: '#0a0a0a', pointBorderWidth: 2 },
+          { data: zeroLine, borderColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderDash: [4,4], pointRadius: 0, fill: false }
         ]},
         options: { responsive: true, maintainAspectRatio: false, interaction: { intersect: false, mode: 'index' },
           plugins: { legend: { display: false }, tooltip: { backgroundColor: 'rgba(0,0,0,0.85)', borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1, titleFont: { family: "'SF Mono',monospace", size: 10 }, bodyFont: { family: "'SF Mono',monospace", size: 11 }, displayColors: false,
             callbacks: { label: function(c) {
+              if (c.datasetIndex === 1) return 'Break-even: $0';
               var idx = c.dataIndex;
-              var ref = initialLine[idx] || 500;
-              if (c.datasetIndex === 1) return 'Initial: $' + ref.toFixed(2);
-              var v = c.parsed.y, d = v - ref;
-              return 'Value: $' + v.toFixed(2) + '  (' + (d >= 0 ? '+' : '') + d.toFixed(2) + ')';
+              var v = c.parsed.y;
+              var nw = values[idx];
+              var ref = initialLine[idx];
+              return 'P&L: ' + (v >= 0 ? '+' : '') + '$' + v.toFixed(2) + '  (NW $' + nw.toFixed(2) + ' vs $' + ref + ')';
             }}}},
           scales: { x: { ticks: { color: 'rgba(255,255,255,0.2)', font: { family: "'SF Mono',monospace", size: 9 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 10 }, grid: { color: 'rgba(255,255,255,0.03)' }, border: { color: 'rgba(255,255,255,0.06)' }},
-            y: { ticks: { color: 'rgba(255,255,255,0.2)', font: { family: "'SF Mono',monospace", size: 9 }, callback: function(v) { return '$' + v; }}, grid: { color: 'rgba(255,255,255,0.03)' }, border: { color: 'rgba(255,255,255,0.06)' }}}}
+            y: { ticks: { color: 'rgba(255,255,255,0.2)', font: { family: "'SF Mono',monospace", size: 9 }, callback: function(v) { return (v >= 0 ? '+' : '') + '$' + v; }}, grid: { color: 'rgba(255,255,255,0.03)' }, border: { color: 'rgba(255,255,255,0.06)' }}}}
       });
 
-      // Daily P&L bars (already aggregated since values[] sums Grid + TF reconstruction)
+      // Daily P&L bars: delta of net worth between consecutive days, with the
+      // 14→15 April top-up neutralized (the $100 capital injection is not P&L).
       if (sorted.length >= 2) {
         var dailyPnl = values.map(function(v, i) {
-          if (i === 0) return 0;
-          return v - values[i - 1];
+          if (i === 0) return v - initialLine[0];
+          var delta = v - values[i - 1];
+          // If this is the first row at/after the top-up date AND the previous
+          // row was strictly before, subtract the injection from the delta.
+          if (sorted[i].date >= TF_START && sorted[i - 1].date < TF_START) {
+            delta -= TF_TOPUP;
+          }
+          return delta;
         });
-        dailyPnl[0] = values[0] - (initialLine[0] || 500);  // first day = vs initial reference
 
         new Chart(document.getElementById('dailyChart'), {
           type: 'bar',
