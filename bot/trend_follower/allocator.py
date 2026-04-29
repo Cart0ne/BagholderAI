@@ -304,6 +304,10 @@ def decide_allocations(
     # 0 (or negative) = disabled. Historical validation on v3 losses showed
     # threshold 10 blocks 92.4% of the loss by dollar amount.
     max_entry_distance = float(config.get("tf_entry_max_distance_pct") or 0)
+    # 51a: RSI(14) on 1h overheat filter — skip candidates pumping too fast.
+    # Enrichment step in trend_follower.py populates `rsi_1h` for BULLISH
+    # coins only. Threshold 0 = disabled.
+    rsi_1h_max = float(config.get("tf_rsi_1h_max") or 0)
     # 45c: tag every classified coin with its current volume tier (1/2/3)
     for _c in classified_coins:
         _c["volume_tier"] = _assign_volume_tier(_c, t1_min, t2_min)
@@ -420,6 +424,31 @@ def decide_allocations(
                         # delta without re-querying historical candles.
                         "skip_price": float(c.get("price", 0) or 0),
                         "skip_ema20": float(c.get("ema_fast", 0) or 0),
+                    },
+                )
+                continue
+        # 51a: RSI 1h overheat gate — same logic as ALLOCATE path. Fail-open
+        # if the enrichment step couldn't fetch RSI for this symbol.
+        if rsi_1h_max > 0:
+            rsi_1h = c.get("rsi_1h")
+            if rsi_1h is not None and rsi_1h > rsi_1h_max:
+                logger.info(
+                    f"[ALLOCATOR] SWAP candidate {c['symbol']} skipped: "
+                    f"RSI 1h = {rsi_1h:.1f} > max {rsi_1h_max:.0f}"
+                )
+                log_event(
+                    severity="info",
+                    category="tf",
+                    event="rsi_1h_overheat_skip",
+                    symbol=c["symbol"],
+                    message=(
+                        f"SWAP candidate skipped: RSI 1h = {rsi_1h:.1f} > "
+                        f"max {rsi_1h_max:.0f}"
+                    ),
+                    details={
+                        "rsi_1h": rsi_1h,
+                        "rsi_1h_max": rsi_1h_max,
+                        "path": "SWAP",
                     },
                 )
                 continue
@@ -686,6 +715,35 @@ def decide_allocations(
                         # 47a: counterfactual tracker — see SWAP-path comment.
                         "skip_price": float(coin.get("price", 0) or 0),
                         "skip_ema20": float(coin.get("ema_fast", 0) or 0),
+                    },
+                )
+                decisions.append(_make_decision(
+                    scan_ts, coin["symbol"], coin, "SKIP", reason,
+                ))
+                continue
+
+        # 51a: RSI(14) 1h overheat filter — skip coins pumping too fast on
+        # short-tf even when 4h indicators look BULLISH. Catches the DOGE
+        # 29/04 scenario (allocate at 30-day high → SL same day). Fail-open:
+        # if rsi_1h is None (fetch failed in enrichment) the coin passes.
+        if rsi_1h_max > 0:
+            rsi_1h = coin.get("rsi_1h")
+            if rsi_1h is not None and rsi_1h > rsi_1h_max:
+                reason = (
+                    f"FILTER_RSI_1H_OVERHEAT: RSI(14) 1h = {rsi_1h:.1f} > "
+                    f"max {rsi_1h_max:.0f} — coin pumping too fast, skip"
+                )
+                logger.info(f"[ALLOCATOR] SKIP {coin['symbol']}: {reason}")
+                log_event(
+                    severity="info",
+                    category="tf",
+                    event="rsi_1h_overheat_skip",
+                    symbol=coin["symbol"],
+                    message=reason,
+                    details={
+                        "rsi_1h": rsi_1h,
+                        "rsi_1h_max": rsi_1h_max,
+                        "path": "ALLOCATE",
                     },
                 )
                 decisions.append(_make_decision(

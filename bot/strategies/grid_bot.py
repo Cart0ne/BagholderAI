@@ -97,6 +97,8 @@ class GridBot:
         tf_exit_after_n_enabled: bool = True,   # 45g: kill-switch for the gain-saturation breaker
         tf_exit_after_n_default: int = 4,       # 45g: global default N; per-coin override on bot_config
         tf_exit_after_n_override: Optional[int] = None,  # 45g: per-coin override (NULL = use default)
+        tf_trailing_stop_activation_pct: float = 0.0,  # 51b: minimum profit (% of avg_buy) the peak must reach before trailing engages
+        tf_trailing_stop_pct: float = 0.0,             # 51b: drop from peak (%) that triggers exit; 0 = disabled
         allocated_at: Optional[datetime] = None,  # 42a: TF allocation timestamp (anchors greed decay)
         greed_decay_tiers: Optional[list] = None, # 42a: [{minutes, tp_pct}, ...] — None for manual bots
     ):
@@ -127,6 +129,8 @@ class GridBot:
         self.tf_exit_after_n_enabled = tf_exit_after_n_enabled
         self.tf_exit_after_n_default = tf_exit_after_n_default
         self.tf_exit_after_n_override = tf_exit_after_n_override
+        self.tf_trailing_stop_activation_pct = tf_trailing_stop_activation_pct  # 51b
+        self.tf_trailing_stop_pct = tf_trailing_stop_pct                        # 51b
         self.allocated_at: Optional[datetime] = allocated_at
         self.greed_decay_tiers: Optional[list] = greed_decay_tiers
         self.is_active: bool = True  # controlled via Supabase bot_config
@@ -137,6 +141,8 @@ class GridBot:
         self._take_profit_triggered: bool = False  # 39c: latched once +pct threshold reached
         self._profit_lock_triggered: bool = False  # 45f: latched once net-PnL threshold breached
         self._gain_saturation_triggered: bool = False  # 45g: latched once N positive sells in current period
+        self._trailing_peak_price: float = 0.0          # 51b: highest price seen since bot start (in-memory only)
+        self._trailing_stop_triggered: bool = False     # 51b: latched once trailing stop fires
         self._exchange_filters: dict = {}  # populated at startup via set_exchange_filters()
         self.state: Optional[GridState] = None
         self._daily_trade_count = 0
@@ -543,6 +549,7 @@ class GridBot:
         # Mutually exclusive with the other latched exits (priority order
         # mirrors check_price_and_execute).
         if (self._stop_loss_triggered
+                or self._trailing_stop_triggered
                 or self._take_profit_triggered
                 or self._profit_lock_triggered):
             return False
@@ -634,6 +641,13 @@ class GridBot:
         if self._gain_saturation_triggered:
             logger.info(
                 f"[{self.symbol}] BUY SKIPPED: gain-saturation latched, "
+                f"waiting for next ALLOCATE."
+            )
+            return None
+        # 51b: trailing-stop latched → no new entries during liquidation.
+        if self._trailing_stop_triggered:
+            logger.info(
+                f"[{self.symbol}] BUY SKIPPED: trailing-stop latched, "
                 f"waiting for next ALLOCATE."
             )
             return None
@@ -748,12 +762,13 @@ class GridBot:
                 return None
 
         if self.strategy == "A" and price < self.state.avg_buy_price:
-            # 39a/39c/45f/45g: TF bots can override Strategy A on stop-loss,
-            # take-profit, profit-lock, gain-saturation, or bearish exit
-            # (mixed-lots liquidation).
+            # 39a/39c/45f/45g/51b: TF bots can override Strategy A on
+            # stop-loss, trailing-stop, take-profit, profit-lock,
+            # gain-saturation, or bearish exit (mixed-lots liquidation).
             tf_override = (
                 self.managed_by == "trend_follower"
                 and (self._stop_loss_triggered
+                     or self._trailing_stop_triggered
                      or self._take_profit_triggered
                      or self._profit_lock_triggered
                      or self._gain_saturation_triggered
@@ -762,6 +777,8 @@ class GridBot:
             if tf_override:
                 if self._stop_loss_triggered:
                     reason = "STOP-LOSS"
+                elif self._trailing_stop_triggered:
+                    reason = "TRAILING-STOP"
                 elif self._take_profit_triggered:
                     reason = "TAKE-PROFIT"
                 elif self._profit_lock_triggered:
@@ -908,6 +925,17 @@ class GridBot:
             logger.warning("Daily operation limit reached (50). Stopping.")
             return trades
 
+        # --- 51b: trailing stop — peak tracking ---
+        # Track highest price seen each tick while we have holdings on a TF
+        # bot. Manual bots and TF bots with the feature disabled skip it
+        # entirely (no peak persisted, no API cost). In-memory only by design
+        # (see brief: a restart "forgets" the peak which is conservative).
+        if (self.managed_by == "trend_follower"
+                and self.tf_trailing_stop_pct > 0
+                and self.state.holdings > 0
+                and current_price > self._trailing_peak_price):
+            self._trailing_peak_price = current_price
+
         # --- 39a: TF stop-loss check ---
         # Evaluated on the entire position (not per-lot) so a partial rebound
         # on one lot doesn't mask the overall bleed. Only armed for TF bots
@@ -952,6 +980,70 @@ class GridBot:
                         "lots": len(self._pct_open_positions),
                     },
                 )
+
+        # --- 51b: trailing stop trigger ---
+        # Order: stop-loss → trailing stop → take-profit → profit-lock → 45g.
+        # Trailing protects unrealized gains: once the peak has cleared
+        # avg_buy × (1 + activation_pct%), a drop of trailing_pct% from peak
+        # forces a full liquidation. Doesn't fire if SL/TP/PL/45g already
+        # latched, or when the feature is disabled (tf_trailing_stop_pct=0).
+        if (self.managed_by == "trend_follower"
+                and self.tf_trailing_stop_pct > 0
+                and not self._stop_loss_triggered
+                and not self._trailing_stop_triggered
+                and not self._take_profit_triggered
+                and not self._profit_lock_triggered
+                and not self._gain_saturation_triggered
+                and self.state.holdings > 0
+                and self.state.avg_buy_price > 0
+                and self._trailing_peak_price > 0):
+            activation_price = self.state.avg_buy_price * (1 + self.tf_trailing_stop_activation_pct / 100)
+            if self._trailing_peak_price >= activation_price:
+                trailing_trigger = self._trailing_peak_price * (1 - self.tf_trailing_stop_pct / 100)
+                if current_price <= trailing_trigger:
+                    drop_from_peak_pct = ((self._trailing_peak_price - current_price) / self._trailing_peak_price) * 100
+                    unrealized = (current_price - self.state.avg_buy_price) * self.state.holdings
+                    logger.warning(
+                        f"[{self.symbol}] TRAILING-STOP TRIGGERED: price {fmt_price(current_price)} "
+                        f"dropped {drop_from_peak_pct:.1f}% from peak {fmt_price(self._trailing_peak_price)} "
+                        f"(trigger: {fmt_price(trailing_trigger)}). "
+                        f"Unrealized: ${unrealized:+.2f}. "
+                        f"Liquidating all {len(self._pct_open_positions)} lots."
+                    )
+                    self._trailing_stop_triggered = True
+                    # Re-use the SL cooldown clock so the TF can't immediately
+                    # re-allocate the same coin after a trailing stop exit.
+                    if self.trade_logger is not None:
+                        try:
+                            self.trade_logger.client.table("bot_config").update(
+                                {"last_stop_loss_at": datetime.now(timezone.utc).isoformat()}
+                            ).eq("symbol", self.symbol).execute()
+                        except Exception as e:
+                            logger.error(
+                                f"[{self.symbol}] Failed to write last_stop_loss_at "
+                                f"(trailing stop): {e}"
+                            )
+                    log_event(
+                        severity="warn",
+                        category="safety",
+                        event="trailing_stop_triggered",
+                        symbol=self.symbol,
+                        message=(
+                            f"TF trailing stop: price dropped {drop_from_peak_pct:.1f}% from "
+                            f"peak {fmt_price(self._trailing_peak_price)}"
+                        ),
+                        details={
+                            "peak_price": float(self._trailing_peak_price),
+                            "trigger_price": float(trailing_trigger),
+                            "current_price": float(current_price),
+                            "avg_buy_price": float(self.state.avg_buy_price),
+                            "drop_from_peak_pct": round(drop_from_peak_pct, 2),
+                            "unrealized": unrealized,
+                            "activation_pct": float(self.tf_trailing_stop_activation_pct),
+                            "trailing_pct": float(self.tf_trailing_stop_pct),
+                            "lots": len(self._pct_open_positions),
+                        },
+                    )
 
         # --- 39c: TF take-profit check ---
         # Speculare perfetto al 39a: stessa base di calcolo (unrealized vs
@@ -1111,14 +1203,16 @@ class GridBot:
                 )
 
         if self.state.holdings > 0 and self._pct_open_positions:
-            # 39a/39c/45f: stop-loss, take-profit, profit-lock, or
-            # pending-liquidation overrides the per-lot trigger — sell every
-            # open lot in one pass. For stop-loss/bearish this includes
-            # underwater lots; for take-profit and profit-lock it includes
-            # lots that haven't individually hit their sell_pct yet.
+            # 39a/39c/45f/45g/51b: stop-loss, trailing-stop, take-profit,
+            # profit-lock, gain-saturation or pending-liquidation overrides
+            # the per-lot trigger — sell every open lot in one pass. For
+            # stop-loss/trailing/bearish this includes underwater lots; for
+            # take-profit and profit-lock it includes lots that haven't
+            # individually hit their sell_pct yet.
             force_liquidate = (
                 self.managed_by == "trend_follower"
                 and (self._stop_loss_triggered
+                     or self._trailing_stop_triggered
                      or self._take_profit_triggered
                      or self._profit_lock_triggered
                      or self._gain_saturation_triggered
@@ -1171,6 +1265,7 @@ class GridBot:
                     cycle_closed = True
 
                 if ((self._stop_loss_triggered
+                     or self._trailing_stop_triggered
                      or self._take_profit_triggered
                      or self._profit_lock_triggered
                      or self._gain_saturation_triggered)
@@ -1178,6 +1273,8 @@ class GridBot:
                         and not self.pending_liquidation):
                     if self._stop_loss_triggered:
                         trigger = "Stop-loss"
+                    elif self._trailing_stop_triggered:
+                        trigger = "Trailing-stop"
                     elif self._take_profit_triggered:
                         trigger = "Take-profit"
                     elif self._profit_lock_triggered:
@@ -1400,6 +1497,13 @@ class GridBot:
                 f"waiting for next ALLOCATE."
             )
             return None
+        # 51b: trailing-stop latched → no new entries during liquidation.
+        if self._trailing_stop_triggered:
+            logger.info(
+                f"[{self.symbol}] BUY SKIPPED: trailing-stop latched, "
+                f"waiting for next ALLOCATE."
+            )
+            return None
 
         standard_cost = self.capital_per_trade
         cash_before = self._available_cash()
@@ -1537,14 +1641,15 @@ class GridBot:
                 return None
 
         # Strategy A never sells at a loss on the specific lot being sold —
-        # UNLESS this is a TF-managed bot under stop-loss, bearish exit,
-        # take-profit, profit-lock or gain-saturation (39a/39c/45f/45g:
-        # override so all lots liquidate in one pass even when some are
-        # locally underwater).
+        # UNLESS this is a TF-managed bot under stop-loss, trailing-stop,
+        # bearish exit, take-profit, profit-lock or gain-saturation
+        # (39a/39c/45f/45g/51b: override so all lots liquidate in one pass
+        # even when some are locally underwater).
         if self.strategy == "A" and price < lot_buy_price:
             tf_override = (
                 self.managed_by == "trend_follower"
                 and (self._stop_loss_triggered
+                     or self._trailing_stop_triggered
                      or self._take_profit_triggered
                      or self._profit_lock_triggered
                      or self._gain_saturation_triggered
@@ -1553,6 +1658,8 @@ class GridBot:
             if tf_override:
                 if self._stop_loss_triggered:
                     reason = "STOP-LOSS"
+                elif self._trailing_stop_triggered:
+                    reason = "TRAILING-STOP"
                 elif self._take_profit_triggered:
                     reason = "TAKE-PROFIT"
                 elif self._profit_lock_triggered:
@@ -1686,6 +1793,11 @@ class GridBot:
                 f"STOP-LOSS: price {fmt_price(price)} forces liquidation "
                 f"(lot buy {fmt_price(lot_buy_price)}, threshold {self.tf_stop_loss_pct:.0f}% of alloc)"
             )
+        elif self._trailing_stop_triggered:
+            reason = (
+                f"TRAILING-STOP: price {fmt_price(price)} dropped {self.tf_trailing_stop_pct:.1f}% from "
+                f"peak {fmt_price(self._trailing_peak_price)} (lot buy {fmt_price(lot_buy_price)})"
+            )
         elif self._take_profit_triggered:
             reason = (
                 f"TAKE-PROFIT: price {fmt_price(price)} crystallizes gains "
@@ -1747,6 +1859,7 @@ class GridBot:
         # already dominate the message.
         if (self.managed_by == "trend_follower"
                 and not self._stop_loss_triggered
+                and not self._trailing_stop_triggered
                 and not self._take_profit_triggered
                 and not self._profit_lock_triggered
                 and not self._gain_saturation_triggered

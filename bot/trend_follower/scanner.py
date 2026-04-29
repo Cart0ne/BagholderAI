@@ -63,6 +63,32 @@ def calc_atr(highs: list[float], lows: list[float], closes: list[float], period:
 
 
 # ---------------------------------------------------------------------------
+# 51a: short-timeframe overheat probe
+# ---------------------------------------------------------------------------
+
+def fetch_rsi_1h(exchange, symbol: str, period: int = 14) -> float | None:
+    """
+    Fetch 1h klines for a single symbol and compute RSI(period).
+    Returns the RSI value (0-100) or None on failure.
+
+    Used by trend_follower.py to enrich BULLISH candidates only — fetching
+    1h data for all 50 scanned coins would double API calls. RSI 1h is a
+    pre-ALLOCATE overheat check (51a): catches sharp intraday pumps that
+    the 4h-based distance filter (45e) misses.
+    """
+    try:
+        ohlcv = exchange.fetch_ohlcv(symbol, '1h', limit=period + 10)
+        if len(ohlcv) < period + 1:
+            logger.warning(f"[{symbol}] Not enough 1h candles for RSI ({len(ohlcv)})")
+            return None
+        closes = [c[4] for c in ohlcv]
+        return calc_rsi(closes, period)
+    except Exception as e:
+        logger.warning(f"[{symbol}] Failed to fetch 1h RSI: {e}")
+        return None
+
+
+# ---------------------------------------------------------------------------
 # Main scanner
 # ---------------------------------------------------------------------------
 

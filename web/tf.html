@@ -467,7 +467,10 @@
       { key: 'tf_tier3_lots', label: 'Tier 3 lots', sub: '45c: number of lots for T3 allocations. Default 2. T3 fires ALL lots at entry (no reserve) because illiquid coins don\'t give second chances on dips.' },
       { key: 'tf_entry_max_distance_pct', label: 'Entry max distance from EMA20 (%)', sub: '45e v2: SKIP ALLOCATE/SWAP if candidate\'s price is more than X% above its EMA20 (4h). Prevents entering stretched coins due for mean reversion. Default 10. Validated on v3 losses (92.4% would have been blocked). Set 0 to disable.' },
       { key: 'tf_profit_lock_enabled', type: 'boolean', label: 'Profit Lock Exit', sub: '45f: opt-in proactive exit. When true, a TF bot liquidates as soon as NET PnL (realized + unrealized) crosses the threshold below. Default OFF (feature opt-in at deploy). Uses SL cooldown post-lock.' },
-      { key: 'tf_profit_lock_pct', label: 'Profit Lock threshold (%)', sub: '45f: NET PnL % on capital_allocation at which Profit Lock triggers. Ignored unless Profit Lock Exit is ON. Default 5 → liquidates when net gain on alloc reaches +5%. Lower = more conservative (locks earlier).' }
+      { key: 'tf_profit_lock_pct', label: 'Profit Lock threshold (%)', sub: '45f: NET PnL % on capital_allocation at which Profit Lock triggers. Ignored unless Profit Lock Exit is ON. Default 5 → liquidates when net gain on alloc reaches +5%. Lower = more conservative (locks earlier).' },
+      { key: 'tf_trailing_stop_activation_pct', label: 'Trailing stop activation (%)', sub: '51b: Trailing stop engages only after peak price ≥ avg_buy × (1 + X%). Prevents premature exit on micro-dips. Default 1.5%. Set 0 to activate immediately.' },
+      { key: 'tf_trailing_stop_pct', label: 'Trailing stop drop (%)', sub: '51b: Once active, SELL ALL if price drops X% from peak. Default 2.0%. Set 0 to disable trailing stop entirely.' },
+      { key: 'tf_rsi_1h_max', label: 'RSI 1h max (overheat filter)', sub: '51a: SKIP ALLOCATE/SWAP if the candidate\'s RSI(14) on 1h candles exceeds this value. Prevents entering coins mid-pump. Default 75. Set 0 to disable.' }
     ];
 
     // === AUTH ===
@@ -602,7 +605,7 @@
     async function loadAll() {
       // 1. Load trend_config first (needed to know tf_budget, tf_max_coins, dry_run)
       try {
-        var tc = await sbGet('trend_config', 'select=id,dry_run,tf_budget,tf_max_coins,tf_stop_loss_pct,tf_stop_loss_cooldown_hours,tf_take_profit_pct,tf_initial_lots,min_allocate_strength,greed_decay_tiers,scan_interval_hours,tf_tier1_min_volume,tf_tier2_min_volume,tf_tier1_weight,tf_tier2_weight,tf_tier3_weight,tf_tier1_lots,tf_tier2_lots,tf_tier3_lots,tf_entry_max_distance_pct,tf_profit_lock_enabled,tf_profit_lock_pct&limit=1');
+        var tc = await sbGet('trend_config', 'select=id,dry_run,tf_budget,tf_max_coins,tf_stop_loss_pct,tf_stop_loss_cooldown_hours,tf_take_profit_pct,tf_initial_lots,min_allocate_strength,greed_decay_tiers,scan_interval_hours,tf_tier1_min_volume,tf_tier2_min_volume,tf_tier1_weight,tf_tier2_weight,tf_tier3_weight,tf_tier1_lots,tf_tier2_lots,tf_tier3_lots,tf_entry_max_distance_pct,tf_profit_lock_enabled,tf_profit_lock_pct,tf_trailing_stop_activation_pct,tf_trailing_stop_pct,tf_rsi_1h_max&limit=1');
         if (tc && tc.length) {
           TF_CONFIG_ROW = tc[0];
           TF_BUDGET = Number(tc[0].tf_budget) || 100;

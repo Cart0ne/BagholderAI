@@ -33,7 +33,7 @@ from db.event_logger import log_event
 from utils.telegram_notifier import SyncTelegramNotifier
 from utils.exchange_filters import fetch_and_cache_filters
 
-from bot.trend_follower.scanner import scan_top_coins, fmt_volume
+from bot.trend_follower.scanner import scan_top_coins, fmt_volume, fetch_rsi_1h
 from bot.trend_follower.classifier import classify_signal
 from bot.trend_follower.allocator import (
     decide_allocations, apply_allocations, resize_active_allocations,
@@ -330,6 +330,28 @@ def send_scan_report(notifier: SyncTelegramNotifier, coins: list[dict],
                 d = c.get("distance_from_ema_pct", 0)
                 distance_block_lines.append(f"  • {sym}: +{d:.1f}% above EMA20")
 
+    # 51a: BULLISH coins blocked by RSI 1h overheat filter — same display
+    # pattern as the distance filter. Skipped when feature disabled or no
+    # coin trips it.
+    rsi_1h_max_report = float(config.get("tf_rsi_1h_max") or 0)
+    if rsi_1h_max_report > 0:
+        overheat = [
+            c for c in coins
+            if c.get("signal") == "BULLISH"
+            and c.get("rsi_1h") is not None
+            and c["rsi_1h"] > rsi_1h_max_report
+        ]
+        if overheat:
+            overheat.sort(key=lambda c: c.get("rsi_1h", 0), reverse=True)
+            distance_block_lines.append(
+                f"\n🌡️ <b>RSI 1h overheat blocked</b> ({len(overheat)} coin"
+                + ("s" if len(overheat) != 1 else "")
+                + f", max RSI 1h {rsi_1h_max_report:.0f}):"
+            )
+            for c in overheat[:5]:
+                sym = c["symbol"].split("/")[0]
+                distance_block_lines.append(f"  • {sym}: RSI 1h = {c['rsi_1h']:.0f}")
+
     text = (
         f"{shadow_tag}📊 <b>TREND SCAN — {now}</b>\n"
         f"\n"
@@ -573,6 +595,22 @@ def run_trend_follower():
                     f"TF compound hit sanity cap: raw ${tf_raw:.2f} > cap "
                     f"${sanity_cap:.0f}. Raise tf_sanity_cap_usd in trend_config if intentional."
                 )
+
+            # 51a: enrich BULLISH candidates with RSI(14) on 1h candles before
+            # the allocator runs. Catches sharp intraday pumps that the 4h
+            # distance filter (45e) misses (DOGE 29/04: ALLOCATE at the
+            # 30-day high → SL the same day). Only BULLISH coins are queried
+            # to keep API cost flat (10-20 fetches vs 50). Fail-open: if a
+            # fetch fails, the coin enters allocator without rsi_1h and the
+            # allocator gate treats it as "missing data → pass".
+            rsi_1h_max = float(config.get("tf_rsi_1h_max") or 0)
+            if rsi_1h_max > 0:
+                bullish = [c for c in coins if c.get("signal") == "BULLISH"]
+                logger.info(f"[51a] Fetching 1h RSI for {len(bullish)} BULLISH candidates (threshold {rsi_1h_max:.0f})")
+                for coin in bullish:
+                    rsi_val = fetch_rsi_1h(exchange, coin["symbol"])
+                    coin["rsi_1h"] = rsi_val
+                    time.sleep(0.2)  # rate limit — Binance public API
 
             # Decide allocations (exchange + supabase enable on-demand rescan
             # and the SWAP profit gate; see allocator 36e v2).

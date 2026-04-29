@@ -259,6 +259,30 @@ def _sync_config_to_bot(reader: "SupabaseConfigReader", bot: "GridBot", symbol: 
             )
             bot.tf_exit_after_n_override = new_override_int
 
+        # 51b: hot-reload trailing-stop knobs (activation + trailing pct).
+        # Same pattern as the other safety params — CEO changes the DB
+        # value, the next tick picks it up. 0 disables the feature
+        # immediately (peak tracking branch in grid_bot keys off it).
+        tf_tsa = reader.get_trend_config_value("tf_trailing_stop_activation_pct")
+        if tf_tsa is not None:
+            new_tsa = float(tf_tsa)
+            if new_tsa != bot.tf_trailing_stop_activation_pct:
+                logger.info(
+                    f"[{symbol}] tf_trailing_stop_activation_pct updated: "
+                    f"{bot.tf_trailing_stop_activation_pct} → {new_tsa}"
+                )
+                bot.tf_trailing_stop_activation_pct = new_tsa
+
+        tf_tsp = reader.get_trend_config_value("tf_trailing_stop_pct")
+        if tf_tsp is not None:
+            new_tsp = float(tf_tsp)
+            if new_tsp != bot.tf_trailing_stop_pct:
+                logger.info(
+                    f"[{symbol}] tf_trailing_stop_pct updated: "
+                    f"{bot.tf_trailing_stop_pct} → {new_tsp}"
+                )
+                bot.tf_trailing_stop_pct = new_tsp
+
         # 42a: greed_decay_tiers is global (trend_config); allocated_at is
         # per-bot (bot_config). Both are re-read each tick so UI edits and
         # SWAP re-allocations propagate without restart.
@@ -487,12 +511,15 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
     tf_profit_lock_pct = 0.0
     tf_exit_after_n_enabled = True
     tf_exit_after_n_default = 4
+    tf_trailing_stop_activation_pct = 1.5  # 51b
+    tf_trailing_stop_pct = 0.0             # 51b: 0 = disabled at startup until DB read
     try:
         from db.client import get_client
         _sb = get_client()
         _tc = _sb.table("trend_config").select(
             "tf_stop_loss_pct,tf_take_profit_pct,tf_profit_lock_enabled,"
-            "tf_profit_lock_pct,tf_exit_after_n_enabled,tf_exit_after_n_positive_sells"
+            "tf_profit_lock_pct,tf_exit_after_n_enabled,tf_exit_after_n_positive_sells,"
+            "tf_trailing_stop_activation_pct,tf_trailing_stop_pct"
         ).limit(1).execute()
         if _tc.data:
             row = _tc.data[0]
@@ -508,6 +535,10 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
                 tf_exit_after_n_enabled = bool(row["tf_exit_after_n_enabled"])
             if row.get("tf_exit_after_n_positive_sells") is not None:
                 tf_exit_after_n_default = int(row["tf_exit_after_n_positive_sells"])
+            if row.get("tf_trailing_stop_activation_pct") is not None:
+                tf_trailing_stop_activation_pct = float(row["tf_trailing_stop_activation_pct"])
+            if row.get("tf_trailing_stop_pct") is not None:
+                tf_trailing_stop_pct = float(row["tf_trailing_stop_pct"])
     except Exception as e:
         logger.warning(f"Could not read trend_config safety params: {e}. Defaulting to 0.")
 
@@ -571,6 +602,8 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
         tf_exit_after_n_enabled=tf_exit_after_n_enabled,
         tf_exit_after_n_default=tf_exit_after_n_default,
         tf_exit_after_n_override=tf_exit_after_n_override,
+        tf_trailing_stop_activation_pct=tf_trailing_stop_activation_pct,
+        tf_trailing_stop_pct=tf_trailing_stop_pct,
         allocated_at=allocated_at,
         greed_decay_tiers=greed_decay_tiers,
     )
@@ -738,6 +771,8 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
             if getattr(bot, "pending_liquidation", False):
                 if getattr(bot, "_gain_saturation_triggered", False):
                     top_reason = "GAIN-SATURATION"
+                elif getattr(bot, "_trailing_stop_triggered", False):  # 51b
+                    top_reason = "TRAILING-STOP"
                 else:
                     top_reason = "BEARISH EXIT"
                 logger.info(
@@ -775,11 +810,12 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
                 # 50a: gain-saturation must surface as its own reason for
                 # forensics/dashboard (was previously bucketed as
                 # "liquidation"). BEARISH rotations keep "liquidation".
-                stop_reason = (
-                    "gain_saturation"
-                    if getattr(bot, "_gain_saturation_triggered", False)
-                    else "liquidation"
-                )
+                if getattr(bot, "_gain_saturation_triggered", False):
+                    stop_reason = "gain_saturation"
+                elif getattr(bot, "_trailing_stop_triggered", False):  # 51b
+                    stop_reason = "trailing_stop"
+                else:
+                    stop_reason = "liquidation"
                 break
 
             price = fetch_price(exchange, cfg.symbol)
@@ -815,6 +851,7 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
                 is_tp = getattr(bot, "_take_profit_triggered", False)
                 is_pl = getattr(bot, "_profit_lock_triggered", False)
                 is_gs = getattr(bot, "_gain_saturation_triggered", False)
+                is_ts = getattr(bot, "_trailing_stop_triggered", False)  # 51b
                 if is_gs:
                     event_label = "GAIN-SATURATION"
                     stop_reason_tag = "gain_saturation"
@@ -824,6 +861,9 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
                 elif is_tp:
                     event_label = "TAKE-PROFIT"
                     stop_reason_tag = "take_profit"
+                elif is_ts:
+                    event_label = "TRAILING-STOP"
+                    stop_reason_tag = "trailing_stop"
                 else:
                     event_label = "STOP-LOSS"
                     stop_reason_tag = "stop_loss"
