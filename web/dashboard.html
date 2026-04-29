@@ -1029,22 +1029,26 @@
       // reflects trading performance only.
       var markPnlData = values.map(function(v, i) { return +(v - initialLine[i]).toFixed(2); });
 
-      // Realized cumulative P&L: walk all sells (Grid + TF), accumulate per day.
-      var allSells = []
-        .concat(gridTrades.filter(function(t) { return t.side === 'sell'; }))
-        .concat(tfTrades.filter(function(t) { return t.side === 'sell'; }));
+      // Realized cumulative P&L: walk Grid + TF sells separately and tag by
+      // source array (the SELECT in fetchLiveData/fetchTFData doesn't include
+      // managed_by — relying on the column would mis-bucket every trade as
+      // Grid, see commit b5e... fix).
       var realizedByDay = {};
       var gridDailyRealized = {};
       var tfDailyRealized = {};
-      allSells.forEach(function(t) {
+      gridTrades.forEach(function(t) {
+        if (t.side !== 'sell') return;
         var day = (t.created_at || '').slice(0, 10);
         var val = Number(t.realized_pnl || 0);
         realizedByDay[day] = (realizedByDay[day] || 0) + val;
-        if (t.managed_by === 'trend_follower') {
-          tfDailyRealized[day] = (tfDailyRealized[day] || 0) + val;
-        } else {
-          gridDailyRealized[day] = (gridDailyRealized[day] || 0) + val;
-        }
+        gridDailyRealized[day] = (gridDailyRealized[day] || 0) + val;
+      });
+      tfTrades.forEach(function(t) {
+        if (t.side !== 'sell') return;
+        var day = (t.created_at || '').slice(0, 10);
+        var val = Number(t.realized_pnl || 0);
+        realizedByDay[day] = (realizedByDay[day] || 0) + val;
+        tfDailyRealized[day] = (tfDailyRealized[day] || 0) + val;
       });
       var cumRealized = 0;
       var realizedCumData = sorted.map(function(d) {
