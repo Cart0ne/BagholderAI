@@ -521,26 +521,34 @@
           <div style="font-family: var(--mono); font-size: 11px; color: var(--text-dim);">— aggregated</div>
         </div>
 
-        <!-- Cumulative P&L Chart (aggregated, top-up neutralized) -->
+        <!-- Cumulative P&L Chart (realized + mark-to-market) -->
         <div class="card">
           <div class="chart-label">Cumulative P&L — Grid + TF</div>
           <div class="chart-wrap" style="height: 160px;">
             <canvas id="portChart"></canvas>
           </div>
           <div class="chart-legend">
-            <span><span class="chart-legend-line" style="background: #22c55e;"></span> P&L cumulato (vs starting capital)</span>
-            <span><span class="chart-legend-line" style="border-top: 1px dashed rgba(255,255,255,0.2);"></span> Break-even ($0)</span>
+            <span><span class="chart-legend-line" style="background: #22c55e;"></span> Realized (incassato)</span>
+            <span><span class="chart-legend-line" style="border-top: 1.5px dashed rgba(134,239,172,0.6); background: none;"></span> Mark-to-market (live)</span>
+            <span><span class="chart-legend-line" style="border-top: 1px dashed rgba(255,255,255,0.15); background: none;"></span> Break-even ($0)</span>
           </div>
-          <div style="font-family: var(--mono); font-size: 10px; color: var(--text-dim); margin-top: 8px;">
-            Net worth minus starting capital ($500 pre-15/04, $600 post-TF top-up). Removes the $100 step from the chart so daily moves stay readable. TF historical values reconstructed from trades (~5% margin).
+          <div style="font-family: var(--mono); font-size: 10px; color: var(--text-dim); margin-top: 8px; font-style: italic;">
+            Realized = profitti materializzati dai sell. Mark-to-market = valore corrente del portafoglio (incl. unrealized e fees). Il gap tra le due curve = unrealized swing delle posizioni aperte. Pre-15/04 = solo Grid; post-15/04 = Grid + TF.
           </div>
         </div>
 
-        <!-- Daily P&L Chart (aggregated) -->
+        <!-- Daily P&L Chart (stacked Grid + TF, realized only) -->
         <div class="card">
-          <div class="chart-label">Daily P&L — Grid + TF</div>
+          <div class="chart-label">Daily P&L — realized</div>
+          <div class="chart-legend" style="margin-bottom: 8px;">
+            <span><span class="chart-legend-line" style="background: rgba(34,197,94,0.7); width: 10px; height: 10px; border-radius: 2px;"></span> Grid</span>
+            <span><span class="chart-legend-line" style="background: rgba(251,146,60,0.7); width: 10px; height: 10px; border-radius: 2px;"></span> TF</span>
+          </div>
           <div class="chart-wrap" style="height: 120px;">
             <canvas id="dailyChart"></canvas>
+          </div>
+          <div style="font-family: var(--mono); font-size: 10px; color: var(--text-dim); margin-top: 8px; font-style: italic;">
+            Barre = solo realized (profitti/perdite materializzati dai sell). Coerente con i totali Today (Grid) / Today (TF).
           </div>
         </div>
 
@@ -997,78 +1005,121 @@
         .reduce(function(s, t) { return s + Number(t.realized_pnl || 0); }, 0);
     }
 
-    function renderCharts(data, tfTrades) {
+    function renderCharts(data, tfTrades, state) {
       if (!data || data.length < 1) return;
       tfTrades = tfTrades || [];
+      var gridTrades = (state && state._allTrades) ? state._allTrades : [];
       var sorted = data.slice().reverse();  // oldest → newest
       var labels = sorted.map(function(d) {
         return new Date(d.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
       });
-      // Aggregate per day: Grid total_value + TF reconstructed total_value
+
+      // Mark-to-market net worth per day (Grid daily_pnl + TF reconstructed)
       var values = sorted.map(function(d) {
         var tfVal = reconstructTFForDay(tfTrades, d.date);
         return Number(d.total_value) + tfVal;
       });
-      // Initial line: $500 pre-TF, $600 post-TF (April 15 = first TF trade)
+
+      // Initial reference: $500 pre-TF, $600 post-TF (April 15 = first TF trade)
       var TF_START = '2026-04-15';
-      var TF_TOPUP = 100;  // €100 added to TF on TF_START — not P&L, capital injection
       var initialLine = sorted.map(function(d) { return d.date >= TF_START ? 600 : 500; });
 
-      // Cumulative P&L: net worth minus starting capital. Stays at 0 across the
-      // 14→15 April top-up (initialLine itself jumps $500→$600 in lockstep with
-      // the value), so the chart shows trading performance only.
-      var cumPnl = values.map(function(v, i) { return v - initialLine[i]; });
-      var zeroLine = sorted.map(function() { return 0; });
+      // Mark-to-market P&L = net worth − starting capital. Stays at 0 across
+      // the 14→15 April top-up (initialLine jumps in lockstep), so the chart
+      // reflects trading performance only.
+      var markPnlData = values.map(function(v, i) { return +(v - initialLine[i]).toFixed(2); });
 
+      // Realized cumulative P&L: walk all sells (Grid + TF), accumulate per day.
+      var allSells = []
+        .concat(gridTrades.filter(function(t) { return t.side === 'sell'; }))
+        .concat(tfTrades.filter(function(t) { return t.side === 'sell'; }));
+      var realizedByDay = {};
+      var gridDailyRealized = {};
+      var tfDailyRealized = {};
+      allSells.forEach(function(t) {
+        var day = (t.created_at || '').slice(0, 10);
+        var val = Number(t.realized_pnl || 0);
+        realizedByDay[day] = (realizedByDay[day] || 0) + val;
+        if (t.managed_by === 'trend_follower') {
+          tfDailyRealized[day] = (tfDailyRealized[day] || 0) + val;
+        } else {
+          gridDailyRealized[day] = (gridDailyRealized[day] || 0) + val;
+        }
+      });
+      var cumRealized = 0;
+      var realizedCumData = sorted.map(function(d) {
+        cumRealized += (realizedByDay[d.date] || 0);
+        return +cumRealized.toFixed(2);
+      });
+
+      // === Chart 1 — Cumulative P&L (realized + mark-to-market) ===
       new Chart(document.getElementById('portChart'), {
         type: 'line',
         data: { labels: labels, datasets: [
-          { data: cumPnl, borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,0.08)', borderWidth: 2, fill: { target: 'origin' }, tension: 0.3, pointRadius: Math.min(4, 40 / cumPnl.length), pointBackgroundColor: '#22c55e', pointBorderColor: '#0a0a0a', pointBorderWidth: 2 },
-          { data: zeroLine, borderColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderDash: [4,4], pointRadius: 0, fill: false }
+          { label: 'Realized', data: realizedCumData, borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,0.06)', borderWidth: 2, fill: 'origin', tension: 0.3, pointRadius: 0, pointHoverRadius: 4, pointBackgroundColor: '#22c55e', pointBorderColor: '#0a0a0a', pointBorderWidth: 2, order: 1 },
+          { label: 'Mark-to-market', data: markPnlData, borderColor: 'rgba(134,239,172,0.6)', borderWidth: 1.5, borderDash: [5,5], fill: false, tension: 0.3, pointRadius: 0, pointHoverRadius: 4, order: 2 },
+          { label: 'Break-even', data: sorted.map(function() { return 0; }), borderColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderDash: [4,4], pointRadius: 0, fill: false, order: 3 }
         ]},
         options: { responsive: true, maintainAspectRatio: false, interaction: { intersect: false, mode: 'index' },
           plugins: { legend: { display: false }, tooltip: { backgroundColor: 'rgba(0,0,0,0.85)', borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1, titleFont: { family: "'SF Mono',monospace", size: 10 }, bodyFont: { family: "'SF Mono',monospace", size: 11 }, displayColors: false,
-            callbacks: { label: function(c) {
-              if (c.datasetIndex === 1) return 'Break-even: $0';
-              var idx = c.dataIndex;
-              var v = c.parsed.y;
-              var nw = values[idx];
-              var ref = initialLine[idx];
-              return 'P&L: ' + (v >= 0 ? '+' : '') + '$' + v.toFixed(2) + '  (NW $' + nw.toFixed(2) + ' vs $' + ref + ')';
-            }}}},
+            callbacks: {
+              label: function(ctx) {
+                if (ctx.datasetIndex === 2) return null;
+                var v = ctx.parsed.y;
+                var sign = v >= 0 ? '+' : '';
+                var capital = initialLine[ctx.dataIndex] || 600;
+                var pct = ((v / capital) * 100).toFixed(1);
+                var name = ctx.datasetIndex === 0 ? 'Realized' : 'Mark';
+                return name + ': ' + sign + '$' + v.toFixed(2) + ' (' + sign + pct + '%)';
+              },
+              afterBody: function(items) {
+                // items has up to 3 datasets (realized, mark, break-even). Find by index.
+                var r = null, m = null;
+                items.forEach(function(it) {
+                  if (it.datasetIndex === 0) r = it.parsed.y;
+                  else if (it.datasetIndex === 1) m = it.parsed.y;
+                });
+                if (r === null || m === null) return '';
+                var gap = m - r;
+                var sign = gap >= 0 ? '+' : '';
+                return 'Gap: ' + sign + '$' + gap.toFixed(2) + ' unrealized';
+              }
+            }
+          }},
           scales: { x: { ticks: { color: 'rgba(255,255,255,0.2)', font: { family: "'SF Mono',monospace", size: 9 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 10 }, grid: { color: 'rgba(255,255,255,0.03)' }, border: { color: 'rgba(255,255,255,0.06)' }},
             y: { ticks: { color: 'rgba(255,255,255,0.2)', font: { family: "'SF Mono',monospace", size: 9 }, callback: function(v) { return (v >= 0 ? '+' : '') + '$' + v; }}, grid: { color: 'rgba(255,255,255,0.03)' }, border: { color: 'rgba(255,255,255,0.06)' }}}}
       });
 
-      // Daily P&L bars: delta of net worth between consecutive days, with the
-      // 14→15 April top-up neutralized (the $100 capital injection is not P&L).
-      if (sorted.length >= 2) {
-        var dailyPnl = values.map(function(v, i) {
-          if (i === 0) return v - initialLine[0];
-          var delta = v - values[i - 1];
-          // If this is the first row at/after the top-up date AND the previous
-          // row was strictly before, subtract the injection from the delta.
-          if (sorted[i].date >= TF_START && sorted[i - 1].date < TF_START) {
-            delta -= TF_TOPUP;
-          }
-          return delta;
-        });
+      // === Chart 2 — Daily P&L (stacked Grid + TF, realized only) ===
+      var gridBars = sorted.map(function(d) { return +((gridDailyRealized[d.date] || 0)).toFixed(2); });
+      var tfBars = sorted.map(function(d) { return +((tfDailyRealized[d.date] || 0)).toFixed(2); });
 
-        new Chart(document.getElementById('dailyChart'), {
-          type: 'bar',
-          data: { labels: labels, datasets: [{
-            data: dailyPnl,
-            backgroundColor: dailyPnl.map(function(v) { return v >= 0 ? 'rgba(34,197,94,0.6)' : 'rgba(239,68,68,0.6)'; }),
-            borderColor: dailyPnl.map(function(v) { return v >= 0 ? '#22c55e' : '#ef4444'; }),
-            borderWidth: 1, borderRadius: 3
-          }]},
-          options: { responsive: true, maintainAspectRatio: false,
-            plugins: { legend: { display: false }, tooltip: { backgroundColor: 'rgba(0,0,0,0.85)', borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1, titleFont: { family: "'SF Mono',monospace", size: 10 }, bodyFont: { family: "'SF Mono',monospace", size: 11 }, displayColors: false,
-              callbacks: { label: function(c) { var v = c.parsed.y; return (v >= 0 ? '+' : '') + '$' + v.toFixed(2); }}}},
-            scales: { x: { ticks: { color: 'rgba(255,255,255,0.2)', font: { family: "'SF Mono',monospace", size: 9 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 10 }, grid: { display: false }, border: { color: 'rgba(255,255,255,0.06)' }},
-              y: { ticks: { color: 'rgba(255,255,255,0.2)', font: { family: "'SF Mono',monospace", size: 9 }, callback: function(v) { return (v >= 0 ? '+' : '') + '$' + v; }}, grid: { color: 'rgba(255,255,255,0.03)' }, border: { color: 'rgba(255,255,255,0.06)' }}}}
-        });
-      }
+      new Chart(document.getElementById('dailyChart'), {
+        type: 'bar',
+        data: { labels: labels, datasets: [
+          { label: 'Grid', data: gridBars, backgroundColor: 'rgba(34,197,94,0.7)', borderColor: '#22c55e', borderWidth: 1, borderRadius: 3, stack: 'pnl' },
+          { label: 'TF',   data: tfBars,   backgroundColor: 'rgba(251,146,60,0.7)', borderColor: '#fb923c', borderWidth: 1, borderRadius: 3, stack: 'pnl' }
+        ]},
+        options: { responsive: true, maintainAspectRatio: false, interaction: { intersect: false, mode: 'index' },
+          plugins: { legend: { display: false }, tooltip: { backgroundColor: 'rgba(0,0,0,0.85)', borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1, titleFont: { family: "'SF Mono',monospace", size: 10 }, bodyFont: { family: "'SF Mono',monospace", size: 11 }, displayColors: false,
+            callbacks: {
+              label: function(ctx) {
+                var v = ctx.parsed.y;
+                var sign = v >= 0 ? '+' : '';
+                var name = ctx.datasetIndex === 0 ? 'Grid' : 'TF';
+                return name + ': ' + sign + '$' + v.toFixed(2);
+              },
+              afterBody: function(items) {
+                var tot = 0;
+                items.forEach(function(i) { tot += i.parsed.y; });
+                var sign = tot >= 0 ? '+' : '';
+                return 'Net: ' + sign + '$' + tot.toFixed(2);
+              }
+            }
+          }},
+          scales: { x: { stacked: true, ticks: { color: 'rgba(255,255,255,0.2)', font: { family: "'SF Mono',monospace", size: 9 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 10 }, grid: { display: false }, border: { color: 'rgba(255,255,255,0.06)' }},
+            y: { stacked: true, ticks: { color: 'rgba(255,255,255,0.2)', font: { family: "'SF Mono',monospace", size: 9 }, callback: function(v) { return (v >= 0 ? '+' : '') + '$' + v; }}, grid: { color: 'rgba(255,255,255,0.03)' }, border: { color: 'rgba(255,255,255,0.06)' }}}}
+      });
     }
 
     // === TIMESTAMP ===
@@ -1717,7 +1768,7 @@
         renderAggregatedStats(live.state, tf.tfState);
         renderRecentTrades('grid-trades-body', live.state._allTrades || [], 5);
         renderRecentTrades('tf-trades-body', tf.tfTrades, 5);
-        renderCharts(pnl, tf.tfTrades);
+        renderCharts(pnl, tf.tfTrades, live.state);
         updateTimestamp();
       } catch (err) {
         console.error('Dashboard load error:', err);
