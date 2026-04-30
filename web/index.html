@@ -281,6 +281,152 @@
     .team-card .role { font-family: var(--mono); font-size: 10px; color: rgba(255,255,255,0.3); margin-top: 2px; }
     .team-card .desc { font-size: 11px; color: rgba(255,255,255,0.4); line-height: 1.5; margin-top: 8px; }
 
+    /* === THE AI BOTS — trading-card-style cards === */
+    .bots-header {
+      display: flex; justify-content: space-between; align-items: baseline;
+      margin-bottom: 14px;
+    }
+    .bots-status {
+      font-family: var(--mono); font-size: 10px; color: rgba(255,255,255,0.4);
+    }
+    .bots-row {
+      display: flex; gap: 10px; justify-content: center;
+      align-items: flex-start; flex-wrap: nowrap;
+    }
+    .bot-card {
+      flex: 1 1 0; min-width: 0; max-width: 220px;
+      padding: 14px; background: #0e1320;
+      border: 1.5px solid rgba(255,255,255,0.12);
+      border-radius: 6px; position: relative;
+      font-family: var(--mono);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    }
+    .bot-card.tilt-l { transform: rotate(-1.5deg); }
+    .bot-card.tilt-r { transform: rotate(1.5deg); }
+    .bot-card.dim { opacity: 0.78; }
+    .bot-card.active { box-shadow: 0 8px 24px rgba(0,0,0,0.4), inset 0 0 30px rgba(34,197,94,0.06); }
+    .bot-card.grid-active { border-color: #22c55e; box-shadow: 0 8px 24px rgba(0,0,0,0.4), inset 0 0 30px rgba(34,197,94,0.06); }
+    .bot-card.tf-active { border-color: #f59e0b; box-shadow: 0 8px 24px rgba(0,0,0,0.4), inset 0 0 30px rgba(245,158,11,0.06); }
+    .bot-pill {
+      position: absolute; top: -8px; right: 12px;
+      padding: 2px 7px; border-radius: 8px;
+      background: #0a0e17; font-size: 7px; font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+    .bot-pill.live-grid { border: 1px solid #22c55e; color: #22c55e; }
+    .bot-pill.live-tf { border: 1px solid #f59e0b; color: #f59e0b; }
+    .bot-pill.soon { border: 1px solid rgba(255,255,255,0.2); color: rgba(255,255,255,0.6); }
+    .bot-head {
+      display: flex; justify-content: space-between; align-items: baseline;
+      margin-bottom: 4px;
+    }
+    .bot-name { font-size: 11px; font-weight: 700; letter-spacing: 0.6px; }
+    .bot-name.grid { color: #22c55e; }
+    .bot-name.tf { color: #f59e0b; }
+    .bot-name.sentinel { color: #3b82f6; }
+    .bot-name.sherpa { color: #ef4444; }
+    .bot-rarity { font-size: 7px; color: rgba(255,255,255,0.4); }
+    .bot-subtitle { font-size: 8.5px; color: rgba(255,255,255,0.5); margin-bottom: 10px; }
+    .bot-frame {
+      background: #0a0e17; border-radius: 3px; padding: 6px;
+      margin-bottom: 10px; height: 150px; position: relative;
+      overflow: hidden;
+      display: flex; justify-content: center; align-items: center;
+    }
+    .bot-frame.grid { border: 1px dashed rgba(34,197,94,0.25); }
+    .bot-frame.tf { border: 1px dashed rgba(245,158,11,0.25); }
+    .bot-frame.sentinel { border: 1px dashed rgba(59,130,246,0.25); }
+    .bot-frame.sherpa { border: 1px dashed rgba(239,68,68,0.25); }
+    .bot-scanlines {
+      position: absolute; inset: 0; pointer-events: none;
+    }
+    .bot-frame.grid .bot-scanlines { background: repeating-linear-gradient(0deg, transparent 0, transparent 3px, rgba(34,197,94,0.04) 3px, rgba(34,197,94,0.04) 4px); }
+    .bot-frame.tf .bot-scanlines { background: repeating-linear-gradient(0deg, transparent 0, transparent 3px, rgba(245,158,11,0.04) 3px, rgba(245,158,11,0.04) 4px); }
+    .bot-frame.sentinel .bot-scanlines { background: repeating-linear-gradient(0deg, transparent 0, transparent 3px, rgba(59,130,246,0.04) 3px, rgba(59,130,246,0.04) 4px); }
+    .bot-frame.sherpa .bot-scanlines { background: repeating-linear-gradient(0deg, transparent 0, transparent 3px, rgba(239,68,68,0.04) 3px, rgba(239,68,68,0.04) 4px); }
+    .bot-mixer {
+      position: absolute; top: 4px; left: 0; width: 100%; height: 56px; opacity: 0.75;
+    }
+    .bot-mug {
+      position: absolute; bottom: 6px; right: 14px; z-index: 2;
+    }
+    .bot-mascot-grid {
+      position: absolute; bottom: 0; left: 6px; z-index: 1;
+    }
+    .bot-radar {
+      position: absolute; inset: 0; opacity: 0.55; width: 100%; height: 100%;
+    }
+    .bot-question {
+      position: absolute; top: 10px;
+      font-family: var(--mono); font-size: 90px; font-weight: 700;
+      line-height: 1;
+    }
+    .bot-question.sentinel { color: rgba(59,130,246,0.10); }
+    .bot-question.sherpa { color: rgba(239,68,68,0.10); }
+    .bot-silhouette-glow.sentinel { filter: drop-shadow(0 0 12px rgba(59,130,246,0.4)); }
+    .bot-silhouette-glow.sherpa { filter: drop-shadow(0 0 12px rgba(239,68,68,0.4)); }
+    .bot-silhouette-tint {
+      position: absolute; inset: 0; pointer-events: none;
+    }
+    .bot-silhouette-tint.sentinel { background: radial-gradient(ellipse at center, rgba(59,130,246,0.15) 0%, transparent 65%); }
+    .bot-silhouette-tint.sherpa { background: radial-gradient(ellipse at center, rgba(239,68,68,0.15) 0%, transparent 65%); }
+    .bot-stat-row {
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: 9px; gap: 6px;
+    }
+    .bot-stat-row + .bot-stat-row { margin-top: 4px; }
+    .bot-stat-label { color: rgba(255,255,255,0.55); width: 56px; flex-shrink: 0; }
+    .bot-stat-bar-track {
+      flex: 1; height: 3px; background: rgba(255,255,255,0.07);
+      border-radius: 2px; overflow: hidden;
+    }
+    .bot-stat-bar-fill {
+      height: 100%; width: 0;
+      transition: width 600ms ease-out;
+    }
+    .bot-stat-value {
+      font-variant-numeric: tabular-nums;
+      min-width: 30px; text-align: right;
+    }
+    .bot-stat-row.dim .bot-stat-bar-fill { background: rgba(255,255,255,0.15); }
+    .bot-stat-row.dim .bot-stat-value { color: rgba(255,255,255,0.35); }
+    .bot-footer {
+      border-top: 1px solid rgba(255,255,255,0.1);
+      padding-top: 8px; margin-top: 8px;
+      font-size: 8.5px; color: rgba(255,255,255,0.85);
+      line-height: 1.4;
+    }
+    .bot-footer .arrow.grid { color: #22c55e; font-weight: 700; }
+    .bot-footer .arrow.tf { color: #f59e0b; font-weight: 700; }
+    .bot-footer .arrow.sentinel { color: #3b82f6; font-weight: 700; }
+    .bot-footer .arrow.sherpa { color: #ef4444; font-weight: 700; }
+
+    /* Animations: mixer faders + radar sweep */
+    @keyframes mixer-fader-buy {
+      0%, 100% { transform: translateY(0); }
+      25%      { transform: translateY(-9px); }
+      50%      { transform: translateY(-3px); }
+      75%      { transform: translateY(-12px); }
+    }
+    @keyframes mixer-fader-sell {
+      0%, 100% { transform: translateY(0); }
+      30%      { transform: translateY(8px); }
+      55%      { transform: translateY(2px); }
+      80%      { transform: translateY(11px); }
+    }
+    @keyframes tf-sweep {
+      from { transform: rotate(0deg); }
+      to   { transform: rotate(360deg); }
+    }
+    .mixer-fader-buy  { animation: mixer-fader-buy  5s ease-in-out infinite; transform-origin: center; }
+    .mixer-fader-sell { animation: mixer-fader-sell 5s ease-in-out infinite; transform-origin: center; }
+    .tf-sweep-g { transform-origin: 100px 75px; animation: tf-sweep 4s linear infinite; }
+
+    @media (max-width: 700px) {
+      .bots-row { flex-wrap: wrap; }
+      .bot-card { flex: 1 1 calc(50% - 10px); max-width: none; }
+    }
+
     /* CEO's desk (dual teaser) */
     .desk-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
     .desk-card { display: flex; flex-direction: column; padding: 20px; }
@@ -525,6 +671,15 @@
       </div>
     </section>
 
+    <!-- The AI Bots — trading-card-style cards with live W/L from Supabase -->
+    <section class="fade-in d4">
+      <div class="bots-header">
+        <h2 class="section-title" style="margin-bottom: 0;">The AI Bots</h2>
+        <span class="bots-status" id="bots-status">◌ loading…</span>
+      </div>
+      <div class="bots-row" id="bots-row"><!-- populated by JS --></div>
+    </section>
+
     <!-- From the CEO's Desk (dual teaser) -->
     <section class="fade-in d5">
       <h2 class="section-title">From the CEO's Desk</h2>
@@ -739,6 +894,397 @@
         document.getElementById('stat-days').textContent = String(days);
       })
       .catch(function() { document.getElementById('stat-days').textContent = '—'; });
+
+    // === THE AI BOTS — trading-card-style team row ===========================
+    // Live wins/losses from trades table, grouped by managed_by.
+    // Grid trades use managed_by='manual' in v3 (not 'grid_bot').
+    var BOT_KEY = { grid: 'manual', trend: 'trend_follower' };
+    var FALLBACK = {
+      grid:  { wins: 179, losses: 0 },
+      trend: { wins: 173, losses: 103 }
+    };
+    var GRID_C = '#22c55e', TF_C = '#f59e0b', SENTINEL_C = '#3b82f6', SHERPA_C = '#ef4444';
+
+    // Lighten/darken a hex color by amt in [-1, 1].
+    function shade(hex, amt) {
+      var h = hex.replace('#', '');
+      var r = parseInt(h.slice(0, 2), 16);
+      var g = parseInt(h.slice(2, 4), 16);
+      var b = parseInt(h.slice(4, 6), 16);
+      function adj(c) {
+        var v = amt >= 0 ? c + (255 - c) * amt : c * (1 + amt);
+        return Math.max(0, Math.min(255, Math.round(v)));
+      }
+      var toHex = function(c) { var s = c.toString(16); return s.length === 1 ? '0' + s : s; };
+      return '#' + toHex(adj(r)) + toHex(adj(g)) + toHex(adj(b));
+    }
+
+    // Build a backpack mascot SVG string.
+    // build: 'stocky' (Grid) | 'lanky' (TF). expression/pose/carrying mirror the JSX spec.
+    function mascotSVG(opts) {
+      var color = opts.color, accent = opts.accent || color;
+      var dark = shade(color, -0.45), light = shade(color, 0.28), mid = shade(color, 0.06);
+      var build = opts.build || 'stocky';
+      var expr = opts.expression || 'focused';
+      var pose = opts.pose || 'sitting';
+      var carrying = opts.carrying || null;
+      var size = opts.size || 120;
+      var uid = opts.uid || ('m' + Math.random().toString(36).slice(2, 7));
+      var G = build === 'stocky'
+        ? { bodyTop:70, bodyBot:200, bodyL:42, bodyR:158, flapBot:100,
+            loopL:{cx:70,cy:60,rx:11,ry:13}, loopR:{cx:130,cy:60,rx:11,ry:13},
+            eyeY:128, mouthY:148, legY:200, legH:22, footL:65, footR:135, armShY:145 }
+        : { bodyTop:62, bodyBot:182, bodyL:56, bodyR:144, flapBot:92,
+            loopL:{cx:76,cy:52,rx:9,ry:12}, loopR:{cx:124,cy:52,rx:9,ry:12},
+            eyeY:116, mouthY:134, legY:182, legH:38, footL:76, footR:124, armShY:130 };
+      var footY = G.legY + G.legH;
+      var bodyD = 'M ' + G.bodyL + ' ' + G.bodyTop +
+        ' Q ' + G.bodyL + ' ' + (G.bodyTop - 15) + ' ' + (G.bodyL + 16) + ' ' + (G.bodyTop - 15) +
+        ' L ' + (G.bodyR - 16) + ' ' + (G.bodyTop - 15) +
+        ' Q ' + G.bodyR + ' ' + (G.bodyTop - 15) + ' ' + G.bodyR + ' ' + G.bodyTop +
+        ' L ' + G.bodyR + ' ' + G.bodyBot +
+        ' Q ' + G.bodyR + ' ' + (G.bodyBot + 14) + ' ' + (G.bodyR - 14) + ' ' + (G.bodyBot + 14) +
+        ' L ' + (G.bodyL + 14) + ' ' + (G.bodyBot + 14) +
+        ' Q ' + G.bodyL + ' ' + (G.bodyBot + 14) + ' ' + G.bodyL + ' ' + G.bodyBot + ' Z';
+      var flapD = 'M ' + G.bodyL + ' ' + G.bodyTop +
+        ' Q ' + G.bodyL + ' ' + (G.bodyTop - 15) + ' ' + (G.bodyL + 16) + ' ' + (G.bodyTop - 15) +
+        ' L ' + (G.bodyR - 16) + ' ' + (G.bodyTop - 15) +
+        ' Q ' + G.bodyR + ' ' + (G.bodyTop - 15) + ' ' + G.bodyR + ' ' + G.bodyTop +
+        ' L ' + G.bodyR + ' ' + G.flapBot +
+        ' Q ' + G.bodyR + ' ' + (G.flapBot + 8) + ' ' + (G.bodyR - 10) + ' ' + (G.flapBot + 8) +
+        ' L ' + (G.bodyL + 10) + ' ' + (G.flapBot + 8) +
+        ' Q ' + G.bodyL + ' ' + (G.flapBot + 8) + ' ' + G.bodyL + ' ' + G.flapBot + ' Z';
+      // Eyes/mouth per expression.
+      function face() {
+        var es = '#0a0e17', ey = G.eyeY, my = G.mouthY;
+        var eyes = '', mouth = '';
+        if (expr === 'focused') {
+          eyes = '<g stroke="' + es + '" stroke-width="3.5" stroke-linecap="round" fill="none">' +
+            '<line x1="78" y1="' + ey + '" x2="88" y2="' + ey + '"/>' +
+            '<line x1="112" y1="' + ey + '" x2="122" y2="' + ey + '"/></g>';
+          mouth = '<line x1="95" y1="' + my + '" x2="105" y2="' + my + '" stroke="' + es + '" stroke-width="2.5" stroke-linecap="round"/>';
+        } else if (expr === 'curious') {
+          eyes = '<g><circle cx="83" cy="' + ey + '" r="6.5" fill="' + es + '"/><circle cx="117" cy="' + ey + '" r="6.5" fill="' + es + '"/>' +
+            '<circle cx="85" cy="' + (ey - 2) + '" r="2" fill="#fff"/><circle cx="119" cy="' + (ey - 2) + '" r="2" fill="#fff"/></g>';
+          mouth = '<circle cx="100" cy="' + my + '" r="2.5" fill="' + es + '"/>';
+        } else if (expr === 'scanning') {
+          eyes = '<g><ellipse cx="83" cy="' + ey + '" rx="6" ry="7" fill="#fff" stroke="' + es + '" stroke-width="2"/>' +
+            '<ellipse cx="117" cy="' + ey + '" rx="6" ry="7" fill="#fff" stroke="' + es + '" stroke-width="2"/>' +
+            '<circle cx="86" cy="' + ey + '" r="3" fill="' + es + '"/><circle cx="120" cy="' + ey + '" r="3" fill="' + es + '"/></g>';
+          mouth = '<path d="M 94 ' + my + ' Q 100 ' + (my + 3) + ' 106 ' + my + '" stroke="' + es + '" stroke-width="2.5" fill="none" stroke-linecap="round"/>';
+        }
+        return eyes + mouth;
+      }
+      // Arms + props per pose.
+      function armPath(fromX, fromY, toX, toY, hand) {
+        var midX = (fromX + toX) / 2 + (toX > fromX ? 8 : -8);
+        var midY = (fromY + toY) / 2;
+        var d = 'M ' + fromX + ' ' + fromY + ' Q ' + midX + ' ' + midY + ' ' + toX + ' ' + toY;
+        var s = '<path d="' + d + '" stroke="' + dark + '" stroke-width="10" fill="none" stroke-linecap="round"/>' +
+                '<path d="' + d + '" stroke="' + color + '" stroke-width="7" fill="none" stroke-linecap="round"/>' +
+                '<path d="' + d + '" stroke="' + light + '" stroke-width="2" fill="none" stroke-linecap="round" opacity="0.5"/>';
+        if (hand) {
+          s += '<circle cx="' + toX + '" cy="' + toY + '" r="6.5" fill="' + dark + '"/>' +
+               '<circle cx="' + (toX - 1.5) + '" cy="' + (toY - 1.5) + '" r="2" fill="rgba(255,255,255,0.3)"/>';
+        }
+        return s;
+      }
+      function arms() {
+        var lx = G.bodyL, rx = G.bodyR, shY = G.armShY;
+        if (pose === 'sitting') {
+          return armPath(lx, shY, lx - 10, shY + 22, 'L') + armPath(rx, shY, rx + 10, shY + 22, 'R');
+        }
+        if (pose === 'walking') {
+          return armPath(lx, shY, lx - 14, shY - 28, 'L') + armPath(rx, shY, rx + 20, shY + 16, 'R');
+        }
+        // scanning — both hands up to face (binoculars)
+        var s = armPath(lx, shY - 5, 78, shY - 28, null) + armPath(rx, shY - 5, 122, shY - 28, null);
+        if (carrying === 'binoculars') {
+          s += '<g>' +
+            '<rect x="74" y="' + (G.eyeY - 12) + '" width="52" height="16" rx="3" fill="#1a1f2a"/>' +
+            '<rect x="74" y="' + (G.eyeY - 12) + '" width="52" height="4" rx="2" fill="rgba(255,255,255,0.15)"/>' +
+            '<circle cx="83" cy="' + (G.eyeY - 4) + '" r="10" fill="#1a1f2a" stroke="' + accent + '" stroke-width="2"/>' +
+            '<circle cx="117" cy="' + (G.eyeY - 4) + '" r="10" fill="#1a1f2a" stroke="' + accent + '" stroke-width="2"/>' +
+            '<circle cx="83" cy="' + (G.eyeY - 4) + '" r="5" fill="' + accent + '" opacity="0.7"/>' +
+            '<circle cx="117" cy="' + (G.eyeY - 4) + '" r="5" fill="' + accent + '" opacity="0.7"/>' +
+            '<circle cx="80" cy="' + (G.eyeY - 7) + '" r="2" fill="rgba(255,255,255,0.6)"/>' +
+            '<circle cx="114" cy="' + (G.eyeY - 7) + '" r="2" fill="rgba(255,255,255,0.6)"/></g>';
+        }
+        return s;
+      }
+      var defs = '<defs>' +
+        '<linearGradient id="bg-' + uid + '" x1="0" y1="0" x2="1" y2="1">' +
+          '<stop offset="0" stop-color="' + light + '"/><stop offset="0.45" stop-color="' + color + '"/><stop offset="1" stop-color="' + dark + '"/>' +
+        '</linearGradient>' +
+        '<linearGradient id="fg-' + uid + '" x1="0" y1="0" x2="0" y2="1">' +
+          '<stop offset="0" stop-color="' + shade(light, 0.15) + '"/><stop offset="1" stop-color="' + mid + '"/>' +
+        '</linearGradient>' +
+        '<linearGradient id="pg-' + uid + '" x1="0" y1="0" x2="0" y2="1">' +
+          '<stop offset="0" stop-color="rgba(0,0,0,0.45)"/><stop offset="1" stop-color="rgba(0,0,0,0.15)"/>' +
+        '</linearGradient></defs>';
+      // Cast shadow + legs + feet.
+      var shadowAndLegs =
+        '<ellipse cx="100" cy="' + (footY + 8) + '" rx="' + (build === 'stocky' ? 50 : 40) + '" ry="4" fill="rgba(0,0,0,0.45)"/>' +
+        '<rect x="' + (G.footL - 8) + '" y="' + G.legY + '" width="14" height="' + G.legH + '" rx="3" fill="' + dark + '"/>' +
+        '<rect x="' + (G.footR - 6) + '" y="' + G.legY + '" width="14" height="' + G.legH + '" rx="3" fill="' + dark + '"/>' +
+        '<rect x="' + (G.footL - 7) + '" y="' + (G.legY + 2) + '" width="3" height="' + (G.legH - 6) + '" rx="1.5" fill="' + light + '" opacity="0.4"/>' +
+        '<rect x="' + (G.footR - 5) + '" y="' + (G.legY + 2) + '" width="3" height="' + (G.legH - 6) + '" rx="1.5" fill="' + light + '" opacity="0.4"/>' +
+        // Feet
+        '<g>' +
+          '<ellipse cx="' + (G.footL - 1) + '" cy="' + footY + '" rx="14" ry="5" fill="#0a0e17"/>' +
+          '<ellipse cx="' + (G.footL - 1) + '" cy="' + (footY - 1) + '" rx="14" ry="3" fill="#1a2030"/>' +
+          '<line x1="' + (G.footL - 9) + '" y1="' + (footY - 3) + '" x2="' + (G.footL + 7) + '" y2="' + (footY - 3) + '" stroke="' + accent + '" stroke-width="1.5"/>' +
+        '</g><g>' +
+          '<ellipse cx="' + (G.footR + 1) + '" cy="' + footY + '" rx="14" ry="5" fill="#0a0e17"/>' +
+          '<ellipse cx="' + (G.footR + 1) + '" cy="' + (footY - 1) + '" rx="14" ry="3" fill="#1a2030"/>' +
+          '<line x1="' + (G.footR - 7) + '" y1="' + (footY - 3) + '" x2="' + (G.footR + 9) + '" y2="' + (footY - 3) + '" stroke="' + accent + '" stroke-width="1.5"/>' +
+        '</g>';
+      var loops =
+        '<ellipse cx="' + G.loopL.cx + '" cy="' + G.loopL.cy + '" rx="' + G.loopL.rx + '" ry="' + G.loopL.ry + '" fill="none" stroke="' + dark + '" stroke-width="6" stroke-linecap="round"/>' +
+        '<ellipse cx="' + G.loopR.cx + '" cy="' + G.loopR.cy + '" rx="' + G.loopR.rx + '" ry="' + G.loopR.ry + '" fill="none" stroke="' + dark + '" stroke-width="6" stroke-linecap="round"/>';
+      var body = '<path d="' + bodyD + '" fill="url(#bg-' + uid + ')"/>' +
+        '<path d="M ' + G.bodyR + ' ' + (G.bodyTop + 5) + ' L ' + G.bodyR + ' ' + (G.bodyBot - 5) + '" stroke="rgba(255,255,255,0.18)" stroke-width="1.5"/>' +
+        '<line x1="' + (G.bodyL + 12) + '" y1="' + (G.flapBot + 10) + '" x2="' + (G.bodyL + 12) + '" y2="' + G.bodyBot + '" stroke="' + dark + '" stroke-width="2" opacity="0.45"/>' +
+        '<line x1="' + (G.bodyR - 12) + '" y1="' + (G.flapBot + 10) + '" x2="' + (G.bodyR - 12) + '" y2="' + G.bodyBot + '" stroke="' + dark + '" stroke-width="2" opacity="0.45"/>' +
+        '<path d="' + flapD + '" fill="url(#fg-' + uid + ')"/>' +
+        '<ellipse cx="' + ((G.bodyL + G.bodyR) / 2 - 18) + '" cy="' + (G.bodyTop - 5) + '" rx="22" ry="6" fill="rgba(255,255,255,0.25)"/>' +
+        // buckle
+        '<rect x="92" y="' + (G.flapBot - 8) + '" width="16" height="10" rx="2" fill="' + dark + '"/>' +
+        '<rect x="92" y="' + (G.flapBot - 8) + '" width="16" height="3" rx="1" fill="rgba(255,255,255,0.3)"/>' +
+        '<rect x="95" y="' + (G.flapBot - 5) + '" width="10" height="4" rx="1" fill="' + mid + '" opacity="0.5"/>' +
+        // pocket
+        '<rect x="' + (G.bodyL + 18) + '" y="' + (G.flapBot + 28) + '" width="' + (G.bodyR - G.bodyL - 36) + '" height="' + (build === 'stocky' ? 38 : 32) + '" rx="6" fill="url(#pg-' + uid + ')" opacity="0.7"/>' +
+        '<line x1="' + (G.bodyL + 24) + '" y1="' + (G.flapBot + 34) + '" x2="' + (G.bodyR - 24) + '" y2="' + (G.flapBot + 34) + '" stroke="' + dark + '" stroke-width="1.5" opacity="0.5"/>' +
+        '<circle cx="' + (G.bodyR - 24) + '" cy="' + (G.flapBot + 34) + '" r="2" fill="' + accent + '"/>';
+      var h = Math.round(size * 260 / 200);
+      return '<svg width="' + size + '" height="' + h + '" viewBox="0 0 200 260">' +
+        defs + shadowAndLegs + loops + body + face() + arms() + '</svg>';
+    }
+
+    // Grid Bot mixer SVG (BTC/ETH/SOL with B/S faders, animated).
+    function mixerSVG(color) {
+      var coins = [{ n: 'BTC', cx: 35 }, { n: 'ETH', cx: 100 }, { n: 'SOL', cx: 165 }];
+      var s = '<svg viewBox="0 0 200 56" preserveAspectRatio="xMidYMid meet" class="bot-mixer">' +
+        '<rect x="4" y="2" width="192" height="48" rx="2" fill="#0d1420" stroke="rgba(255,255,255,0.08)" stroke-width="0.5"/>';
+      coins.forEach(function(c, i) {
+        s += '<g>' +
+          '<rect x="' + (c.cx - 14) + '" y="5" width="28" height="6" rx="1" fill="#1a2030"/>' +
+          '<text x="' + c.cx + '" y="9.5" text-anchor="middle" fill="' + color + '" font-size="4" font-family="ui-monospace, monospace" font-weight="700" letter-spacing="0.5">' + c.n + '</text>' +
+          '<circle cx="' + (c.cx + 11) + '" cy="8" r="0.8" fill="' + color + '">' +
+            '<animate attributeName="opacity" values="0.3;1;0.3" dur="' + (1.5 + 0.5 * i) + 's" repeatCount="indefinite"/>' +
+          '</circle></g>';
+      });
+      function fader(x, kind, color, label, delay) {
+        var top = 14, height = 30, trackTop = top + 4, trackHeight = height - 8;
+        var midY = trackTop + trackHeight * 0.5;
+        var ticks = '';
+        [0, 0.25, 0.5, 0.75, 1].forEach(function(p) {
+          ticks += '<line x1="' + (x - 3) + '" x2="' + (x + 3) + '" y1="' + (trackTop + p * trackHeight) + '" y2="' + (trackTop + p * trackHeight) + '" stroke="rgba(255,255,255,0.15)" stroke-width="0.4"/>';
+        });
+        return '<g>' +
+          '<rect x="' + (x - 1) + '" y="' + trackTop + '" width="2" height="' + trackHeight + '" fill="rgba(255,255,255,0.12)" rx="1"/>' +
+          ticks +
+          '<g class="mixer-fader-' + kind + '" style="animation-delay:' + delay + 's;">' +
+            '<rect x="' + (x - 4) + '" y="' + (midY - 3) + '" width="8" height="6" rx="1" fill="' + (kind === 'buy' ? color : '#ef4444') + '" stroke="#0a0e17" stroke-width="0.5"/>' +
+            '<line x1="' + (x - 3) + '" x2="' + (x + 3) + '" y1="' + midY + '" y2="' + midY + '" stroke="#0a0e17" stroke-width="0.5"/>' +
+          '</g>' +
+          '<text x="' + x + '" y="' + (top + height + 6) + '" text-anchor="middle" fill="' + (kind === 'buy' ? color : '#ef4444') + '" font-size="3.2" font-family="ui-monospace, monospace" font-weight="700">' + label + '</text>' +
+        '</g>';
+      }
+      coins.forEach(function(c, i) {
+        s += fader(c.cx - 7, 'buy',  color, 'B', i * 0.6);
+        s += fader(c.cx + 7, 'sell', color, 'S', i * 0.6 + 0.3);
+      });
+      s += '</svg>';
+      return s;
+    }
+
+    // Grid Bot coffee mug.
+    function mugSVG() {
+      return '<svg width="22" height="26" viewBox="0 0 22 26" class="bot-mug">' +
+        '<rect x="2" y="6" width="14" height="16" rx="1.5" fill="#7a3a1a"/>' +
+        '<rect x="2" y="6" width="14" height="3" fill="#3a1a0a"/>' +
+        '<rect x="3.5" y="10" width="2.5" height="9" rx="1" fill="rgba(255,255,255,0.25)"/>' +
+        '<path d="M 16 11 q 5 0 5 5 q 0 5 -5 5" stroke="#7a3a1a" stroke-width="2.5" fill="none"/>' +
+        '<path d="M 6 4 q 1 -2 0 -3" stroke="rgba(255,255,255,0.3)" stroke-width="1" fill="none" stroke-linecap="round"/>' +
+        '<path d="M 10 4 q 1 -2 0 -3" stroke="rgba(255,255,255,0.3)" stroke-width="1" fill="none" stroke-linecap="round"/>' +
+      '</svg>';
+    }
+
+    // TF radar background SVG (concentric circles + sweep + blinking dots).
+    function radarSVG(color) {
+      var rings = '';
+      [30, 50, 70].forEach(function(r) {
+        rings += '<circle cx="100" cy="75" r="' + r + '" fill="none" stroke="' + color + '" stroke-width="0.5" opacity="0.5"/>';
+      });
+      var sweep = '<g class="tf-sweep-g"><path d="M 100 75 L 170 50 A 70 70 0 0 1 170 100 Z" fill="' + color + '" opacity="0.12"/></g>';
+      var crosshair =
+        '<line x1="100" y1="75" x2="170" y2="75" stroke="' + color + '" stroke-width="0.5" opacity="0.7"/>' +
+        '<line x1="30" y1="75" x2="170" y2="75" stroke="' + color + '" stroke-width="0.3" opacity="0.4"/>' +
+        '<line x1="100" y1="5" x2="100" y2="145" stroke="' + color + '" stroke-width="0.3" opacity="0.4"/>';
+      var dots = [
+        { cx: 140, cy: 50,  r: 1.8, fill: color,    dur: '2s',   begin: '0s'   },
+        { cx: 65,  cy: 100, r: 1.8, fill: color,    dur: '2.5s', begin: '0.5s' },
+        { cx: 125, cy: 115, r: 1.8, fill: '#f59e0b',dur: '1.8s', begin: '1s'   },
+        { cx: 80,  cy: 40,  r: 1.5, fill: color,    dur: '2.2s', begin: '0.3s' },
+        { cx: 160, cy: 105, r: 1.5, fill: color,    dur: '3s',   begin: '1.5s' }
+      ].map(function(d) {
+        return '<circle cx="' + d.cx + '" cy="' + d.cy + '" r="' + d.r + '" fill="' + d.fill + '">' +
+          '<animate attributeName="opacity" values="0.3;1;0.3" dur="' + d.dur + '" begin="' + d.begin + '" repeatCount="indefinite"/>' +
+        '</circle>';
+      }).join('');
+      return '<svg viewBox="0 0 200 150" preserveAspectRatio="xMidYMid meet" class="bot-radar">' +
+        rings + sweep + crosshair + dots + '</svg>';
+    }
+
+    // Build a single stat row.
+    function statRow(label, value, color, max, opts) {
+      opts = opts || {};
+      var num = typeof value === 'number' ? value : 0;
+      var pct = max ? Math.min(100, (num / max) * 100) : 0;
+      var display = opts.loading ? '…' : (opts.format === 'capital' ? '$' + num : num);
+      var dimCls = opts.dim ? ' dim' : '';
+      return '<div class="bot-stat-row' + dimCls + '">' +
+        '<span class="bot-stat-label">' + label + '</span>' +
+        '<div class="bot-stat-bar-track"><div class="bot-stat-bar-fill" style="width:' + pct + '%; background:' + (opts.dim ? 'rgba(255,255,255,0.15)' : color) + ';"></div></div>' +
+        '<span class="bot-stat-value" style="color:' + (opts.dim ? 'rgba(255,255,255,0.35)' : color) + ';">' + display + '</span>' +
+      '</div>';
+    }
+
+    // Render the 4 cards into #bots-row.
+    function renderBots(stats, status) {
+      var loading = status === 'loading';
+      var maxStat = Math.max(50, stats.grid.wins, stats.grid.losses, stats.trend.wins, stats.trend.losses) * 1.2;
+
+      // Grid card
+      var gridFrame =
+        '<div class="bot-frame grid">' +
+          '<div class="bot-scanlines"></div>' +
+          mixerSVG(GRID_C) +
+          '<div class="bot-mascot-grid">' + mascotSVG({ size: 108, color: GRID_C, accent: GRID_C, build: 'stocky', expression: 'focused', pose: 'sitting', uid: 'gridmain' }) + '</div>' +
+          '<div class="bot-mug">' + mugSVG() + '</div>' +
+        '</div>';
+
+      // TF card
+      var tfFrame =
+        '<div class="bot-frame tf">' +
+          '<div class="bot-scanlines"></div>' +
+          radarSVG(TF_C) +
+          mascotSVG({ size: 130, color: TF_C, accent: TF_C, build: 'lanky', expression: 'scanning', pose: 'scanning', carrying: 'binoculars', uid: 'tfmain' }) +
+        '</div>';
+
+      // Sentinel silhouette
+      var sentinelFrame =
+        '<div class="bot-frame sentinel">' +
+          '<div class="bot-scanlines"></div>' +
+          '<div class="bot-question sentinel">?</div>' +
+          '<div class="bot-silhouette-glow sentinel">' +
+            mascotSVG({ size: 130, color: '#0a0e17', accent: SENTINEL_C, build: 'stocky', expression: 'focused', pose: 'sitting', uid: 'sentinelmain' }) +
+          '</div>' +
+          '<div class="bot-silhouette-tint sentinel"></div>' +
+        '</div>';
+
+      // Sherpa silhouette
+      var sherpaFrame =
+        '<div class="bot-frame sherpa">' +
+          '<div class="bot-scanlines"></div>' +
+          '<div class="bot-question sherpa">?</div>' +
+          '<div class="bot-silhouette-glow sherpa">' +
+            mascotSVG({ size: 130, color: '#0a0e17', accent: SHERPA_C, build: 'lanky', expression: 'curious', pose: 'walking', uid: 'sherpamain' }) +
+          '</div>' +
+          '<div class="bot-silhouette-tint sherpa"></div>' +
+        '</div>';
+
+      var html = '';
+      // Grid Bot
+      html += '<div class="bot-card grid-active tilt-l">' +
+        '<span class="bot-pill live-grid">LIVE</span>' +
+        '<div class="bot-head"><span class="bot-name grid">GRID BOT</span><span class="bot-rarity">ACTIVE · v3</span></div>' +
+        '<div class="bot-subtitle">Methodical Trader</div>' +
+        gridFrame +
+        '<div>' +
+          statRow('PATIENCE', 95,  GRID_C, 100) +
+          statRow('SPEED',    30,  GRID_C, 100) +
+          statRow('CAPITAL',  500, GRID_C, 500, { format: 'capital' }) +
+          statRow('WINS',     stats.grid.wins,   GRID_C, maxStat, { loading: loading }) +
+          statRow('LOSSES',   stats.grid.losses, '#ef4444', maxStat, { loading: loading }) +
+        '</div>' +
+        '<div class="bot-footer"><span class="arrow grid">▸ </span>buys dips, sells rallies, in a fixed range</div>' +
+      '</div>';
+
+      // Trend Follower
+      html += '<div class="bot-card tf-active tilt-r">' +
+        '<span class="bot-pill live-tf">LIVE</span>' +
+        '<div class="bot-head"><span class="bot-name tf">TREND FOLLOWER</span><span class="bot-rarity">ACTIVE · v3</span></div>' +
+        '<div class="bot-subtitle">Market Scanner</div>' +
+        tfFrame +
+        '<div>' +
+          statRow('PATIENCE', 25,  TF_C, 100) +
+          statRow('SPEED',    90,  TF_C, 100) +
+          statRow('CAPITAL',  100, TF_C, 500, { format: 'capital' }) +
+          statRow('WINS',     stats.trend.wins,   GRID_C,    maxStat, { loading: loading }) +
+          statRow('LOSSES',   stats.trend.losses, '#ef4444', maxStat, { loading: loading }) +
+        '</div>' +
+        '<div class="bot-footer"><span class="arrow tf">▸ </span>rotates capital into trending coins</div>' +
+      '</div>';
+
+      // Sentinel (locked)
+      html += '<div class="bot-card dim tilt-l">' +
+        '<span class="bot-pill soon">SOON</span>' +
+        '<div class="bot-head"><span class="bot-name sentinel">SENTINEL</span><span class="bot-rarity">LOCKED</span></div>' +
+        '<div class="bot-subtitle">Risk Watcher</div>' +
+        sentinelFrame +
+        '<div>' +
+          statRow('PATIENCE', 0, SENTINEL_C, 100, { dim: true }) +
+          statRow('SPEED',    0, SENTINEL_C, 100, { dim: true }) +
+          statRow('CAPITAL',  0, SENTINEL_C, 500, { dim: true, format: 'capital' }) +
+          statRow('WINS',     0, SENTINEL_C, maxStat, { dim: true }) +
+          statRow('LOSSES',   0, '#ef4444',  maxStat, { dim: true }) +
+        '</div>' +
+        '<div class="bot-footer"><span class="arrow sentinel">▸ </span>monitors positions, halts on drawdown</div>' +
+      '</div>';
+
+      // Sherpa (locked, vague)
+      html += '<div class="bot-card dim tilt-r">' +
+        '<span class="bot-pill soon">SOON</span>' +
+        '<div class="bot-head"><span class="bot-name sherpa">SHERPA</span><span class="bot-rarity">LOCKED</span></div>' +
+        '<div class="bot-subtitle">Bot Coordinator</div>' +
+        sherpaFrame +
+        '<div>' +
+          statRow('PATIENCE', 0, SHERPA_C, 100, { dim: true }) +
+          statRow('SPEED',    0, SHERPA_C, 100, { dim: true }) +
+          statRow('CAPITAL',  0, SHERPA_C, 500, { dim: true, format: 'capital' }) +
+          statRow('WINS',     0, SHERPA_C, maxStat, { dim: true }) +
+          statRow('LOSSES',   0, '#ef4444', maxStat, { dim: true }) +
+        '</div>' +
+        '<div class="bot-footer"><span class="arrow sherpa">▸ </span>coordinates all active bots</div>' +
+      '</div>';
+
+      document.getElementById('bots-row').innerHTML = html;
+      var statusEl = document.getElementById('bots-status');
+      if (status === 'live')        statusEl.textContent = '● live · supabase';
+      else if (status === 'fallback') statusEl.textContent = '◌ fallback data';
+      else                          statusEl.textContent = '◌ loading…';
+    }
+
+    // Initial render with fallback (so cards appear before fetch completes).
+    renderBots(FALLBACK, 'loading');
+
+    // Fetch live W/L: filter sells with realized_pnl in v3, group by managed_by.
+    sbq('trades', 'select=managed_by,realized_pnl&config_version=eq.v3&side=eq.sell')
+      .then(function(rows) {
+        var agg = { grid: { wins: 0, losses: 0 }, trend: { wins: 0, losses: 0 } };
+        (rows || []).forEach(function(row) {
+          var key = row.managed_by === BOT_KEY.grid  ? 'grid'
+                  : row.managed_by === BOT_KEY.trend ? 'trend' : null;
+          if (!key) return;
+          var p = Number(row.realized_pnl || 0);
+          if (p > 0) agg[key].wins++;
+          else if (p < 0) agg[key].losses++;
+        });
+        renderBots(agg, 'live');
+      })
+      .catch(function() { renderBots(FALLBACK, 'fallback'); });
   </script>
 </body>
 </html>
