@@ -1043,26 +1043,61 @@
       // reflects trading performance only.
       var markPnlData = values.map(function(v, i) { return +(v - initialLine[i]).toFixed(2); });
 
-      // Realized cumulative P&L: walk Grid + TF sells separately and tag by
-      // source array (the SELECT in fetchLiveData/fetchTFData doesn't include
-      // managed_by — relying on the column would mis-bucket every trade as
-      // Grid, see commit b5e... fix).
+      // Realized cumulative P&L with strict FIFO per symbol. The bot writes
+      // realized_pnl using avg_buy_price as cost basis, which over-credits
+      // sells on volatile coins. Recompute here so the chart matches the
+      // FIFO-corrected stat cards (commit 6bfb644).
+      function dailyFifoBySymbol(trades) {
+        var bySym = {};
+        trades.forEach(function(t) {
+          var s = t.symbol;
+          if (!bySym[s]) bySym[s] = [];
+          bySym[s].push(t);
+        });
+        var dailyOut = {};
+        Object.keys(bySym).forEach(function(sym) {
+          var sorted = bySym[sym].slice().sort(function(a, b) {
+            return new Date(a.created_at) - new Date(b.created_at);
+          });
+          var queue = [];
+          sorted.forEach(function(t) {
+            var day = (t.created_at || '').slice(0, 10);
+            var amt = Number(t.amount);
+            if (t.side === 'buy') {
+              queue.push({ amount: amt, cost: Number(t.cost) });
+            } else {
+              var revenue = Number(t.cost || 0);
+              var basis = 0;
+              var rem = amt;
+              while (rem > 0.000001 && queue.length > 0) {
+                var lot = queue[0];
+                if (lot.amount <= rem + 0.000001) {
+                  basis += lot.cost;
+                  rem -= lot.amount;
+                  queue.shift();
+                } else {
+                  var portion = rem / lot.amount;
+                  basis += lot.cost * portion;
+                  lot.cost -= lot.cost * portion;
+                  lot.amount -= rem;
+                  rem = 0;
+                }
+              }
+              dailyOut[day] = (dailyOut[day] || 0) + (revenue - basis);
+            }
+          });
+        });
+        return dailyOut;
+      }
+
+      var gridDailyRealized = dailyFifoBySymbol(gridTrades);
+      var tfDailyRealized = dailyFifoBySymbol(tfTrades);
       var realizedByDay = {};
-      var gridDailyRealized = {};
-      var tfDailyRealized = {};
-      gridTrades.forEach(function(t) {
-        if (t.side !== 'sell') return;
-        var day = (t.created_at || '').slice(0, 10);
-        var val = Number(t.realized_pnl || 0);
-        realizedByDay[day] = (realizedByDay[day] || 0) + val;
-        gridDailyRealized[day] = (gridDailyRealized[day] || 0) + val;
+      Object.keys(gridDailyRealized).forEach(function(d) {
+        realizedByDay[d] = (realizedByDay[d] || 0) + gridDailyRealized[d];
       });
-      tfTrades.forEach(function(t) {
-        if (t.side !== 'sell') return;
-        var day = (t.created_at || '').slice(0, 10);
-        var val = Number(t.realized_pnl || 0);
-        realizedByDay[day] = (realizedByDay[day] || 0) + val;
-        tfDailyRealized[day] = (tfDailyRealized[day] || 0) + val;
+      Object.keys(tfDailyRealized).forEach(function(d) {
+        realizedByDay[d] = (realizedByDay[d] || 0) + tfDailyRealized[d];
       });
       var cumRealized = 0;
       var realizedCumData = sorted.map(function(d) {
