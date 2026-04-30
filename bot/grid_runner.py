@@ -1427,11 +1427,13 @@ def _force_liquidate(bot, exchange, trade_logger, notifier, symbol: str,
         proceeds = price * sell_amount
         # Fees: same rate as GridBot._execute_percentage_sell — charged on
         # BOTH the buy legs (reconstructed from cost basis) and the sell.
+        # 52a: paper-mode realized_pnl excludes fees — see grid_bot.py
+        # _execute_sell comment for the full rationale.
         from bot.strategies.grid_bot import GridBot
         fee_rate = GridBot.FEE_RATE
         sell_fee = proceeds * fee_rate
         buy_fees = lot_cost_basis * fee_rate
-        realized_pnl = proceeds - lot_cost_basis - sell_fee - buy_fees
+        realized_pnl = proceeds - lot_cost_basis
 
         trade_db_row: dict = {}
 

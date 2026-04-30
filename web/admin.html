@@ -592,17 +592,13 @@
       var openCost = buyQueue.reduce(function(s, l) { return s + l.cost; }, 0);
 
       var skimForCoin = skimBySymbol[symbol] || 0;
-      var cashLeft;
-      if (positionClosed) {
-        netSpent = 0;
-        cashLeft = alloc + realizedPnl - skimForCoin;
-      } else {
-        // Mirrors bot._available_cash(): alloc − invested + received − reserve.
-        // netSpent = invested − received; skim is physically moved to
-        // reserve_ledger on every profitable sell and must be subtracted here
-        // to match the bot's real operational cash.
-        cashLeft = alloc - netSpent - skimForCoin;
-      }
+      // 52a: unified USDT-flow formula for both open AND closed positions.
+      // Mirrors bot._available_cash(): alloc − invested + received − reserve.
+      // netSpent = invested − received; skim is physically moved to
+      // reserve_ledger on every profitable sell and must be subtracted here
+      // to match the bot's real operational cash. Closed positions: netSpent
+      // is typically negative (sold > bought) → cashLeft > alloc.
+      var cashLeft = alloc - netSpent - skimForCoin;
       var buysLeft = costPerTrade > 0 ? Math.floor(cashLeft / costPerTrade) : 0;
       // Capacity bar reflects how much of the allocation is committed to open lots,
       // not total volume traded.
@@ -764,7 +760,7 @@
         '<div class="stat-box">' +
           '<div class="stat-label">Fees Paid</div>' +
           '<div class="stat-value" style="color:var(--muted);">-$' + fmt(totalFees) + '</div>' +
-          '<div class="stat-sub">Binance + BNB discount on every buy/sell — already netted inside Total P&L</div>' +
+          '<div class="stat-sub">Binance + BNB discount on every buy/sell — tracked for reference · not deducted in paper mode</div>' +
         '</div>' +
         '<div class="stat-box" style="grid-column: 2 / -1;">' +
           '<div class="stat-label">Dust v3</div>' +

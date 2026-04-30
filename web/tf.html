@@ -1055,10 +1055,11 @@
       //
       // cashLeft=0 is what we show on the card (matches reality: nothing is
       // allocated to this coin anymore). cashReturned tracks what actually
-      // flowed back to the TF pool when the coin was deallocated: the
-      // realized profit net of skim. The overview adds cashReturned to the
-      // global totalCash so Portfolio Value stays consistent with
-      // "TF_BUDGET + realized − skim" when all profits are counted.
+      // flowed back to the TF pool when the coin was deallocated.
+      // 52a: USDT flow (totalSold − totalBought − skim) instead of
+      // realized_pnl, which carried phantom fees from paper-mode accounting.
+      // The overview adds cashReturned to the global totalCash so Net Worth
+      // stays consistent with the operational pool.
       if (!isActive) {
         var skimForCoin = skimBySymbol[symbol] || 0;
         return {
@@ -1067,7 +1068,7 @@
           realizedPnl: realizedPnl, netHoldings: netHoldings,
           buyCount: buyCount, sellCount: sellCount,
           netSpent: 0, openCost: 0, openLots: 0,
-          cashLeft: 0, cashReturned: realizedPnl - skimForCoin,
+          cashLeft: 0, cashReturned: (totalSold - totalBought) - skimForCoin,
           buysLeft: 0, capacityPct: 0,
           maxCapacity: 0,
           lastTrade: coinTrades.length > 0 ? coinTrades[0] : null
@@ -1101,17 +1102,13 @@
       var openCost = buyQueue.reduce(function(s, l) { return s + l.cost; }, 0);
 
       var skimForCoin = skimBySymbol[symbol] || 0;
-      var cashLeft;
-      if (positionClosed) {
-        netSpent = 0;
-        cashLeft = alloc + realizedPnl - skimForCoin;
-      } else {
-        // Mirrors bot._available_cash(): alloc − invested + received − reserve.
-        // netSpent = invested − received; skim is physically moved to
-        // reserve_ledger on every profitable sell and must be subtracted here
-        // to match the bot's real operational cash.
-        cashLeft = alloc - netSpent - skimForCoin;
-      }
+      // 52a: unified USDT-flow formula for both open AND closed positions.
+      // Mirrors bot._available_cash(): alloc − invested + received − reserve.
+      // netSpent = invested − received; skim is physically moved to
+      // reserve_ledger on every profitable sell and must be subtracted here
+      // to match the bot's real operational cash. Closed positions: netSpent
+      // is typically negative (sold > bought) → cashLeft > alloc.
+      var cashLeft = alloc - netSpent - skimForCoin;
       var buysLeft = costPerTrade > 0 ? Math.floor(cashLeft / costPerTrade) : 0;
       // Capacity bar reflects how much of the allocation is committed to open lots,
       // not total volume traded.
@@ -1284,7 +1281,7 @@
         '<div class="stat-box">' +
           '<div class="stat-label">Fees Paid</div>' +
           '<div class="stat-value" style="color:var(--muted);">-$' + fmt(totalFees) + '</div>' +
-          '<div class="stat-sub">Binance + BNB discount on every buy/sell — already netted inside Total P&L</div>' +
+          '<div class="stat-sub">Binance + BNB discount on every buy/sell — tracked for reference · not deducted in paper mode</div>' +
         '</div>' +
         '<div class="stat-box" style="grid-column: 2 / -1;">' +
           '<div class="stat-label">Dust v3</div>' +

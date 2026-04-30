@@ -744,13 +744,11 @@
       var netSpent = totalBought - totalSold;
       var positionClosed = netHoldings <= 0.000001;
       var skimForCoin = skimBySymbol[symbol] || 0;
-      var cashLeft;
-      if (positionClosed) {
-        netSpent = 0;
-        cashLeft = alloc + realizedPnl - skimForCoin;
-      } else {
-        cashLeft = alloc - netSpent - skimForCoin;
-      }
+      // 52a: unified USDT-flow formula for both open AND closed positions.
+      // Closed-positive: netSpent < 0 → cashLeft > alloc (profit). Closed-
+      // negative: netSpent > 0 → cashLeft < alloc (loss). Avoids the old
+      // realized_pnl branch that inherited the phantom-fee bug.
+      var cashLeft = alloc - netSpent - skimForCoin;
       return { alloc: alloc, netSpent: netSpent, netHoldings: netHoldings, realizedPnl: realizedPnl, cashLeft: cashLeft, positionClosed: positionClosed };
     }
 
@@ -897,7 +895,7 @@
         '<div class="sub">on paper, open positions</div></div>' +
         '<div class="breakdown-item"><div class="label">Fees paid</div>' +
         '<div class="value negative">-' + fmtUsd(Math.abs(state.totalFees)) + '</div>' +
-        '<div class="sub">already subtracted above</div></div>' +
+        '<div class="sub">tracked for reference · not deducted in paper mode</div></div>' +
         '<div class="breakdown-item"><div class="label">Skim reserved</div>' +
         '<div class="value positive">+$' + state.skimTotal.toFixed(4) + (skimPctOfNet > 0 ? ' (' + skimPctOfNet.toFixed(1) + '% of realized)' : '') + '</div>' +
         '<div class="sub">subset of realized, set aside</div></div>';
@@ -1180,7 +1178,9 @@
       var positionClosed = netHoldings <= 0.000001;
 
       // Inactive coins: capital was returned to the TF pool. cashLeft=0 on the
-      // card but cashReturned tracks profit-net-of-skim that flowed back.
+      // card but cashReturned tracks the actual cash that flowed back, net
+      // of skim. 52a: USDT flow (totalSold - totalBought - skim) instead of
+      // realized_pnl, which carried phantom fees from paper-mode accounting.
       if (!isActive) {
         var skimForCoinInactive = skimBySymbol[symbol] || 0;
         return {
@@ -1191,7 +1191,7 @@
           realizedPnl: realizedPnl, netHoldings: netHoldings,
           buyCount: buyCount, sellCount: sellCount,
           netSpent: 0, openCost: 0, openLots: 0,
-          cashLeft: 0, cashReturned: realizedPnl - skimForCoinInactive,
+          cashLeft: 0, cashReturned: (totalSold - totalBought) - skimForCoinInactive,
           openAmt: 0, openAvgBuy: 0,
         };
       }
@@ -1225,14 +1225,10 @@
       var openAvgBuy = openAmt > 0 ? openCost / openAmt : 0;
 
       var skimForCoin = skimBySymbol[symbol] || 0;
-      var cashLeft;
-      if (positionClosed) {
-        netSpent = 0;
-        cashLeft = alloc + realizedPnl - skimForCoin;
-      } else {
-        // Mirrors bot._available_cash(): alloc − invested + received − reserve
-        cashLeft = alloc - netSpent - skimForCoin;
-      }
+      // 52a: unified USDT-flow formula. Mirrors bot._available_cash():
+      // alloc − invested + received − reserve, valid for both open and
+      // closed positions (closed → netSpent typically <0 → cash > alloc).
+      var cashLeft = alloc - netSpent - skimForCoin;
 
       return {
         symbol: symbol,

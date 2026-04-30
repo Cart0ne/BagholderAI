@@ -224,8 +224,10 @@ def get_tf_state(supabase_client):
             skim_for_coin = skim_by_sym.get(sym, 0)
 
             if not is_active:
-                # Inactive: capital returned to TF pool, only realized − skim contributes
-                total_cash += realized_pnl - skim_for_coin
+                # Inactive: capital returned to TF pool. 52a: USDT flow
+                # (sold − bought − skim) instead of realized_pnl, which
+                # carried phantom fees from paper-mode accounting.
+                total_cash += (total_sold - total_bought) - skim_for_coin
                 continue
 
             # Active coin: FIFO to find open lots
@@ -252,10 +254,9 @@ def get_tf_state(supabase_client):
             open_amt = sum(l["amount"] for l in queue)
             open_cost = sum(l["cost"] for l in queue)
 
-            if position_closed:
-                cash_left = alloc + realized_pnl - skim_for_coin
-            else:
-                cash_left = alloc - net_spent - skim_for_coin
+            # 52a: unified USDT-flow formula for both open AND closed.
+            # Mirrors bot._available_cash(): alloc − invested + received − reserve.
+            cash_left = alloc - net_spent - skim_for_coin
             total_cash += cash_left
 
             # Per-coin "today" stats (used by the Telegram daily report so

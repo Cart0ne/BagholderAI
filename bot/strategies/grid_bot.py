@@ -824,10 +824,15 @@ class GridBot:
         # Snapshot for Telegram verification
         holdings_value_before = self.state.holdings * price
 
-        # Calculate realized P&L for this trade
+        # Calculate realized P&L for this trade.
+        # 52a: in paper mode fees are informational only — they are computed
+        # for the `fee` column and `state.total_fees`, but never deducted
+        # from cash (total_invested/total_received don't include them).
+        # Subtracting them here was creating phantom losses (~$7 cumulative
+        # on Grid manual). Live mode decision deferred until go-live.
         cost_basis = amount * self.state.avg_buy_price
         buy_fee = cost_basis * self.FEE_RATE
-        realized_pnl = revenue - cost_basis - fee - buy_fee
+        realized_pnl = revenue - cost_basis
 
         # Mark level as filled
         level.filled = True
@@ -1741,7 +1746,8 @@ class GridBot:
         # Use the specific lot's buy price for cost basis — gives correct per-trade P&L
         cost_basis = amount * lot_buy_price
         buy_fee = cost_basis * self.FEE_RATE
-        realized_pnl = revenue - cost_basis - fee - buy_fee
+        # 52a: paper-mode realized_pnl excludes fees (see _execute_sell comment).
+        realized_pnl = revenue - cost_basis
 
         self._pct_open_positions.pop(0)
         self.state.total_received += revenue
