@@ -502,9 +502,44 @@
       adminSkim.forEach(function(r) {
         if (r.symbol) skimBySymbol[r.symbol] = (skimBySymbol[r.symbol] || 0) + Number(r.amount || 0);
       });
-      totalRealizedAll = tradesData
-        .filter(function(t) { return t.side === 'sell'; })
-        .reduce(function(s, r) { return s + Number(r.realized_pnl || 0); }, 0);
+      // FIFO realized recalc per symbol — DB realized_pnl uses avg_buy_price
+      // basis which overstates per-trade profit on high-volatility coins.
+      // Strict FIFO restores the Realized + Unrealized = Total P&L identity.
+      var _realFifo = {};
+      tradesData.slice().sort(function(a, b) {
+        return new Date(a.created_at) - new Date(b.created_at);
+      }).forEach(function(t) {
+        var sym = t.symbol;
+        if (!_realFifo[sym]) _realFifo[sym] = { queue: [], realized: 0 };
+        var s = _realFifo[sym];
+        var amt = Number(t.amount || 0);
+        var price = Number(t.price || 0);
+        if (t.side === 'buy') {
+          s.queue.push({ amount: amt, price: price, cost: Number(t.cost) });
+        } else {
+          var rev = Number(t.cost || 0);
+          var basis = 0;
+          var rem = amt;
+          while (rem > 0.000001 && s.queue.length > 0) {
+            var lot = s.queue[0];
+            if (lot.amount <= rem + 0.000001) {
+              basis += lot.cost;
+              rem -= lot.amount;
+              s.queue.shift();
+            } else {
+              var p = rem / lot.amount;
+              basis += lot.cost * p;
+              lot.cost -= lot.cost * p;
+              lot.amount -= rem;
+              rem = 0;
+            }
+          }
+          s.realized += (rev - basis);
+        }
+      });
+      totalRealizedAll = Object.values(_realFifo).reduce(function(s, x) {
+        return s + x.realized;
+      }, 0);
       render();
       document.getElementById('refresh-time').textContent = new Date().toLocaleTimeString();
       document.getElementById('refresh-status').textContent = 'auto every 5m';

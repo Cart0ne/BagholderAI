@@ -768,32 +768,48 @@
         var sym = cfg.symbol;
         var a = analyzeCoin(sym, cfg, trades, skimBySymbol);
         totalCash += a.cashLeft;
-        totalRealized += a.realizedPnl;
 
-        // FIFO queue to compute avg buy price of remaining open lots
+        // FIFO queue + per-coin realized FIFO recalc.
+        // The bot's `trades.realized_pnl` column uses avg_buy_price as cost
+        // basis on each sell, which for high-volatility coins (BONK!)
+        // overstates the per-trade profit when the bot sells an old cheap
+        // lot while newer expensive lots are still open. Recalculate from
+        // scratch with strict FIFO so Realized + Unrealized = Total P&L
+        // identity holds. (Pre-existing bug, not caused by 52a.)
         var coinTrades = trades
           .filter(function(t) { return t.symbol === sym; })
           .slice()
           .sort(function(a, b) { return new Date(a.created_at) - new Date(b.created_at); });
         var buyQueue = [];
+        var realizedFifo = 0;
         coinTrades.forEach(function(t) {
+          var amt = Number(t.amount || 0);
+          var price = Number(t.price || 0);
           if (t.side === 'buy') {
-            buyQueue.push({ amount: Number(t.amount), price: Number(t.price || 0), cost: Number(t.cost) });
+            buyQueue.push({ amount: amt, price: price, cost: Number(t.cost) });
           } else {
-            var remaining = Number(t.amount);
+            // Sell: consume FIFO lots and accumulate (sell_price - lot_price) * portion
+            var sellRevenue = Number(t.cost || 0);
+            var sellCostBasis = 0;
+            var remaining = amt;
             while (remaining > 0.000001 && buyQueue.length > 0) {
               var lot = buyQueue[0];
               if (lot.amount <= remaining + 0.000001) {
+                sellCostBasis += lot.cost;
                 remaining -= lot.amount;
                 buyQueue.shift();
               } else {
-                lot.cost -= remaining * lot.price;
+                var portion = remaining / lot.amount;
+                sellCostBasis += lot.cost * portion;
+                lot.cost -= lot.cost * portion;
                 lot.amount -= remaining;
                 remaining = 0;
               }
             }
+            realizedFifo += (sellRevenue - sellCostBasis);
           }
         });
+        totalRealized += realizedFifo;
         var openAmt = buyQueue.reduce(function(s, l) { return s + l.amount; }, 0);
         var openCost = buyQueue.reduce(function(s, l) { return s + l.cost; }, 0);
         var livePrice = prices[sym];
@@ -1289,9 +1305,43 @@
       // Net Worth = cash + unalloc + holdings + skim reserve
       var netWorth = totalCash + unalloc + holdingsValue + skimReserveTotal;
       var totalPnl = netWorth - tfBudget;
-      var totalRealized = tfTrades
-        .filter(function(t) { return t.side === 'sell'; })
-        .reduce(function(s, t) { return s + Number(t.realized_pnl || 0); }, 0);
+      // FIFO realized recalc per symbol — see Grid section comment for the
+      // reason. Replaces the old DB sum which used avg_buy_price as basis.
+      var tfRealizedFifoBySym = {};
+      tfTrades.slice().sort(function(a, b) {
+        return new Date(a.created_at) - new Date(b.created_at);
+      }).forEach(function(t) {
+        var sym = t.symbol;
+        if (!tfRealizedFifoBySym[sym]) tfRealizedFifoBySym[sym] = { queue: [], realized: 0 };
+        var s = tfRealizedFifoBySym[sym];
+        var amt = Number(t.amount || 0);
+        var price = Number(t.price || 0);
+        if (t.side === 'buy') {
+          s.queue.push({ amount: amt, price: price, cost: Number(t.cost) });
+        } else {
+          var sellRevenue = Number(t.cost || 0);
+          var sellCostBasis = 0;
+          var remaining = amt;
+          while (remaining > 0.000001 && s.queue.length > 0) {
+            var lot = s.queue[0];
+            if (lot.amount <= remaining + 0.000001) {
+              sellCostBasis += lot.cost;
+              remaining -= lot.amount;
+              s.queue.shift();
+            } else {
+              var portion = remaining / lot.amount;
+              sellCostBasis += lot.cost * portion;
+              lot.cost -= lot.cost * portion;
+              lot.amount -= remaining;
+              remaining = 0;
+            }
+          }
+          s.realized += (sellRevenue - sellCostBasis);
+        }
+      });
+      var totalRealized = Object.values(tfRealizedFifoBySym).reduce(function(s, x) {
+        return s + x.realized;
+      }, 0);
       var totalFees = tfTrades.reduce(function(s, t) { return s + Number(t.fee || 0); }, 0);
       var totalBuys = tfTrades.filter(function(t) { return t.side === 'buy'; }).length;
       var totalSells = tfTrades.filter(function(t) { return t.side === 'sell'; }).length;
