@@ -877,19 +877,19 @@
         '<span>Cash to reinvest: ' + fmtUsd(cashToReinvest) + '</span>' +
         '<span>Cash invested: ' + fmtUsd(state.totalInvested) + '</span>';
 
-      // P&L breakdown — stacks so Realized (net) + Unrealized ≈ Total P&L.
-      // trades.realized_pnl is already NET of buy+sell fees (see grid_bot._execute_sell):
-      // realized_pnl = revenue − cost_basis − sell_fee − buy_fee. We reconstruct
-      // gross by adding fees back, purely for display. Skim is a subset of
-      // Realized (net) that's been physically moved to reserve_ledger — already
-      // counted inside Net Worth, shown separately for transparency.
-      var realizedNet = state.totalRealized;
-      var realizedGross = realizedNet + state.totalFees;
-      var skimPctOfNet = realizedNet > 0 ? (state.skimTotal / realizedNet * 100) : 0;
+      // P&L breakdown — stacks so Realized + Unrealized ≈ Total P&L.
+      // 52a: trades.realized_pnl no longer subtracts fees (paper mode → fees
+      // not deducted from cash). The "net/gross" distinction is gone in
+      // paper; fees show as a separate informational row below. Historical
+      // pre-52a trades carry the old phantom-fee subtraction in their
+      // realized_pnl, so this aggregate slightly underreports recent net by
+      // ~$5 on Grid until those trades roll off — acceptable.
+      var realizedTotal = state.totalRealized;
+      var skimPctOfNet = realizedTotal > 0 ? (state.skimTotal / realizedTotal * 100) : 0;
       document.getElementById('pnl-breakdown').innerHTML =
-        '<div class="breakdown-item"><div class="label">Realized (net)</div>' +
-        '<div class="value ' + pcls(realizedNet) + '">' + sign(realizedNet) + fmtUsd(realizedNet) + '</div>' +
-        '<div class="sub">' + fmtUsd(realizedGross) + ' gross − ' + fmtUsd(Math.abs(state.totalFees)) + ' fees</div></div>' +
+        '<div class="breakdown-item"><div class="label">Realized</div>' +
+        '<div class="value ' + pcls(realizedTotal) + '">' + sign(realizedTotal) + fmtUsd(realizedTotal) + '</div>' +
+        '<div class="sub">profits materialized from sells</div></div>' +
         '<div class="breakdown-item"><div class="label">Unrealized</div>' +
         '<div class="value ' + pcls(state.totalUnrealized) + '">' + sign(state.totalUnrealized) + fmtUsd(state.totalUnrealized) + '</div>' +
         '<div class="sub">on paper, open positions</div></div>' +
@@ -1465,13 +1465,13 @@
         '<span>Cash to reinvest: ' + fmtUsd(cashToReinvest) + '</span>' +
         '<span>Cash invested: ' + fmtUsd(s.totalInvested) + '</span>';
 
-      // P&L breakdown — same shape as Grid card
-      var realizedNet = s.totalRealized;
-      var realizedGross = realizedNet + s.totalFees;
+      // P&L breakdown — same shape as Grid card. 52a: see comment in Grid
+      // breakdown — net/gross collapsed in paper mode.
+      var realizedTotal = s.totalRealized;
       document.getElementById('tf-pnl-breakdown').innerHTML =
-        '<div class="breakdown-item"><div class="label">Realized (net)</div>' +
-        '<div class="value ' + pcls(realizedNet) + '">' + sign(realizedNet) + fmtUsd(realizedNet) + '</div>' +
-        '<div class="sub">' + fmtUsd(realizedGross) + ' gross − ' + fmtUsd(Math.abs(s.totalFees)) + ' fees</div></div>' +
+        '<div class="breakdown-item"><div class="label">Realized</div>' +
+        '<div class="value ' + pcls(realizedTotal) + '">' + sign(realizedTotal) + fmtUsd(realizedTotal) + '</div>' +
+        '<div class="sub">profits materialized from sells</div></div>' +
         '<div class="breakdown-item"><div class="label">Unrealized</div>' +
         '<div class="value ' + pcls(s.totalUnrealized) + '">' + sign(s.totalUnrealized) + fmtUsd(s.totalUnrealized) + '</div>' +
         '<div class="sub">on paper, open positions</div></div>' +
