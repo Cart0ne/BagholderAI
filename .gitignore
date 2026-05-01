@@ -30,3 +30,6 @@ post_x/
 # I 3 file di summary (CSV piccoli) restano nel repo per leggibilità.
 scripts/output/.ohlcv_cache/
 scripts/output/backtest_trades.csv
+
+# Web prototypes (local-only, not deployed to Vercel)
+web_proto/

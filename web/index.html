@@ -163,10 +163,10 @@
     .announcement {
       font-family: var(--mono); font-size: 12px; color: var(--text-dim);
       text-align: center; padding: 10px 16px; margin: 0 0 16px;
-      border: 1px solid rgba(239, 68, 68, 0.25); border-radius: 6px;
-      background: rgba(239, 68, 68, 0.05);
+      border: 1px solid rgba(34, 211, 238, 0.25); border-radius: 6px;
+      background: rgba(34, 211, 238, 0.05);
     }
-    .announcement a { color: var(--red); text-decoration: none; font-weight: 600; }
+    .announcement a { color: rgb(34, 211, 238); text-decoration: none; font-weight: 600; }
     .announcement a:hover { text-decoration: underline; }
 
     /* TF announcement variant — secondary news, dimmer background, green accent */
@@ -484,16 +484,31 @@
     .stats-link:hover { color: var(--green); border-bottom-color: var(--green); }
 
     /* Story / books */
-    .story-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .book-card { padding: 16px; border-radius: 8px; }
-    .book-card.v1 { border: 1px solid rgba(239,68,68,0.2); background: rgba(239,68,68,0.03); }
-    .book-card.v2 { border: 1px solid var(--border); background: var(--surface); }
+    .story-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+    .book-card { padding: 16px; border-radius: 8px; display: flex; flex-direction: column; }
+    .book-card.v1 { border: 1px solid rgba(34,197,94,0.2); background: rgba(34,197,94,0.03); }
+    .book-card.v2 { border: 1px solid rgba(34,211,238,0.25); background: rgba(34,211,238,0.04); }
+    .book-card.v3 { border: 1px solid var(--border); background: var(--surface); }
+    .book-cover {
+      width: 100%; aspect-ratio: 1 / 1; border-radius: 6px;
+      background-size: cover; background-position: center;
+      margin-bottom: 12px;
+    }
+    .book-cover-placeholder {
+      width: 100%; aspect-ratio: 1 / 1; border-radius: 6px;
+      border: 1px dashed rgba(255,255,255,0.18);
+      margin-bottom: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--mono); font-size: 11px;
+      color: rgba(255,255,255,0.25); letter-spacing: 0.08em;
+    }
     .book-label {
       font-family: var(--mono); font-size: 10px;
       letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 6px;
     }
-    .book-card.v1 .book-label { color: var(--red); }
-    .book-card.v2 .book-label { color: rgba(255,255,255,0.25); }
+    .book-card.v1 .book-label { color: var(--green); }
+    .book-card.v2 .book-label { color: rgb(34,211,238); }
+    .book-card.v3 .book-label { color: rgba(255,255,255,0.35); }
     .book-title {
       font-family: var(--sans); font-size: 15px; color: #fff;
       font-weight: 600; margin-bottom: 4px;
@@ -502,33 +517,36 @@
       font-size: 12px; color: rgba(255,255,255,0.4);
       line-height: 1.6; margin-bottom: 12px;
     }
+    .book-ctas {
+      margin-top: auto;
+      display: flex; flex-direction: column;
+      align-items: center; gap: 10px;
+    }
     .book-cta {
-      display: inline-block;
       font-family: var(--mono); font-size: 11px;
       padding: 8px 16px; border-radius: 5px;
-      background: var(--red); color: #fff;
+      color: #fff;
       text-decoration: none; font-weight: 600;
     }
+    .book-card.v1 .book-cta { background: var(--green); }
+    .book-card.v2 .book-cta { background: rgb(34,211,238); color: #0a0a0a; }
     .book-cta:hover { filter: brightness(1.08); }
     .book-cta-secondary {
-      display: inline-block;
       font-family: var(--mono); font-size: 11px;
       padding: 8px 14px; border-radius: 5px;
       background: transparent;
       border: 1px solid rgba(255,255,255,0.15);
       color: rgba(255,255,255,0.7);
       text-decoration: none; font-weight: 500;
-      margin-left: 8px;
     }
     .book-cta-secondary:hover {
       border-color: rgba(255,255,255,0.35);
       color: #fff;
     }
     .book-meta {
-      display: block;
       font-family: var(--mono); font-size: 10px;
       color: rgba(255,255,255,0.3);
-      margin-top: 10px;
+      margin-top: 6px;
       letter-spacing: 0.02em;
     }
     .book-status {
@@ -611,8 +629,8 @@
       </p>
     </header>
 
-    <!-- Announcement (Volume 1) — constant anchor across all pages -->
-    <div class="announcement">📖 Volume 1 — From Zero to Grid — is live. <a href="/guide">Get it now →</a></div>
+    <!-- Announcement (Volume 2) — constant anchor across all pages -->
+    <div class="announcement">📖 Volume 2 — From Grid to Brain — is live. <a href="/guide">Get it now →</a></div>
 
     <!-- Hero -->
     <section class="hero fade-in d1">
@@ -729,18 +747,32 @@
       <h2 class="section-title">The Story</h2>
       <div class="story-grid">
         <div class="book-card v1">
+          <div class="book-cover" style="background-image: url('cover_vol1_square.jpg');"></div>
           <div class="book-label">Volume 1 — Out now</div>
           <div class="book-title">From Zero to Grid</div>
           <div class="book-desc">23 sessions. From "what's an API" to live automated trading. Every mistake, every breakthrough.</div>
-          <a class="book-cta-secondary" href="/BagHolder_Preview_fromZerotoGrid.pdf" download data-umami-event="preview-download" data-umami-event-source="home-volume1-card">↓ Free preview</a>
-          <a class="book-cta" href="https://payhip.com/b/a4yMc" target="_blank" rel="noopener noreferrer" data-umami-event="buy-click" data-umami-event-source="home-volume1-card">€4.99 on Payhip →</a>
-          <span class="book-meta">95 pages · PDF · No signup to preview</span>
+          <div class="book-ctas">
+            <a class="book-cta" href="https://payhip.com/b/a4yMc" target="_blank" rel="noopener noreferrer" data-umami-event="buy-click" data-umami-event-source="home-volume1-card">€4.99 on Payhip →</a>
+            <a class="book-cta-secondary" href="https://payhip.com/preview/a4yMc" target="_blank" rel="noopener noreferrer" data-umami-event="preview-click" data-umami-event-source="home-volume1-card">↓ Free preview</a>
+            <span class="book-meta">95 pages · PDF</span>
+          </div>
         </div>
         <div class="book-card v2">
-          <div class="book-label">Volume 2 — Writing</div>
-          <div class="book-title">The Trend Follower</div>
-          <div class="book-desc">AI-driven coin rotation, greed decay, stop-losses. The system gets a brain and starts making its own calls.</div>
-          <span class="book-status">In progress...</span>
+          <div class="book-cover" style="background-image: url('cover_vol2_square.jpg');"></div>
+          <div class="book-label">Volume 2 — Out now</div>
+          <div class="book-title">From Grid to Brain</div>
+          <div class="book-desc">29 sessions. From a working bot to an autonomous brain that picks its own coins. Every loss, every lesson.</div>
+          <div class="book-ctas">
+            <a class="book-cta" href="https://payhip.com/b/NHw53" target="_blank" rel="noopener noreferrer" data-umami-event="buy-click" data-umami-event-source="home-volume2-card">€4.99 on Payhip →</a>
+            <a class="book-cta-secondary" href="https://payhip.com/preview/NHw53" target="_blank" rel="noopener noreferrer" data-umami-event="preview-click" data-umami-event-source="home-volume2-card">↓ Free preview</a>
+            <span class="book-meta">108 pages · PDF</span>
+          </div>
+        </div>
+        <div class="book-card v3">
+          <div class="book-cover-placeholder">Volume 3</div>
+          <div class="book-label">Volume 3 — Coming soon</div>
+          <div class="book-title">From Brain to Reality</div>
+          <div class="book-desc">The bot trades. The brain thinks. Now the question: does any of it actually make money?</div>
         </div>
       </div>
     </section>

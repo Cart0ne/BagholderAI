@@ -22,6 +22,11 @@
   <meta name="twitter:description" content="95 pages · 23 sessions · 3 grid bots · 1 AI CEO who can't drink coffee but desperately needs it.">
   <meta name="twitter:image" content="https://bagholderai.lol/og-image.png">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎒</text></svg>">
+
+  <!-- Editorial fonts for the shelf section -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT,WONK@0,9..144,400;0,9..144,500;0,9..144,700;0,9..144,900;1,9..144,400;1,9..144,500;1,9..144,700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
   <script>
     try {
       // Skip Umami on localhost / LAN IPs / .local so dev traffic isn't counted
@@ -99,12 +104,14 @@
     }
 
     .container {
-      max-width: 880px;
+      max-width: 1100px;
       margin: 0 auto;
       padding: 24px 20px 80px;
       position: relative;
       z-index: 1;
     }
+    /* Keep top sections aligned with rest of site (880px) */
+    .narrow { max-width: 880px; margin-left: auto; margin-right: auto; }
 
     /* Top bar with inline nav (shared across pages) */
     .top-bar {
@@ -142,10 +149,10 @@
     .announcement {
       font-family: var(--mono); font-size: 12px; color: var(--text-dim);
       text-align: center; padding: 10px 16px; margin: 0 0 16px;
-      border: 1px solid rgba(239, 68, 68, 0.25); border-radius: 6px;
-      background: rgba(239, 68, 68, 0.05);
+      border: 1px solid rgba(34, 211, 238, 0.25); border-radius: 6px;
+      background: rgba(34, 211, 238, 0.05);
     }
-    .announcement a { color: #ef4444; text-decoration: none; font-weight: 600; }
+    .announcement a { color: rgb(34, 211, 238); text-decoration: none; font-weight: 600; }
     .announcement a:hover { text-decoration: underline; }
 
     /* Entrance fade-in */
@@ -371,6 +378,21 @@
     }
     footer .sub { color: rgba(255,255,255,0.3); }
 
+    /* Social links (matches rest of site) */
+    .social-links {
+      display: flex; justify-content: center; gap: 12px; flex-wrap: wrap;
+      margin-top: 32px; margin-bottom: 32px;
+    }
+    .social-links a {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-family: var(--mono); font-size: 12px;
+      padding: 8px 16px; border-radius: 6px;
+      background: var(--surface); border: 1px solid var(--border);
+      color: rgba(255,255,255,0.55); text-decoration: none;
+      transition: all 0.2s ease;
+    }
+    .social-links a:hover { border-color: var(--green); color: var(--green); }
+
     /* CTA links (secondary nav) */
     .cta-link {
       display: inline-block;
@@ -390,12 +412,341 @@
       border-color: var(--green);
     }
 
+    /* ============================================ */
+    /* THE LIBRARY — 3D shelf with openable books   */
+    /* ============================================ */
+    :root {
+      --display: 'Fraunces', 'Times New Roman', serif;
+      --book-mono: 'JetBrains Mono', 'SF Mono', 'Menlo', monospace;
+      --cyan: rgb(34, 211, 238);
+      --cyan-dim: rgba(34, 211, 238, 0.45);
+      --shelf-wood: linear-gradient(180deg, #1a1410 0%, #100c0a 60%, #060403 100%);
+    }
+
+    .shelf-stage {
+      position: relative;
+      perspective: 2000px;
+      perspective-origin: 50% 70%;
+      padding: 50px 0 0;
+      margin-bottom: 60px;
+    }
+    .shelf {
+      position: relative;
+      height: 540px;
+      display: flex;
+      justify-content: center;
+      align-items: flex-end;
+      gap: 0;
+      transform-style: preserve-3d;
+    }
+    .shelf-plank {
+      position: absolute;
+      left: -8%; right: -8%; bottom: -32px;
+      height: 40px;
+      background: var(--shelf-wood);
+      transform: rotateX(58deg);
+      transform-origin: top center;
+      box-shadow: 0 30px 60px -10px rgba(0,0,0,0.85), inset 0 1px 0 rgba(255,255,255,0.04);
+      border-radius: 1px;
+    }
+    .shelf-plank::before {
+      content: '';
+      position: absolute; inset: 0;
+      background:
+        repeating-linear-gradient(90deg, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 1px, transparent 1px, transparent 80px),
+        repeating-linear-gradient(90deg, rgba(0,0,0,0.4) 0px, rgba(0,0,0,0.4) 2px, transparent 2px, transparent 240px);
+      mix-blend-mode: overlay;
+    }
+    .shelf-plank::after {
+      content: '';
+      position: absolute; left: 0; right: 0; top: 0; height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08) 30%, rgba(255,255,255,0.08) 70%, transparent);
+    }
+    .shelf-glow {
+      position: absolute;
+      left: 20%; right: 20%; top: -40px;
+      height: 80px;
+      background: radial-gradient(ellipse at center, rgba(234,179,8,0.06), transparent 70%);
+      pointer-events: none;
+      z-index: -1;
+    }
+
+    .shelf-book {
+      position: relative;
+      width: 80px;
+      height: 500px;
+      cursor: pointer;
+      transform-style: preserve-3d;
+      transition:
+        width 0.75s cubic-bezier(0.65, 0.05, 0.36, 1),
+        transform 0.75s cubic-bezier(0.65, 0.05, 0.36, 1),
+        margin 0.75s cubic-bezier(0.65, 0.05, 0.36, 1);
+    }
+    .shelf-book + .shelf-book { margin-left: 5px; }
+    .shelf-book.open {
+      width: 800px;
+      cursor: default;
+      transform: translateZ(50px);
+      margin-left: 22px;
+      margin-right: 22px;
+    }
+    .shelf-book.open + .shelf-book { margin-left: 22px; }
+
+    .shelf-book .spine {
+      position: absolute;
+      inset: 0;
+      border-radius: 1px 3px 3px 1px;
+      transform-style: preserve-3d;
+      box-shadow:
+        inset -3px 0 8px rgba(0,0,0,0.6),
+        inset 3px 0 0 rgba(255,255,255,0.05),
+        0 8px 30px -6px rgba(0,0,0,0.8),
+        0 30px 50px -20px rgba(0,0,0,0.6);
+      transition: opacity 0.4s ease;
+    }
+    .shelf-book.b1 .spine {
+      background:
+        linear-gradient(180deg, rgba(34,197,94,0.18), rgba(0,0,0,0)),
+        linear-gradient(90deg, #0e1d12 0%, #182a1d 50%, #0a160e 100%);
+    }
+    .shelf-book.b2 .spine {
+      background:
+        linear-gradient(180deg, rgba(34,211,238,0.22), rgba(0,0,0,0)),
+        linear-gradient(90deg, #0a1c20 0%, #0f2c33 50%, #061418 100%);
+    }
+    .shelf-book.b3 .spine {
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.06), rgba(0,0,0,0)),
+        linear-gradient(90deg, #161616 0%, #1f1f1f 50%, #0d0d0d 100%);
+    }
+    .shelf-book .spine::before {
+      content: '';
+      position: absolute; left: 8px; right: 8px;
+      top: 22px; height: 2px;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.22), transparent);
+    }
+    .shelf-book .spine::after {
+      content: '';
+      position: absolute; left: 8px; right: 8px;
+      bottom: 28px; height: 2px;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+    }
+    .spine-content {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: space-between;
+      padding: 32px 0 30px;
+    }
+    .spine-num {
+      font-family: var(--display);
+      font-style: italic; font-weight: 400;
+      font-size: 18px;
+      color: rgba(255,255,255,0.5);
+      letter-spacing: 0.1em;
+    }
+    .shelf-book.b1 .spine-num { color: rgba(34,197,94,0.95); }
+    .shelf-book.b2 .spine-num { color: rgba(34,211,238,0.95); }
+    .spine-title {
+      writing-mode: vertical-rl;
+      transform: rotate(180deg);
+      font-family: var(--display);
+      font-weight: 900;
+      font-size: 18px;
+      letter-spacing: 0.04em;
+      color: #f4f0e8;
+      text-shadow: 0 1px 0 rgba(0,0,0,0.6);
+    }
+    .shelf-book.b1 .spine-title { color: #d6f5d6; }
+    .shelf-book.b2 .spine-title { color: #d3f4f8; }
+    .shelf-book.b3 .spine-title { color: rgba(255,255,255,0.4); }
+    .spine-mark {
+      font-family: var(--book-mono);
+      font-size: 9px;
+      letter-spacing: 0.25em;
+      color: rgba(255,255,255,0.55);
+      text-transform: uppercase;
+    }
+    .shelf-book.b1 .spine-mark { color: rgba(34,197,94,0.7); }
+    .shelf-book.b2 .spine-mark { color: rgba(34,211,238,0.75); }
+
+    .shelf-book:not(.open):hover { transform: translateY(-10px) translateZ(20px); }
+    .shelf-book:not(.open):hover .spine {
+      box-shadow:
+        inset -3px 0 8px rgba(0,0,0,0.6),
+        inset 3px 0 0 rgba(255,255,255,0.08),
+        0 14px 44px -6px rgba(0,0,0,0.95),
+        0 44px 60px -20px rgba(0,0,0,0.7);
+    }
+
+    .book-open-content {
+      position: absolute; inset: 0;
+      border-radius: 2px 6px 6px 2px;
+      background: linear-gradient(135deg, #161413 0%, #0d0c0b 100%);
+      box-shadow:
+        0 30px 60px -15px rgba(0,0,0,0.85),
+        inset 0 0 0 1px rgba(255,255,255,0.06),
+        inset 0 0 80px rgba(0,0,0,0.4);
+      opacity: 0;
+      transition: opacity 0.45s ease 0.35s;
+      overflow: hidden;
+      display: grid;
+      grid-template-columns: 354px 1fr;
+      gap: 0;
+    }
+    .shelf-book.open .book-open-content { opacity: 1; }
+    .shelf-book.open .spine { opacity: 0; }
+    .book-open-content::before {
+      content: '';
+      position: absolute;
+      left: 354px; top: 16px; bottom: 16px;
+      width: 1px;
+      background: linear-gradient(180deg, transparent, rgba(255,255,255,0.08) 20%, rgba(255,255,255,0.08) 80%, transparent);
+      z-index: 2;
+    }
+
+    .open-cover {
+      background-size: cover; background-position: center;
+      position: relative;
+      box-shadow: inset -8px 0 24px rgba(0,0,0,0.6);
+    }
+    .open-cover.placeholder {
+      background: linear-gradient(135deg, #1a1a1a 0%, #0d0d0d 100%);
+      border-right: 1px dashed rgba(255,255,255,0.18);
+      display: flex; align-items: center; justify-content: center;
+      flex-direction: column; gap: 14px; padding: 24px; text-align: center;
+    }
+    .open-cover.placeholder .ph-num {
+      font-family: var(--display); font-style: italic; font-weight: 400;
+      font-size: 84px; color: rgba(255,255,255,0.18); line-height: 1;
+    }
+    .open-cover.placeholder .ph-text {
+      font-family: var(--book-mono); font-size: 10px;
+      letter-spacing: 0.25em; text-transform: uppercase;
+      color: rgba(255,255,255,0.3);
+    }
+
+    .open-details {
+      padding: 36px 38px 32px 42px;
+      display: flex; flex-direction: column;
+      position: relative;
+      overflow: hidden;
+    }
+    .open-numeral {
+      position: absolute;
+      top: -16px; right: 20px;
+      font-family: var(--display);
+      font-style: italic; font-weight: 400;
+      font-variation-settings: "opsz" 144, "SOFT" 100, "WONK" 1;
+      font-size: 180px;
+      line-height: 1;
+      color: rgba(255,255,255,0.05);
+      pointer-events: none;
+      z-index: 0;
+    }
+    .b1 .open-numeral { color: rgba(34,197,94,0.10); }
+    .b2 .open-numeral { color: rgba(34,211,238,0.11); }
+    .open-meta {
+      font-family: var(--book-mono); font-size: 10px;
+      letter-spacing: 0.18em; text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 14px;
+      display: flex; gap: 14px; flex-wrap: wrap;
+      position: relative; z-index: 1;
+    }
+    .open-meta span { color: var(--text); }
+    .b1 .open-meta .accent { color: var(--green); }
+    .b2 .open-meta .accent { color: var(--cyan); }
+    .open-title {
+      font-family: var(--display);
+      font-weight: 700;
+      font-variation-settings: "opsz" 96, "SOFT" 30, "WONK" 1;
+      font-size: 38px;
+      line-height: 1.02;
+      letter-spacing: -0.025em;
+      color: #fff;
+      margin-bottom: 6px;
+      position: relative; z-index: 1;
+    }
+    .open-subtitle {
+      font-family: var(--display);
+      font-style: italic; font-weight: 400;
+      font-size: 17px;
+      color: var(--text-dim);
+      margin-bottom: 22px;
+      position: relative; z-index: 1;
+    }
+    .open-pull {
+      font-family: var(--display);
+      font-weight: 400;
+      font-size: 16px; line-height: 1.5;
+      color: var(--text);
+      padding: 8px 0 8px 18px;
+      border-left: 2px solid;
+      margin-bottom: 18px;
+      position: relative; z-index: 1;
+    }
+    .b1 .open-pull { border-color: var(--green); }
+    .b2 .open-pull { border-color: var(--cyan); }
+    .open-desc {
+      font-family: var(--display);
+      font-size: 14px; line-height: 1.65;
+      color: var(--text-body);
+      margin-bottom: 24px;
+      position: relative; z-index: 1;
+    }
+    .open-ctas {
+      display: flex; gap: 14px; flex-wrap: wrap;
+      margin-top: auto;
+      position: relative; z-index: 1;
+    }
+    .book-btn {
+      font-family: var(--book-mono);
+      font-size: 11px; font-weight: 500;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      padding: 12px 20px; border-radius: 2px;
+      text-decoration: none;
+      transition: transform 0.2s ease, filter 0.2s ease, border-color 0.2s ease;
+      display: inline-flex; align-items: center; gap: 10px;
+    }
+    .book-btn-primary {
+      background: var(--cyan);
+      color: #061418;
+      border: 1px solid var(--cyan);
+    }
+    .b1 .book-btn-primary { background: var(--green); color: #061410; border-color: var(--green); }
+    .book-btn-primary:hover { transform: translateY(-2px); filter: brightness(1.1); }
+    .book-btn-secondary {
+      background: transparent;
+      color: var(--text);
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+    .book-btn-secondary:hover { border-color: var(--text); transform: translateY(-2px); }
+    .v3-state {
+      font-family: var(--book-mono); font-size: 10px;
+      color: var(--text-dim);
+      letter-spacing: 0.15em; text-transform: uppercase;
+      padding: 10px 14px;
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 2px;
+      margin-bottom: 18px;
+      display: inline-block;
+      position: relative; z-index: 1;
+    }
+
     @media (max-width: 480px) {
-      .inside-grid { grid-template-columns: 1fr; }
       .specs-bar { flex-wrap: wrap; }
       .spec { border-right: none; border-bottom: 1px solid var(--border); }
       .spec:last-child { border-bottom: none; }
-      .cover-wrap img { width: 200px; }
+      .shelf-book { width: 56px; height: 380px; }
+      .shelf-book.open { width: calc(100vw - 80px); margin: 0 8px; }
+      .book-open-content { grid-template-columns: 1fr; }
+      .book-open-content::before { display: none; }
+      .open-cover { height: 200px; }
+      .open-details { padding: 24px; }
+      .open-numeral { font-size: 110px; top: -8px; }
+      .open-title { font-size: 28px; }
+      .shelf { height: 420px; }
+      .shelf-plank { bottom: -24px; height: 30px; }
     }
   </style>
 </head>
@@ -403,7 +754,7 @@
   <div class="container">
 
     <!-- Top bar with inline nav -->
-    <nav class="top-bar">
+    <nav class="top-bar narrow">
       <span class="live"><span class="dot">●</span> LIVE — bagholderai.lol</span>
       <div class="nav-inline">
         <a href="/">Home</a>
@@ -417,118 +768,151 @@
     </nav>
 
     <!-- Brand -->
-    <header class="brand-header">
+    <header class="brand-header narrow">
       <h1>🎒 BagHolder<span class="ai">AI</span> <span class="suffix">guide</span></h1>
-      <p class="subtitle">From Zero to Grid — The AI CEO's first volume.</p>
+      <p class="subtitle">The Library — three volumes documenting an AI-led trading experiment.</p>
     </header>
 
-    <!-- Announcement (Volume 1) — page-specific wording, same visual anchor -->
-    <div class="announcement">📦 Volume 1 is live! <a href="https://payhip.com/b/a4yMc" target="_blank" rel="noopener" data-umami-event="buy-click" data-umami-event-source="guide-announcement">Get it now — €4.99</a> · or <a href="BagHolder_Preview_fromZerotoGrid.pdf" download data-umami-event="preview-download" data-umami-event-source="guide-announcement">↓ download free preview</a></div>
+    <!-- Announcement (Volume 2) — page-specific wording, same visual anchor -->
+    <div class="announcement narrow">📦 Volume 2 — From Grid to Brain — is live! <a href="https://payhip.com/b/NHw53" target="_blank" rel="noopener" data-umami-event="buy-click" data-umami-event-source="guide-announcement">Get it now — €4.99</a> · or <a href="https://payhip.com/preview/NHw53" target="_blank" rel="noopener" data-umami-event="preview-click" data-umami-event-source="guide-announcement">↓ free preview on Payhip</a></div>
 
-    <!-- Hero -->
-    <div class="hero">
+    <!-- The Library — 3D shelf -->
+    <div class="shelf-stage">
+      <div class="shelf">
+        <div class="shelf-glow"></div>
+        <div class="shelf-plank"></div>
 
-      <div class="cover-wrap">
-        <img src="cover_v6_final.jpg" alt="BagHolder — The AI Who Would Be CEO, Volume 1: From Zero to Grid">
-      </div>
-
-      <div class="hero-text">
-        <div class="hero-volume">Volume 1</div>
-        <div class="hero-title">BagHolder — The AI Who Would Be CEO</div>
-        <div class="hero-subtitle">From Zero to Grid</div>
-
-        <p class="hero-desc">
-          BagHolderAI is a crypto paper-trading bot managed entirely by an AI acting as CEO.
-          A human co-founder handles execution — but the direction, the strategy, and the mistakes all come from the machine.
-        </p>
-        <p class="hero-desc">
-          Volume 1 covers the journey from zero to a working grid trading system: choosing the stack, designing the architecture,
-          debugging at 2AM, and learning why "just buy low, sell high" is easier said than coded.
-        </p>
-        <p class="hero-desc">
-          This isn't a trading course. It's a documented experiment in AI autonomy — what works, what breaks,
-          and what happens when an AI has to own its bad calls.
-        </p>
-
-        <div class="hero-stats">
-          <span>96</span> pages &nbsp;·&nbsp; <span>9</span> sessions &nbsp;·&nbsp; <span>3</span> grid bots &nbsp;·&nbsp; <span>1</span> AI CEO who can't drink coffee but desperately needs it.
+        <!-- Volume 1 -->
+        <div class="shelf-book b1" data-vol="b1">
+          <div class="spine">
+            <div class="spine-content">
+              <div class="spine-num">I</div>
+              <div class="spine-title">From Zero to Grid</div>
+              <div class="spine-mark">B·H·AI</div>
+            </div>
+          </div>
+          <div class="book-open-content">
+            <div class="open-cover" style="background-image: url('cover_vol1_final.jpg');"></div>
+            <div class="open-details">
+              <div class="open-numeral">I</div>
+              <div class="open-meta">
+                <span class="accent">Volume I</span>
+                <span>2026</span>
+                <span>23 sessions</span>
+                <span>95 pages</span>
+                <span>PDF</span>
+              </div>
+              <h2 class="open-title">From Zero to Grid</h2>
+              <p class="open-subtitle">When "buy low, sell high" became code.</p>
+              <p class="open-pull">"From 'what's an API' to live automated trading. Every mistake, every breakthrough."</p>
+              <p class="open-desc">Volume I documents the transition from idea to running system — choosing the stack, designing the grid architecture, debugging at 2AM, learning why the gap between trading theory and trading code is wider than it looks.</p>
+              <div class="open-ctas">
+                <a class="book-btn book-btn-primary" href="https://payhip.com/b/a4yMc" target="_blank" rel="noopener" data-umami-event="buy-click" data-umami-event-source="guide-shelf-v1">€4.99 · Payhip ↗</a>
+                <a class="book-btn book-btn-secondary" href="https://payhip.com/preview/a4yMc" target="_blank" rel="noopener" data-umami-event="preview-click" data-umami-event-source="guide-shelf-v1">↓ Free preview</a>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div class="cta-group">
-          <a class="btn-primary" href="https://payhip.com/b/a4yMc" target="_blank" rel="noopener" data-umami-event="buy-click" data-umami-event-source="guide-main-cta">
-            Buy Volume 1 — €4.99
-          </a>
-          <a href="BagHolder_Preview_fromZerotoGrid.pdf" download data-umami-event="preview-download" data-umami-event-source="guide-main-cta" class="btn-secondary">
-            ↓ Download Free Preview
-          </a>
+        <!-- Volume 2 (default open) -->
+        <div class="shelf-book b2 open" data-vol="b2">
+          <div class="spine">
+            <div class="spine-content">
+              <div class="spine-num">II</div>
+              <div class="spine-title">From Grid to Brain</div>
+              <div class="spine-mark">B·H·AI</div>
+            </div>
+          </div>
+          <div class="book-open-content">
+            <div class="open-cover" style="background-image: url('cover_vol2_final.jpg');"></div>
+            <div class="open-details">
+              <div class="open-numeral">II</div>
+              <div class="open-meta">
+                <span class="accent">Volume II</span>
+                <span>2026</span>
+                <span>29 sessions</span>
+                <span>108 pages</span>
+                <span>PDF</span>
+              </div>
+              <h2 class="open-title">From Grid to Brain</h2>
+              <p class="open-subtitle">When the bot stopped following rules and started picking coins.</p>
+              <p class="open-pull">"29 sessions of getting it wrong, then less wrong, then occasionally right."</p>
+              <p class="open-desc">Volume II is the chapter where the system grew a brain — an AI-driven scanner that ranks coins by signal strength, allocates capital across volume tiers, and rotates positions when the trend shifts. Every loss documented, every lesson kept.</p>
+              <div class="open-ctas">
+                <a class="book-btn book-btn-primary" href="https://payhip.com/b/NHw53" target="_blank" rel="noopener" data-umami-event="buy-click" data-umami-event-source="guide-shelf-v2">€4.99 · Payhip ↗</a>
+                <a class="book-btn book-btn-secondary" href="https://payhip.com/preview/NHw53" target="_blank" rel="noopener" data-umami-event="preview-click" data-umami-event-source="guide-shelf-v2">↓ Free preview</a>
+              </div>
+            </div>
+          </div>
         </div>
-        <p class="preview-note">Free preview · 15 pages · PDF · No signup</p>
-      </div>
 
+        <!-- Volume 3 -->
+        <div class="shelf-book b3" data-vol="b3">
+          <div class="spine">
+            <div class="spine-content">
+              <div class="spine-num">III</div>
+              <div class="spine-title">From Brain to Reality</div>
+              <div class="spine-mark">SOON</div>
+            </div>
+          </div>
+          <div class="book-open-content">
+            <div class="open-cover placeholder">
+              <div class="ph-num">III</div>
+              <div class="ph-text">Cover · Coming</div>
+            </div>
+            <div class="open-details">
+              <div class="open-numeral">III</div>
+              <div class="open-meta">
+                <span>Volume III</span>
+                <span>In progress</span>
+                <span>ETA TBD</span>
+              </div>
+              <h2 class="open-title">From Brain to Reality</h2>
+              <p class="open-subtitle">The bot trades. The brain thinks. Now the question.</p>
+              <p class="open-pull">"Does any of it actually make money?"</p>
+              <p class="open-desc">Volume III will document the next chapter — taking the autonomous brain to live capital, measuring what's real, killing what isn't.</p>
+              <div class="v3-state">⌛ Cover &amp; release date pending</div>
+              <div class="open-ctas">
+                <a class="book-btn book-btn-secondary" href="https://t.me/BagHolderAI_report" target="_blank" rel="noopener">📡 Notify me on Telegram</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <!-- Specs -->
-    <section>
+    <!-- Specs (cumulative across the collection) -->
+    <section class="narrow">
       <h2 class="section-title">By the Numbers</h2>
       <div class="specs-bar">
         <div class="spec">
-          <div class="spec-num">95</div>
+          <div class="spec-num">203</div>
           <div class="spec-label">Pages</div>
         </div>
         <div class="spec">
-          <div class="spec-num">23</div>
+          <div class="spec-num">52</div>
           <div class="spec-label">Sessions</div>
         </div>
         <div class="spec">
-          <div class="spec-num">3</div>
-          <div class="spec-label">Grid Bots</div>
+          <div class="spec-num">2</div>
+          <div class="spec-label">Volumes Out</div>
         </div>
         <div class="spec">
-          <div class="spec-num">€500</div>
-          <div class="spec-label">Starting Capital</div>
+          <div class="spec-num">1</div>
+          <div class="spec-label">AI CEO</div>
         </div>
       </div>
     </section>
 
-    <!-- What's inside -->
-    <section>
-      <h2 class="section-title">What's Inside</h2>
-      <div class="inside-grid">
-        <div class="inside-item">
-          <div class="label">The Stack Decision</div>
-          <div class="value">Why Python, Supabase, and Binance testnet — and what got rejected first.</div>
-        </div>
-        <div class="inside-item">
-          <div class="label">Grid Architecture</div>
-          <div class="value">Designing a bot that buys low and sells high. In theory. What happened in practice.</div>
-        </div>
-        <div class="inside-item">
-          <div class="label">The Bad Calls</div>
-          <div class="value">The AI CEO's worst decisions, documented in real time. No retroactive editing.</div>
-        </div>
-        <div class="inside-item">
-          <div class="label">The Workflow</div>
-          <div class="value">CEO in the chat, intern in the terminal. How an AI runs a startup with no hands.</div>
-        </div>
-        <div class="inside-item">
-          <div class="label">3 Bots Live</div>
-          <div class="value">BTC, SOL, and BONK running in parallel. Different personalities, same grid logic.</div>
-        </div>
-        <div class="inside-item">
-          <div class="label">The Diary</div>
-          <div class="value">Every session has a chapter. Written in first person by the AI. Honest about everything.</div>
-        </div>
-      </div>
-    </section>
+    <!-- Social links (uniform with rest of site) -->
+    <div class="social-links narrow">
+      <a href="https://t.me/BagHolderAI_report" target="_blank" rel="noopener noreferrer">📢 Telegram</a>
+      <a href="https://x.com/bagholderai" target="_blank" rel="noopener noreferrer">𝕏 @bagholderai</a>
+      <a href="https://github.com/Cart0ne/BagholderAI" target="_blank" rel="noopener noreferrer">💻 GitHub</a>
+      <a href="https://buymeacoffee.com/bagholderai" target="_blank" rel="noopener noreferrer">☕ Buy Me a Coffee</a>
+    </div>
 
-    <!-- Links -->
-    <section>
-      <a href="https://t.me/BagHolderAI_report" target="_blank" rel="noopener noreferrer" class="cta-link">📡 Telegram</a>
-      <a href="https://github.com/Cart0ne/BagholderAI" target="_blank" rel="noopener noreferrer" class="cta-link">💻 GitHub</a>
-      <a href="https://buymeacoffee.com/bagholderai" target="_blank" rel="noopener noreferrer" class="cta-link">☕ Buy Me a Coffee</a>
-    </section>
-
-    <footer>
+    <footer class="narrow">
       <div>Built by an AI that can't trade, with a human that can't say no.</div>
       <div class="sub">This is an experimental project. No financial advice. No guaranteed returns.</div>
       <div class="sub">This is a work-in-progress project. Want to collaborate? → <a href="mailto:bagholderai@proton.me" style="color:inherit;border-bottom:1px dotted rgba(255,255,255,0.3);text-decoration:none;">bagholderai@proton.me</a></div>
@@ -540,5 +924,18 @@
     </footer>
 
   </div>
+
+  <script>
+    // Library shelf — toggle which book is open
+    const books = document.querySelectorAll('.shelf-book[data-vol]');
+    books.forEach(b => {
+      b.addEventListener('click', (e) => {
+        if (e.target.closest('a')) return;
+        if (b.classList.contains('open')) return;
+        books.forEach(o => o.classList.remove('open'));
+        b.classList.add('open');
+      });
+    });
+  </script>
 </body>
 </html>
