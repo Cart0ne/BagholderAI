@@ -704,7 +704,7 @@
       <div class="stats-strip">
         <div class="stat-box">
           <div class="stat-value" id="stat-trades">—</div>
-          <div class="stat-label">trades executed</div>
+          <div class="stat-label">orders executed</div>
         </div>
         <div class="stat-box">
           <div class="stat-value" id="stat-pnl">—</div>
@@ -715,7 +715,7 @@
           <div class="stat-label">days running</div>
         </div>
         <div class="stat-box">
-          <div class="stat-value live">LIVE</div>
+          <div class="stat-value live">PAPER</div>
           <div class="stat-label">trading now</div>
         </div>
       </div>
@@ -864,13 +864,48 @@
       .then(function(n) { document.getElementById('stat-trades').textContent = String(n); })
       .catch(function() { document.getElementById('stat-trades').textContent = '—'; });
 
-    // Realized P&L (sum of realized_pnl for config_version=v3)
-    sbq('trades', 'select=realized_pnl&config_version=eq.v3')
+    // Realized P&L — strict FIFO per symbol (matches /dashboard, /grid, /tf).
+    // The bot writes trades.realized_pnl using avg_buy_price as cost basis,
+    // which over-credits sells on volatile coins. Recompute here with a FIFO
+    // queue per symbol so the home page agrees with the rest of the site.
+    sbq('trades', 'select=symbol,side,amount,cost,created_at&config_version=eq.v3&order=created_at.asc')
       .then(function(rows) {
-        var sum = (rows || []).reduce(function(s, t) { return s + Number(t.realized_pnl || 0); }, 0);
+        var bySym = {};
+        (rows || []).forEach(function(t) {
+          if (!bySym[t.symbol]) bySym[t.symbol] = [];
+          bySym[t.symbol].push(t);
+        });
+        var total = 0;
+        Object.keys(bySym).forEach(function(sym) {
+          var queue = [];
+          bySym[sym].forEach(function(t) {
+            var amt = Number(t.amount);
+            if (t.side === 'buy') {
+              queue.push({ amount: amt, cost: Number(t.cost) });
+            } else {
+              var revenue = Number(t.cost || 0);
+              var basis = 0, rem = amt;
+              while (rem > 0.000001 && queue.length > 0) {
+                var lot = queue[0];
+                if (lot.amount <= rem + 0.000001) {
+                  basis += lot.cost;
+                  rem -= lot.amount;
+                  queue.shift();
+                } else {
+                  var portion = rem / lot.amount;
+                  basis += lot.cost * portion;
+                  lot.cost -= lot.cost * portion;
+                  lot.amount -= rem;
+                  rem = 0;
+                }
+              }
+              total += revenue - basis;
+            }
+          });
+        });
         var el = document.getElementById('stat-pnl');
-        el.textContent = sign(sum) + '$' + Math.abs(sum).toFixed(0);
-        el.classList.add(sum >= 0 ? 'positive' : 'negative');
+        el.textContent = sign(total) + '$' + Math.abs(total).toFixed(0);
+        el.classList.add(total >= 0 ? 'positive' : 'negative');
       })
       .catch(function() { document.getElementById('stat-pnl').textContent = '—'; });
 
