@@ -1743,13 +1743,40 @@ class GridBot:
         revenue = amount * price
         fee = revenue * self.FEE_RATE
         holdings_value_before = self.state.holdings * price
-        # Use the specific lot's buy price for cost basis — gives correct per-trade P&L
-        cost_basis = amount * lot_buy_price
+        # 53a: walk the FIFO queue and sum (lot.amount × lot.price) over the
+        # lots actually consumed by this sell. Last-lot logic can ask for an
+        # `amount` that crosses lot boundaries (holdings > first lot size with
+        # >=2 lots open); the previous code computed cost_basis only on the
+        # first lot and then `pop(0)`-ed exactly once, leaving the remainder
+        # of consumed lots as ghosts in the queue and biasing future cost
+        # bases upward. Walk + consume here keeps both the per-trade pnl and
+        # the queue state correct across any consume span.
+        cost_basis = 0.0
+        remaining = amount
+        consumed_idx = 0
+        while remaining > 1e-9 and consumed_idx < len(self._pct_open_positions):
+            lot = self._pct_open_positions[consumed_idx]
+            if lot["amount"] <= remaining + 1e-9:
+                cost_basis += lot["amount"] * lot["price"]
+                remaining -= lot["amount"]
+                consumed_idx += 1
+            else:
+                cost_basis += remaining * lot["price"]
+                remaining = 0
         buy_fee = cost_basis * self.FEE_RATE
         # 52a: paper-mode realized_pnl excludes fees (see _execute_sell comment).
         realized_pnl = revenue - cost_basis
 
-        self._pct_open_positions.pop(0)
+        # Now consume the queue to match what we just sold.
+        remaining = amount
+        while remaining > 1e-9 and self._pct_open_positions:
+            lot = self._pct_open_positions[0]
+            if lot["amount"] <= remaining + 1e-9:
+                remaining -= lot["amount"]
+                self._pct_open_positions.pop(0)
+            else:
+                lot["amount"] -= remaining
+                remaining = 0
         self.state.total_received += revenue
         self.state.total_fees += fee + buy_fee
         self.state.holdings -= amount
