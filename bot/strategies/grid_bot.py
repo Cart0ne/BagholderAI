@@ -766,7 +766,7 @@ class GridBot:
             # stop-loss, trailing-stop, take-profit, profit-lock,
             # gain-saturation, or bearish exit (mixed-lots liquidation).
             tf_override = (
-                self.managed_by == "trend_follower"
+                self.managed_by in ("trend_follower", "tf_grid")
                 and (self._stop_loss_triggered
                      or self._trailing_stop_triggered
                      or self._take_profit_triggered
@@ -1096,8 +1096,8 @@ class GridBot:
         # Phase 2 hook (~2 weeks after deploy): if/when 36f Trailing Stop
         # lands, it takes priority over Profit Lock. Add the armed-check
         # right here (e.g. `and not self._trailing_stop_armed`).
-        if (self.managed_by == "trend_follower"
-                and self.tf_profit_lock_enabled
+        if (self.managed_by in ("trend_follower", "tf_grid")
+                and (self.tf_profit_lock_enabled or self.managed_by == "tf_grid")
                 and self.tf_profit_lock_pct > 0
                 and self.state.holdings > 0
                 and self.capital > 0
@@ -1215,7 +1215,7 @@ class GridBot:
             # take-profit and profit-lock it includes lots that haven't
             # individually hit their sell_pct yet.
             force_liquidate = (
-                self.managed_by == "trend_follower"
+                self.managed_by in ("trend_follower", "tf_grid")
                 and (self._stop_loss_triggered
                      or self._trailing_stop_triggered
                      or self._take_profit_triggered
@@ -1422,7 +1422,7 @@ class GridBot:
         For anything else (manual bots, missing allocated_at, empty/bad
         tiers), returns (self.sell_pct, None, None) — the legacy behavior.
         """
-        if self.managed_by != "trend_follower":
+        if self.managed_by not in ("trend_follower", "tf_grid"):
             return (self.sell_pct, None, None)
         if self.allocated_at is None or not self.greed_decay_tiers:
             return (self.sell_pct, None, None)
@@ -1652,7 +1652,7 @@ class GridBot:
         # even when some are locally underwater).
         if self.strategy == "A" and price < lot_buy_price:
             tf_override = (
-                self.managed_by == "trend_follower"
+                self.managed_by in ("trend_follower", "tf_grid")
                 and (self._stop_loss_triggered
                      or self._trailing_stop_triggered
                      or self._take_profit_triggered
@@ -1851,12 +1851,17 @@ class GridBot:
                 f"BEARISH EXIT: TF rotation, sell at {fmt_price(price)} "
                 f"(lot buy {fmt_price(lot_buy_price)})"
             )
+        elif self.pending_liquidation and self.managed_by == "tf_grid":
+            reason = (
+                f"MANUAL EXIT (tf_grid): sell at {fmt_price(price)} "
+                f"(lot buy {fmt_price(lot_buy_price)})"
+            )
         else:
             # 42a: for TF bots, the sell threshold was the greed-decay TP;
             # include tier info in the reason so it shows up in logs and
             # Telegram. Manual bots keep the legacy sell_pct wording.
             tp_pct, age_min, tier = self.get_effective_tp()
-            if self.managed_by == "trend_follower" and age_min is not None:
+            if self.managed_by in ("trend_follower", "tf_grid") and age_min is not None:
                 reason = (
                     f"Greed decay sell: price {fmt_price(price)} >= lot buy "
                     f"{fmt_price(lot_buy_price)} * (1 + {tp_pct}%) "
@@ -1890,7 +1895,7 @@ class GridBot:
         # sell was forced (stop-loss / take-profit / profit-lock / gain-
         # saturation / bearish) — those have their own reason tags that
         # already dominate the message.
-        if (self.managed_by == "trend_follower"
+        if (self.managed_by in ("trend_follower", "tf_grid")
                 and not self._stop_loss_triggered
                 and not self._trailing_stop_triggered
                 and not self._take_profit_triggered

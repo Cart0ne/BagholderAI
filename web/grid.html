@@ -469,10 +469,11 @@
     }
 
     async function loadAll() {
-      // Admin shows only manually-managed bots. TF-managed bots live in /tf.html.
+      // Admin shows only manually-managed bots. TF-managed bots (trend_follower
+      // + tf_grid) live in /tf.html.
       var settled = await Promise.allSettled([
-        sbGet('bot_config', 'managed_by=neq.trend_follower&order=symbol'),
-        sbGet('trades', 'select=symbol,side,amount,price,cost,fee,realized_pnl,created_at&config_version=eq.v3&managed_by=neq.trend_follower&order=created_at.desc'),
+        sbGet('bot_config', 'managed_by=not.in.(trend_follower,tf_grid)&order=symbol'),
+        sbGet('trades', 'select=symbol,side,amount,price,cost,fee,realized_pnl,created_at&config_version=eq.v3&managed_by=not.in.(trend_follower,tf_grid)&order=created_at.desc'),
         sbGet('daily_pnl', 'order=date.desc&limit=10'),
         sbGet('reserve_ledger', 'select=symbol,amount&config_version=eq.v3'),
         fetchLivePrices()

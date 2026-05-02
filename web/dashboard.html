@@ -1699,8 +1699,8 @@
         // Home shows the public "$500 manual project" only. TF-managed coins
         // live on /tf with their own $100 budget — mixing them here broke the
         // $500 baseline math (unalloc went negative, portfolio value understated).
-        sbq('bot_config', 'select=symbol,capital_allocation&managed_by=neq.trend_follower&order=symbol'),
-        sbq('trades', 'select=symbol,side,amount,price,cost,fee,realized_pnl,created_at&config_version=eq.v3&managed_by=neq.trend_follower&order=created_at.desc'),
+        sbq('bot_config', 'select=symbol,capital_allocation&managed_by=not.in.(trend_follower,tf_grid)&order=symbol'),
+        sbq('trades', 'select=symbol,side,amount,price,cost,fee,realized_pnl,created_at&config_version=eq.v3&managed_by=not.in.(trend_follower,tf_grid)&order=created_at.desc'),
         sbq('reserve_ledger', 'select=symbol,amount&config_version=eq.v3'),
         fetchLivePrices()
       ]);
@@ -1745,9 +1745,9 @@
     async function fetchTFData() {
       var res = await Promise.all([
         // bot_config: full TF coin list with is_active + capital_allocation + capital_per_trade
-        sbq('bot_config', 'managed_by=eq.trend_follower&order=symbol'),
+        sbq('bot_config', 'managed_by=in.(trend_follower,tf_grid)&order=symbol'),
         // All TF trades (newest first), for cumulative + per-coin FIFO + today's split
-        sbq('trades', 'select=symbol,side,amount,price,cost,fee,realized_pnl,created_at&config_version=eq.v3&managed_by=eq.trend_follower&order=created_at.desc'),
+        sbq('trades', 'select=symbol,side,amount,price,cost,fee,realized_pnl,created_at,managed_by&config_version=eq.v3&managed_by=in.(trend_follower,tf_grid)&order=created_at.desc'),
         // Skim ledger: include managed_by so we can filter to TF rows reliably
         sbq('reserve_ledger', 'select=symbol,amount,managed_by&config_version=eq.v3'),
         // TF budget from trend_config (defaults to $100 if missing)

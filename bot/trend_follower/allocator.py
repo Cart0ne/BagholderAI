@@ -46,6 +46,15 @@ SWAP_STRENGTH_DELTA = 20.0   # points of signal_strength advantage required
 SWAP_COOLDOWN_HOURS = 8      # min hours a coin must be held before a swap
 SWAP_MIN_PROFIT_PCT = -1.0   # % of allocation — negative allows small loss
 
+# tf_grid (Tier 1-2 GRID-managed) uses stricter SWAP thresholds. GRID
+# positions build over time, so rotating them out is more expensive than
+# rotating a TF (Tier 3) position. We require a clearly stronger candidate
+# (+25 vs +20), a longer cooldown (48h vs 8h), and the position must be
+# at breakeven or better (0% vs −1% allowed for TF).
+SWAP_TF_GRID_STRENGTH_DELTA = 25.0
+SWAP_TF_GRID_COOLDOWN_HOURS = 48
+SWAP_TF_GRID_MIN_PROFIT_PCT = 0.0
+
 K_SELL = 1.2                 # ATR multiplier for sell_pct (hold longer)
 K_BUY = 0.8                  # ATR multiplier for buy_pct (buy aggressive on dips)
 # 36e integration (2026-04-17): clamps tightened to enforce CEO trading
@@ -350,6 +359,17 @@ def decide_allocations(
             continue
 
         if coin["signal"] == "BEARISH":
+            # tf_grid coins (Tier 1-2 GRID-managed) ignore signal flips —
+            # the GRID keeps buying dips and selling at greed-decay TPs.
+            # The only auto-exit is Profit Lock; manual liquidation still
+            # works via pending_liquidation flag on bot_config.
+            if alloc.get("managed_by") == "tf_grid":
+                logger.info(
+                    f"[ALLOCATOR] {sym} signal=BEARISH but managed_by=tf_grid "
+                    f"— ignoring, GRID manages independently"
+                )
+                surviving_active.append((alloc, coin))
+                continue
             decisions.append(_make_decision(
                 scan_ts, sym, coin, "DEALLOCATE",
                 f"Signal reversed to BEARISH (RSI={coin['rsi']:.1f}, EMA cross down)",
@@ -474,21 +494,35 @@ def decide_allocations(
                 )
                 continue
 
+            # tf_grid uses stricter SWAP thresholds (see constants above).
+            # GRID positions are expensive to rotate, so we require more
+            # signal strength advantage, a longer cooldown, and breakeven.
+            active_managed_by = alloc.get("managed_by", "trend_follower")
+            if active_managed_by == "tf_grid":
+                strength_delta_threshold = SWAP_TF_GRID_STRENGTH_DELTA
+                cooldown_threshold = SWAP_TF_GRID_COOLDOWN_HOURS
+                min_profit_pct_threshold = SWAP_TF_GRID_MIN_PROFIT_PCT
+            else:
+                strength_delta_threshold = SWAP_STRENGTH_DELTA
+                cooldown_threshold = SWAP_COOLDOWN_HOURS
+                min_profit_pct_threshold = SWAP_MIN_PROFIT_PCT
+
             delta = best_new["signal_strength"] - active_coin["signal_strength"]
-            if delta < SWAP_STRENGTH_DELTA:
+            if delta < strength_delta_threshold:
                 continue
 
             allocated_at = alloc.get("updated_at") or alloc.get("created_at")
             held_hours = _hours_since(allocated_at)
-            if held_hours < SWAP_COOLDOWN_HOURS:
+            if held_hours < cooldown_threshold:
                 logger.debug(
                     f"[ALLOCATOR] SWAP skip {sym}: held {held_hours:.1f}h < "
-                    f"{SWAP_COOLDOWN_HOURS}h cooldown (candidate {best_new['symbol']} +{delta:.1f})"
+                    f"{cooldown_threshold}h cooldown (candidate {best_new['symbol']} +{delta:.1f}, "
+                    f"managed_by={active_managed_by})"
                 )
                 continue
 
             capital_allocation = float(alloc.get("capital_allocation", 0) or 0)
-            min_profit_usd = capital_allocation * (SWAP_MIN_PROFIT_PCT / 100.0)
+            min_profit_usd = capital_allocation * (min_profit_pct_threshold / 100.0)
             unrealized = (
                 _fetch_unrealized_pnl(supabase, sym, active_coin.get("price", 0))
                 if supabase is not None else 0.0
@@ -496,8 +530,8 @@ def decide_allocations(
             if unrealized < min_profit_usd:
                 logger.debug(
                     f"[ALLOCATOR] SWAP skip {sym}: unrealized ${unrealized:.2f} < "
-                    f"threshold ${min_profit_usd:.2f} ({SWAP_MIN_PROFIT_PCT}% of "
-                    f"${capital_allocation:.2f})"
+                    f"threshold ${min_profit_usd:.2f} ({min_profit_pct_threshold}% of "
+                    f"${capital_allocation:.2f}, managed_by={active_managed_by})"
                 )
                 continue
 
@@ -1114,9 +1148,20 @@ def apply_allocations(
             )
             allocated_at_iso = datetime.now(timezone.utc).isoformat()
 
+            # tf_grid handoff: Tier 1 and Tier 2 (≥ $20M volume) coins are
+            # selected by TF but managed by GRID logic — no stop-loss, no
+            # BEARISH forced exit, profit lock as the only auto-exit. Tier 3
+            # (< $20M) keeps the legacy trend_follower management.
+            stored_volume_tier = snapshot.get("volume_tier")
+            try:
+                _vt_int = int(stored_volume_tier) if stored_volume_tier is not None else None
+            except (TypeError, ValueError):
+                _vt_int = None
+            mgmt_mode = "tf_grid" if _vt_int in (1, 2) else "trend_follower"
+
             row_fields = {
                 "is_active": True,
-                "managed_by": "trend_follower",
+                "managed_by": mgmt_mode,
                 "pending_liquidation": False,
                 "capital_allocation": capital,
                 "capital_per_trade": capital_per_trade,
@@ -1183,14 +1228,16 @@ def apply_allocations(
                     update_fields = {**row_fields, "updated_at": datetime.now(timezone.utc).isoformat()}
                     supabase.table("bot_config").update(update_fields).eq("symbol", symbol).execute()
                     logger.info(
-                        f"[ALLOCATOR] UPDATED {symbol} in bot_config "
+                        f"[ALLOCATOR] Tier {_vt_int} UPDATED {symbol} in bot_config "
+                        f"managed_by={mgmt_mode} "
                         f"(${capital:.0f}, per_trade=${capital_per_trade:.2f}, "
                         f"buy={buy_pct}%, sell={sell_pct}%)"
                     )
                 else:
                     supabase.table("bot_config").insert({"symbol": symbol, **row_fields}).execute()
                     logger.info(
-                        f"[ALLOCATOR] INSERTED {symbol} in bot_config "
+                        f"[ALLOCATOR] Tier {_vt_int} INSERTED {symbol} in bot_config "
+                        f"managed_by={mgmt_mode} "
                         f"(${capital:.0f}, per_trade=${capital_per_trade:.2f}, "
                         f"buy={buy_pct}%, sell={sell_pct}%)"
                     )
@@ -1199,7 +1246,7 @@ def apply_allocations(
                     category="tf",
                     event="tf_allocate",
                     symbol=symbol,
-                    message=f"TF ALLOCATE {symbol} ${capital:.0f} (signal={signal}, strength={coin.get('signal_strength', 0):.2f})",
+                    message=f"TF ALLOCATE {symbol} ${capital:.0f} managed_by={mgmt_mode} (signal={signal}, strength={coin.get('signal_strength', 0):.2f})",
                     details={
                         "capital": capital,
                         "capital_per_trade": capital_per_trade,
@@ -1208,6 +1255,8 @@ def apply_allocations(
                         "signal": signal,
                         "signal_strength": coin.get("signal_strength", 0),
                         "update": bool(existing.data),
+                        "managed_by": mgmt_mode,
+                        "volume_tier": _vt_int,
                     },
                 )
             except Exception as e:

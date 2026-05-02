@@ -352,6 +352,47 @@ def send_scan_report(notifier: SyncTelegramNotifier, coins: list[dict],
                 sym = c["symbol"].split("/")[0]
                 distance_block_lines.append(f"  • {sym}: RSI 1h = {c['rsi_1h']:.0f}")
 
+    # Active allocations with management mode tag (tf_grid → 🟢 GRID,
+    # trend_follower → 🔵 TF). Shows at-a-glance who's in TF, how it's
+    # being managed, age of position and capital deployed. The age is
+    # the human-readable signal for "stuck position" monitoring on
+    # tf_grid coins (Profit Lock is the only auto-exit, so the CEO sees
+    # at a glance how long a tf_grid coin has been waiting for the lock).
+    active_alloc_lines = []
+    now_utc = datetime.now(timezone.utc)
+    for a in current_allocs:
+        if not a.get("is_active"):
+            continue
+        managed = a.get("managed_by", "trend_follower")
+        if managed == "tf_grid":
+            tag = "🟢 GRID"
+        elif managed == "trend_follower":
+            tag = "🔵 TF"
+        else:
+            tag = "⚫"
+        sym = (a.get("symbol", "?") or "?").split("/")[0]
+        cap = float(a.get("capital_allocation", 0) or 0)
+        # Age from allocated_at (greed-decay anchor) or fallback to updated_at.
+        age_str = ""
+        ts_iso = a.get("allocated_at") or a.get("updated_at") or a.get("created_at")
+        if ts_iso:
+            try:
+                ts = datetime.fromisoformat(str(ts_iso).replace("Z", "+00:00"))
+                if ts.tzinfo is None:
+                    ts = ts.replace(tzinfo=timezone.utc)
+                age_h = (now_utc - ts).total_seconds() / 3600.0
+                if age_h < 24:
+                    age_str = f" · {age_h:.0f}h"
+                else:
+                    age_str = f" · {age_h / 24:.1f}d"
+            except (ValueError, TypeError):
+                pass
+        active_alloc_lines.append(f"  {tag} {sym} (${cap:.0f}{age_str})")
+    active_alloc_block = (
+        "<b>Active allocations:</b>\n" + "\n".join(active_alloc_lines) + "\n"
+        if active_alloc_lines else ""
+    )
+
     text = (
         f"{shadow_tag}📊 <b>TREND SCAN — {now}</b>\n"
         f"\n"
@@ -362,7 +403,8 @@ def send_scan_report(notifier: SyncTelegramNotifier, coins: list[dict],
         + "\n\n".join(tier_sections) + "\n"
         + "\n".join(distance_block_lines) + ("\n" if distance_block_lines else "")
         + f"\n"
-        f"Active grids: {active_count}/{max_grids}\n"
+        + active_alloc_block
+        + f"Active grids: {active_count}/{max_grids}\n"
         f"Capital deployed: ${deployed:.0f}\n"
         f"TF budget: ${tf_budget_nominal:.0f} base"
         + (f" + ${tf_floating:.2f} floating = ${tf_budget_nominal + tf_floating:.2f} effective"

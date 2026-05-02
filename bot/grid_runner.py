@@ -183,7 +183,7 @@ def _sync_config_to_bot(reader: "SupabaseConfigReader", bot: "GridBot", symbol: 
     # these thresholds (grid_bot gates the checks on managed_by); manual bots
     # keep their own stop_buy_drawdown_pct (39b). Log at INFO on change —
     # Telegram notification is owned by the TF scan loop (39g), not here.
-    if bot.managed_by == "trend_follower":
+    if bot.managed_by in ("trend_follower", "tf_grid"):
         tf_slp = reader.get_trend_config_value("tf_stop_loss_pct")
         if tf_slp is not None:
             new_slp = float(tf_slp)
@@ -323,7 +323,7 @@ def _consume_initial_lots(reader, bot, symbol: str, price: float, notifier) -> i
 
     Returns the number of logical lots bought (0 if not applicable).
     """
-    if bot.managed_by != "trend_follower":
+    if bot.managed_by not in ("trend_follower", "tf_grid"):
         return 0
     # In-memory latch: once we've handled the entry for this bot instance,
     # don't even look at the cached initial_lots again — the 300s reader
@@ -878,13 +878,20 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
                 # would attribute its trades to the wrong window. Mirrors
                 # what the allocator does for SWAP / BEARISH dealloc paths.
                 managed_by = getattr(bot, "managed_by", "manual")
-                if managed_by == "trend_follower" and trade_logger is not None:
+                if managed_by in ("trend_follower", "tf_grid") and trade_logger is not None:
                     forced_sells = [t for t in (trades or []) if t.get("side") == "sell"]
                     total_pnl = sum(float(t.get("realized_pnl", 0)) for t in forced_sells)
-                    dealloc_reason = (
-                        f"{event_label} exhausted (cycle closed after "
-                        f"{len(forced_sells)} sells, realized ${total_pnl:+.2f})"
-                    )
+                    if managed_by == "tf_grid":
+                        dealloc_reason = (
+                            f"PROFIT-LOCK EXIT (tf_grid): {event_label} "
+                            f"(cycle closed after {len(forced_sells)} sells, "
+                            f"realized ${total_pnl:+.2f})"
+                        )
+                    else:
+                        dealloc_reason = (
+                            f"{event_label} exhausted (cycle closed after "
+                            f"{len(forced_sells)} sells, realized ${total_pnl:+.2f})"
+                        )
                     try:
                         trade_logger.client.table("trend_decisions_log").insert({
                             "scan_timestamp": datetime.now(timezone.utc).isoformat(),
@@ -1383,7 +1390,7 @@ def _force_liquidate(bot, exchange, trade_logger, notifier, symbol: str,
         # shutdown) keep the silent return — there's no TF cycle to
         # summarize.
         logger.info(f"[{symbol}] No holdings to liquidate (reason: {reason})")
-        if managed_by == "trend_follower" and trade_logger is not None:
+        if managed_by in ("trend_follower", "tf_grid") and trade_logger is not None:
             try:
                 summary = _build_cycle_summary(trade_logger.client, symbol, None)
                 if summary:
@@ -1508,7 +1515,7 @@ def _force_liquidate(bot, exchange, trade_logger, notifier, symbol: str,
         # have a TF "cycle" concept, so skip for them. The summary queries
         # trend_decisions_log for the last ALLOCATE and aggregates all
         # trades since then — including the liquidation sell we just wrote.
-        if managed_by == "trend_follower" and trade_logger is not None:
+        if managed_by in ("trend_follower", "tf_grid") and trade_logger is not None:
             try:
                 liquidation_id = trade_db_row.get("id") if isinstance(trade_db_row, dict) else None
                 summary = _build_cycle_summary(trade_logger.client, symbol, liquidation_id)

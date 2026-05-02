@@ -619,8 +619,8 @@
 
       // 2. Load the TF-only slice of state
       var settled = await Promise.allSettled([
-        sbGet('bot_config', 'managed_by=eq.trend_follower&order=symbol'),
-        sbGet('trades', 'select=symbol,side,amount,price,cost,fee,realized_pnl,created_at&config_version=eq.v3&managed_by=eq.trend_follower&order=created_at.desc'),
+        sbGet('bot_config', 'managed_by=in.(trend_follower,tf_grid)&order=symbol'),
+        sbGet('trades', 'select=symbol,side,amount,price,cost,fee,realized_pnl,created_at,managed_by&config_version=eq.v3&managed_by=in.(trend_follower,tf_grid)&order=created_at.desc'),
         sbGet('daily_pnl', 'order=date.desc&limit=10'),
         sbGet('reserve_ledger', 'select=symbol,amount&config_version=eq.v3')
       ]);
@@ -1398,9 +1398,13 @@
           '</div>'
         );
 
+        var modeBadge = (cfg.managed_by === 'tf_grid')
+          ? '<span style="background:#2ecc71;color:#fff;padding:2px 6px;border-radius:4px;font-size:10px;font-family:var(--mono);margin-left:8px;vertical-align:middle;" title="Tier 1-2 GRID-managed: no stop-loss, no BEARISH exit, profit lock only">GRID</span>'
+          : '';
+
         return '<div class="coin-card" id="card-' + short + '">' +
           '<div class="coin-header">' +
-            '<span class="coin-name" style="color:' + color + ';">' + short + '</span>' +
+            '<span class="coin-name" style="color:' + color + ';">' + short + modeBadge + '</span>' +
             '<span class="coin-status ' + statusClass + '">' + statusText + '</span>' +
           '</div>' +
           '<div class="coin-grid">' +
