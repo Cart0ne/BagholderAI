@@ -1,17 +1,17 @@
 # Web Astro — Cronistoria della creazione del nuovo sito
 
-**Data sessioni:** 2026-05-01 (sessione 1) + 2026-05-02 (sessione 2)
+**Data sessioni:** 2026-05-01 (sess. 1) + 2026-05-02 mattina (sess. 2) + 2026-05-02 sera (sess. 3)
 **From:** CC (Claude Code, Intern)
 **To:** CEO (Claude, Projects) + Max (Board)
 **Brief origine:** `web_astro/BRIEF.md`
-**Branch:** `main` (lavoro in `web_astro/`, sito vecchio in `web/` intoccato)
-**Status:** embrione approvato, home page completa con dati live, prossime pagine in roadmap
+**Branch:** `main` (commit `89c6119`, lavoro in `web_astro/`, sito vecchio in `web/` intoccato)
+**Status:** embrione approvato + 2 pagine complete (home + diary) con dati live + animazioni scroll, prossime pagine in roadmap
 
 ---
 
 ## In una riga
 
-In 2 sessioni abbiamo costruito da zero un nuovo sito BagHolderAI in **Astro** parallelo al vecchio (`web/`), con design system rifatto, nuova identità visiva (blu profondo + sky), home page interamente funzionante con dati live da Supabase, e l'infrastruttura componenti per scalare alle altre 11 pagine.
+In 3 sessioni abbiamo costruito da zero un nuovo sito BagHolderAI in **Astro** parallelo al vecchio (`web/`), con design system rifatto, nuova identità visiva (blu profondo + sky), **home page** e **pagina /diary** funzionanti con dati live da Supabase + animazioni scroll cross-browser, e l'infrastruttura componenti per scalare alle altre 9 pagine.
 
 ---
 
@@ -58,9 +58,25 @@ In 2 sessioni abbiamo costruito da zero un nuovo sito BagHolderAI in **Astro** p
 
 ### Pagina home (`web_astro/src/pages/index.astro`)
 - Hero compatto a 2 colonne (copy + live snapshot panel) → 1 colonna su mobile
-- Sezione "AI Bots · at work" subito dopo (Grid + TF live + Sentinel/Sherpa dim)
-- Team (3 emoji card con Claude/Max/CC)
-- Story (3 volumi: Vol 1 e 2 con cover reali e link Payhip, Vol 3 placeholder)
+- Live snapshot: 4 stat con counter animati 0 → valore Supabase (`orders`, `realized P&L`, `days running`, `BUDGET €600 PAPER`)
+- Sezione "AI Bots · at work" con stagger animation (le 4 card entrano in sequenza)
+- Team (3 emoji card con Claude/Max/CC) con stagger
+- Story (3 volumi: Vol 1 e 2 con cover reali e link Payhip, Vol 3 placeholder) con stagger
+
+### Pagina diary (`web_astro/src/pages/diary.astro`)
+- Hero "Construction log." con counter live "55 sessions" da Supabase
+- Lista delle 55 sessioni (`session #`, titolo, badge `complete`/`● building`)
+- Click su una entry espande summary + tag (accordion show/hide nativo, una aperta alla volta)
+- Stagger animation sulle prime 11 entries (oltre, tutte insieme con delay max)
+- Fallback statico con le 2 entries più recenti se Supabase è down
+
+### Animazioni scroll (`web_astro/src/layouts/Layout.astro` + `global.css`)
+- IntersectionObserver per `.reveal` e `.reveal-stagger`
+- IntersectionObserver per `[data-count]` (counter 0 → vero)
+- API globale `window.__updateLiveStat(id, value)` per animare aggiornamenti live
+- WeakMap per cancellare animazioni precedenti sullo stesso elemento
+- Listener `pageshow` per re-attivare animazioni dopo bfcache restore
+- Tutto rispetta `prefers-reduced-motion: reduce`
 
 ---
 
@@ -77,7 +93,7 @@ In 2 sessioni abbiamo costruito da zero un nuovo sito BagHolderAI in **Astro** p
 7. **Home v1 + v2**: feedback Max ("aerioso, logo piccolo, titolo grande, bot devono essere subito visibili"). Aggiunto header sticky + fade-in
 8. **Sessione sospesa**: Max valuta a freddo la direzione
 
-### Sessione 2 (2026-05-02) — Logo, bot card, dati live
+### Sessione 2 (2026-05-02 mattina) — Logo, bot card, dati live
 
 1. **Conferma direzione**: Max dice "ci stiamo arrivando", continua
 2. **Iterazione logo**: 4 tentativi falliti su un'inclinazione dello zaino (rotazione vs skew, pivot bottom-right, "vola via" perché transform CSS lavora su coordinate diverse dalla viewBox SVG). Decisione board: si tiene zaino dritto come placeholder, logo definitivo a designer esterno
@@ -87,6 +103,28 @@ In 2 sessioni abbiamo costruito da zero un nuovo sito BagHolderAI in **Astro** p
 6. **Riduzione spacing**: dimezzato gap CTA→bot section
 7. **Dati live Supabase**: collegati 4 stat hero + wins/losses Grid e TF. **In produzione adesso si vedono 959 trades, +$42.59 P&L FIFO, 34 days running**
 8. **Approvazione finale**: Max conferma "ok, funziona"
+
+### Sessione 3 (2026-05-02 sera) — Diary, animazioni scroll, polish home
+
+1. **Pagina /diary** completa: porting dei contenuti dal vecchio sito, lista delle 55 sessioni da Supabase con accordion show/hide. Lezione applicata da sessione 2: pattern legacy 1:1 (`display: none/block` puro come nel vecchio), niente animazioni CSS sofisticate che si rompono cross-browser
+2. **Sistema animazioni scroll** completo:
+   - Classe `.reveal` per sezioni singole che entrano in fade+slide
+   - Classe `.reveal-stagger` per griglie/liste con figli che animano in sequenza (es. 4 bot card, 3 team card, 55 entries diary)
+   - Attributo `[data-count]` per counter animati 0 → valore reale Supabase (orders, P&L, days)
+   - Footer con `class="reveal"` → invisibile finché non scrolli in fondo
+3. **10 bug fix cross-browser** registrati in memoria (vedi `project_web_astro_scroll_animations.md`):
+   - Chrome ignora animazioni su elementi già nel viewport (fix: doppio `requestAnimationFrame`)
+   - bfcache di Chrome rompe le animazioni al refresh successivo (fix: listener `pageshow`)
+   - "Scatto" all'inizio (fix: rimozione condizionale di `is-visible`)
+   - Footer "saltava" su pagine lunghe (fix: `class="reveal"` sul footer)
+   - Bot card tilt sovrascritto da translateY animation (fix: 2 CSS custom properties indipendenti)
+   - MutationObserver in loop infinito → nav freeze (fix: flag `isAnimating`)
+   - Counter sovrapposti scrivevano numeri a caso (fix: `WeakMap<el, frameId>` con cancel)
+   - Counter da fallback al valore live mostrava "discesa" (fix: parte sempre da 0, niente fallback ingannevoli)
+   - Diary list non animava dopo replace innerHTML (fix: ri-osservare il container)
+   - Freccia "▸" della bot card andava a capo (fix: flex con `align-items: baseline`)
+4. **Polish copy live snapshot**: cambio `MODE / PAPER` → `BUDGET / €600 PAPER` (Max ha proposto la formulazione, comunica scala del capitale + modo operativo in una cella sola)
+5. **Approvazione finale**: Max conferma "ci siamo!" → commit `89c6119` su `main`
 
 ---
 
@@ -101,6 +139,8 @@ In 2 sessioni abbiamo costruito da zero un nuovo sito BagHolderAI in **Astro** p
 ### Cosa NON ha funzionato
 - **Chiedere all'agente di "interpretare" il design**: 30 minuti persi sull'inclinazione del logo perché ho provato a "creare" invece di "copiare". Lezione: per asset visivi complessi serve un designer umano (o Claude design come strumento), non lo posso inventare in chat
 - **Riprogettare componenti già esistenti**: avevo riscritto le bot card "in stile nuovo design system" → 1 ora persa. Avrei dovuto fare port 1:1 dall'inizio. **Regola registrata in memoria**: per port di componenti complessi dal vecchio sito, copiare HTML+CSS verbatim e adattare solo il contesto esterno (Layout, palette di base)
+- **Fixare in parallelo bug multipli prima di avere la lista completa**: in sessione 3, quando Max ha detto "tantissimi problemi sulla home", ho iniziato a fixare il primo che mi è venuto in mente invece di chiedere la lista completa. Risultato: ho perso 30 minuti su un bug (counter loop) e poi ho scoperto che la sua diagnosi sbloccava anche altri 2 bug "fantasma" che si sarebbero risolti da soli. **Regola registrata**: chiedere SEMPRE la lista completa dei bug prima di toccare codice
+- **Fallback hardcoded sui counter live**: avevo messo numeri inventati come `data-count="147"` per i counter, pensando che servissero da "valore di partenza visibile". Quando arrivava il vero da Supabase (es. 970), il counter animava da 147 → 970 (sale). Per `days running`, però, il fallback era 182 e il vero era 34 → counter scendeva visibilmente, sembrava un bug. **Regola registrata**: per dati live, una sola sorgente di verità — o hai il vero (animi), o non hai niente (mostri "N.A."). Mai stati intermedi inventati
 
 ---
 
@@ -116,8 +156,10 @@ In 2 sessioni abbiamo costruito da zero un nuovo sito BagHolderAI in **Astro** p
 | **Identità visiva** | Nero `#0a0a0a` + verde brand | Blu `#0f1626` + sky brand |
 | **Logo** | Emoji 🎒 + scritta (cambia faccia per OS) | Wordmark + zaino SVG vettoriale |
 | **Header sticky** | No | Sì |
-| **Fade-in scroll** | No | Sì (IntersectionObserver, rispetta `prefers-reduced-motion`) |
-| **Dati live** | Sì (stessa Supabase anon key) | Sì (stesso schema, codice TypeScript pulito) |
+| **Fade-in scroll** | No (solo entrance animation iniziale) | Sì (IntersectionObserver con `.reveal` e `.reveal-stagger`, rispetta `prefers-reduced-motion`) |
+| **Counter animati** | No | Sì (counter da 0 → vero quando arriva Supabase) |
+| **Dati live** | Sì (stessa Supabase anon key) | Sì (stesso schema, codice TypeScript pulito + API `__updateLiveStat` per animazioni smooth) |
+| **Diary** | Lista plain con click/expand | Lista con stagger + accordion + counter "55 sessions" + design coerente |
 
 **Nota importante**: il sito vecchio resta online su `bagholderai.lol`, il nuovo gira solo in locale (`http://localhost:4321/`). Nessuna sostituzione fatta. La decisione di switch domain è rinviata a quando avremo migrato anche le altre pagine e validato il preview deploy.
 
@@ -126,19 +168,24 @@ In 2 sessioni abbiamo costruito da zero un nuovo sito BagHolderAI in **Astro** p
 ## Stato del codice e prossimi passi
 
 ### Stato attuale
-- **Working tree**: tutto in `web_astro/`, non ancora committato
-- **Memoria salvata**: 3 file in `~/.claude/projects/.../memory/` (`project_web_astro_design.md`, `project_web_astro_office_vision.md`, `project_web_astro_session2_state.md`)
-- **Screenshot di confronto**: `/Users/max/Desktop/BagHolderAI/dev-screenshots/web_astro-home-*.png` (6 versioni dall'embrione alla v6 finale)
+- **Working tree**: pulito, tutto in `web_astro/` committato (commit `89c6119` su `main` — 28 file, 7770 righe)
+- **Memoria salvata**: 6 file in `~/.claude/projects/.../memory/`:
+  - `project_web_astro_design.md` — palette + tipografia + decisioni visive
+  - `project_web_astro_office_vision.md` — visione "ufficio coi bot" per sessioni future
+  - `project_web_astro_session1_state.md` — checkpoint sessione 1
+  - `project_web_astro_session2_state.md` — checkpoint sessione 2
+  - `project_web_astro_session3_state.md` — checkpoint sessione 3 (questo)
+  - `project_web_astro_scroll_animations.md` — pattern + 10 bug fix cross-browser
+- **Screenshot di confronto**: `/Users/max/Desktop/BagHolderAI/dev-screenshots/web_astro-*.png`
 
-### Prossime sessioni
-1. **`/dashboard`** — primo 404 più cliccato dall'header, alta frizione utente
-2. **`/diary`** — secondo link dalla CTA "Read the diary"
-3. **`/guide`** — la libreria, già linkata 2 volte (banner Volume 2 + footer)
-4. **Pagine legali** (`/terms`, `/privacy`, `/refund`) — porting rapido
-5. **Pagine bot specifiche** (`/grid`, `/tf`, `/blueprint`, `/howwework`, `/roadmap`) — porting con riuso componenti
-6. **Logo definitivo** quando arriverà da designer esterno
-7. **Deploy preview Vercel** (`preview-bagholderai.vercel.app`) per validare in produzione senza toccare il dominio attuale
-8. **Visione "ufficio coi bot"** — sostituire le card statiche con scena animata coi 4 bot al lavoro (sessione di lavoro dedicata)
+### Prossime sessioni (in priorità)
+1. **`/dashboard`** — primo 404 più cliccato dall'header, alta frizione utente. La più data-heavy (P&L curve, bar chart trades giornalieri, CEO log Haiku, activity feed)
+2. **`/guide`** — la libreria libri, già linkata 2 volte (banner Volume 2 + footer card). Decisione design da prendere: mantenere lo scaffale 3D del vecchio sito o ripensarlo nel nuovo design system?
+3. **Pagine legali** (`/terms`, `/privacy`, `/refund`) — porting rapido (~20 min totali)
+4. **Pagine bot specifiche** (`/grid`, `/tf`, `/blueprint`, `/howwework`, `/roadmap`) — porting con riuso componenti
+5. **Logo definitivo** quando arriverà da designer esterno
+6. **Deploy preview Vercel** (`preview-bagholderai.vercel.app`) per validare in produzione senza toccare il dominio attuale
+7. **Visione "ufficio coi bot"** — sostituire le card statiche con scena animata coi 4 bot al lavoro (sessione di lavoro dedicata)
 
 ### Vincoli tecnici da ricordare
 - npm cache rotta: serve sempre `npm_config_cache=/tmp/npmcache-astro` davanti ai comandi npm
@@ -155,11 +202,14 @@ In 2 sessioni abbiamo costruito da zero un nuovo sito BagHolderAI in **Astro** p
 
 ---
 
-**Tempo speso (stima):** sessione 1 ~3h + sessione 2 ~4h = ~7h totali per arrivare a embrione approvato con dati live.
+**Tempo speso (stima):** sessione 1 ~3h + sessione 2 ~4h + sessione 3 ~4h = **~11h totali** per arrivare a 2 pagine complete (home + diary) con dati live, animazioni scroll, e infrastruttura componenti riusabili.
 
-**Capitale a rischio:** zero (nessun deploy, nessun impatto sul sito attuale).
+**Capitale a rischio:** zero (nessun deploy, nessun impatto sul sito attuale che continua a girare su `bagholderai.lol`).
 
 **Output verificabili:**
-- `http://localhost:4321/` (avviare il dev server)
-- `web_astro/` directory completa nel repo
-- Screenshot in `dev-screenshots/web_astro-home-v6-live-data.png`
+- `http://localhost:4321/` e `http://localhost:4321/diary` (avviare il dev server con `cd web_astro && npm_config_cache=/tmp/npmcache-astro npm run dev`)
+- `web_astro/` directory completa committata in `main` (commit `89c6119`)
+- Screenshot in `dev-screenshots/web_astro-*.png` (versioning v1→v6 della home + diary)
+- Documentazione tecnica completa in `~/.claude/.../memory/project_web_astro_*.md` (6 file)
+
+**Velocità di scaling per le altre 9 pagine:** ora che l'infrastruttura c'è (Layout, design system, componenti, animazioni, pattern porting 1:1), ogni pagina nuova dovrebbe richiedere 30-90 minuti invece delle 2-4 ore della prima. La curva di apprendimento è dietro, da qui in avanti è "applicare lo stesso schema".
