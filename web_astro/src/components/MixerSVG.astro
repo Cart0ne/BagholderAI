@@ -1,0 +1,68 @@
+---
+/* Grid Bot mixer — 3 BTC/ETH/SOL channels with animated B/S faders.
+   1:1 port from web/index.html mixerSVG(). */
+
+interface Props { color: string; }
+const { color } = Astro.props;
+
+const coins = [
+  { n: "BTC", cx: 35  },
+  { n: "ETH", cx: 100 },
+  { n: "SOL", cx: 165 },
+];
+
+/* Single fader generator — mirrors original. */
+const fader = (x: number, kind: "buy" | "sell", c: string, label: string, delay: number) => {
+  const top = 14, height = 30, trackTop = top + 4, trackHeight = height - 8;
+  const midY = trackTop + trackHeight * 0.5;
+  let ticks = "";
+  [0, 0.25, 0.5, 0.75, 1].forEach(p => {
+    ticks +=
+      `<line x1="${x - 3}" x2="${x + 3}" ` +
+      `y1="${trackTop + p * trackHeight}" y2="${trackTop + p * trackHeight}" ` +
+      `stroke="rgba(255,255,255,0.15)" stroke-width="0.4"/>`;
+  });
+  const handleColor = kind === "buy" ? c : "#ef4444";
+  return `
+    <g>
+      <rect x="${x - 1}" y="${trackTop}" width="2" height="${trackHeight}"
+            fill="rgba(255,255,255,0.12)" rx="1"/>
+      ${ticks}
+      <g class="mixer-fader-${kind}" style="animation-delay:${delay}s;">
+        <rect x="${x - 4}" y="${midY - 3}" width="8" height="6" rx="1"
+              fill="${handleColor}" stroke="#0a0e17" stroke-width="0.5"/>
+        <line x1="${x - 3}" x2="${x + 3}" y1="${midY}" y2="${midY}"
+              stroke="#0a0e17" stroke-width="0.5"/>
+      </g>
+      <text x="${x}" y="${top + height + 6}" text-anchor="middle"
+            fill="${handleColor}" font-size="3.2"
+            font-family="ui-monospace, monospace" font-weight="700">${label}</text>
+    </g>
+  `;
+};
+
+let inner = `<rect x="4" y="2" width="192" height="48" rx="2"
+                   fill="#0d1420" stroke="rgba(255,255,255,0.08)" stroke-width="0.5"/>`;
+
+coins.forEach((c, i) => {
+  inner +=
+    `<g>
+       <rect x="${c.cx - 14}" y="5" width="28" height="6" rx="1" fill="#1a2030"/>
+       <text x="${c.cx}" y="9.5" text-anchor="middle" fill="${color}"
+             font-size="4" font-family="ui-monospace, monospace"
+             font-weight="700" letter-spacing="0.5">${c.n}</text>
+       <circle cx="${c.cx + 11}" cy="8" r="0.8" fill="${color}">
+         <animate attributeName="opacity" values="0.3;1;0.3"
+                  dur="${1.5 + 0.5 * i}s" repeatCount="indefinite"/>
+       </circle>
+     </g>`;
+});
+
+coins.forEach((c, i) => {
+  inner += fader(c.cx - 7, "buy",  color, "B", i * 0.6);
+  inner += fader(c.cx + 7, "sell", color, "S", i * 0.6 + 0.3);
+});
+---
+
+<svg viewBox="0 0 200 56" preserveAspectRatio="xMidYMid meet"
+     class="bot-mixer" set:html={inner}/>

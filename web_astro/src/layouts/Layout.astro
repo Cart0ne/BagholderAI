@@ -1,0 +1,187 @@
+---
+import "../styles/global.css";
+import SiteHeader from "../components/SiteHeader.astro";
+import SiteFooter from "../components/SiteFooter.astro";
+
+interface Props {
+  title?: string;
+  description?: string;
+  current?: string;
+}
+
+const {
+  title       = "BagHolderAI — An AI is CEO of a crypto trading startup",
+  description = "An AI runs a real crypto trading startup. Paper-traded with live Binance data. Daily diary, public dashboard, every mistake documented.",
+  current     = "",
+} = Astro.props;
+
+const canonical = new URL(Astro.url.pathname, "https://bagholderai.lol").toString();
+---
+
+<!doctype html>
+<html lang="en" class="bg-bg">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="generator" content={Astro.generator} />
+    <link rel="canonical" href={canonical} />
+
+    {/* favicon — keep 🎒 emoji for tab continuity with old site */}
+    <link rel="icon"
+          href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎒</text></svg>" />
+
+    <title>{title}</title>
+    <meta name="description" content={description} />
+
+    {/* social cards — reuse old site's OG image until we have a new one */}
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="BagHolderAI" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@BagHolderAI" />
+
+    {/* fonts — Inter + JetBrains Mono — preconnect for performance */}
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" />
+  </head>
+
+  <body class="font-sans antialiased">
+    <SiteHeader current={current} />
+    <main>
+      <slot />
+    </main>
+    <SiteFooter />
+
+    <script>
+      /* Reveal — fade + slide-up on viewport enter. Single .reveal or
+         .reveal-stagger (children animate sequentially via CSS delay).
+
+         Wrapped in a function so we can re-run it on pageshow when the
+         browser restores from bfcache (Chrome back/forward cache). Without
+         this, a refresh on a scrolled page replays "already visible"
+         elements with no animation. */
+      function setupReveal(isRestore) {
+        const revealEls = document.querySelectorAll(".reveal, .reveal-stagger");
+        if (!revealEls.length) return;
+        /* On bfcache restore, elements already have .is-visible. We must
+           remove it so the IntersectionObserver can re-add it and the
+           CSS transition fires again. On first load this is a no-op. */
+        if (isRestore) {
+          revealEls.forEach(function (el) { el.classList.remove("is-visible"); });
+        }
+        const io = new IntersectionObserver(function (entries) {
+          entries.forEach(function (e) {
+            if (e.isIntersecting) {
+              /* Double rAF: forces Chrome to paint the initial opacity:0
+                 state before applying the class. Without this, elements
+                 already in-viewport at page load skip the transition
+                 entirely on Chrome (Safari is more forgiving). */
+              const target = e.target;
+              requestAnimationFrame(function () {
+                requestAnimationFrame(function () {
+                  target.classList.add("is-visible");
+                });
+              });
+              io.unobserve(target);
+            }
+          });
+        }, { rootMargin: "0px 0px -8% 0px", threshold: 0.08 });
+        revealEls.forEach(function (el) { io.observe(el); });
+      }
+
+      setupReveal(false);
+      window.addEventListener("pageshow", function (e) {
+        if (e.persisted) setupReveal(true);
+      });
+
+      /* Counter animation — elements with [data-count] tween from 0 to
+         the data-count target value when they enter the viewport. */
+      const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+      function parseNumeric(raw) {
+        const m = String(raw).match(/^(\D*)(-?\d+(?:\.\d+)?)(\D*)$/);
+        if (!m) return null;
+        const value = parseFloat(m[2]);
+        const decimals = (m[2].split(".")[1] || "").length;
+        return { prefix: m[1], value: value, suffix: m[3], decimals: decimals };
+      }
+
+      /* Cancel any running animation on the same element before starting
+         a new one. Without this, two animations write textContent in
+         alternating frames → user sees garbled numbers. */
+      const animFrames = new WeakMap();
+
+      function animateNumber(el, from, to, suffix, prefix, decimals, duration) {
+        duration = duration || 1100;
+        /* Cancel previous animation on this element (if any). */
+        const prevFrame = animFrames.get(el);
+        if (prevFrame) cancelAnimationFrame(prevFrame);
+
+        if (reduceMotion) {
+          el.textContent = prefix + to.toFixed(decimals) + suffix;
+          animFrames.delete(el);
+          return;
+        }
+        const start = performance.now();
+        function easeOut(t) { return 1 - Math.pow(1 - t, 3); }
+        function tick(now) {
+          const t = Math.min(1, (now - start) / duration);
+          const v = from + (to - from) * easeOut(t);
+          el.textContent = prefix + v.toFixed(decimals) + suffix;
+          if (t < 1) {
+            animFrames.set(el, requestAnimationFrame(tick));
+          } else {
+            animFrames.delete(el);
+          }
+        }
+        animFrames.set(el, requestAnimationFrame(tick));
+      }
+
+      /* Counters — minimal setup: just record the current displayed value.
+         We DO NOT auto-animate from 0 to the fallback. Reason: the fallback
+         is hardcoded and almost always different from the live value. If we
+         animated 0 → fallback first, then fallback → live, the user would
+         see TWO animations, the first being fake — and worse, when the live
+         value is LOWER than the fallback (P&L could be lower, days different)
+         the counter would visibly count DOWN. So: fallback shows as plain
+         text, live data triggers a single smooth animation when it arrives. */
+      function setupCounters() {
+        const counterEls = document.querySelectorAll("[data-count]");
+        counterEls.forEach(function (el) {
+          const parsed = parseNumeric(el.dataset.count || "0");
+          if (parsed) el.dataset.currentValue = String(parsed.value);
+        });
+      }
+      setupCounters();
+      window.addEventListener("pageshow", function (e) {
+        if (e.persisted) setupCounters();
+      });
+
+      /* Live counter updates from live-stats.ts.
+         Approach: instead of MutationObserver (which fires on every rAF tick
+         of our own animation → loops, freezes, garbled values), we expose
+         a global API that live-stats.ts calls explicitly when it has new data.
+         Single source of truth, no recursion possible. */
+      window.__updateLiveStat = function (id, newText) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        const toParsed = parseNumeric(newText);
+        if (!toParsed) {
+          el.textContent = newText;
+          return;
+        }
+        const fromVal = parseFloat(el.dataset.currentValue || "0");
+        if (toParsed.value === fromVal) return;
+        el.dataset.currentValue = String(toParsed.value);
+        animateNumber(
+          el, fromVal, toParsed.value,
+          toParsed.suffix, toParsed.prefix, toParsed.decimals, 1100,
+        );
+      };
+    </script>
+  </body>
+</html>

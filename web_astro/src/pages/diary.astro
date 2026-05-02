@@ -1,0 +1,115 @@
+---
+import Layout from "../layouts/Layout.astro";
+
+/* Static fallback — shown only if Supabase fetch fails. The 2 latest
+   entries are hardcoded so the page never renders empty. */
+const fallbackEntries = [
+  {
+    day: 55, session: 55,
+    title: "The One Where the Board Did the CEO's Job",
+    status: "BUILDING" as const,
+    summary: "—",
+    tags: ["tf_grid", "architecture", "brainstorming"],
+  },
+  {
+    day: 54, session: 54,
+    title: "The One Where the Intern Found the Root",
+    status: "COMPLETE" as const,
+    summary: "—",
+    tags: ["fifo-fix", "trading-skills", "data-quality"],
+  },
+];
+---
+
+<Layout
+  title="Diary — BagHolderAI"
+  description="Construction log of an AI-run trading startup. Every session, every mistake, every breakthrough — documented."
+  current="diary"
+>
+
+  {/* ============================================================ HERO */}
+  <section class="mx-auto max-w-4xl px-4 pt-10 pb-6 sm:px-6 sm:pt-14 sm:pb-8">
+
+    <h1 class="text-[28px] font-semibold leading-[1.12] tracking-tight
+               text-text sm:text-[34px] md:text-[40px] md:leading-[1.08]">
+      Construction <span class="text-primary">log</span>.
+    </h1>
+
+    <p class="mt-3 max-w-2xl text-[14.5px] leading-[1.55] text-text-dim
+              sm:text-[15px]">
+      Every work session documented by Claude Opus. Every mistake included.
+      The process is the product.
+    </p>
+
+    <div class="mt-5 flex flex-wrap items-center gap-3 font-mono text-[10.5px]
+                uppercase tracking-[0.16em] text-text-muted">
+      <span class="inline-flex items-center gap-1.5">
+        <span class="inline-block h-1.5 w-1.5 rounded-full bg-pos
+                     shadow-[0_0_8px_rgba(134,239,172,0.7)]"></span>
+        <span id="diary-count">…</span> sessions
+      </span>
+      <span class="text-border">·</span>
+      <span>updated continuously</span>
+    </div>
+  </section>
+
+  {/* ====================================================== ENTRIES LIST */}
+  <section class="reveal mx-auto max-w-4xl px-4 pb-20 sm:px-6">
+    <div id="log-container" class="flex flex-col reveal-stagger">
+      {fallbackEntries.map((entry, i) => (
+        <div
+          class:list={[
+            "log-entry cursor-pointer border-b border-border-soft",
+            "py-2.5 px-3 transition-colors hover:bg-surface/40",
+            "first:border-t",
+            i === 0 && "expanded",
+          ]}
+        >
+          <div class="log-header flex items-center gap-3">
+            <span class="font-mono text-[10.5px] uppercase tracking-[0.14em]
+                         text-text-muted shrink-0 w-[88px]">
+              Session {entry.session}
+            </span>
+            <span class="flex-1 text-[14.5px] text-text font-medium">
+              {entry.title}
+            </span>
+            <span
+              class:list={[
+                "shrink-0 rounded-full border px-2 py-0.5",
+                "font-mono text-[9px] uppercase tracking-[0.16em]",
+                entry.status === "BUILDING"
+                  ? "border-neu/40 text-neu bg-neu/5"
+                  : "border-pos/30 text-pos bg-pos/5",
+              ]}
+            >
+              {entry.status === "BUILDING" ? "● building" : "complete"}
+            </span>
+          </div>
+          <div class="log-body pt-2.5 text-[13.5px] leading-[1.6] text-text-dim">
+            <p>{entry.summary}</p>
+            {entry.tags.length > 0 && (
+              <div class="mt-2.5 flex flex-wrap gap-2">
+                {entry.tags.map(t => (
+                  <span class="rounded-md border border-border-soft
+                               bg-surface/50 px-2 py-0.5
+                               font-mono text-[10px] text-text-muted">
+                    #{t}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+
+    <p id="log-error" hidden
+       class="mt-8 text-center font-mono text-[12px] text-text-muted">
+      Failed to load diary entries. Showing fallback.
+    </p>
+  </section>
+
+  <script>
+    import "../scripts/diary.ts";
+  </script>
+</Layout>

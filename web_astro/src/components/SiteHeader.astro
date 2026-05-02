@@ -1,0 +1,81 @@
+---
+import Logo from "./Logo.astro";
+
+interface Props {
+  current?: string;
+}
+
+const { current = "" } = Astro.props;
+
+const links = [
+  { href: "/dashboard", label: "Dashboard", key: "dashboard" },
+  { href: "/diary",     label: "Diary",     key: "diary"     },
+  { href: "/blueprint", label: "Blueprint", key: "blueprint" },
+  { href: "/howwework", label: "How we work", key: "howwework" },
+  { href: "/roadmap",   label: "Roadmap",   key: "roadmap"   },
+  { href: "/guide",     label: "Book",      key: "guide"     },
+];
+---
+
+<header class="sticky top-0 z-40 border-b border-border-soft
+               bg-bg/85 backdrop-blur-md backdrop-saturate-150">
+
+  {/* live status strip — full width, mono micro */}
+  <div class="border-b border-border-soft/60">
+    <div class="mx-auto flex max-w-6xl items-center justify-between
+                px-4 py-1.5 sm:px-6">
+      <span class="font-mono text-[10px] uppercase tracking-[0.18em]
+                   text-text-muted">
+        <span class="mr-1.5 inline-block h-1.5 w-1.5 rounded-full
+                     bg-pos shadow-[0_0_8px_rgba(134,239,172,0.7)]"></span>
+        live · bagholderai.lol
+      </span>
+      <span class="hidden font-mono text-[10px] uppercase tracking-[0.18em]
+                   text-text-muted sm:inline">
+        paper trading · live binance data
+      </span>
+    </div>
+  </div>
+
+  {/* main bar — logo + nav */}
+  <div class="mx-auto flex max-w-6xl items-center justify-between
+              px-4 py-3.5 sm:px-6">
+    <Logo size={40} />
+
+    {/* desktop nav */}
+    <nav class="hidden items-center gap-7 md:flex" aria-label="Primary">
+      {links.map(l => (
+        <a href={l.href}
+           class={`text-[13.5px] transition-colors
+                   ${l.key === current
+                     ? "text-primary"
+                     : "text-text-dim hover:text-text"}`}>
+          {l.label}
+        </a>
+      ))}
+    </nav>
+
+    {/* mobile: compact menu trigger (link list collapses) */}
+    <details class="relative md:hidden">
+      <summary class="list-none cursor-pointer rounded-md border border-border
+                      px-3 py-1.5 text-[12px] text-text-dim
+                      hover:text-text hover:border-text-muted
+                      [&::-webkit-details-marker]:hidden">
+        Menu
+      </summary>
+      <div class="absolute right-0 mt-2 min-w-[180px] rounded-lg
+                  border border-border bg-surface shadow-xl shadow-black/40
+                  py-2">
+        {links.map(l => (
+          <a href={l.href}
+             class={`block px-4 py-2 text-[14px]
+                     ${l.key === current
+                       ? "text-primary"
+                       : "text-text hover:bg-surface-hover"}`}>
+            {l.label}
+          </a>
+        ))}
+      </div>
+    </details>
+  </div>
+</header>

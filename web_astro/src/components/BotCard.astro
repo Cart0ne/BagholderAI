@@ -1,0 +1,148 @@
+---
+import BotMascot from "./BotMascot.astro";
+
+interface Props {
+  name: string;
+  subtitle: string;
+  status: "live" | "soon";
+  rarity?: string;
+  color: string;        /* hex used for borders / mascotte / stats */
+  build?: "stocky" | "lanky";
+  expression?: "focused" | "curious" | "scanning";
+  uid: string;
+  patience: number;
+  speed: number;
+  capital: number;
+  wins: number;
+  losses: number;
+  maxStat?: number;
+  description: string;
+  dim?: boolean;
+}
+
+const {
+  name, subtitle, status, rarity = "active · v3",
+  color, build = "stocky", expression = "focused", uid,
+  patience, speed, capital, wins, losses,
+  maxStat = 200,
+  description,
+  dim = false,
+} = Astro.props;
+
+const RED = "#fca5a5";
+
+const pct = (val: number, max: number) =>
+  max ? Math.min(100, (val / max) * 100) : 0;
+
+type StatRowProps = {
+  label: string;
+  value: number;
+  color: string;
+  max: number;
+  format?: "default" | "capital";
+};
+
+const stats: StatRowProps[] = [
+  { label: "patience", value: patience, color, max: 100 },
+  { label: "speed",    value: speed,    color, max: 100 },
+  { label: "capital",  value: capital,  color, max: 500, format: "capital" },
+  { label: "wins",     value: wins,     color, max: maxStat },
+  { label: "losses",   value: losses,   color: RED, max: maxStat },
+];
+
+const statusBg =
+  status === "live"
+    ? "bg-pos/15 text-pos border-pos/40"
+    : "bg-text-muted/10 text-text-muted border-text-muted/30";
+---
+
+<article
+  class:list={[
+    "relative flex flex-col rounded-2xl border bg-surface/60 p-5",
+    "transition-colors",
+    dim
+      ? "border-border-soft opacity-70"
+      : "border-border ring-1 ring-inset"
+  ]}
+  style={dim ? "" : `--ring-color: ${color}40; box-shadow: inset 0 0 0 1px ${color}30;`}
+>
+
+  {/* status pill */}
+  <span
+    class:list={[
+      "absolute right-4 top-4 rounded-full border px-2 py-0.5",
+      "font-mono text-[9px] uppercase tracking-[0.16em]",
+      statusBg,
+    ]}
+  >
+    {status}
+  </span>
+
+  {/* head: name + rarity */}
+  <header class="mb-1 flex items-baseline justify-between pr-14">
+    <h3
+      class="font-mono text-[12.5px] font-semibold uppercase tracking-[0.14em]"
+      style={`color: ${color}`}
+    >
+      {name}
+    </h3>
+    <span class="font-mono text-[9.5px] uppercase tracking-[0.14em] text-text-muted">
+      {rarity}
+    </span>
+  </header>
+  <p class="text-[13px] text-text-dim">{subtitle}</p>
+
+  {/* mascot frame */}
+  <div
+    class="my-4 flex h-[170px] items-end justify-center
+           rounded-xl border border-border-soft bg-bg/70 overflow-hidden"
+  >
+    <BotMascot
+      color={color}
+      accent={color}
+      build={build}
+      expression={expression}
+      size={130}
+      uid={uid}
+      class={dim ? "opacity-40 grayscale" : ""}
+    />
+  </div>
+
+  {/* stat bars */}
+  <dl class="space-y-2">
+    {stats.map(s => {
+      const display =
+        dim ? "0"
+            : (s.format === "capital" ? `$${s.value}` : `${s.value}`);
+      const fill = pct(s.value, s.max);
+      const barColor = dim ? "rgba(255,255,255,0.15)" : s.color;
+      const valueColor = dim ? "rgba(255,255,255,0.35)" : s.color;
+      return (
+        <div class="grid grid-cols-[80px_1fr_auto] items-center gap-3">
+          <dt class="font-mono text-[10px] uppercase tracking-[0.14em] text-text-muted">
+            {s.label}
+          </dt>
+          <div class="h-1.5 overflow-hidden rounded-full bg-border-soft">
+            <div
+              class="h-full rounded-full transition-[width] duration-700 ease-out"
+              style={`width: ${fill}%; background: ${barColor};`}
+            />
+          </div>
+          <dd
+            class="font-mono text-[11.5px] font-semibold tabular-nums"
+            style={`color: ${valueColor}`}
+          >
+            {display}
+          </dd>
+        </div>
+      );
+    })}
+  </dl>
+
+  {/* footer description */}
+  <footer class="mt-4 border-t border-border-soft pt-3
+                 text-[12px] leading-[1.5] text-text-dim">
+    <span style={`color: ${dim ? 'var(--color-text-muted)' : color}`}>▸</span>
+    {" "}{description}
+  </footer>
+</article>

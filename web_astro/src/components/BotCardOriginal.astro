@@ -1,0 +1,152 @@
+---
+/* 1:1 port of the original bot-card from web/index.html.
+   CSS and HTML structure preserved verbatim — only the surrounding
+   context (Layout, palette of NON-bot elements) is from the new site.
+   This file is intentionally NOT refactored to "Astro idiomatic" —
+   keeping it identical to the legacy markup is the whole point. */
+
+import BotMascot from "./BotMascot.astro";
+import MixerSVG  from "./MixerSVG.astro";
+import MugSVG    from "./MugSVG.astro";
+import RadarSVG  from "./RadarSVG.astro";
+
+interface Props {
+  variant: "grid" | "tf" | "sentinel" | "sherpa";
+  patience: number;
+  speed: number;
+  capital: number;
+  wins: number;
+  losses: number;
+  maxStat?: number;
+  description: string;
+}
+
+const {
+  variant,
+  patience, speed, capital, wins, losses,
+  maxStat = 200,
+  description,
+} = Astro.props;
+
+const meta = {
+  grid:     { name: "GRID BOT",       sub: "Methodical Trader", color: "#22c55e", build: "stocky" as const, expression: "focused" as const,  uid: "gridmain",     statusLabel: "LIVE", tilt: "tilt-l" as const, frameKind: "grid"     },
+  tf:       { name: "TREND FOLLOWER", sub: "Market Scanner",    color: "#f59e0b", build: "lanky"  as const, expression: "scanning" as const, uid: "tfmain",       statusLabel: "LIVE", tilt: "tilt-r" as const, frameKind: "tf"       },
+  sentinel: { name: "SENTINEL",       sub: "Risk Watcher",      color: "#3b82f6", build: "stocky" as const, expression: "focused" as const,  uid: "sentinelmain", statusLabel: "SOON", tilt: "tilt-l" as const, frameKind: "sentinel" },
+  sherpa:   { name: "SHERPA",         sub: "Bot Coordinator",   color: "#ef4444", build: "lanky"  as const, expression: "curious" as const,  uid: "sherpamain",   statusLabel: "SOON", tilt: "tilt-r" as const, frameKind: "sherpa"   },
+}[variant];
+
+const dim = variant === "sentinel" || variant === "sherpa";
+
+const pct = (val: number, max: number) =>
+  max ? Math.min(100, (val / max) * 100) : 0;
+
+const RED = "#ef4444";
+
+const stats = [
+  { label: "PATIENCE", value: patience, color: meta.color, max: 100 },
+  { label: "SPEED",    value: speed,    color: meta.color, max: 100 },
+  { label: "CAPITAL",  value: capital,  color: meta.color, max: 500, format: "capital" as const },
+  { label: "WINS",     value: wins,     color: meta.color, max: maxStat },
+  { label: "LOSSES",   value: losses,   color: RED,        max: maxStat },
+];
+
+/* Class composition — replicates original .bot-card.{grid|tf}-active|.dim + .tilt-l|r */
+const cardClass = [
+  "bot-card",
+  meta.frameKind === "grid" ? "grid-active" :
+  meta.frameKind === "tf"   ? "tf-active"   : "dim",
+  meta.tilt,
+].join(" ");
+
+const pillClass = [
+  "bot-pill",
+  meta.frameKind === "grid" ? "live-grid" :
+  meta.frameKind === "tf"   ? "live-tf"   : "soon",
+].join(" ");
+---
+
+<article class={cardClass}>
+  <span class={pillClass}>{meta.statusLabel}</span>
+
+  <div class="bot-head">
+    <span class={`bot-name ${meta.frameKind}`}>{meta.name}</span>
+    <span class="bot-rarity">{dim ? "LOCKED" : "ACTIVE · v3"}</span>
+  </div>
+  <div class="bot-subtitle">{meta.sub}</div>
+
+  <div class={`bot-frame ${meta.frameKind}`}>
+    <div class="bot-scanlines"></div>
+
+    {/* Grid: mixer (BTC/ETH/SOL faders) at top + mascot bottom-left + mug bottom-right */}
+    {variant === "grid" && (
+      <>
+        <MixerSVG color={meta.color} />
+        <div class="bot-mascot-grid">
+          <BotMascot color={meta.color} accent={meta.color}
+                     build={meta.build} expression={meta.expression}
+                     size={108} uid={meta.uid}/>
+        </div>
+        <div class="bot-mug-wrap"><MugSVG /></div>
+      </>
+    )}
+
+    {/* TF: radar background + mascot centered with binoculars */}
+    {variant === "tf" && (
+      <>
+        <RadarSVG color={meta.color} />
+        <div class="bot-mascot-wrap">
+          <BotMascot color={meta.color} accent={meta.color}
+                     build={meta.build} expression={meta.expression}
+                     carrying="binoculars"
+                     size={130} uid={meta.uid}/>
+        </div>
+      </>
+    )}
+
+    {/* Sentinel/Sherpa: question mark + dim silhouette */}
+    {dim && (
+      <>
+        <div class={`bot-question ${meta.frameKind}`}>?</div>
+        <div class:list={["bot-mascot-wrap", "bot-silhouette-glow", meta.frameKind]}>
+          <BotMascot color="#0a0e17" accent={meta.color}
+                     build={meta.build} expression={meta.expression}
+                     size={130} uid={meta.uid}/>
+        </div>
+        <div class={`bot-silhouette-tint ${meta.frameKind}`}></div>
+      </>
+    )}
+  </div>
+
+  <div>
+    {stats.map(s => {
+      const display = dim ? "0" : (s.format === "capital" ? `$${s.value}` : `${s.value}`);
+      const fillW = pct(s.value, s.max);
+      /* IDs only on live bots' wins/losses — those get hot-swapped from
+         Supabase by /scripts/live-stats.ts. */
+      const liveKey =
+        (variant === "grid" || variant === "tf") &&
+        (s.label === "WINS" || s.label === "LOSSES")
+          ? `bot-${variant}-${s.label.toLowerCase()}`
+          : null;
+      return (
+        <div class:list={["bot-stat-row", dim && "dim"]}>
+          <span class="bot-stat-label">{s.label}</span>
+          <div class="bot-stat-bar-track">
+            <div
+              id={liveKey ? `${liveKey}-bar` : undefined}
+              class="bot-stat-bar-fill"
+              style={`width:${fillW}%; background:${dim ? 'rgba(255,255,255,0.15)' : s.color};`}
+            ></div>
+          </div>
+          <span
+            id={liveKey || undefined}
+            class="bot-stat-value"
+            style={`color:${dim ? 'rgba(255,255,255,0.35)' : s.color};`}
+          >{display}</span>
+        </div>
+      );
+    })}
+  </div>
+
+  <div class="bot-footer"><span class={`arrow ${meta.frameKind}`}>▸ </span>{description}</div>
+</article>

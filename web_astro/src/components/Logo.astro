@@ -1,0 +1,101 @@
+---
+interface Props {
+  size?: number;
+  withWordmark?: boolean;
+  class?: string;
+}
+
+const { size = 40, withWordmark = true, class: className = "" } = Astro.props;
+const h = Math.round((size * 26) / 22);
+---
+
+<a href="/" class={`group inline-flex items-center gap-0 ${className}`}
+   aria-label="BagHolderAI — home">
+
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 200 200"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    class="transition-opacity group-hover:opacity-90"
+    aria-hidden="true"
+  >
+    <defs>
+      <linearGradient id="logoBg" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#a8e2fd"/>
+        <stop offset="0.5" stop-color="#7dd3fc"/>
+        <stop offset="1" stop-color="#234c66"/>
+      </linearGradient>
+      <linearGradient id="logoSide" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0" stop-color="#82b8d8"/>
+        <stop offset="1" stop-color="#234c66"/>
+      </linearGradient>
+      <linearGradient id="logoFlap" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#bce8fd"/>
+        <stop offset="1" stop-color="#82b8d8"/>
+      </linearGradient>
+    </defs>
+
+    {/* side panel — 3/4 view depth */}
+    <path d="M 150 50 Q 162 50 165 62 L 172 165 Q 170 178 158 178 L 150 178 Z"
+          fill="url(#logoSide)"/>
+    <path d="M 60 56 Q 60 36 100 32 Q 140 32 150 50 L 150 60 L 60 60 Z"
+          fill="#5dafd8"/>
+
+    {/* carry handle */}
+    <path d="M 88 38 Q 100 26 112 38" stroke="#234c66" stroke-width="6"
+          fill="none" stroke-linecap="round"/>
+    <path d="M 88 38 Q 100 28 112 38" stroke="#5fa4cc" stroke-width="3"
+          fill="none" stroke-linecap="round"/>
+
+    {/* main body */}
+    <path d="M 38 60 Q 38 50 50 50 L 150 50 Q 158 50 158 60 L 162 165 Q 162 178 150 178 L 50 178 Q 38 178 38 165 Z"
+          fill="url(#logoBg)"/>
+    <line x1="150" y1="55" x2="158" y2="172"
+          stroke="rgba(0,0,0,0.35)" stroke-width="1.2"/>
+
+    {/* flap (upper section) */}
+    <path d="M 38 60 Q 38 50 50 50 L 150 50 Q 158 50 158 60 L 158 100 Q 158 110 148 110 L 48 110 Q 38 110 38 100 Z"
+          fill="url(#logoFlap)"/>
+    <ellipse cx="78" cy="58" rx="28" ry="4"
+             fill="rgba(255,255,255,0.35)"/>
+
+    {/* lower pocket */}
+    <rect x="58" y="124" width="82" height="42" rx="6"
+          fill="url(#logoFlap)" opacity="0.85"/>
+    <line x1="58" y1="135" x2="140" y2="135"
+          stroke="#234c66" stroke-width="1" opacity="0.4"/>
+    <circle cx="135" cy="135" r="2" fill="#7dd3fc"/>
+
+    {/* side seams */}
+    <line x1="48" y1="115" x2="48" y2="170"
+          stroke="#234c66" stroke-width="1.5" opacity="0.4"/>
+    <line x1="148" y1="115" x2="148" y2="170"
+          stroke="#234c66" stroke-width="1.5" opacity="0.4"/>
+
+    {/* shoulder loops */}
+    <ellipse cx="62" cy="48" rx="9" ry="11" fill="none"
+             stroke="#234c66" stroke-width="6" stroke-linecap="round"/>
+    <ellipse cx="138" cy="48" rx="9" ry="11" fill="none"
+             stroke="#234c66" stroke-width="6" stroke-linecap="round"/>
+
+    {/* sleepy face: closed-curve eyes + soft smile */}
+    <path d="M 72 78 Q 80 82 88 78"
+          stroke="#0a0e17" stroke-width="3.5"
+          fill="none" stroke-linecap="round"/>
+    <path d="M 112 78 Q 120 82 128 78"
+          stroke="#0a0e17" stroke-width="3.5"
+          fill="none" stroke-linecap="round"/>
+    <path d="M 94 90 Q 100 95 106 90"
+          stroke="#0a0e17" stroke-width="2.8"
+          fill="none" stroke-linecap="round"/>
+  </svg>
+
+  {withWordmark && (
+    <span class="font-sans font-semibold tracking-tight text-text
+                 text-[20px] sm:text-[22px] leading-none select-none">
+      BagHolder<span class="text-text-muted mx-[1px]">·</span><span class="text-primary">AI</span>
+    </span>
+  )}
+</a>

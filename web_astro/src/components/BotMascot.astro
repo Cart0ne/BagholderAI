@@ -1,0 +1,239 @@
+---
+/* Backpack mascot SVG — ported from web/index.html mascotSVG().
+   Build = stocky (Grid Bot, Sentinel) | lanky (Trend Follower, Sherpa).
+   Expression = focused | curious | scanning. */
+
+interface Props {
+  color: string;
+  accent?: string;
+  build?: "stocky" | "lanky";
+  expression?: "focused" | "curious" | "scanning";
+  carrying?: "binoculars" | null;
+  size?: number;
+  uid?: string;
+  class?: string;
+}
+
+const {
+  color,
+  accent = color,
+  build = "stocky",
+  expression = "focused",
+  carrying = null,
+  size = 130,
+  uid = "m" + Math.random().toString(36).slice(2, 8),
+  class: className = "",
+} = Astro.props;
+
+/* Lighten / darken a hex color by amt in [-1, 1]. */
+function shade(hex: string, amt: number): string {
+  const h = hex.replace("#", "");
+  const r = parseInt(h.slice(0, 2), 16);
+  const g = parseInt(h.slice(2, 4), 16);
+  const b = parseInt(h.slice(4, 6), 16);
+  const adj = (c: number) => {
+    const v = amt >= 0 ? c + (255 - c) * amt : c * (1 + amt);
+    return Math.max(0, Math.min(255, Math.round(v)));
+  };
+  const toHex = (c: number) => c.toString(16).padStart(2, "0");
+  return "#" + toHex(adj(r)) + toHex(adj(g)) + toHex(adj(b));
+}
+
+const dark  = shade(color, -0.45);
+const light = shade(color,  0.28);
+const mid   = shade(color,  0.06);
+
+/* Geometry differs slightly per build. */
+const G = build === "stocky"
+  ? { bodyTop: 70, bodyBot: 200, bodyL: 42, bodyR: 158, flapBot: 100,
+      loopL: { cx: 70, cy: 60, rx: 11, ry: 13 },
+      loopR: { cx: 130, cy: 60, rx: 11, ry: 13 },
+      eyeY: 128, mouthY: 148, legY: 200, legH: 22,
+      footL: 65, footR: 135, armShY: 145 }
+  : { bodyTop: 62, bodyBot: 182, bodyL: 56, bodyR: 144, flapBot: 92,
+      loopL: { cx: 76, cy: 52, rx: 9, ry: 12 },
+      loopR: { cx: 124, cy: 52, rx: 9, ry: 12 },
+      eyeY: 116, mouthY: 134, legY: 182, legH: 38,
+      footL: 76, footR: 124, armShY: 130 };
+
+const footY = G.legY + G.legH;
+const h = Math.round((size * 260) / 200);
+
+/* Body & flap path data (rounded rect with chamfered corners). */
+const bodyD =
+  `M ${G.bodyL} ${G.bodyTop} ` +
+  `Q ${G.bodyL} ${G.bodyTop - 15} ${G.bodyL + 16} ${G.bodyTop - 15} ` +
+  `L ${G.bodyR - 16} ${G.bodyTop - 15} ` +
+  `Q ${G.bodyR} ${G.bodyTop - 15} ${G.bodyR} ${G.bodyTop} ` +
+  `L ${G.bodyR} ${G.bodyBot} ` +
+  `Q ${G.bodyR} ${G.bodyBot + 14} ${G.bodyR - 14} ${G.bodyBot + 14} ` +
+  `L ${G.bodyL + 14} ${G.bodyBot + 14} ` +
+  `Q ${G.bodyL} ${G.bodyBot + 14} ${G.bodyL} ${G.bodyBot} Z`;
+
+const flapD =
+  `M ${G.bodyL} ${G.bodyTop} ` +
+  `Q ${G.bodyL} ${G.bodyTop - 15} ${G.bodyL + 16} ${G.bodyTop - 15} ` +
+  `L ${G.bodyR - 16} ${G.bodyTop - 15} ` +
+  `Q ${G.bodyR} ${G.bodyTop - 15} ${G.bodyR} ${G.bodyTop} ` +
+  `L ${G.bodyR} ${G.flapBot} ` +
+  `Q ${G.bodyR} ${G.flapBot + 8} ${G.bodyR - 10} ${G.flapBot + 8} ` +
+  `L ${G.bodyL + 10} ${G.flapBot + 8} ` +
+  `Q ${G.bodyL} ${G.flapBot + 8} ${G.bodyL} ${G.flapBot} Z`;
+
+/* Pose = sitting (arms gently down by side). Walking/scanning poses
+   from the original site are skipped here for simplicity — they were
+   tied to specific bots' original frames. */
+const armPath = (fromX: number, fromY: number, toX: number, toY: number) => {
+  const midX = (fromX + toX) / 2 + (toX > fromX ? 8 : -8);
+  const midY = (fromY + toY) / 2;
+  const d = `M ${fromX} ${fromY} Q ${midX} ${midY} ${toX} ${toY}`;
+  return `
+    <path d="${d}" stroke="${dark}"  stroke-width="10" fill="none" stroke-linecap="round"/>
+    <path d="${d}" stroke="${color}" stroke-width="7"  fill="none" stroke-linecap="round"/>
+    <path d="${d}" stroke="${light}" stroke-width="2"  fill="none" stroke-linecap="round" opacity="0.5"/>
+    <circle cx="${toX}" cy="${toY}" r="6.5" fill="${dark}"/>
+    <circle cx="${toX - 1.5}" cy="${toY - 1.5}" r="2" fill="rgba(255,255,255,0.3)"/>
+  `;
+};
+---
+
+<svg
+  width={size}
+  height={h}
+  viewBox="0 0 200 260"
+  xmlns="http://www.w3.org/2000/svg"
+  class={className}
+  aria-hidden="true"
+>
+  <defs>
+    <linearGradient id={`bg-${uid}`} x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0"   stop-color={light}/>
+      <stop offset="0.45" stop-color={color}/>
+      <stop offset="1"   stop-color={dark}/>
+    </linearGradient>
+    <linearGradient id={`fg-${uid}`} x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color={shade(light, 0.15)}/>
+      <stop offset="1" stop-color={mid}/>
+    </linearGradient>
+    <linearGradient id={`pg-${uid}`} x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="rgba(0,0,0,0.45)"/>
+      <stop offset="1" stop-color="rgba(0,0,0,0.15)"/>
+    </linearGradient>
+  </defs>
+
+  {/* shadow + legs + feet */}
+  <ellipse cx="100" cy={footY + 8}
+           rx={build === "stocky" ? 50 : 40} ry="4"
+           fill="rgba(0,0,0,0.45)"/>
+  <rect x={G.footL - 8} y={G.legY} width="14" height={G.legH} rx="3" fill={dark}/>
+  <rect x={G.footR - 6} y={G.legY} width="14" height={G.legH} rx="3" fill={dark}/>
+  <rect x={G.footL - 7} y={G.legY + 2} width="3" height={G.legH - 6} rx="1.5" fill={light} opacity="0.4"/>
+  <rect x={G.footR - 5} y={G.legY + 2} width="3" height={G.legH - 6} rx="1.5" fill={light} opacity="0.4"/>
+  <g>
+    <ellipse cx={G.footL - 1} cy={footY}   rx="14" ry="5" fill="#0a0e17"/>
+    <ellipse cx={G.footL - 1} cy={footY-1} rx="14" ry="3" fill="#1a2030"/>
+    <line x1={G.footL - 9} y1={footY - 3} x2={G.footL + 7} y2={footY - 3}
+          stroke={accent} stroke-width="1.5"/>
+  </g>
+  <g>
+    <ellipse cx={G.footR + 1} cy={footY}   rx="14" ry="5" fill="#0a0e17"/>
+    <ellipse cx={G.footR + 1} cy={footY-1} rx="14" ry="3" fill="#1a2030"/>
+    <line x1={G.footR - 7} y1={footY - 3} x2={G.footR + 9} y2={footY - 3}
+          stroke={accent} stroke-width="1.5"/>
+  </g>
+
+  {/* shoulder loops (handles at top) */}
+  <ellipse cx={G.loopL.cx} cy={G.loopL.cy}
+           rx={G.loopL.rx} ry={G.loopL.ry}
+           fill="none" stroke={dark} stroke-width="6" stroke-linecap="round"/>
+  <ellipse cx={G.loopR.cx} cy={G.loopR.cy}
+           rx={G.loopR.rx} ry={G.loopR.ry}
+           fill="none" stroke={dark} stroke-width="6" stroke-linecap="round"/>
+
+  {/* body + side seam + flap + highlight */}
+  <path d={bodyD} fill={`url(#bg-${uid})`}/>
+  <path d={`M ${G.bodyR} ${G.bodyTop + 5} L ${G.bodyR} ${G.bodyBot - 5}`}
+        stroke="rgba(255,255,255,0.18)" stroke-width="1.5"/>
+  <line x1={G.bodyL + 12} y1={G.flapBot + 10}
+        x2={G.bodyL + 12} y2={G.bodyBot}
+        stroke={dark} stroke-width="2" opacity="0.45"/>
+  <line x1={G.bodyR - 12} y1={G.flapBot + 10}
+        x2={G.bodyR - 12} y2={G.bodyBot}
+        stroke={dark} stroke-width="2" opacity="0.45"/>
+  <path d={flapD} fill={`url(#fg-${uid})`}/>
+  <ellipse cx={(G.bodyL + G.bodyR) / 2 - 18} cy={G.bodyTop - 5}
+           rx="22" ry="6" fill="rgba(255,255,255,0.25)"/>
+
+  {/* central buckle */}
+  <rect x="92" y={G.flapBot - 8} width="16" height="10" rx="2" fill={dark}/>
+  <rect x="92" y={G.flapBot - 8} width="16" height="3"  rx="1" fill="rgba(255,255,255,0.3)"/>
+  <rect x="95" y={G.flapBot - 5} width="10" height="4"  rx="1" fill={mid} opacity="0.5"/>
+
+  {/* lower pocket */}
+  <rect x={G.bodyL + 18} y={G.flapBot + 28}
+        width={G.bodyR - G.bodyL - 36}
+        height={build === "stocky" ? 38 : 32}
+        rx="6" fill={`url(#pg-${uid})`} opacity="0.7"/>
+  <line x1={G.bodyL + 24} y1={G.flapBot + 34}
+        x2={G.bodyR - 24} y2={G.flapBot + 34}
+        stroke={dark} stroke-width="1.5" opacity="0.5"/>
+  <circle cx={G.bodyR - 24} cy={G.flapBot + 34} r="2" fill={accent}/>
+
+  {/* face — varies by expression */}
+  {expression === "focused" && (
+    <>
+      <g stroke="#0a0e17" stroke-width="3.5" stroke-linecap="round" fill="none">
+        <line x1="78"  y1={G.eyeY} x2="88"  y2={G.eyeY}/>
+        <line x1="112" y1={G.eyeY} x2="122" y2={G.eyeY}/>
+      </g>
+      <line x1="95" y1={G.mouthY} x2="105" y2={G.mouthY}
+            stroke="#0a0e17" stroke-width="2.5" stroke-linecap="round"/>
+    </>
+  )}
+  {expression === "curious" && (
+    <g>
+      <circle cx="83"  cy={G.eyeY} r="6.5" fill="#0a0e17"/>
+      <circle cx="117" cy={G.eyeY} r="6.5" fill="#0a0e17"/>
+      <circle cx="85"  cy={G.eyeY - 2} r="2" fill="#fff"/>
+      <circle cx="119" cy={G.eyeY - 2} r="2" fill="#fff"/>
+      <circle cx="100" cy={G.mouthY} r="2.5" fill="#0a0e17"/>
+    </g>
+  )}
+  {expression === "scanning" && (
+    <g>
+      <ellipse cx="83"  cy={G.eyeY} rx="6" ry="7" fill="#fff" stroke="#0a0e17" stroke-width="2"/>
+      <ellipse cx="117" cy={G.eyeY} rx="6" ry="7" fill="#fff" stroke="#0a0e17" stroke-width="2"/>
+      <circle  cx="86"  cy={G.eyeY} r="3" fill="#0a0e17"/>
+      <circle  cx="120" cy={G.eyeY} r="3" fill="#0a0e17"/>
+      <path d={`M 94 ${G.mouthY} Q 100 ${G.mouthY + 3} 106 ${G.mouthY}`}
+            stroke="#0a0e17" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+    </g>
+  )}
+
+  {/* arms — pose depends on carrying:
+        binoculars → both hands up to face (covers the eyes)
+        default    → sitting pose (down by side) */}
+  {carrying === "binoculars" ? (
+    <>
+      <Fragment set:html={armPath(G.bodyL, G.armShY - 5, 78,  G.armShY - 28)}/>
+      <Fragment set:html={armPath(G.bodyR, G.armShY - 5, 122, G.armShY - 28)}/>
+
+      {/* binoculars overlay — drawn LAST so it sits on top of the eyes */}
+      <g>
+        <rect x="74" y={G.eyeY - 12} width="52" height="16" rx="3" fill="#1a1f2a"/>
+        <rect x="74" y={G.eyeY - 12} width="52" height="4"  rx="2" fill="rgba(255,255,255,0.15)"/>
+        <circle cx="83"  cy={G.eyeY - 4} r="10" fill="#1a1f2a" stroke={accent} stroke-width="2"/>
+        <circle cx="117" cy={G.eyeY - 4} r="10" fill="#1a1f2a" stroke={accent} stroke-width="2"/>
+        <circle cx="83"  cy={G.eyeY - 4} r="5"  fill={accent} opacity="0.7"/>
+        <circle cx="117" cy={G.eyeY - 4} r="5"  fill={accent} opacity="0.7"/>
+        <circle cx="80"  cy={G.eyeY - 7} r="2"  fill="rgba(255,255,255,0.6)"/>
+        <circle cx="114" cy={G.eyeY - 7} r="2"  fill="rgba(255,255,255,0.6)"/>
+      </g>
+    </>
+  ) : (
+    <>
+      <Fragment set:html={armPath(G.bodyL, G.armShY, G.bodyL - 10, G.armShY + 22)}/>
+      <Fragment set:html={armPath(G.bodyR, G.armShY, G.bodyR + 10, G.armShY + 22)}/>
+    </>
+  )}
+</svg>

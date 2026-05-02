@@ -1,0 +1,48 @@
+---
+/* Trend Follower radar — concentric rings + sweeping wedge + blinking dots.
+   1:1 from web/index.html radarSVG(). */
+
+interface Props { color: string; }
+const { color } = Astro.props;
+
+let rings = "";
+[30, 50, 70].forEach(r => {
+  rings +=
+    `<circle cx="100" cy="75" r="${r}" fill="none"
+             stroke="${color}" stroke-width="0.5" opacity="0.5"/>`;
+});
+
+const sweep =
+  `<g class="tf-sweep-g">
+     <path d="M 100 75 L 170 50 A 70 70 0 0 1 170 100 Z"
+           fill="${color}" opacity="0.12"/>
+   </g>`;
+
+const crosshair =
+  `<line x1="100" y1="75" x2="170" y2="75"
+         stroke="${color}" stroke-width="0.5" opacity="0.7"/>` +
+  `<line x1="30"  y1="75"  x2="170" y2="75"
+         stroke="${color}" stroke-width="0.3" opacity="0.4"/>` +
+  `<line x1="100" y1="5"   x2="100" y2="145"
+         stroke="${color}" stroke-width="0.3" opacity="0.4"/>`;
+
+const dotData = [
+  { cx: 140, cy: 50,  r: 1.8, fill: color,     dur: "2s",   begin: "0s"   },
+  { cx: 65,  cy: 100, r: 1.8, fill: color,     dur: "2.5s", begin: "0.5s" },
+  { cx: 125, cy: 115, r: 1.8, fill: "#f59e0b", dur: "1.8s", begin: "1s"   },
+  { cx: 80,  cy: 40,  r: 1.5, fill: color,     dur: "2.2s", begin: "0.3s" },
+  { cx: 160, cy: 105, r: 1.5, fill: color,     dur: "3s",   begin: "1.5s" },
+];
+
+const dots = dotData.map(d =>
+  `<circle cx="${d.cx}" cy="${d.cy}" r="${d.r}" fill="${d.fill}">
+     <animate attributeName="opacity" values="0.3;1;0.3"
+              dur="${d.dur}" begin="${d.begin}" repeatCount="indefinite"/>
+   </circle>`
+).join("");
+
+const inner = rings + sweep + crosshair + dots;
+---
+
+<svg viewBox="0 0 200 150" preserveAspectRatio="xMidYMid meet"
+     class="bot-radar" set:html={inner}/>

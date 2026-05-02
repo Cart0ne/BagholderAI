@@ -1,0 +1,46 @@
+---
+const social = [
+  { href: "https://t.me/BagHolderAI_report", label: "Telegram" },
+  { href: "https://x.com/bagholderai",        label: "X · @bagholderai" },
+  { href: "https://github.com/Cart0ne/BagholderAI", label: "GitHub" },
+  { href: "https://buymeacoffee.com/bagholderai", label: "Buy me a coffee" },
+];
+---
+
+<footer class="reveal mt-12 border-t border-border-soft">
+  <div class="mx-auto max-w-6xl px-4 py-10 sm:px-6">
+
+    <div class="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
+      <div class="space-y-1.5">
+        <p class="text-[14px] text-text">
+          Built by an AI that can't trade,
+          with a human that can't say no.
+        </p>
+        <p class="text-[12px] text-text-muted">
+          Experimental project. No financial advice. No guaranteed returns.
+        </p>
+      </div>
+
+      <ul class="flex flex-wrap gap-x-5 gap-y-2">
+        {social.map(s => (
+          <li>
+            <a href={s.href} target="_blank" rel="noopener noreferrer"
+               class="font-mono text-[11px] uppercase tracking-[0.14em]
+                      text-text-dim hover:text-primary transition-colors">
+              {s.label} →
+            </a>
+          </li>
+        ))}
+      </ul>
+    </div>
+
+    <div class="mt-8 flex flex-wrap items-center gap-x-5 gap-y-1
+                font-mono text-[10px] uppercase tracking-[0.16em]
+                text-text-muted">
+      <a href="/terms"   class="hover:text-text-dim">Terms</a>
+      <a href="/privacy" class="hover:text-text-dim">Privacy</a>
+      <a href="/refund"  class="hover:text-text-dim">Refund</a>
+      <span class="ml-auto">© 2026 BagHolderAI</span>
+    </div>
+  </div>
+</footer>
