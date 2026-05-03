@@ -652,6 +652,143 @@ function analyzeCoin(trades: AllTrade[]): {
   }
 })();
 
+/* ====================================================================
+   4. § 4 RECENT ACTIVITY — last N trades, FIFO-annotated for sells.
+   Same pattern as legacy dashboard.html renderRecentTrades:
+   - Replay all trades chronologically per symbol with a FIFO buy queue
+   - For each sell, compute the average buy price of the consumed lots
+     (so the user sees "I bought at $X, sold at $Y, P&L = (Y-X) × amount")
+   - Render the most recent N (mixed Grid + TF) with bot tag color-coded.
+   ==================================================================== */
+
+const RECENT_TRADES_LIMIT = 6;
+
+(async () => {
+  try {
+    const trades = await sbq<AllTrade[]>(
+      "trades",
+      "select=symbol,side,amount,price,cost,realized_pnl,created_at,managed_by" +
+      "&config_version=eq.v3&order=created_at.asc",
+    );
+    if (!trades || !trades.length) return;
+
+    /* Split by bot section per brief 46b:
+       - Grid = managed_by='manual' only
+       - TF   = managed_by IN ('trend_follower','tf_grid') */
+    const gridTrades = trades.filter(t => t.managed_by === "manual");
+    const tfTrades   = trades.filter(t =>
+      t.managed_by === "trend_follower" || t.managed_by === "tf_grid",
+    );
+
+    /* FIFO replay per symbol within each group → annotate sells with
+       the avg buy price of the lots they consumed. */
+    function annotateBuyAvg(group: AllTrade[]): Map<AllTrade, number> {
+      const bySym: Record<string, AllTrade[]> = {};
+      for (const t of group) (bySym[t.symbol] ||= []).push(t);
+      const out = new Map<AllTrade, number>();
+      for (const sym of Object.keys(bySym)) {
+        const queue: { amount: number; price: number }[] = [];
+        for (const t of bySym[sym]) {
+          const amt   = Number(t.amount || 0);
+          const price = Number(t.price  || 0);
+          if (t.side === "buy") {
+            queue.push({ amount: amt, price });
+          } else {
+            let rem = amt, cost = 0, consumed = 0;
+            while (rem > 1e-6 && queue.length > 0) {
+              const lot = queue[0];
+              if (lot.amount <= rem + 1e-6) {
+                cost     += lot.amount * lot.price;
+                consumed += lot.amount;
+                rem      -= lot.amount;
+                queue.shift();
+              } else {
+                cost     += rem * lot.price;
+                consumed += rem;
+                lot.amount -= rem;
+                rem = 0;
+              }
+            }
+            if (consumed > 0) out.set(t, cost / consumed);
+          }
+        }
+      }
+      return out;
+    }
+
+    const gridAnnotated = annotateBuyAvg(gridTrades);
+    const tfAnnotated   = annotateBuyAvg(tfTrades);
+
+    const fmtTradeTime = (iso: string): string => {
+      const d = new Date(iso);
+      return d.toLocaleString("en-US", {
+        month: "short", day: "numeric",
+        hour: "2-digit", minute: "2-digit", hour12: false,
+      });
+    };
+    const fmtCost = (n: number): string => `$${n.toFixed(2)}`;
+    const fmtPnl  = (n: number): string => `${n >= 0 ? "+" : "-"}$${Math.abs(n).toFixed(2)}`;
+
+    /* Render last N trades as table rows. tagPromoted=true marks tf_grid
+       rows in the TF table with a tiny "→G" badge so the user can tell
+       which TF trades were managed by Grid. */
+    function renderRows(
+      group: AllTrade[],
+      annotated: Map<AllTrade, number>,
+      showPromotedTag: boolean,
+    ): string {
+      const recent = group.slice(-RECENT_TRADES_LIMIT).reverse();
+      if (!recent.length) {
+        return `<tr><td colspan="5" class="px-3 py-6 text-center text-text-muted">
+          No trades yet.
+        </td></tr>`;
+      }
+      return recent.map(t => {
+        const isSell  = t.side === "sell";
+        const pnl     = Number(t.realized_pnl || 0);
+        const buyAt   = annotated.get(t);
+        const pnlClass = isSell
+          ? (pnl >= 0 ? "text-pos" : "text-neg")
+          : "text-text-muted";
+        const sideClass = isSell ? "text-text" : "text-text-dim";
+        const coin = (t.symbol || "").replace("/USDT", "");
+        const promotedBadge = showPromotedTag && t.managed_by === "tf_grid"
+          ? ` <span class="font-mono text-[8px] tracking-[0.1em] uppercase ml-1 px-1 py-0.5 rounded" style="background:#0f2a3a;color:#38bdf8">→g</span>`
+          : "";
+        const pnlCell = isSell
+          ? `${fmtPnl(pnl)}${buyAt
+              ? ` <span class="text-text-muted text-[10px]">@ ${fmtPriceJs(buyAt)}</span>`
+              : ""}`
+          : "—";
+        return `
+          <tr class="border-t border-border-soft hover:bg-surface-hover transition-colors">
+            <td class="px-3 py-2.5 text-text-muted whitespace-nowrap">${fmtTradeTime(t.created_at)}</td>
+            <td class="px-3 py-2.5 ${sideClass}">${t.side}</td>
+            <td class="px-3 py-2.5 text-text whitespace-nowrap">${escapeHTML(coin)}${promotedBadge}</td>
+            <td class="px-3 py-2.5 text-right text-text-dim">${fmtCost(Number(t.cost || 0))}</td>
+            <td class="px-3 py-2.5 text-right ${pnlClass} whitespace-nowrap">${pnlCell}</td>
+          </tr>
+        `;
+      }).join("");
+    }
+
+    const gridBody = document.getElementById("grid-trades-body");
+    if (gridBody) gridBody.innerHTML = renderRows(gridTrades, gridAnnotated, false);
+
+    const tfBody = document.getElementById("tf-trades-body");
+    if (tfBody) tfBody.innerHTML = renderRows(tfTrades, tfAnnotated, true);
+  } catch (err) {
+    console.warn("[dashboard-live] recent activity fetch failed:", err);
+    const errMsg = `<tr><td colspan="5" class="px-3 py-6 text-center text-text-muted">
+      Failed to load trades.
+    </td></tr>`;
+    const gridBody = document.getElementById("grid-trades-body");
+    if (gridBody) gridBody.innerHTML = errMsg;
+    const tfBody = document.getElementById("tf-trades-body");
+    if (tfBody) tfBody.innerHTML = errMsg;
+  }
+})();
+
 /* ============ § 2 helpers ============ */
 
 function applyMetric(id: string, value: number) {

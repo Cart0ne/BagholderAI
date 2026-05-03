@@ -213,3 +213,101 @@ In 3 sessioni abbiamo costruito da zero un nuovo sito BagHolderAI in **Astro** p
 - Documentazione tecnica completa in `~/.claude/.../memory/project_web_astro_*.md` (6 file)
 
 **Velocità di scaling per le altre 9 pagine:** ora che l'infrastruttura c'è (Layout, design system, componenti, animazioni, pattern porting 1:1), ogni pagina nuova dovrebbe richiedere 30-90 minuti invece delle 2-4 ore della prima. La curva di apprendimento è dietro, da qui in avanti è "applicare lo stesso schema".
+
+---
+
+## Aggiornamento — sessioni 4 + 5 (2026-05-02 sera tardi → 2026-05-03)
+
+**Status post-sessione 5:** /dashboard quasi completa con dati live Supabase, layout horizontal pipeline approvato, soldi delle coin tf_grid contabilizzati secondo brief 46b, recent activity wired per Grid + TF separati. Manca solo § 3 Charts (deferred, vedi `Brief_46c_Charts.md`).
+
+### Sessione 4 — prototipazione /dashboard (commit `0fe001e`)
+
+**Workflow di prototipazione adottato** (replicabile per altre pagine data-heavy):
+1. 3 prototipi paralleli (`dashboard-a`, `dashboard-b`, `dashboard-c`) con stesso mock data importato — ognuno una direzione narrativa diversa (Lab notebook / Stato del fondo / Operativo editoriale)
+2. Switcher in alto per saltare tra varianti senza tornare all'index
+3. Max sceglie pezzi di ciascuna, si fa un merge progressivo (v1 → v5)
+4. Solo a layout approvato si sostituiscono mock con query Supabase
+
+**Direzione narrativa scelta**: combinazione 1+4 ("stato del fondo" + "lab notebook" — i 4 strumenti del lab al centro). Trasparenza presente ma non in risalto. Tono editoriale-tecnico coerente con la home.
+
+**File creati**: `dashboard-mock.ts` con dati condivisi + 4 file pages (3 proto + 1 final).
+
+### Sessione 5 — wiring dati reali + layout pipeline (commit `ff08b08`)
+
+**Layout finale approvato — horizontal pipeline** (brief 46a):
+- TF a sinistra (card grossa con totali $100 budget)
+- SHARED al centro (card delle coin tf_grid promosse)
+- GRID a destra (card grossa con totali $500 budget)
+- Native sotto: ETH/INJ/DOGE sotto TF, BTC/SOL/BONK sotto GRID
+- Freccia animata da TF → GRID con label "I tried, your turn" (gradiente amber→blu→green che scorre)
+- Badge "shared" pulsante sulle card centrali
+
+**Decisione di sostanza chiusa col CEO** (brief 46b — TF→Grid Budget Logic):
+> Le coin `tf_grid` sono **CAPITALE TF**, **GESTIONE GRID**.
+
+Significa:
+- Card grossa TF: totali aggregano `managed_by IN ('trend_follower','tf_grid')`
+- Card grossa GRID: totali solo `managed_by='manual'` (BTC/SOL/BONK)
+- Le card centrali "shared" sono finanziariamente in TF, visivamente in mezzo come "ponte"
+
+**Dati wired su Supabase** (file nuovo: `dashboard-live.ts`, ~540 righe):
+- **Hero meta strip**: day calcolato da V3_LAUNCH (2026-03-30), net worth aggregato fondo, P&L colorato dinamico
+- **Today snapshot** (5 metriche del giorno): P&L FIFO oggi, trades, buys, sells, allocated. Filtro UTC midnight → now coerente con bot daily aggregation
+- **§ 1 CEO log + § 5 archive**: fetch `daily_commentary` ordinato per data desc, dedup, top 1 in card grossa + scrollable window di tutte le precedenti
+- **§ 2 Instruments** (la sezione più complessa): TF totals + GRID totals + per-coin metrics con FIFO replay client-side per allinearsi al vecchio dashboard. Net worth = `budget + realized + unrealized`. Cash% calcolato sul **budget operativo** (= `budget - skim`) perché lo skim è capitale fisicamente messo da parte e non più disponibile
+- **§ 4 Recent activity**: 2 tabelle separate (Grid + TF) con 6 trade ciascuna, sells annotati con avg buy price FIFO
+
+**Bug numerici risolti durante il wiring**:
+1. Unrealized inizialmente sbagliato (usavo `mtm - netInvested` invece di `mtm - openCost`). Fix: traccio `openCost` come somma cost dei lotti aperti dopo FIFO consumption, allineato al vecchio dashboard
+2. Net worth TF mostrava ~$64 invece di ~$89: usavo `SUM(capital_allocation)` delle coin attive come budget, mentre il budget canonico TF è `trend_config.tf_budget = $100` fisso. Fix: separato budget canonico da somma allocations
+3. Realized cumulativo TF: dovevo includere anche coin **deallocate** (managed_by tf_grid/trend_follower con is_active=false) perché il loro realized passato deve apparire nei totali. Fix: aggregate realized + fees su tutti i trade del gruppo, non solo sui trade delle coin attualmente attive
+4. Unrealized % rispetto a budget vs avg buy: vecchia usa `(livePrice / avgBuy - 1)*100`, io avevo `unrealized / capital_allocation`. Fix: usata `openCost` come base per matchare il vecchio (le 2 formule divergono molto su BONK perché openCost è la metà del budget allocato)
+
+### Cose risolte vs. cose deferred
+
+**Risolte**:
+- ✅ Ribaltamento layout: orizzontale TF | SHARED | GRID approvato
+- ✅ Brief 46b implementato: tutti i numeri allineati al vecchio dashboard ai centesimi
+- ✅ Recent activity divisa per bot per evitare che TF nasconda Grid
+- ✅ Pipeline arrow narrativa con gradiente colore + shimmer animato + scritta autoironica "I tried, your turn"
+- ✅ § 1 + § 5 CEO log con archivio scrollabile compatto
+- ✅ Home: session counter live + Today P&L panel + Today trades
+- ✅ Diary: data accanto a "Session XX" su layout 2 righe
+
+**Deferred (Brief 46c scritto)**:
+- § 3 Charts (Cumulative + Daily P&L) — la tabella `daily_pnl` ha solo storia Grid. TF richiede ricostruzione da `trades` con MTM approssimato (legacy ~5% margine). Decisioni di sostanza da prendere col CEO prima di codare:
+  - Scope chart: solo Grid / Grid + TF aggregato / 2 serie separate
+  - MTM TF storico: approssimato come legacy / skippato / fetch klines daily
+  - Daily bar chart: realized raw o FIFO ricalcolato
+- Animazioni che non hanno funzionato (puntini SVG, ghost card) — secondo round se si vuole
+
+### Numeri concreti del wiring (test 2026-05-03 mattina)
+
+**GRID section** (manual, $500 budget):
+- Net worth $549.02 ≈ vecchia $549.00 (delta ~$0.02 per cambi prezzi live tra fetch)
+- Realized +$54.33, Unrealized -$5.31, Fees -$7.64, Skim $20.53
+- BTC $99.70 (+0.39%), SOL $148.40 (-3.77%), BONK $74.88 (-0.16%)
+
+**TF section** (trend_follower + tf_grid, $100 budget):
+- Net worth $89.76 ≈ vecchia $89.73
+- Realized -$10.27, Unrealized +$0.03, Fees -$6.46, Skim $25.85
+- DOGE, INJ (native trend_follower) + TRX (tf_grid promosso)
+
+### Cosa rimane per chiudere /dashboard
+
+1. **§ 3 Charts** (vedi Brief 46c — discussione col CEO necessaria su 4 punti di sostanza)
+2. **Animazioni opzionali** — gli effetti SVG che avevamo provato all'inizio non sono partiti (probabile timing tra DOM ready e rAF). Da debuggare a mente fresca o lasciar perdere se non servono
+3. **Sentinel + Sherpa staged** — restano statici (è giusto così, sono coming)
+4. **Mobile** — il layout horizontal su schermi stretti dovrà degradare elegantemente. Pensare a media query per cambiare la freccia da orizzontale → verticale
+
+### Tempo cumulativo
+
+Sessione 4 ~3h (3 prototipi + merge v1→v5) + sessione 5 ~5h (layout pipeline + wiring 4 sezioni + debug numerici) = **~8h** per portare /dashboard da mock a quasi-completa con dati live e logica brief 46b.
+
+**Cumulato totale del progetto web_astro** (sessioni 1+2+3+4+5): **~19h** → home + diary + dashboard quasi-completa + tutto il sistema design e infrastruttura.
+
+### Domande aperte aggiunte per il CEO (sessioni 4+5)
+
+4. **Brief 46c — Charts**: 4 decisioni di sostanza prima di poter codare (vedi `web_astro/Brief_46c_Charts.md`)
+5. **Layout pipeline su mobile**: la freccia orizzontale TF→GRID dovrà diventare verticale su schermi stretti (≤768px). Il layout intero collassa naturalmente in colonna ma la freccia direzionale va ruotata. Iterazione futura
+6. **Eliminare i prototipi A/B/C**? Sono stati utili durante la prototipazione ma ora che dashboard.astro è il vincitore, li teniamo come riferimento o si committa una pulizia?

@@ -216,18 +216,16 @@ const tfSubtitle   = "The breakout hunter";
         <div class="relative flex flex-col items-center justify-start
                     px-2 lg:px-4 self-start pt-4">
 
-          {/* Horizontal arrow + "promoted" label */}
+          {/* Horizontal arrow with sliding-gradient shimmer.
+              "I tried, your turn" — TF's ironic handoff to GRID. */}
           <div class="flex flex-col items-center mb-3 w-full">
-            <span class="font-mono text-[9px] uppercase tracking-[0.22em] mb-1"
+            <span class="font-mono text-[9px] uppercase tracking-[0.22em] mb-1 text-center leading-[1.4]"
                   style="color:#38bdf8">
-              promoted
+              I tried,<br/>your turn
             </span>
-            <svg width="160" height="14" viewBox="0 0 160 14" class="w-full max-w-[200px]"
-                 preserveAspectRatio="none" aria-hidden="true">
-              <line x1="2"  y1="7" x2="148" y2="7"
-                    stroke="#38bdf8" stroke-width="1.5" stroke-opacity="0.55"/>
-              <polygon points="146,2 156,7 146,12" fill="#38bdf8" fill-opacity="0.7"/>
-            </svg>
+            <div class="pipeline-arrow w-full max-w-[200px] h-[14px] relative">
+              <span class="pipeline-arrow-tip"></span>
+            </div>
           </div>
 
           {/* Shared cards stacked vertically — populated by JS from
@@ -371,49 +369,72 @@ const tfSubtitle   = "The breakout hunter";
       </div>
     </section>
 
-    {/* ============ § 4 — RECENT TRADES ============ */}
+    {/* ============ § 4 — RECENT TRADES — 2 tabelle: Grid + TF ============
+         Grid = managed_by='manual' only.
+         TF   = managed_by IN ('trend_follower', 'tf_grid') (tf_grid stays
+                under TF for coherence with brief 46b: TF capital). */}
     <hr class="mt-12 border-t border-border-soft" />
     <section class="mt-8 reveal">
       <div class="flex items-baseline justify-between flex-wrap gap-3 mb-5">
         <h2 class="font-mono text-[12px] uppercase tracking-[0.18em] text-pos">
           § 4 · Recent activity
         </h2>
-        <span class="font-mono text-[11px] text-text-muted">last 12 events</span>
+        <span class="font-mono text-[11px] text-text-muted">last 6 per bot</span>
       </div>
 
-      <div class="overflow-x-auto rounded-lg border border-border bg-surface">
-        <table class="w-full font-mono text-[13.5px]">
-          <thead class="border-b border-border-soft">
-            <tr class="text-text-muted uppercase tracking-[0.1em] text-[11px]">
-              <th class="px-4 py-3 text-left">when</th>
-              <th class="px-4 py-3 text-left">bot</th>
-              <th class="px-4 py-3 text-left">action</th>
-              <th class="px-4 py-3 text-left">coin</th>
-              <th class="px-4 py-3 text-right">price</th>
-              <th class="px-4 py-3 text-right">cost</th>
-              <th class="px-4 py-3 text-right">p&amp;l</th>
-            </tr>
-          </thead>
-          <tbody>
-            {mockTrades.map((t) => (
-              <tr class="border-t border-border-soft hover:bg-surface-hover transition-colors">
-                <td class="px-4 py-3 text-text-muted">{fmtDate(t.ts)} · {fmtTime(t.ts)}</td>
-                <td class="px-4 py-3">
-                  <span class={`font-medium ${t.bot === "grid" ? "text-pos" : "text-amber-400"}`}>
-                    {t.bot === "grid" ? "Grid" : "TF"}
-                  </span>
-                </td>
-                <td class={`px-4 py-3 ${t.side === "buy" ? "text-text-dim" : "text-text"}`}>{t.side}</td>
-                <td class="px-4 py-3 text-text">{t.symbol.replace("/USDT", "")}</td>
-                <td class="px-4 py-3 text-right text-text-dim">{fmtPrice(t.price)}</td>
-                <td class="px-4 py-3 text-right text-text-dim">{fmtUsd(t.cost)}</td>
-                <td class={`px-4 py-3 text-right ${t.pnl == null ? "text-text-muted" : t.pnl >= 0 ? "text-pos" : "text-neg"}`}>
-                  {t.pnl == null ? "—" : fmtSigned(t.pnl)}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div class="space-y-6">
+        {/* ---- GRID table ---- */}
+        <div>
+          <div class="flex items-center gap-2 mb-2">
+            <div class="w-[3px] h-[14px] rounded-sm" style="background:#22c55e"></div>
+            <span class="font-mono text-[11px] uppercase tracking-[0.14em] text-text-dim">
+              Grid Bot
+            </span>
+          </div>
+          <div class="overflow-x-auto rounded-lg border border-border bg-surface">
+            <table class="w-full font-mono text-[12.5px]">
+              <thead class="border-b border-border-soft">
+                <tr class="text-text-muted uppercase tracking-[0.1em] text-[10px]">
+                  <th class="px-3 py-2.5 text-left">when</th>
+                  <th class="px-3 py-2.5 text-left">side</th>
+                  <th class="px-3 py-2.5 text-left">coin</th>
+                  <th class="px-3 py-2.5 text-right">cost</th>
+                  <th class="px-3 py-2.5 text-right">p&amp;l</th>
+                </tr>
+              </thead>
+              <tbody id="grid-trades-body">
+                <tr><td colspan="5" class="px-3 py-6 text-center text-text-muted">Loading…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* ---- TF table ---- */}
+        <div>
+          <div class="flex items-center gap-2 mb-2">
+            <div class="w-[3px] h-[14px] rounded-sm" style="background:#f59e0b"></div>
+            <span class="font-mono text-[11px] uppercase tracking-[0.14em] text-text-dim">
+              Trend Follower
+            </span>
+            <span class="font-mono text-[9px] text-text-muted">incl. tf_grid</span>
+          </div>
+          <div class="overflow-x-auto rounded-lg border border-border bg-surface">
+            <table class="w-full font-mono text-[12.5px]">
+              <thead class="border-b border-border-soft">
+                <tr class="text-text-muted uppercase tracking-[0.1em] text-[10px]">
+                  <th class="px-3 py-2.5 text-left">when</th>
+                  <th class="px-3 py-2.5 text-left">side</th>
+                  <th class="px-3 py-2.5 text-left">coin</th>
+                  <th class="px-3 py-2.5 text-right">cost</th>
+                  <th class="px-3 py-2.5 text-right">p&amp;l</th>
+                </tr>
+              </thead>
+              <tbody id="tf-trades-body">
+                <tr><td colspan="5" class="px-3 py-6 text-center text-text-muted">Loading…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </section>
 

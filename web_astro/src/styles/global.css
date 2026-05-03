@@ -348,6 +348,79 @@ body {
   }
 }
 
+/* — Pipeline arrow — TF→GRID directional flow.
+   Base track is a static gradient from TF amber (#f59e0b) on the left
+   to GRID green (#22c55e) on the right, with full opacity at the ends
+   and a soft mid-tone in the middle. On top, a moving white "shimmer"
+   pulse travels left→right, suggesting flow without obscuring the
+   color transition. */
+.pipeline-arrow {
+  position: relative;
+  height: 4px;             /* slightly thicker than before */
+  margin-top: 6px;
+  margin-bottom: 6px;
+  border-radius: 2px;
+  background:
+    /* Top layer: white shimmer pulse (animated). */
+    linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0)    0%,
+      rgba(255, 255, 255, 0.55) 50%,
+      rgba(255, 255, 255, 0)  100%
+    ),
+    /* Bottom layer: static TF→GRID color gradient. */
+    linear-gradient(
+      90deg,
+      rgba(245, 158, 11, 0.85)   0%,    /* TF amber */
+      rgba(56, 189, 248, 0.6)   50%,    /* shared blue (transit) */
+      rgba(34, 197, 94, 0.85) 100%      /* GRID green */
+    );
+  background-size: 50% 100%, 100% 100%;
+  background-repeat: no-repeat, no-repeat;
+  background-position: -50% 0, 0 0;
+  animation: pipeline-shimmer 2.4s linear infinite;
+}
+.pipeline-arrow::before {
+  /* Outer glow that follows the shimmer pulse. Color blends along
+     the journey: amber-tinted on the left, green-tinted on the right. */
+  content: "";
+  position: absolute;
+  inset: -3px 0;
+  background: linear-gradient(
+    90deg,
+    rgba(245, 158, 11, 0)    0%,
+    rgba(255, 255, 255, 0.3) 50%,
+    rgba( 34, 197,  94, 0) 100%
+  );
+  background-size: 50% 100%;
+  background-repeat: no-repeat;
+  background-position: -50% 0;
+  filter: blur(5px);
+  animation: pipeline-shimmer 2.4s linear infinite;
+  pointer-events: none;
+}
+.pipeline-arrow-tip {
+  /* Right-side arrowhead — GRID green to match where the flow lands. */
+  position: absolute;
+  right: -2px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  border-top: 6px solid transparent;
+  border-bottom: 6px solid transparent;
+  border-left: 9px solid rgba(34, 197, 94, 0.85);
+  filter: drop-shadow(0 0 4px rgba(34, 197, 94, 0.4));
+}
+@keyframes pipeline-shimmer {
+  0%   { background-position: -50% 0, 0 0; }
+  100% { background-position: 150% 0, 0 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pipeline-arrow,
+  .pipeline-arrow::before { animation: none; }
+}
+
 /* — SHARED badge pulse — opacity breath on the "shared" badge inside
    promoted coin cards. Communicates that the coin is alive and
    actively shared between TF and Grid. */
