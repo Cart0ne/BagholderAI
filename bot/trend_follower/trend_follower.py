@@ -427,11 +427,18 @@ def send_tf_decision(notifier: SyncTelegramNotifier, decision: dict, is_shadow: 
         snap = decision.get("config_snapshot", {})
         capital = snap.get("capital_allocation", 0)
         tier = snap.get("tier", "?")
+        # 45c volume tier: shown alongside the legacy whitelist tier so the
+        # operator can see at a glance whether a coin will be handed off to
+        # tf_grid (volume_tier 1-2) or stay on trend_follower (volume_tier 3).
+        # The two systems disagree often: TAO/TRX are whitelist-T3 (not in
+        # the BTC/ETH/SOL list) but volume-T2 ($31M-$54M 24h volume).
+        vol_tier = snap.get("volume_tier")
+        vol_tier_str = f" / vol-T{vol_tier}" if vol_tier is not None else ""
         max_pct = snap.get("max_allocation_pct", "?")
         text = (
             f"{'[SHADOW] ' if is_shadow else ''}{emoji} <b>{verb} — {symbol}</b>\n"
             f"Trend: {signal} | Strength: {strength:.1f}\n"
-            f"Capital: ${capital:.0f} ({max_pct}% — T{tier})\n"
+            f"Capital: ${capital:.0f} ({max_pct}% — T{tier}{vol_tier_str})\n"
         )
         if is_shadow:
             text += "⚠️ Shadow mode — no config written"
