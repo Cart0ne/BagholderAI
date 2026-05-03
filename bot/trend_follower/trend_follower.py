@@ -607,8 +607,14 @@ def run_trend_follower():
             # TF operates only on its own budget and its own allocations.
             # Manual bots (BTC/SOL/BONK) are excluded from the TF universe so
             # decide_allocations never sees them as "existing" and never tries
-            # to DEALLOCATE them.
-            tf_allocs = [a for a in current_allocs if a.get("managed_by") == "trend_follower"]
+            # to DEALLOCATE them. tf_grid coins (Tier 1-2 GRID-managed) are
+            # TF-selected and must be visible here so the decider sees them
+            # as "already active" — otherwise every scan re-ALLOCATEs them,
+            # resetting allocated_at (and the greed-decay clock with it).
+            tf_allocs = [
+                a for a in current_allocs
+                if a.get("managed_by") in ("trend_follower", "tf_grid")
+            ]
             tf_budget_nominal = float(config.get("tf_budget", 100))
 
             # Session 36g Phase 1: compound retained profits from deallocated
