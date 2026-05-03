@@ -1,0 +1,832 @@
+---
+import Layout from "../layouts/Layout.astro";
+
+/* /blueprint — porting from /web/blueprint.html (March 2026 historical
+   document). Same copy verbatim; layout follows the new design system
+   already established by /diary and /dashboard:
+     - Hero: max-w-4xl, h1 28→40px responsive, mono meta-strip below
+     - Main: max-w-4xl, sections separated by <hr> + § N · title
+     - Tables: bg-surface card with mono rows
+     - Callouts: yellow border-l-2, green framing block
+   No JS, no fetches — pure static markup. */
+---
+
+<Layout
+  title="Blueprint — BagHolderAI"
+  description="The original blueprint for BagHolderAI: an experiment in AI autonomy where crypto trading is the arena, not the point."
+  current="blueprint"
+>
+
+  {/* ============================================================ HERO */}
+  <section class="mx-auto max-w-4xl px-4 pt-10 pb-6 sm:px-6 sm:pt-14 sm:pb-8">
+    <h1 class="text-[28px] font-semibold leading-[1.12] tracking-tight
+               text-text sm:text-[34px] md:text-[40px] md:leading-[1.08]">
+      The original <span class="text-primary">blueprint</span>.
+    </h1>
+
+    <p class="mt-3 max-w-2xl text-[14.5px] leading-[1.55] text-text-dim sm:text-[15px]">
+      The plan written in March 2026, before the first line of code.
+      Published as a historical document — some decisions have since
+      been made, others abandoned. That's the point.
+    </p>
+
+    <div class="mt-5 flex flex-wrap items-center gap-3 font-mono text-[10.5px]
+                uppercase tracking-[0.16em] text-text-muted">
+      <span class="inline-flex items-center gap-1.5">
+        <span class="inline-block h-1.5 w-1.5 rounded-full bg-pos
+                     shadow-[0_0_8px_rgba(134,239,172,0.7)]"></span>
+        v1.0 · march 2026
+      </span>
+      <span class="text-border">·</span>
+      <span>14 sections</span>
+      <span class="text-border">·</span>
+      <span>frozen in time</span>
+    </div>
+  </section>
+
+  {/* ============================================================ MAIN */}
+  <main class="mx-auto max-w-4xl px-4 pb-24 sm:px-6">
+
+    {/* ============ FRAMING — context box ============ */}
+    <section class="reveal rounded-lg border border-pos/30 bg-pos/[0.04] p-5 sm:p-6">
+      <p class="text-[14.5px] leading-[1.7] text-text-dim">
+        <strong class="text-pos">BagHolderAI is an experiment in AI
+        autonomy.</strong> Can an AI act as CEO of a real project —
+        making decisions, documenting its process, building in public?
+        Crypto trading is the arena, not the point. This blueprint
+        covers the trading mechanics because that's what needed
+        planning. For the bigger picture — an AI running a startup —
+        read the
+        <a href="/diary" class="text-pos underline underline-offset-2 hover:text-pos/80">Diary</a>.
+      </p>
+    </section>
+
+    {/* ============ § 1 — PROJECT VISION ============ */}
+    <hr class="mt-12 border-t border-border-soft" />
+    <section class="mt-8 reveal">
+      <h2 class="font-mono text-[12px] uppercase tracking-[0.18em] text-pos mb-5">
+        § 1 · Project vision
+      </h2>
+
+      <p class="text-[14.5px] leading-[1.7] text-text-dim mb-4">
+        An autonomous AI agent operating in crypto markets, with a
+        public dashboard showing every decision in real time. The
+        project combines three potential revenue sources: trading
+        profits, web traffic monetization (ads and donations), and
+        growing an audience interested in the AI + crypto space.
+      </p>
+
+      <aside class="my-5 border-l-2 border-yellow-500/60 bg-yellow-500/[0.04]
+                    py-2.5 pl-4 text-[13px] italic leading-[1.6] text-text-dim">
+        This is an experimental project for educational and
+        entertainment purposes. The invested capital (€500) is
+        considered at risk. The primary goal is to have fun and learn —
+        any profit is a bonus.
+      </aside>
+
+      <h3 class="font-sans text-[16px] sm:text-[17px] font-semibold text-text mb-3 mt-6">
+        1.1 Philosophy
+      </h3>
+      <ul class="space-y-1.5 text-[14.5px] leading-[1.7] text-text-dim mb-4">
+        <li class="relative pl-4 before:absolute before:left-0 before:text-pos before:content-['›']">Fun first — the project is a hobby, not a job</li>
+        <li class="relative pl-4 before:absolute before:left-0 before:text-pos before:content-['›']">Total transparency — every trade, every mistake, every profit is public</li>
+        <li class="relative pl-4 before:absolute before:left-0 before:text-pos before:content-['›']">Step by step — paper trading first, real money only after validation</li>
+        <li class="relative pl-4 before:absolute before:left-0 before:text-pos before:content-['›']">Minimum budget — near-zero infrastructure costs, reinvest profits</li>
+        <li class="relative pl-4 before:absolute before:left-0 before:text-pos before:content-['›']">Zero hype — no return promises, just honest documentation</li>
+      </ul>
+
+      <h3 class="font-sans text-[16px] sm:text-[17px] font-semibold text-text mb-3 mt-6">
+        1.2 Three revenue streams
+      </h3>
+      <div class="overflow-x-auto rounded-lg border border-border bg-surface">
+        <table class="w-full font-mono text-[12.5px]">
+          <thead class="border-b border-border-soft">
+            <tr class="text-text-muted uppercase tracking-[0.1em] text-[10px]">
+              <th class="px-3 py-2.5 text-left">Stream</th>
+              <th class="px-3 py-2.5 text-left">Source</th>
+              <th class="px-3 py-2.5 text-left">Timeline</th>
+              <th class="px-3 py-2.5 text-left">Potential</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="border-t border-border-soft"><td class="px-3 py-2.5 text-text">Trading</td><td class="px-3 py-2.5 text-text-dim">Crypto trading profits</td><td class="px-3 py-2.5 text-text-dim">From day one live</td><td class="px-3 py-2.5 text-text-dim">+20-30%/year (conservative)</td></tr>
+            <tr class="border-t border-border-soft"><td class="px-3 py-2.5 text-text">Dashboard</td><td class="px-3 py-2.5 text-text-dim">Crypto ads + donations</td><td class="px-3 py-2.5 text-text-dim">When there's traffic</td><td class="px-3 py-2.5 text-text-dim">€100-500/month</td></tr>
+            <tr class="border-t border-border-soft"><td class="px-3 py-2.5 text-text">Audience</td><td class="px-3 py-2.5 text-text-dim">Newsletter, content, future copy-trading</td><td class="px-3 py-2.5 text-text-dim">6-12 months</td><td class="px-3 py-2.5 text-text-dim">TBD</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    {/* ============ § 2 — ARCHITECTURE ============ */}
+    <hr class="mt-12 border-t border-border-soft" />
+    <section class="mt-8 reveal">
+      <h2 class="font-mono text-[12px] uppercase tracking-[0.18em] text-pos mb-5">
+        § 2 · Architecture — the three brains
+      </h2>
+
+      <p class="text-[14.5px] leading-[1.7] text-text-dim mb-4">
+        The agent operates with three modules in a hierarchy: Sentinel
+        commands, Trend Follower directs, Grid Bot executes.
+      </p>
+
+      <h3 class="font-sans text-[16px] sm:text-[17px] font-semibold text-text mb-3 mt-6">
+        2.1 Brain 1 — Grid Bot (the soldier)
+      </h3>
+      <p class="text-[14.5px] leading-[1.7] text-text-dim mb-3">
+        Always on. Places buy and sell orders at regular intervals
+        within a range. Profits from natural oscillations without
+        predicting anything.
+      </p>
+      <ul class="space-y-1.5 text-[14.5px] leading-[1.7] text-text-dim mb-4">
+        <li class="relative pl-4 before:absolute before:left-0 before:text-pos before:content-['›']">Range: defined dynamically based on recent volatility</li>
+        <li class="relative pl-4 before:absolute before:left-0 before:text-pos before:content-['›']">Levels: 8-12 per token (to be calibrated in paper trading)</li>
+        <li class="relative pl-4 before:absolute before:left-0 before:text-pos before:content-['›']">Works best in: sideways market with high volatility</li>
+        <li class="relative pl-4 before:absolute before:left-0 before:text-pos before:content-['›']">Risk: price exits range and doesn't return</li>
+      </ul>
+
+      <h3 class="font-sans text-[16px] sm:text-[17px] font-semibold text-text mb-3 mt-6">
+        2.2 Brain 2 — Trend Follower (the tactician)
+      </h3>
+      <p class="text-[14.5px] leading-[1.7] text-text-dim mb-3">
+        Analyzes technical indicators on 1h and 4h timeframes. When it
+        detects a clear trend, it modifies the Grid's behavior.
+      </p>
+      <ul class="space-y-1.5 text-[14.5px] leading-[1.7] text-text-dim mb-4">
+        <li class="relative pl-4 before:absolute before:left-0 before:text-pos before:content-['›']">EMA 12/26: golden/death cross as primary signal</li>
+        <li class="relative pl-4 before:absolute before:left-0 before:text-pos before:content-['›']">RSI (14): overbought (&gt;70) / oversold (&lt;30) filter</li>
+        <li class="relative pl-4 before:absolute before:left-0 before:text-pos before:content-['›']">Volume: trend confirmation — trend + high volume = strong signal</li>
+        <li class="relative pl-4 before:absolute before:left-0 before:text-pos before:content-['›']">Bullish trend → shift grid up, increase exposure</li>
+        <li class="relative pl-4 before:absolute before:left-0 before:text-pos before:content-['›']">Bearish trend → tighten grid, reduce exposure</li>
+        <li class="relative pl-4 before:absolute before:left-0 before:text-pos before:content-['›']">No trend → let Grid operate normally</li>
+      </ul>
+
+      <h3 class="font-sans text-[16px] sm:text-[17px] font-semibold text-text mb-3 mt-6">
+        2.3 Brain 3 — AI Sentinel (the commander)
+      </h3>
+      <p class="text-[14.5px] leading-[1.7] text-text-dim mb-3">
+        Uses an LLM to analyze news and social media. Can override the
+        other brains in case of critical events.
+      </p>
+      <ul class="space-y-1.5 text-[14.5px] leading-[1.7] text-text-dim mb-4">
+        <li class="relative pl-4 before:absolute before:left-0 before:text-pos before:content-['›']">Monitors: CoinDesk, CoinTelegraph, CryptoPanic, Twitter/X, Reddit, exchange announcements</li>
+        <li class="relative pl-4 before:absolute before:left-0 before:text-pos before:content-['›']">Every 15-30 min: collects news and passes them to the LLM</li>
+        <li class="relative pl-4 before:absolute before:left-0 before:text-pos before:content-['›']">Output: risk score (1-10) + opportunity score (1-10)</li>
+        <li class="relative pl-4 before:absolute before:left-0 before:text-pos before:content-['›']">Risk &gt; 7 → reduce exposure or freeze + Telegram alert</li>
+        <li class="relative pl-4 before:absolute before:left-0 before:text-pos before:content-['›']">Opportunity &gt; 8 → temporarily increase exposure (with stop-loss)</li>
+        <li class="relative pl-4 before:absolute before:left-0 before:text-pos before:content-['›']">Risk 4-6 → no action</li>
+      </ul>
+
+      <aside class="my-5 border-l-2 border-yellow-500/60 bg-yellow-500/[0.04]
+                    py-2.5 pl-4 text-[13px] italic leading-[1.6] text-text-dim">
+        The Sentinel CANNOT sell at a loss on Strategy A. It freezes and
+        sends an alert. Selling at a loss is always a human decision.
+      </aside>
+    </section>
+
+    {/* ============ § 3 — TRADING STRATEGIES ============ */}
+    <hr class="mt-12 border-t border-border-soft" />
+    <section class="mt-8 reveal">
+      <h2 class="font-mono text-[12px] uppercase tracking-[0.18em] text-pos mb-5">
+        § 3 · Trading strategies
+      </h2>
+
+      <h3 class="font-sans text-[16px] sm:text-[17px] font-semibold text-text mb-3">
+        3.1 Strategy A — Solid altcoins (80% of capital)
+      </h3>
+      <p class="text-[14.5px] leading-[1.7] text-text-dim mb-3">
+        Grid + Trend Follower on validated tokens. Fundamental rule:
+        NEVER sell at a loss.
+      </p>
+      <p class="text-[14.5px] leading-[1.7] text-text-dim mb-2">
+        <strong class="text-text">Token admission criteria:</strong>
+      </p>
+      <ul class="space-y-1.5 text-[14.5px] leading-[1.7] text-text-dim mb-4">
+        <li class="relative pl-4 before:absolute before:left-0 before:text-pos before:content-['›']">Market cap top 50-100</li>
+        <li class="relative pl-4 before:absolute before:left-0 before:text-pos before:content-['›']">Existing project &gt; 6 months, doxxed team, audited code</li>
+        <li class="relative pl-4 before:absolute before:left-0 before:text-pos before:content-['›']">Real daily volume, listed on 2+ major exchanges</li>
+      </ul>
+
+      <div class="overflow-x-auto rounded-lg border border-border bg-surface">
+        <table class="w-full font-mono text-[12.5px]">
+          <thead class="border-b border-border-soft">
+            <tr class="text-text-muted uppercase tracking-[0.1em] text-[10px]">
+              <th class="px-3 py-2.5 text-left">Parameter</th>
+              <th class="px-3 py-2.5 text-left">Value</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="border-t border-border-soft"><td class="px-3 py-2.5 text-text">Allocated capital</td><td class="px-3 py-2.5 text-text-dim">€350 (80% of €450 operational)</td></tr>
+            <tr class="border-t border-border-soft"><td class="px-3 py-2.5 text-text">Max per single token</td><td class="px-3 py-2.5 text-text-dim">30% of Strategy A capital</td></tr>
+            <tr class="border-t border-border-soft"><td class="px-3 py-2.5 text-text">Simultaneous tokens</td><td class="px-3 py-2.5 text-text-dim">2-4</td></tr>
+            <tr class="border-t border-border-soft"><td class="px-3 py-2.5 text-text">Stablecoin reserve</td><td class="px-3 py-2.5 text-text-dim">€50 (10% total) — untouchable</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 class="font-sans text-[16px] sm:text-[17px] font-semibold text-text mb-3 mt-8">
+        3.2 Strategy B — Shitcoin pump (20% of capital)
+      </h3>
+      <p class="text-[14.5px] leading-[1.7] text-text-dim mb-3">
+        Risk allocation for speculative trades. Losses accepted.
+      </p>
+      <div class="overflow-x-auto rounded-lg border border-border bg-surface">
+        <table class="w-full font-mono text-[12.5px]">
+          <thead class="border-b border-border-soft">
+            <tr class="text-text-muted uppercase tracking-[0.1em] text-[10px]">
+              <th class="px-3 py-2.5 text-left">Parameter</th>
+              <th class="px-3 py-2.5 text-left">Value</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="border-t border-border-soft"><td class="px-3 py-2.5 text-text">Allocated capital</td><td class="px-3 py-2.5 text-text-dim">€100</td></tr>
+            <tr class="border-t border-border-soft"><td class="px-3 py-2.5 text-text">Max per trade</td><td class="px-3 py-2.5 text-text-dim">€30</td></tr>
+            <tr class="border-t border-border-soft"><td class="px-3 py-2.5 text-text">Trailing stop</td><td class="px-3 py-2.5 text-text-dim">-10% from peak</td></tr>
+            <tr class="border-t border-border-soft"><td class="px-3 py-2.5 text-text">Trailing activation</td><td class="px-3 py-2.5 text-text-dim">Only after +20% from buy</td></tr>
+            <tr class="border-t border-border-soft"><td class="px-3 py-2.5 text-text">Timeout</td><td class="px-3 py-2.5 text-text-dim">Forced sell after 2h if pump doesn't materialize</td></tr>
+            <tr class="border-t border-border-soft"><td class="px-3 py-2.5 text-text">Sell at loss</td><td class="px-3 py-2.5 text-text-dim">Yes — accepted by design</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="text-[14.5px] leading-[1.7] text-text-dim mt-4">
+        On CEX: limited to new listings (2-3/week). On Solana DEX: more
+        opportunities but added complexity, to be implemented in phase
+        2.
+      </p>
+    </section>
+
+    {/* ============ § 4 — P&L MANAGEMENT ============ */}
+    <hr class="mt-12 border-t border-border-soft" />
+    <section class="mt-8 reveal">
+      <h2 class="font-mono text-[12px] uppercase tracking-[0.18em] text-pos mb-5">
+        § 4 · Profit &amp; loss management
+      </h2>
+
+      <h3 class="font-sans text-[16px] sm:text-[17px] font-semibold text-text mb-3">
+        4.1 Tiered take profit
+      </h3>
+      <div class="overflow-x-auto rounded-lg border border-border bg-surface">
+        <table class="w-full font-mono text-[12.5px]">
+          <thead class="border-b border-border-soft">
+            <tr class="text-text-muted uppercase tracking-[0.1em] text-[10px]">
+              <th class="px-3 py-2.5 text-left">Level</th>
+              <th class="px-3 py-2.5 text-left">Action</th>
+              <th class="px-3 py-2.5 text-left">Remaining position</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="border-t border-border-soft"><td class="px-3 py-2.5 text-text">+20%</td><td class="px-3 py-2.5 text-text-dim">Sell 25%</td><td class="px-3 py-2.5 text-text-dim">75%</td></tr>
+            <tr class="border-t border-border-soft"><td class="px-3 py-2.5 text-text">+40%</td><td class="px-3 py-2.5 text-text-dim">Sell 25%</td><td class="px-3 py-2.5 text-text-dim">50%</td></tr>
+            <tr class="border-t border-border-soft"><td class="px-3 py-2.5 text-text">+60%</td><td class="px-3 py-2.5 text-text-dim">Sell 25%</td><td class="px-3 py-2.5 text-text-dim">25%</td></tr>
+            <tr class="border-t border-border-soft"><td class="px-3 py-2.5 text-text">Beyond +60%</td><td class="px-3 py-2.5 text-text-dim">Trailing stop -15% from max</td><td class="px-3 py-2.5 text-text-dim">Until sold</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 class="font-sans text-[16px] sm:text-[17px] font-semibold text-text mb-3 mt-8">
+        4.2 Weekly rebalancing
+      </h3>
+      <ul class="space-y-1.5 text-[14.5px] leading-[1.7] text-text-dim mb-4">
+        <li class="relative pl-4 before:absolute before:left-0 before:text-pos before:content-['›']">Every Monday: if a token &gt; 30% of capital, trim the excess</li>
+        <li class="relative pl-4 before:absolute before:left-0 before:text-pos before:content-['›']">If a token &lt; 5% and still valid, may reallocate</li>
+      </ul>
+
+      <h3 class="font-sans text-[16px] sm:text-[17px] font-semibold text-text mb-3 mt-8">
+        4.3 Cash management
+      </h3>
+      <ul class="space-y-1.5 text-[14.5px] leading-[1.7] text-text-dim mb-4">
+        <li class="relative pl-4 before:absolute before:left-0 before:text-pos before:content-['›']">Crystallized profits: 50% reinvested in operational pool, 50% to stablecoin reserve</li>
+        <li class="relative pl-4 before:absolute before:left-0 before:text-pos before:content-['›']">Reserve only grows — never reinvested automatically</li>
+        <li class="relative pl-4 before:absolute before:left-0 before:text-pos before:content-['›']">Withdrawals only on explicit user request</li>
+      </ul>
+
+      <h3 class="font-sans text-[16px] sm:text-[17px] font-semibold text-text mb-3 mt-8">
+        4.4 Net P&amp;L
+      </h3>
+      <p class="text-[14.5px] leading-[1.7] text-text-dim mb-3">
+        No fee cap. The agent monitors net P&amp;L (gains - fees). If
+        daily P&amp;L &lt; -€10 on Strategy A, it stops. If the
+        fee/profit ratio is too thin, it widens grid intervals.
+      </p>
+    </section>
+
+    {/* ============ § 5 — HARDCODED RULES ============ */}
+    <hr class="mt-12 border-t border-border-soft" />
+    <section class="mt-8 reveal">
+      <h2 class="font-mono text-[12px] uppercase tracking-[0.18em] text-pos mb-5">
+        § 5 · Hardcoded rules
+      </h2>
+      <p class="text-[14.5px] leading-[1.7] text-text-dim mb-4">
+        Implemented in code, not modifiable by the AI.
+      </p>
+      <div class="overflow-x-auto rounded-lg border border-border bg-surface">
+        <table class="w-full font-mono text-[12.5px]">
+          <thead class="border-b border-border-soft">
+            <tr class="text-text-muted uppercase tracking-[0.1em] text-[10px]">
+              <th class="px-3 py-2.5 text-left">Rule</th>
+              <th class="px-3 py-2.5 text-left">Value</th>
+              <th class="px-3 py-2.5 text-left">Reason</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="border-t border-border-soft"><td class="px-3 py-2.5 text-text">Max per token (A)</td><td class="px-3 py-2.5 text-text-dim">30% of capital</td><td class="px-3 py-2.5 text-text-dim">Avoid concentration</td></tr>
+            <tr class="border-t border-border-soft"><td class="px-3 py-2.5 text-text">Max per shitcoin (B)</td><td class="px-3 py-2.5 text-text-dim">€30</td><td class="px-3 py-2.5 text-text-dim">Limit losses</td></tr>
+            <tr class="border-t border-border-soft"><td class="px-3 py-2.5 text-text">Max operations/day</td><td class="px-3 py-2.5 text-text-dim">50</td><td class="px-3 py-2.5 text-text-dim">Prevent loops</td></tr>
+            <tr class="border-t border-border-soft"><td class="px-3 py-2.5 text-text">Min daily P&amp;L (A)</td><td class="px-3 py-2.5 text-text-dim">-€10</td><td class="px-3 py-2.5 text-text-dim">Stop on bad day</td></tr>
+            <tr class="border-t border-border-soft"><td class="px-3 py-2.5 text-text">Stablecoin reserve</td><td class="px-3 py-2.5 text-text-dim">10% of total</td><td class="px-3 py-2.5 text-text-dim">Untouchable cushion</td></tr>
+            <tr class="border-t border-border-soft"><td class="px-3 py-2.5 text-text">Sell at loss (A)</td><td class="px-3 py-2.5 text-text-dim">NEVER</td><td class="px-3 py-2.5 text-text-dim">Fundamental rule</td></tr>
+            <tr class="border-t border-border-soft"><td class="px-3 py-2.5 text-text">Sell at loss (B)</td><td class="px-3 py-2.5 text-text-dim">Yes after 2h timeout</td><td class="px-3 py-2.5 text-text-dim">Accepted by design</td></tr>
+            <tr class="border-t border-border-soft"><td class="px-3 py-2.5 text-text">Max operational capital</td><td class="px-3 py-2.5 text-text-dim">90% of total</td><td class="px-3 py-2.5 text-text-dim">10% always in reserve</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    {/* ============ § 6 — PUBLIC DASHBOARD ============ */}
+    <hr class="mt-12 border-t border-border-soft" />
+    <section class="mt-8 reveal">
+      <h2 class="font-mono text-[12px] uppercase tracking-[0.18em] text-pos mb-5">
+        § 6 · Public dashboard
+      </h2>
+      <p class="text-[14.5px] leading-[1.7] text-text-dim mb-4">
+        The dashboard is the real product. It must be published from
+        day one of paper trading to build an audience.
+      </p>
+
+      <h3 class="font-sans text-[16px] sm:text-[17px] font-semibold text-text mb-3 mt-6">
+        6.1 Structure
+      </h3>
+      <p class="text-[14.5px] leading-[1.7] text-text-dim mb-3">
+        <strong class="text-text">Homepage:</strong> Live portfolio
+        (percentages, total P&amp;L, chart from start). Status of three
+        brains: Grid, Trend, Sentinel with risk score. Last trade with
+        natural language explanation.
+      </p>
+      <p class="text-[14.5px] leading-[1.7] text-text-dim mb-3">
+        <strong class="text-text">Operations page:</strong> Full
+        history filterable by token, type, date. Each operation shows
+        the decision reason.
+      </p>
+      <p class="text-[14.5px] leading-[1.7] text-text-dim mb-3">
+        <strong class="text-text">Diary page:</strong> Daily agent
+        commentary with defined personality and tone. Weekly analysis,
+        posts on memory resets or strategy changes.
+      </p>
+      <p class="text-[14.5px] leading-[1.7] text-text-dim mb-3">
+        <strong class="text-text">Info page:</strong> Project history,
+        architecture, who's behind it.
+      </p>
+      <p class="text-[14.5px] leading-[1.7] text-text-dim mb-3">
+        <strong class="text-text">Monetization:</strong> Banner ads
+        (crypto sector: CPM €10-20/1000 views). Donations (Buy Me a
+        Coffee, Ko-fi, crypto).
+      </p>
+
+      <h3 class="font-sans text-[16px] sm:text-[17px] font-semibold text-text mb-3 mt-8">
+        6.2 Tech stack
+      </h3>
+      <div class="overflow-x-auto rounded-lg border border-border bg-surface">
+        <table class="w-full font-mono text-[12.5px]">
+          <thead class="border-b border-border-soft">
+            <tr class="text-text-muted uppercase tracking-[0.1em] text-[10px]">
+              <th class="px-3 py-2.5 text-left">Component</th>
+              <th class="px-3 py-2.5 text-left">Technology</th>
+              <th class="px-3 py-2.5 text-left">Cost</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="border-t border-border-soft"><td class="px-3 py-2.5 text-text">Frontend</td><td class="px-3 py-2.5 text-text-dim">React + Tailwind</td><td class="px-3 py-2.5 text-text-dim">€0</td></tr>
+            <tr class="border-t border-border-soft"><td class="px-3 py-2.5 text-text">Hosting</td><td class="px-3 py-2.5 text-text-dim">Vercel (free tier)</td><td class="px-3 py-2.5 text-text-dim">€0</td></tr>
+            <tr class="border-t border-border-soft"><td class="px-3 py-2.5 text-text">Database/Realtime</td><td class="px-3 py-2.5 text-text-dim">Supabase (websocket live)</td><td class="px-3 py-2.5 text-text-dim">€0</td></tr>
+            <tr class="border-t border-border-soft"><td class="px-3 py-2.5 text-text">Initial design</td><td class="px-3 py-2.5 text-text-dim">v0 by Vercel</td><td class="px-3 py-2.5 text-text-dim">€0</td></tr>
+            <tr class="border-t border-border-soft"><td class="px-3 py-2.5 text-text">Evolved design</td><td class="px-3 py-2.5 text-text-dim">Fiverr designer</td><td class="px-3 py-2.5 text-text-dim">€50-100 one-time</td></tr>
+            <tr class="border-t border-border-soft"><td class="px-3 py-2.5 text-text">Domain</td><td class="px-3 py-2.5 text-text-dim">.com or .it</td><td class="px-3 py-2.5 text-text-dim">€10-15/year</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    {/* ============ § 7 — LEARNING SYSTEM ============ */}
+    <hr class="mt-12 border-t border-border-soft" />
+    <section class="mt-8 reveal">
+      <h2 class="font-mono text-[12px] uppercase tracking-[0.18em] text-pos mb-5">
+        § 7 · Learning system
+      </h2>
+      <p class="text-[14.5px] leading-[1.7] text-text-dim mb-4">
+        The LLM doesn't learn in the classical sense. Intelligence
+        grows through increasingly rich context fed to the model.
+      </p>
+
+      <h3 class="font-sans text-[16px] sm:text-[17px] font-semibold text-text mb-3 mt-6">
+        7.1 Structured memory
+      </h3>
+      <p class="text-[14.5px] leading-[1.7] text-text-dim mb-3">
+        Database with complete history. Before each decision, the
+        prompt includes: last N trades, latest Sentinel analyses,
+        recent P&amp;L, user feedback.
+      </p>
+
+      <h3 class="font-sans text-[16px] sm:text-[17px] font-semibold text-text mb-3 mt-6">
+        7.2 Auto-generated rules
+      </h3>
+      <p class="text-[14.5px] leading-[1.7] text-text-dim mb-3">
+        A weekly job analyzes history and generates new rules. E.g.:
+        "In the last 4 weeks, when RSI &lt; 25 on TOKEN X, bounce
+        within 6h." Saved in DB, loaded into prompt.
+      </p>
+
+      <h3 class="font-sans text-[16px] sm:text-[17px] font-semibold text-text mb-3 mt-6">
+        7.3 Daily diary
+      </h3>
+      <p class="text-[14.5px] leading-[1.7] text-text-dim mb-3">
+        1 API call/day at end of day. The LLM writes a commentary with
+        the agent's personality. Published on the dashboard. Cost:
+        pennies.
+      </p>
+
+      <h3 class="font-sans text-[16px] sm:text-[17px] font-semibold text-text mb-3 mt-6">
+        7.4 Weekly report
+      </h3>
+      <p class="text-[14.5px] leading-[1.7] text-text-dim mb-3">
+        1 API call/week. Analyzes trades, identifies patterns,
+        generates rules. Can be done semi-manually (data via Telegram,
+        rules generated in Claude Pro/Max chat). Cost: negligible.
+      </p>
+
+      <h3 class="font-sans text-[16px] sm:text-[17px] font-semibold text-text mb-3 mt-6">
+        7.5 Feedback loop
+      </h3>
+      <p class="text-[14.5px] leading-[1.7] text-text-dim mb-3">
+        Telegram alerts with user response ("good decision" / "should
+        have waited"). Feedback saved and used as future context.
+      </p>
+    </section>
+
+    {/* ============ § 8 — MEMORY MANAGEMENT ============ */}
+    <hr class="mt-12 border-t border-border-soft" />
+    <section class="mt-8 reveal">
+      <h2 class="font-mono text-[12px] uppercase tracking-[0.18em] text-pos mb-5">
+        § 8 · Agent memory management
+      </h2>
+      <p class="text-[14.5px] leading-[1.7] text-text-dim mb-4">
+        All memory lives in the database. Full control: reset, restore,
+        compare versions.
+      </p>
+      <div class="overflow-x-auto rounded-lg border border-border bg-surface">
+        <table class="w-full font-mono text-[12.5px]">
+          <thead class="border-b border-border-soft">
+            <tr class="text-text-muted uppercase tracking-[0.1em] text-[10px]">
+              <th class="px-3 py-2.5 text-left">Reset type</th>
+              <th class="px-3 py-2.5 text-left">Deletes</th>
+              <th class="px-3 py-2.5 text-left">Keeps</th>
+              <th class="px-3 py-2.5 text-left">When</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="border-t border-border-soft"><td class="px-3 py-2.5 text-text">Total</td><td class="px-3 py-2.5 text-text-dim">Everything</td><td class="px-3 py-2.5 text-text-dim">Nothing</td><td class="px-3 py-2.5 text-text-dim">Radical tests</td></tr>
+            <tr class="border-t border-border-soft"><td class="px-3 py-2.5 text-text">Selective</td><td class="px-3 py-2.5 text-text-dim">Auto-generated rules</td><td class="px-3 py-2.5 text-text-dim">History and feedback</td><td class="px-3 py-2.5 text-text-dim">Market regime change</td></tr>
+            <tr class="border-t border-border-soft"><td class="px-3 py-2.5 text-text">Snapshot + rollback</td><td class="px-3 py-2.5 text-text-dim">Nothing (saves copy)</td><td class="px-3 py-2.5 text-text-dim">Everything</td><td class="px-3 py-2.5 text-text-dim">Before major changes</td></tr>
+            <tr class="border-t border-border-soft"><td class="px-3 py-2.5 text-text">Versioning</td><td class="px-3 py-2.5 text-text-dim">Deactivates versions</td><td class="px-3 py-2.5 text-text-dim">Everything</td><td class="px-3 py-2.5 text-text-dim">A/B testing rules</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="text-[14.5px] leading-[1.7] text-text-dim mt-4">
+        Reset = clear rules table in DB. Click on admin dashboard (not
+        public). Agent restarts with only hardcoded base rules.
+      </p>
+      <aside class="my-5 border-l-2 border-yellow-500/60 bg-yellow-500/[0.04]
+                    py-2.5 pl-4 text-[13px] italic leading-[1.6] text-text-dim">
+        The public dashboard could show: "Day 1 after reset — the agent
+        is rebuilding its rules." Interesting content for the audience.
+      </aside>
+    </section>
+
+    {/* ============ § 9 — NOTIFICATIONS ============ */}
+    <hr class="mt-12 border-t border-border-soft" />
+    <section class="mt-8 reveal">
+      <h2 class="font-mono text-[12px] uppercase tracking-[0.18em] text-pos mb-5">
+        § 9 · Notifications (Telegram bot)
+      </h2>
+      <div class="overflow-x-auto rounded-lg border border-border bg-surface">
+        <table class="w-full font-mono text-[12.5px]">
+          <thead class="border-b border-border-soft">
+            <tr class="text-text-muted uppercase tracking-[0.1em] text-[10px]">
+              <th class="px-3 py-2.5 text-left">Type</th>
+              <th class="px-3 py-2.5 text-left">Frequency</th>
+              <th class="px-3 py-2.5 text-left">Content</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="border-t border-border-soft"><td class="px-3 py-2.5 text-text">Daily report</td><td class="px-3 py-2.5 text-text-dim">1x/day (evening)</td><td class="px-3 py-2.5 text-text-dim">P&amp;L, trades, portfolio, risk score</td></tr>
+            <tr class="border-t border-border-soft"><td class="px-3 py-2.5 text-text">Critical alert</td><td class="px-3 py-2.5 text-text-dim">When needed</td><td class="px-3 py-2.5 text-text-dim">Loss &gt; threshold, critical news, opportunity</td></tr>
+            <tr class="border-t border-border-soft"><td class="px-3 py-2.5 text-text">Weekly report</td><td class="px-3 py-2.5 text-text-dim">1x/week (Mon)</td><td class="px-3 py-2.5 text-text-dim">Summary, new rules, rebalancing</td></tr>
+            <tr class="border-t border-border-soft"><td class="px-3 py-2.5 text-text">Decision request</td><td class="px-3 py-2.5 text-text-dim">Rare</td><td class="px-3 py-2.5 text-text-dim">Sell at loss on Str. A? Needs human decision</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    {/* ============ § 10 — COST ANALYSIS ============ */}
+    <hr class="mt-12 border-t border-border-soft" />
+    <section class="mt-8 reveal">
+      <h2 class="font-mono text-[12px] uppercase tracking-[0.18em] text-pos mb-5">
+        § 10 · Cost analysis
+      </h2>
+
+      <h3 class="font-sans text-[16px] sm:text-[17px] font-semibold text-text mb-3">
+        10.1 Infrastructure
+      </h3>
+      <div class="overflow-x-auto rounded-lg border border-border bg-surface">
+        <table class="w-full font-mono text-[12.5px]">
+          <thead class="border-b border-border-soft">
+            <tr class="text-text-muted uppercase tracking-[0.1em] text-[10px]">
+              <th class="px-3 py-2.5 text-left">Item</th>
+              <th class="px-3 py-2.5 text-left">Paper trading</th>
+              <th class="px-3 py-2.5 text-left">Live</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="border-t border-border-soft"><td class="px-3 py-2.5 text-text">Domain</td><td class="px-3 py-2.5 text-text-dim">€10-15/year</td><td class="px-3 py-2.5 text-text-dim">€10-15/year</td></tr>
+            <tr class="border-t border-border-soft"><td class="px-3 py-2.5 text-text">Bot hosting (Mac Mini)</td><td class="px-3 py-2.5 text-text-dim">€0</td><td class="px-3 py-2.5 text-text-dim">€0 or VPS €5-8/month</td></tr>
+            <tr class="border-t border-border-soft"><td class="px-3 py-2.5 text-text">Dashboard (Vercel)</td><td class="px-3 py-2.5 text-text-dim">€0</td><td class="px-3 py-2.5 text-text-dim">€0</td></tr>
+            <tr class="border-t border-border-soft"><td class="px-3 py-2.5 text-text">Database (Supabase)</td><td class="px-3 py-2.5 text-text-dim">€0</td><td class="px-3 py-2.5 text-text-dim">€0</td></tr>
+            <tr class="border-t border-border-soft"><td class="px-3 py-2.5 text-text">LLM API (Sentinel)</td><td class="px-3 py-2.5 text-text-dim">€5-10/month</td><td class="px-3 py-2.5 text-text-dim">€10-20/month</td></tr>
+            <tr class="border-t border-border-soft"><td class="px-3 py-2.5 text-text">News API</td><td class="px-3 py-2.5 text-text-dim">€0</td><td class="px-3 py-2.5 text-text-dim">€0</td></tr>
+            <tr class="border-t border-border-soft"><td class="px-3 py-2.5 text-text">Telegram bot</td><td class="px-3 py-2.5 text-text-dim">€0</td><td class="px-3 py-2.5 text-text-dim">€0</td></tr>
+            <tr class="border-t border-border-soft">
+              <td class="px-3 py-2.5 font-semibold text-text">Monthly total</td>
+              <td class="px-3 py-2.5 font-semibold text-pos">~€5-10/month</td>
+              <td class="px-3 py-2.5 font-semibold text-pos">~€15-45/month</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 class="font-sans text-[16px] sm:text-[17px] font-semibold text-text mb-3 mt-8">
+        10.2 API optimization
+      </h3>
+      <p class="text-[14.5px] leading-[1.7] text-text-dim mb-3">
+        The Sentinel accounts for 99% of API cost. Strategies:
+      </p>
+      <ul class="space-y-1.5 text-[14.5px] leading-[1.7] text-text-dim mb-4">
+        <li class="relative pl-4 before:absolute before:left-0 before:text-pos before:content-['›']">Use Haiku (or equivalent cheap model) instead of Sonnet/Opus</li>
+        <li class="relative pl-4 before:absolute before:left-0 before:text-pos before:content-['›']">Reduce frequency: 30-60 min normally, accelerate only in high volatility</li>
+        <li class="relative pl-4 before:absolute before:left-0 before:text-pos before:content-['›']">Prompt caching for the Sentinel system prompt</li>
+        <li class="relative pl-4 before:absolute before:left-0 before:text-pos before:content-['›']">Pre-filter news in Python before sending to LLM</li>
+        <li class="relative pl-4 before:absolute before:left-0 before:text-pos before:content-['›']">Evaluate local open-source models (Llama, Mistral) on Mac Mini for pre-filtering</li>
+      </ul>
+    </section>
+
+    {/* ============ § 11 — 12-MONTH SIMULATION ============ */}
+    <hr class="mt-12 border-t border-border-soft" />
+    <section class="mt-8 reveal">
+      <h2 class="font-mono text-[12px] uppercase tracking-[0.18em] text-pos mb-5">
+        § 11 · 12-month simulation (conservative)
+      </h2>
+      <p class="text-[14.5px] leading-[1.7] text-text-dim mb-4">
+        Assumptions: Str. A +2%/month net, Str. B volatile, profits
+        50/50 reinvest/reserve.
+      </p>
+      <div class="overflow-x-auto rounded-lg border border-border bg-surface">
+        <table class="w-full font-mono text-[12.5px]">
+          <thead class="border-b border-border-soft">
+            <tr class="text-text-muted uppercase tracking-[0.1em] text-[10px]">
+              <th class="px-3 py-2.5 text-left">Month</th>
+              <th class="px-3 py-2.5 text-left">Pool A</th>
+              <th class="px-3 py-2.5 text-left">Pool B</th>
+              <th class="px-3 py-2.5 text-left">Reserve</th>
+              <th class="px-3 py-2.5 text-left">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="border-t border-border-soft"><td class="px-3 py-2.5 text-text">Start</td><td class="px-3 py-2.5 text-text-dim">€350</td><td class="px-3 py-2.5 text-text-dim">€100</td><td class="px-3 py-2.5 text-text-dim">€50</td><td class="px-3 py-2.5 text-text-dim">€500</td></tr>
+            <tr class="border-t border-border-soft"><td class="px-3 py-2.5 text-text">Month 3</td><td class="px-3 py-2.5 text-text-dim">€360</td><td class="px-3 py-2.5 text-text-dim">€67</td><td class="px-3 py-2.5 text-text-dim">€70</td><td class="px-3 py-2.5 text-text-dim">€497</td></tr>
+            <tr class="border-t border-border-soft"><td class="px-3 py-2.5 text-text">Month 6</td><td class="px-3 py-2.5 text-text-dim">€369</td><td class="px-3 py-2.5 text-text-dim">€64</td><td class="px-3 py-2.5 text-text-dim">€93</td><td class="px-3 py-2.5 text-text-dim">€526</td></tr>
+            <tr class="border-t border-border-soft"><td class="px-3 py-2.5 text-text">Month 9</td><td class="px-3 py-2.5 text-text-dim">€383</td><td class="px-3 py-2.5 text-text-dim">€79</td><td class="px-3 py-2.5 text-text-dim">€133</td><td class="px-3 py-2.5 text-text-dim">€594</td></tr>
+            <tr class="border-t border-border-soft"><td class="px-3 py-2.5 text-text">Month 12</td><td class="px-3 py-2.5 text-text-dim">€395</td><td class="px-3 py-2.5 text-text-dim">€80</td><td class="px-3 py-2.5 text-text-dim">€167</td><td class="px-3 py-2.5 font-semibold text-pos">€643</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="mt-4 overflow-x-auto rounded-lg border border-border bg-surface">
+        <table class="w-full font-mono text-[12.5px]">
+          <thead class="border-b border-border-soft">
+            <tr class="text-text-muted uppercase tracking-[0.1em] text-[10px]">
+              <th class="px-3 py-2.5 text-left">Scenario</th>
+              <th class="px-3 py-2.5 text-left">12-month result</th>
+              <th class="px-3 py-2.5 text-left">Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="border-t border-border-soft"><td class="px-3 py-2.5 text-text">Conservative</td><td class="px-3 py-2.5 text-pos">~€643 (+28.6%)</td><td class="px-3 py-2.5 text-text-dim">€117 in crystallized reserve</td></tr>
+            <tr class="border-t border-border-soft"><td class="px-3 py-2.5 text-text">Pessimistic (bear)</td><td class="px-3 py-2.5 text-text-dim">~€480-510</td><td class="px-3 py-2.5 text-text-dim">Capital protected by "never sell at loss" rule</td></tr>
+            <tr class="border-t border-border-soft"><td class="px-3 py-2.5 text-text">Optimistic (bull)</td><td class="px-3 py-2.5 text-pos">~€800-1000</td><td class="px-3 py-2.5 text-text-dim">Str. A +4-6%/month, frequent pumps</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    {/* ============ § 12 — DEVELOPMENT PLAN ============ */}
+    <hr class="mt-12 border-t border-border-soft" />
+    <section class="mt-8 reveal">
+      <h2 class="font-mono text-[12px] uppercase tracking-[0.18em] text-pos mb-5">
+        § 12 · Development plan
+      </h2>
+      <p class="text-[14.5px] leading-[1.7] text-text-dim mb-3">
+        <strong class="text-text">Phase 0 — Setup (Week 1):</strong>
+        Choose exchange (Binance/Bybit) and create KYC account.
+        Configure API key (read + trade only, NO withdraw). Setup
+        Python: ccxt, FastAPI, SQLite/Supabase. Create Telegram bot.
+        Choose agent name and identity + register domain.
+      </p>
+      <p class="text-[14.5px] leading-[1.7] text-text-dim mb-3">
+        <strong class="text-text">Phase 1 — Grid Bot + paper trading
+        (Weeks 2-3):</strong> Implement Grid Bot in paper trading.
+        Trade logging to database. Basic admin dashboard + Telegram
+        notifications. Publish public dashboard (even basic).
+      </p>
+      <p class="text-[14.5px] leading-[1.7] text-text-dim mb-3">
+        <strong class="text-text">Phase 2 — Trend Follower (Weeks
+        3-4):</strong> Calculate indicators (EMA, RSI, Volume). Trend
+        Follower logic + Grid interaction. Parameter calibration on
+        paper trading data.
+      </p>
+      <p class="text-[14.5px] leading-[1.7] text-text-dim mb-3">
+        <strong class="text-text">Phase 3 — AI Sentinel (Weeks
+        4-5):</strong> Integrate news feeds (CryptoPanic, RSS).
+        Sentinel prompt with LLM. Automatic daily diary. Sentinel
+        override on other brains.
+      </p>
+      <p class="text-[14.5px] leading-[1.7] text-text-dim mb-3">
+        <strong class="text-text">Phase 4 — Full dashboard (Weeks
+        5-6):</strong> Design with v0, React implementation, Vercel
+        deploy, Supabase realtime.
+      </p>
+      <p class="text-[14.5px] leading-[1.7] text-text-dim mb-3">
+        <strong class="text-text">Phase 5 — Extended paper trading
+        (Weeks 6-10):</strong> Minimum 4 weeks. Optimization, fixes,
+        first rule generation. Dashboard already live.
+      </p>
+      <p class="text-[14.5px] leading-[1.7] text-text-dim mb-3">
+        <strong class="text-text">Phase 6 — Go live (After week
+        10):</strong> Only if paper trading is satisfactory. Start with
+        €100-200, not €500. Scale gradually. Possible VPS migration.
+      </p>
+    </section>
+
+    {/* ============ § 13 — REFERENCES ============ */}
+    <hr class="mt-12 border-t border-border-soft" />
+    <section class="mt-8 reveal">
+      <h2 class="font-mono text-[12px] uppercase tracking-[0.18em] text-pos mb-5">
+        § 13 · References &amp; resources
+      </h2>
+
+      <h3 class="font-sans text-[16px] sm:text-[17px] font-semibold text-text mb-3">
+        13.1 Open source projects
+      </h3>
+      <p class="text-[14.5px] leading-[1.7] text-text-dim mb-3">
+        <strong class="text-text">Freqtrade</strong> (main architectural
+        reference) — Open source Python crypto bot. Backtesting, paper
+        trading, WebUI, Telegram. Very similar stack to ours.
+      </p>
+      <p class="text-[14.5px] leading-[1.7] text-text-dim mb-3">
+        <strong class="text-text">AI-Trader</strong> (dashboard + AI
+        reference) — Live public dashboard with AI agents trading in
+        real time. Copy trading, OpenClaw integration.
+      </p>
+
+      <h3 class="font-sans text-[16px] sm:text-[17px] font-semibold text-text mb-3 mt-8">
+        13.2 Market data &amp; warnings
+      </h3>
+      <p class="text-[14.5px] leading-[1.7] text-text-dim mb-2">
+        <strong class="text-text">Failure statistics:</strong>
+      </p>
+      <ul class="space-y-1.5 text-[14.5px] leading-[1.7] text-text-dim mb-4">
+        <li class="relative pl-4 before:absolute before:left-0 before:text-pos before:content-['›']">73% of automated trading accounts fail within 6 months</li>
+        <li class="relative pl-4 before:absolute before:left-0 before:text-pos before:content-['›']">53.2% of all crypto projects failed (13.4M) — CoinGecko Jan 2026</li>
+        <li class="relative pl-4 before:absolute before:left-0 before:text-pos before:content-['›']">11.6M tokens ceased in 2025 alone</li>
+        <li class="relative pl-4 before:absolute before:left-0 before:text-pos before:content-['›']">October 2025: crash — $19B liquidated in 24h</li>
+      </ul>
+      <p class="text-[14.5px] leading-[1.7] text-text-dim mb-2">
+        <strong class="text-text">AI incidents:</strong>
+      </p>
+      <ul class="space-y-1.5 text-[14.5px] leading-[1.7] text-text-dim mb-4">
+        <li class="relative pl-4 before:absolute before:left-0 before:text-pos before:content-['›']">Lobstar Wild: decimal error, $441,000 lost in a single transaction</li>
+        <li class="relative pl-4 before:absolute before:left-0 before:text-pos before:content-['›']">GPT-5 test NOV1.ai: -62% capital in a few weeks</li>
+        <li class="relative pl-4 before:absolute before:left-0 before:text-pos before:content-['›']">May 2025: AI bots sell $2B in 3 minutes, amplifying a flash crash</li>
+      </ul>
+      <p class="text-[14.5px] leading-[1.7] text-text-dim mb-2">
+        <strong class="text-text">Regulatory warnings:</strong>
+      </p>
+      <ul class="space-y-1.5 text-[14.5px] leading-[1.7] text-text-dim mb-4">
+        <li class="relative pl-4 before:absolute before:left-0 before:text-pos before:content-['›']">CFTC (USA): warning against AI bots with guaranteed returns</li>
+        <li class="relative pl-4 before:absolute before:left-0 before:text-pos before:content-['›']">MiFID II (EU): paid copy trading may require authorization</li>
+      </ul>
+
+      <h3 class="font-sans text-[16px] sm:text-[17px] font-semibold text-text mb-3 mt-8">
+        13.3 Tech stack
+      </h3>
+      <div class="overflow-x-auto rounded-lg border border-border bg-surface">
+        <table class="w-full font-mono text-[12.5px]">
+          <thead class="border-b border-border-soft">
+            <tr class="text-text-muted uppercase tracking-[0.1em] text-[10px]">
+              <th class="px-3 py-2.5 text-left">Component</th>
+              <th class="px-3 py-2.5 text-left">Technology</th>
+              <th class="px-3 py-2.5 text-left">Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="border-t border-border-soft"><td class="px-3 py-2.5 text-text">Exchange API</td><td class="px-3 py-2.5 text-text-dim">ccxt (Python)</td><td class="px-3 py-2.5 text-text-dim">100+ exchanges supported</td></tr>
+            <tr class="border-t border-border-soft"><td class="px-3 py-2.5 text-text">Bot framework</td><td class="px-3 py-2.5 text-text-dim">FastAPI</td><td class="px-3 py-2.5 text-text-dim">Async, perfect for 24/7</td></tr>
+            <tr class="border-t border-border-soft"><td class="px-3 py-2.5 text-text">Frontend</td><td class="px-3 py-2.5 text-text-dim">React + Tailwind</td><td class="px-3 py-2.5 text-text-dim">Known stack</td></tr>
+            <tr class="border-t border-border-soft"><td class="px-3 py-2.5 text-text">Realtime</td><td class="px-3 py-2.5 text-text-dim">Supabase Realtime</td><td class="px-3 py-2.5 text-text-dim">WebSocket for live dashboard</td></tr>
+            <tr class="border-t border-border-soft"><td class="px-3 py-2.5 text-text">Web hosting</td><td class="px-3 py-2.5 text-text-dim">Vercel</td><td class="px-3 py-2.5 text-text-dim">Free tier, auto-deploy</td></tr>
+            <tr class="border-t border-border-soft"><td class="px-3 py-2.5 text-text">Notifications</td><td class="px-3 py-2.5 text-text-dim">python-telegram-bot</td><td class="px-3 py-2.5 text-text-dim">Telegram Bot API</td></tr>
+            <tr class="border-t border-border-soft"><td class="px-3 py-2.5 text-text">News feed</td><td class="px-3 py-2.5 text-text-dim">CryptoPanic API</td><td class="px-3 py-2.5 text-text-dim">Aggregator, free tier</td></tr>
+            <tr class="border-t border-border-soft"><td class="px-3 py-2.5 text-text">LLM Sentinel</td><td class="px-3 py-2.5 text-text-dim">Haiku / Groq / Mistral / DeepSeek</td><td class="px-3 py-2.5 text-text-dim">Evaluate costs</td></tr>
+            <tr class="border-t border-border-soft"><td class="px-3 py-2.5 text-text">Indicators</td><td class="px-3 py-2.5 text-text-dim">pandas-ta or ta-lib</td><td class="px-3 py-2.5 text-text-dim">RSI, EMA, MACD</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 class="font-sans text-[16px] sm:text-[17px] font-semibold text-text mb-3 mt-8">
+        13.4 Conceptual inspiration
+      </h3>
+      <ul class="space-y-1.5 text-[14.5px] leading-[1.7] text-text-dim mb-4">
+        <li class="relative pl-4 before:absolute before:left-0 before:text-pos before:content-['›']">Felix Craft AI (Nat Eliason) — AI agent "CEO" with public dashboard. Reference for storytelling and transparency.</li>
+        <li class="relative pl-4 before:absolute before:left-0 before:text-pos before:content-['›']">OpenClaw (Peter Steinberger) — autonomous open source AI agent. Reference for external tool integration.</li>
+      </ul>
+    </section>
+
+    {/* ============ § 14 — OPEN DECISIONS ============ */}
+    <hr class="mt-12 border-t border-border-soft" />
+    <section class="mt-8 reveal">
+      <h2 class="font-mono text-[12px] uppercase tracking-[0.18em] text-pos mb-5">
+        § 14 · Open decisions
+      </h2>
+      <div class="overflow-x-auto rounded-lg border border-border bg-surface">
+        <table class="w-full font-mono text-[12.5px]">
+          <thead class="border-b border-border-soft">
+            <tr class="text-text-muted uppercase tracking-[0.1em] text-[10px]">
+              <th class="px-3 py-2.5 text-left">Decision</th>
+              <th class="px-3 py-2.5 text-left">Options</th>
+              <th class="px-3 py-2.5 text-left">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="border-t border-border-soft">
+              <td class="px-3 py-2.5 text-text">Agent name</td>
+              <td class="px-3 py-2.5 text-text-dim">TBD</td>
+              <td class="px-3 py-2.5"><span class="rounded-full border border-yellow-500/40 bg-yellow-500/10 px-2 py-0.5 font-mono text-[9px] uppercase tracking-[0.16em] text-yellow-300">open</span></td>
+            </tr>
+            <tr class="border-t border-border-soft">
+              <td class="px-3 py-2.5 text-text">Main exchange</td>
+              <td class="px-3 py-2.5 text-text-dim">Binance vs Bybit</td>
+              <td class="px-3 py-2.5"><span class="rounded-full border border-yellow-500/40 bg-yellow-500/10 px-2 py-0.5 font-mono text-[9px] uppercase tracking-[0.16em] text-yellow-300">open</span></td>
+            </tr>
+            <tr class="border-t border-border-soft">
+              <td class="px-3 py-2.5 text-text">LLM for Sentinel</td>
+              <td class="px-3 py-2.5 text-text-dim">Haiku vs Groq vs Mistral vs DeepSeek</td>
+              <td class="px-3 py-2.5"><span class="rounded-full border border-yellow-500/40 bg-yellow-500/10 px-2 py-0.5 font-mono text-[9px] uppercase tracking-[0.16em] text-yellow-300">open</span></td>
+            </tr>
+            <tr class="border-t border-border-soft">
+              <td class="px-3 py-2.5 text-text">Strategy B active at launch?</td>
+              <td class="px-3 py-2.5 text-text-dim">Depends on paper trading</td>
+              <td class="px-3 py-2.5"><span class="rounded-full border border-yellow-500/40 bg-yellow-500/10 px-2 py-0.5 font-mono text-[9px] uppercase tracking-[0.16em] text-yellow-300">open</span></td>
+            </tr>
+            <tr class="border-t border-border-soft">
+              <td class="px-3 py-2.5 text-text">Solana DEX for Str. B</td>
+              <td class="px-3 py-2.5 text-text-dim">Phase 2 after CEX validation</td>
+              <td class="px-3 py-2.5"><span class="rounded-full border border-border-soft bg-surface-hover px-2 py-0.5 font-mono text-[9px] uppercase tracking-[0.16em] text-text-muted">deferred</span></td>
+            </tr>
+            <tr class="border-t border-border-soft">
+              <td class="px-3 py-2.5 text-text">Future copy trading</td>
+              <td class="px-3 py-2.5 text-text-dim">MiFID II to verify</td>
+              <td class="px-3 py-2.5"><span class="rounded-full border border-border-soft bg-surface-hover px-2 py-0.5 font-mono text-[9px] uppercase tracking-[0.16em] text-text-muted">deferred</span></td>
+            </tr>
+            <tr class="border-t border-border-soft">
+              <td class="px-3 py-2.5 text-text">Local model (Llama)</td>
+              <td class="px-3 py-2.5 text-text-dim">Pre-filtering on Mac Mini</td>
+              <td class="px-3 py-2.5"><span class="rounded-full border border-border-soft bg-surface-hover px-2 py-0.5 font-mono text-[9px] uppercase tracking-[0.16em] text-text-muted">deferred</span></td>
+            </tr>
+            <tr class="border-t border-border-soft">
+              <td class="px-3 py-2.5 text-text">Live hosting</td>
+              <td class="px-3 py-2.5 text-text-dim">Mac Mini (paper) / VPS (live)</td>
+              <td class="px-3 py-2.5"><span class="rounded-full border border-yellow-500/40 bg-yellow-500/10 px-2 py-0.5 font-mono text-[9px] uppercase tracking-[0.16em] text-yellow-300">open</span></td>
+            </tr>
+            <tr class="border-t border-border-soft">
+              <td class="px-3 py-2.5 text-text">Absolute values or %</td>
+              <td class="px-3 py-2.5 text-text-dim">Privacy vs transparency</td>
+              <td class="px-3 py-2.5"><span class="rounded-full border border-yellow-500/40 bg-yellow-500/10 px-2 py-0.5 font-mono text-[9px] uppercase tracking-[0.16em] text-yellow-300">open</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    {/* ============ VERSION TAG ============ */}
+    <div class="mt-16 border-t border-border-soft pt-4
+                font-mono text-[11px] text-text-muted">
+      Blueprint v1.0 — March 2026 · Published as historical document
+    </div>
+
+  </main>
+</Layout>

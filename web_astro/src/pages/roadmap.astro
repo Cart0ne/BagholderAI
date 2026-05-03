@@ -1,0 +1,334 @@
+---
+import Layout from "../layouts/Layout.astro";
+import {
+  ROADMAP, phaseProgress, totalProgress, groupBySection,
+  type Task, type PhaseStatus, type TaskStatus, type Who,
+} from "../data/roadmap.ts";
+
+/* /roadmap — porting from /web/roadmap.html. The data lives in
+   src/data/roadmap.ts (single source of truth, edit there each session).
+   Layout follows the same hero + section pattern as /diary, /dashboard,
+   /blueprint:
+     - Hero: max-w-4xl, h1 28→40px responsive, mono meta-strip
+     - Main: max-w-4xl, sections separated by <hr>
+     - Phase cards: collapsible <details> per phase (active phase open by
+       default), <summary> shows title + status badge + progress
+     - Phase 8 backlog: grouped by section markers (Phase 1 sub, Phase 2
+       sub, etc.) using the same <details> pattern.
+   Pure Astro static markup + native <details> for expand/collapse — no JS. */
+
+const stats = totalProgress(ROADMAP.phases);
+const remaining = stats.total - stats.done;
+const lastUpdatedLabel = (() => {
+  const d = new Date(ROADMAP.lastUpdated);
+  return d.toLocaleDateString("en-US", {
+    year: "numeric", month: "long", day: "numeric",
+  });
+})();
+
+/* Map phase status → visual badge. Reuses tokens from blueprint and
+   diary so the language stays consistent across pages. */
+function phaseBadge(s: PhaseStatus) {
+  if (s === "done") {
+    return {
+      label: "complete",
+      cls: "border-pos/30 text-pos bg-pos/5",
+    };
+  }
+  if (s === "active") {
+    return {
+      label: "● active",
+      cls: "border-neu/40 text-neu bg-neu/5",
+    };
+  }
+  return {
+    label: "planned",
+    cls: "border-border-soft text-text-muted bg-surface",
+  };
+}
+
+/* Map task status → icon character + text color. */
+function taskIcon(s: TaskStatus): { ch: string; cls: string } {
+  if (s === "done")   return { ch: "✓",  cls: "text-pos" };
+  if (s === "active") return { ch: "◐",  cls: "text-neu" };
+  if (s === "killed") return { ch: "✕",  cls: "text-text-muted line-through" };
+  return                       { ch: "○",  cls: "text-yellow-300" };  /* todo */
+}
+
+/* Color the WHO chip differently per actor — keeps quick scan possible.
+   Same family as the dashboard managed_by chips. */
+function whoChip(w: Who): string {
+  if (w === "AI")   return "border-neu/40 text-neu bg-neu/5";
+  if (w === "MAX")  return "border-yellow-500/40 text-yellow-300 bg-yellow-500/5";
+  return "border-pos/30 text-pos bg-pos/5";  /* BOTH */
+}
+---
+
+<Layout
+  title="Roadmap — BagHolderAI"
+  description="What we're building, what's done, what's next. Every task by phase, with the messy bits included."
+  current="roadmap"
+>
+
+  {/* ============================================================ HERO */}
+  <section class="mx-auto max-w-4xl px-4 pt-10 pb-6 sm:px-6 sm:pt-14 sm:pb-8">
+    <h1 class="text-[28px] font-semibold leading-[1.12] tracking-tight
+               text-text sm:text-[34px] md:text-[40px] md:leading-[1.08]">
+      What we're <span class="text-primary">building</span>.
+    </h1>
+
+    <p class="mt-3 max-w-2xl text-[14.5px] leading-[1.55] text-text-dim sm:text-[15px]">
+      Every task by phase. What's done, what's active, what's planned —
+      with the messy backlog included. Updated each session.
+      The transparency is the product.
+    </p>
+
+    <div class="mt-5 flex flex-wrap items-center gap-3 font-mono text-[10.5px]
+                uppercase tracking-[0.16em] text-text-muted">
+      <span class="inline-flex items-center gap-1.5">
+        <span class="inline-block h-1.5 w-1.5 rounded-full bg-pos
+                     shadow-[0_0_8px_rgba(134,239,172,0.7)]"></span>
+        {ROADMAP.version.toLowerCase()}
+      </span>
+      <span class="text-border">·</span>
+      <span>last updated {lastUpdatedLabel}</span>
+    </div>
+  </section>
+
+  {/* ============================================================ MAIN */}
+  <main class="roadmap-page mx-auto max-w-4xl px-4 pb-24 sm:px-6">
+
+    {/* ============ STATS BAR ============ */}
+    <section class="reveal">
+      <dl class="rounded-lg border border-border bg-surface
+                 grid grid-cols-2 sm:grid-cols-4 divide-x divide-border-soft">
+        <div class="px-4 py-4">
+          <dt class="font-mono text-[10px] uppercase tracking-[0.14em] text-text-muted">
+            completed
+          </dt>
+          <dd class="font-mono text-[22px] sm:text-[26px] font-semibold text-pos
+                     tabular-nums mt-1">
+            {stats.done}
+          </dd>
+        </div>
+        <div class="px-4 py-4">
+          <dt class="font-mono text-[10px] uppercase tracking-[0.14em] text-text-muted">
+            remaining
+          </dt>
+          <dd class="font-mono text-[22px] sm:text-[26px] font-semibold text-yellow-300
+                     tabular-nums mt-1">
+            {remaining}
+          </dd>
+        </div>
+        <div class="px-4 py-4">
+          <dt class="font-mono text-[10px] uppercase tracking-[0.14em] text-text-muted">
+            total tasks
+          </dt>
+          <dd class="font-mono text-[22px] sm:text-[26px] font-semibold text-text
+                     tabular-nums mt-1">
+            {stats.total}
+          </dd>
+        </div>
+        <div class="px-4 py-4">
+          <dt class="font-mono text-[10px] uppercase tracking-[0.14em] text-text-muted">
+            progress
+          </dt>
+          <dd class="font-mono text-[22px] sm:text-[26px] font-semibold text-text
+                     tabular-nums mt-1">
+            {stats.percent}%
+          </dd>
+        </div>
+      </dl>
+    </section>
+
+    {/* ============ PHASES ============
+         All collapsed by default — chosen during Session 54 to avoid the
+         207-task Phase 8 dominating the viewport at first paint. Tighter
+         vertical rhythm (border-b separators, no <hr> + mt-12) modeled on
+         /diary entry list. Phase 8 subsections show indent so the
+         hierarchy is readable. */}
+    <section class="mt-10 border-t border-border-soft">
+    {ROADMAP.phases.map((phase) => {
+      const { done, total } = phaseProgress(phase);
+      const badge = phaseBadge(phase.status);
+      const sections = groupBySection(phase.tasks);
+      const hasSections = sections.length > 0;
+
+      /* Only Phase 8 (Backlog) opens by default — it's the messy bit
+         the visitor came to see. All other phases stay collapsed so the
+         page is scannable at first paint. */
+      const phaseOpen = phase.id === 8;
+
+      return (
+        <details class="group border-b border-border-soft
+                        transition-colors hover:bg-surface/20"
+                 open={phaseOpen}>
+          <summary class="cursor-pointer list-none
+                          flex items-baseline justify-between gap-3
+                          flex-wrap px-3 py-5
+                          hover:opacity-90 transition-opacity">
+            <div class="flex items-baseline gap-3 flex-wrap">
+              <span class="font-mono text-[10px] uppercase tracking-[0.18em]
+                           text-text-muted">
+                Phase {phase.id}
+              </span>
+              <h2 class="font-mono text-[12px] uppercase tracking-[0.18em]
+                         text-pos">
+                {phase.title}
+              </h2>
+              <span class="font-mono text-[11px] text-text-muted tabular-nums">
+                {done}/{total}
+              </span>
+            </div>
+            <span class={`shrink-0 rounded-full border px-2.5 py-0.5
+                          font-mono text-[9px] uppercase tracking-[0.16em]
+                          ${badge.cls}`}>
+              {badge.label}
+            </span>
+          </summary>
+
+          <div class="px-3 pb-4">
+            <p class="mt-1 mb-4 text-[13.5px] leading-[1.65] text-text-dim">
+              {phase.description}
+              <span class="ml-2 font-mono text-[11px] text-text-muted">
+                · {phase.timeframe}
+              </span>
+            </p>
+
+            {hasSections ? (
+                <div class="space-y-3 pl-4 sm:pl-6
+                            border-l-2 border-border-soft">
+                  {sections.map((g) => {
+                    const subDone  = g.tasks.filter(t => t.status === "done").length;
+                    const subTotal = g.tasks.length;
+                    /* "NEW" tag for backlog sub-sections introduced after the
+                       original blueprint (Phases 9, 10, 11). Visual marker so
+                       the reader can spot what's been added beyond the plan. */
+                    const isNew = /^Phase\s+(9|10|11)\b/.test(g.title);
+                    return (
+                      <details class="rounded-lg border border-border-soft
+                                      bg-surface/30 overflow-hidden group/sub">
+                        <summary class="cursor-pointer list-none px-4 py-2.5
+                                        flex items-baseline justify-between gap-3
+                                        hover:bg-surface/60 transition-colors">
+                          <span class="font-mono text-[11px] uppercase
+                                       tracking-[0.14em] text-text-dim">
+                            {isNew && (
+                              <span class="mr-2 text-amber-400 font-semibold tracking-[0.18em]">
+                                NEW
+                              </span>
+                            )}
+                            {g.title}
+                          </span>
+                          <span class="font-mono text-[10px] text-text-muted
+                                       tabular-nums shrink-0">
+                            {subDone}/{subTotal}
+                          </span>
+                        </summary>
+                        {subTotal === 0 ? (
+                          <div class="px-4 py-3 font-mono text-[11px] text-text-muted italic">
+                            No extras yet.
+                          </div>
+                        ) : (
+                          <ul class="divide-y divide-border-soft">
+                            {g.tasks.map((t) => {
+                              const ic = taskIcon(t.status);
+                              return (
+                                <li class="px-4 py-2.5 flex items-baseline gap-3">
+                                  <span class={`font-mono text-[12px] shrink-0 mt-0.5 ${ic.cls}`}>
+                                    {ic.ch}
+                                  </span>
+                                  <div class="flex-1 min-w-0">
+                                    <div class={`text-[13.5px] leading-[1.55]
+                                                 ${t.status === "done" ? "text-text-dim" : "text-text"}`}>
+                                      {t.text}
+                                    </div>
+                                    {t.comment && (
+                                      <div class="mt-1 text-[12.5px] leading-[1.6] text-text-muted italic">
+                                        {t.comment}
+                                      </div>
+                                    )}
+                                  </div>
+                                  <span class={`shrink-0 rounded-full border px-2 py-0.5
+                                                font-mono text-[9px] uppercase tracking-[0.14em]
+                                                ${whoChip(t.who)}`}>
+                                    {t.who.toLowerCase()}
+                                  </span>
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        )}
+                      </details>
+                    );
+                  })}
+                </div>
+              ) : (
+                <ul class="divide-y divide-border-soft rounded-lg
+                           border border-border bg-surface overflow-hidden">
+                  {phase.tasks.filter((t): t is Task => "text" in t).map((t) => {
+                    const ic = taskIcon(t.status);
+                    return (
+                      <li class="px-4 py-2.5 flex items-baseline gap-3">
+                        <span class={`font-mono text-[12px] shrink-0 mt-0.5 ${ic.cls}`}>
+                          {ic.ch}
+                        </span>
+                        <div class="flex-1 min-w-0">
+                          <div class={`text-[13.5px] leading-[1.55]
+                                       ${t.status === "done" ? "text-text-dim" : "text-text"}`}>
+                            {t.text}
+                          </div>
+                          {t.comment && (
+                            <div class="mt-1 text-[12.5px] leading-[1.6] text-text-muted italic">
+                              {t.comment}
+                            </div>
+                          )}
+                        </div>
+                        <span class={`shrink-0 rounded-full border px-2 py-0.5
+                                      font-mono text-[9px] uppercase tracking-[0.14em]
+                                      ${whoChip(t.who)}`}>
+                          {t.who.toLowerCase()}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+          </div>
+        </details>
+      );
+    })}
+    </section>
+
+    {/* ============ VERSION TAG ============ */}
+    <div class="mt-16 border-t border-border-soft pt-4
+                font-mono text-[11px] text-text-muted">
+      {ROADMAP.version} · last updated {lastUpdatedLabel}
+    </div>
+
+  </main>
+
+  {/* Style for native <summary> arrow — replace the default disclosure
+      triangle with our own caret that rotates on open. Scoped to the
+      roadmap section so it doesn't bleed into the SiteHeader mobile menu
+      (which is also a <details>). */}
+  <style is:inline>
+    .roadmap-page details > summary::-webkit-details-marker { display: none; }
+    .roadmap-page details > summary { position: relative; padding-left: 22px; }
+    .roadmap-page details > summary::before {
+      content: "▸";
+      position: absolute;
+      left: 6px;
+      top: 50%;
+      font-size: 10px;
+      line-height: 1;
+      color: rgba(255,255,255,0.35);
+      transition: transform 0.15s ease;
+      transform-origin: 50% 50%;
+      transform: translateY(-50%);
+    }
+    .roadmap-page details[open] > summary::before {
+      transform: translateY(-50%) rotate(90deg);
+    }
+  </style>
+</Layout>
