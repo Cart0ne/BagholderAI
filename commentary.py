@@ -281,14 +281,17 @@ def get_tf_state(supabase_client):
             realized_total += a["realized"]
             fees_total += a["fees"]
 
-        # Per-coin breakdown — only currently-configured coins show up in
-        # active_positions (consistent with prior behavior).
+        # Per-coin breakdown — ONLY active coins show up in active_positions.
+        # Deallocated coins still count in realized_total / fees_total above
+        # (so the aggregate matches the dashboard), but the daily report only
+        # lists what the bot is currently managing — otherwise the message
+        # blows past Telegram's 4096-char limit on a long-running TF.
         for cfg_row in tf_config:
             sym = cfg_row["symbol"]
             is_active = bool(cfg_row.get("is_active"))
-            coin_trades = trades_by_sym.get(sym, [])
-            if not coin_trades and not is_active:
+            if not is_active:
                 continue
+            coin_trades = trades_by_sym.get(sym, [])
 
             a = _analyze_coin_fifo(coin_trades)
             open_amt = a["open_amount"]
