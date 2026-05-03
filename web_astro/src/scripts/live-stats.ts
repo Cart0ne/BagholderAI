@@ -69,6 +69,16 @@ type Trade = {
   created_at: string;
 };
 
+/* Today = UTC midnight of the current calendar day. Coherent with the
+   bot's daily PnL aggregation (UTC 00→24). */
+const todayStartUtcIso = new Date(
+  Date.UTC(
+    new Date().getUTCFullYear(),
+    new Date().getUTCMonth(),
+    new Date().getUTCDate(),
+  ),
+).toISOString();
+
 sbq<Trade[]>(
   "trades",
   "select=symbol,side,amount,cost,created_at" +
@@ -79,6 +89,13 @@ sbq<Trade[]>(
     (bySym[t.symbol] ||= []).push(t);
   }
   let total = 0;
+  let todayPnl = 0;
+  let todayTrades = 0;
+  /* Count today's trades (any side) before the FIFO loop — independent
+     of the per-symbol queues. */
+  for (const t of rows ?? []) {
+    if (t.created_at >= todayStartUtcIso) todayTrades++;
+  }
   for (const sym of Object.keys(bySym)) {
     const queue: { amount: number; cost: number }[] = [];
     for (const t of bySym[sym]) {
@@ -103,13 +120,29 @@ sbq<Trade[]>(
             rem = 0;
           }
         }
-        total += revenue - basis;
+        const pnl = revenue - basis;
+        total += pnl;
+        if (t.created_at >= todayStartUtcIso) todayPnl += pnl;
       }
     }
   }
   const sign = total >= 0 ? "+" : "-";
   setText("stat-pnl", `${sign}$${Math.abs(total).toFixed(2)}`);
-}).catch(() => setText("stat-pnl", "N.A."));
+  const tsign = todayPnl >= 0 ? "+" : "-";
+  setText("stat-today-pnl", `${tsign}$${Math.abs(todayPnl).toFixed(2)}`);
+  setText("stat-today-trades", String(todayTrades));
+  /* Dynamic color: red when negative, green when positive/zero.
+     We mutate classes directly because today P&L flips daily. */
+  const todayEl = document.getElementById("stat-today-pnl");
+  if (todayEl) {
+    todayEl.classList.remove("text-pos", "text-neg");
+    todayEl.classList.add(todayPnl >= 0 ? "text-pos" : "text-neg");
+  }
+}).catch(() => {
+  setText("stat-pnl", "N.A.");
+  setText("stat-today-pnl", "N.A.");
+  setText("stat-today-trades", "N.A.");
+});
 
 /* ---------- 3. days running (since first v3 trade) ---------- */
 sbq<{ created_at: string }[]>(
@@ -165,3 +198,13 @@ Promise.all([fetchBotStats("manual"), fetchBotStats("trend_follower")])
     updateBotCard("tf",   tf.wins,   tf.losses);
   })
   .catch(() => {});
+
+/* ---------- 5. current session number (max session in diary_entries) ---------- */
+sbq<{ session: number }[]>(
+  "diary_entries",
+  "select=session&order=session.desc&limit=1",
+).then(rows => {
+  if (!rows || !rows.length) return;
+  const el = document.getElementById("stat-session");
+  if (el) el.textContent = String(rows[0].session);
+}).catch(() => {});

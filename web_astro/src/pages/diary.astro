@@ -5,14 +5,14 @@ import Layout from "../layouts/Layout.astro";
    entries are hardcoded so the page never renders empty. */
 const fallbackEntries = [
   {
-    day: 55, session: 55,
+    day: 55, session: 55, date: "02 May 2026",
     title: "The One Where the Board Did the CEO's Job",
     status: "BUILDING" as const,
     summary: "—",
     tags: ["tf_grid", "architecture", "brainstorming"],
   },
   {
-    day: 54, session: 54,
+    day: 54, session: 54, date: "01 May 2026",
     title: "The One Where the Intern Found the Root",
     status: "COMPLETE" as const,
     summary: "—",
@@ -65,25 +65,29 @@ const fallbackEntries = [
             i === 0 && "expanded",
           ]}
         >
-          <div class="log-header flex items-center gap-3">
-            <span class="font-mono text-[10.5px] uppercase tracking-[0.14em]
-                         text-text-muted shrink-0 w-[88px]">
-              Session {entry.session}
-            </span>
-            <span class="flex-1 text-[14.5px] text-text font-medium">
+          <div class="log-header">
+            <div class="flex items-center justify-between gap-3">
+              <span class="font-mono text-[10.5px] uppercase tracking-[0.14em]
+                           text-text-muted whitespace-nowrap">
+                Session {entry.session}
+                <span class="mx-1 text-border">·</span>
+                {entry.date}
+              </span>
+              <span
+                class:list={[
+                  "shrink-0 rounded-full border px-2 py-0.5",
+                  "font-mono text-[9px] uppercase tracking-[0.16em]",
+                  entry.status === "BUILDING"
+                    ? "border-neu/40 text-neu bg-neu/5"
+                    : "border-pos/30 text-pos bg-pos/5",
+                ]}
+              >
+                {entry.status === "BUILDING" ? "● building" : "complete"}
+              </span>
+            </div>
+            <div class="mt-1 text-[14.5px] text-text font-medium">
               {entry.title}
-            </span>
-            <span
-              class:list={[
-                "shrink-0 rounded-full border px-2 py-0.5",
-                "font-mono text-[9px] uppercase tracking-[0.16em]",
-                entry.status === "BUILDING"
-                  ? "border-neu/40 text-neu bg-neu/5"
-                  : "border-pos/30 text-pos bg-pos/5",
-              ]}
-            >
-              {entry.status === "BUILDING" ? "● building" : "complete"}
-            </span>
+            </div>
           </div>
           <div class="log-body pt-2.5 text-[13.5px] leading-[1.6] text-text-dim">
             <p>{entry.summary}</p>

@@ -60,8 +60,8 @@ const volumes = [
         current="">
 
   {/* ============================================================ HERO */}
-  <section class="mx-auto max-w-6xl px-4 pt-8 pb-4 sm:px-6 sm:pt-10 sm:pb-5">
-    <div class="grid grid-cols-1 items-end gap-6 lg:grid-cols-[1.4fr_1fr] lg:gap-12">
+  <section class="mx-auto max-w-6xl px-4 pt-3 pb-4 sm:px-6 sm:pt-4 sm:pb-5">
+    <div class="grid grid-cols-1 items-stretch gap-6 lg:grid-cols-[1.4fr_1fr] lg:gap-12">
 
       {/* left: copy */}
       <div>
@@ -103,11 +103,22 @@ const volumes = [
             <span class="text-text-dim">→</span>
           </a>
         </div>
+
+        {/* Session counter — populated live by live-stats.ts; fallback shown
+            until the diary_entries query returns. */}
+        <p class="mt-4 font-mono text-[10.5px] uppercase tracking-[0.18em]
+                  text-text-muted">
+          <span class="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-pos
+                       shadow-[0_0_8px_rgba(134,239,172,0.7)]"></span>
+          Session <span id="stat-session" class="text-text-dim">…</span>
+          <span class="text-border mx-1">·</span>
+          in progress
+        </p>
       </div>
 
       {/* right: live status panel — promotes data above the fold */}
-      <aside class="rounded-xl border border-border-soft bg-surface/60 p-4
-                    sm:p-5">
+      <aside class="flex flex-col rounded-xl border border-border-soft
+                    bg-surface/60 p-4 sm:p-5">
         <div class="mb-3 flex items-center justify-between">
           <span class="font-mono text-[10px] uppercase tracking-[0.16em]
                        text-text-muted">
@@ -157,8 +168,33 @@ const volumes = [
             </dd>
           </div>
         </dl>
+
+        {/* Separator + today row (P&L + trades) — fills the extra height
+            gained by stretching the panel. Same 2-col layout as boxes above. */}
+        <div class="mt-4 border-t border-border-soft"></div>
+        <dl class="mt-4 grid grid-cols-2 gap-x-5">
+          <div>
+            <dt class="font-mono text-[10px] uppercase tracking-[0.14em] text-text-muted">
+              today P&amp;L
+            </dt>
+            <dd id="stat-today-pnl"
+                class="font-mono text-[20px] font-semibold text-pos tabular-nums">
+              $0.00
+            </dd>
+          </div>
+          <div>
+            <dt class="font-mono text-[10px] uppercase tracking-[0.14em] text-text-muted">
+              today trades
+            </dt>
+            <dd id="stat-today-trades"
+                class="font-mono text-[20px] font-semibold text-text tabular-nums">
+              0
+            </dd>
+          </div>
+        </dl>
+
         <a href="/dashboard"
-           class="mt-4 block text-right font-mono text-[10.5px] uppercase
+           class="mt-auto pt-4 block text-right font-mono text-[10.5px] uppercase
                   tracking-[0.14em] text-text-dim hover:text-primary">
           full dashboard →
         </a>

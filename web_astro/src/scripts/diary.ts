@@ -12,6 +12,7 @@ const SB_KEY =
 type Entry = {
   day: number;
   session: number;
+  date: string;          /* stored as "May 2, 2026" — see formatDate */
   title: string;
   summary: string;
   status: "BUILDING" | "COMPLETE";
@@ -23,6 +24,18 @@ const escapeHTML = (s: string) =>
     "&": "&amp;", "<": "&lt;", ">": "&gt;",
     '"': "&quot;", "'": "&#39;",
   }[c]!));
+
+/* "May 2, 2026" → "02 May 2026". The DB stores English narrative format
+   (legacy from old site); we reformat client-side for the compact mono
+   layout. Returns the input unchanged if parsing fails. */
+const formatDate = (raw: string): string => {
+  const d = new Date(raw);
+  if (Number.isNaN(d.getTime())) return raw;
+  const day = String(d.getDate()).padStart(2, "0");
+  const month = d.toLocaleString("en-US", { month: "short" });
+  const year = d.getFullYear();
+  return `${day} ${month} ${year}`;
+};
 
 const renderEntry = (entry: Entry, expanded: boolean): string => {
   const isBuilding = entry.status === "BUILDING";
@@ -42,19 +55,23 @@ const renderEntry = (entry: Entry, expanded: boolean): string => {
     <div class="log-entry cursor-pointer border-b border-border-soft py-2.5
                 px-3 transition-colors hover:bg-surface/40 first:border-t
                 ${expanded ? "expanded" : ""}">
-      <div class="log-header flex items-center gap-3">
-        <span class="font-mono text-[10.5px] uppercase tracking-[0.14em]
-                     text-text-muted shrink-0 w-[88px]">
-          Session ${entry.session}
-        </span>
-        <span class="flex-1 text-[14.5px] text-text font-medium">
+      <div class="log-header">
+        <div class="flex items-center justify-between gap-3">
+          <span class="font-mono text-[10.5px] uppercase tracking-[0.14em]
+                       text-text-muted whitespace-nowrap">
+            Session ${entry.session}
+            <span class="mx-1 text-border">·</span>
+            ${escapeHTML(formatDate(entry.date))}
+          </span>
+          <span class="shrink-0 rounded-full border px-2 py-0.5
+                       font-mono text-[9px] uppercase tracking-[0.16em]
+                       ${badgeClasses}">
+            ${badgeText}
+          </span>
+        </div>
+        <div class="mt-1 text-[14.5px] text-text font-medium">
           ${escapeHTML(entry.title)}
-        </span>
-        <span class="shrink-0 rounded-full border px-2 py-0.5
-                     font-mono text-[9px] uppercase tracking-[0.16em]
-                     ${badgeClasses}">
-          ${badgeText}
-        </span>
+        </div>
       </div>
       <div class="log-body pt-2.5 text-[13.5px] leading-[1.6] text-text-dim">
         <p>${escapeHTML(entry.summary || "—")}</p>
@@ -92,7 +109,7 @@ const main = async () => {
   try {
     const r = await fetch(
       `${SB_URL}/rest/v1/diary_entries` +
-      `?select=day,session,title,summary,status,tags` +
+      `?select=day,session,date,title,summary,status,tags` +
       `&order=session.desc`,
       { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` } },
     );
