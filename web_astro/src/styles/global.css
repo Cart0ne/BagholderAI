@@ -347,3 +347,17 @@ body {
     transition: none;
   }
 }
+
+/* — SHARED badge pulse — opacity breath on the "shared" badge inside
+   promoted coin cards. Communicates that the coin is alive and
+   actively shared between TF and Grid. */
+@keyframes pulse-shared {
+  0%, 100% { opacity: 0.4; }
+  50%      { opacity: 1; }
+}
+.pulse-shared {
+  animation: pulse-shared 1.6s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pulse-shared { animation: none; opacity: 0.85; }
+}

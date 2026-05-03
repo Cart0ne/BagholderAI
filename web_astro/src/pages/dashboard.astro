@@ -21,25 +21,9 @@ const todayAllocated = mockGrid.todayAllocated + mockTF.todayAllocated;
 const gridSubtitle = "The cash machine";
 const tfSubtitle   = "The breakout hunter";
 
-/* Skim/fees mock parità con originale */
-const gridSkim = 0.42;
-const tfSkim   = 0;
 ---
 
 <Layout title="Dashboard — BagHolderAI" current="dashboard">
-
-  {/* TEMP — variant switcher */}
-  <div class="border-b border-border-soft bg-surface/40">
-    <div class="mx-auto max-w-4xl px-4 py-2 sm:px-6 flex items-center justify-between gap-4 text-[11px] font-mono">
-      <span class="text-text-muted uppercase tracking-[0.18em]">final · merged v3</span>
-      <div class="flex items-center gap-3">
-        <a href="/dashboard-a" class="px-2.5 py-1 rounded border border-border text-text-dim hover:text-text">A</a>
-        <a href="/dashboard-b" class="px-2.5 py-1 rounded border border-border text-text-dim hover:text-text">B</a>
-        <a href="/dashboard-c" class="px-2.5 py-1 rounded border border-border text-text-dim hover:text-text">C</a>
-        <span class="px-2.5 py-1 rounded border border-primary text-primary">final</span>
-      </div>
-    </div>
-  </div>
 
   {/* ============================================================ HERO (pattern /diary) */}
   <section class="mx-auto max-w-4xl px-4 pt-10 pb-6 sm:px-6 sm:pt-14 sm:pb-8">
@@ -60,13 +44,14 @@ const tfSkim   = 0;
       <span class="inline-flex items-center gap-1.5">
         <span class="inline-block h-1.5 w-1.5 rounded-full bg-pos
                      shadow-[0_0_8px_rgba(134,239,172,0.7)]"></span>
-        day {mockSnapshot.dayNumber}
+        day <span id="hero-day">{mockSnapshot.dayNumber}</span>
       </span>
       <span class="text-border">·</span>
       <span>v3 · launched 2026-03-30</span>
       <span class="text-border">·</span>
-      <span>net worth <span class="normal-case font-semibold text-text">{fmtUsd(totalNW)}</span></span>
-      <span class={totalPnl >= 0 ? "text-pos normal-case" : "text-neg normal-case"}>
+      <span>net worth <span id="hero-nw" class="normal-case font-semibold text-text">{fmtUsd(totalNW)}</span></span>
+      <span id="hero-pnl"
+            class={totalPnl >= 0 ? "text-pos normal-case" : "text-neg normal-case"}>
         ({fmtSigned(totalPnl)}, {fmtPct(totalPct)})
       </span>
     </div>
@@ -77,259 +62,249 @@ const tfSkim   = 0;
 
     {/* ============ TODAY SNAPSHOT — fotografia del giorno ============ */}
     <section class="reveal">
-      <div class="font-mono text-[11px] uppercase tracking-[0.18em] text-text-muted mb-3">
-        Today · {fmtDate(mockSnapshot.asOfIso)}
-      </div>
-      <div class="rounded-lg border border-border bg-surface px-4 py-3
-                  flex flex-wrap items-baseline gap-x-5 gap-y-2
-                  font-mono text-[12.5px] text-text-dim leading-relaxed">
-        <span>
-          P&amp;L:
-          <span class={`ml-1 font-semibold ${todayPnl >= 0 ? "text-pos" : "text-neg"}`}>
-            {fmtSigned(todayPnl)}
-          </span>
+      <div class="mb-3 flex items-baseline gap-3">
+        <h2 class="font-sans text-[18px] sm:text-[20px] font-semibold text-text">
+          Today
+        </h2>
+        <span id="today-date"
+              class="font-mono text-[12px] uppercase tracking-[0.16em] text-text-muted">
+          {fmtDate(mockSnapshot.asOfIso)}
         </span>
-        <span class="text-border">|</span>
-        <span>Trades: <span class="text-text font-semibold ml-1">{todayTrades}</span></span>
-        <span class="text-border">|</span>
-        <span>Buys: <span class="text-text-dim ml-1">{todayBuys}</span></span>
-        <span class="text-border">|</span>
-        <span>Sells: <span class="text-text-dim ml-1">{todaySells}</span></span>
-        <span class="text-border">|</span>
-        <span>Allocated: <span class="text-text font-semibold ml-1">{fmtUsd(todayAllocated)}</span></span>
       </div>
+      {/* Same font hierarchy as the home live-snapshot panel:
+          label 10px uppercase + value 20px semibold. */}
+      <dl class="rounded-lg border border-border bg-surface
+                 grid grid-cols-2 sm:grid-cols-5 divide-x divide-border-soft">
+        <div class="px-4 py-3.5">
+          <dt class="font-mono text-[10px] uppercase tracking-[0.14em] text-text-muted">
+            P&amp;L
+          </dt>
+          <dd id="today-pnl"
+              class={`font-mono text-[20px] font-semibold tabular-nums mt-0.5
+                      ${todayPnl >= 0 ? "text-pos" : "text-neg"}`}>
+            {fmtSigned(todayPnl)}
+          </dd>
+        </div>
+        <div class="px-4 py-3.5">
+          <dt class="font-mono text-[10px] uppercase tracking-[0.14em] text-text-muted">
+            trades
+          </dt>
+          <dd id="today-trades"
+              class="font-mono text-[20px] font-semibold text-text tabular-nums mt-0.5">
+            {todayTrades}
+          </dd>
+        </div>
+        <div class="px-4 py-3.5">
+          <dt class="font-mono text-[10px] uppercase tracking-[0.14em] text-text-muted">
+            buys
+          </dt>
+          <dd id="today-buys"
+              class="font-mono text-[20px] font-semibold text-text-dim tabular-nums mt-0.5">
+            {todayBuys}
+          </dd>
+        </div>
+        <div class="px-4 py-3.5">
+          <dt class="font-mono text-[10px] uppercase tracking-[0.14em] text-text-muted">
+            sells
+          </dt>
+          <dd id="today-sells"
+              class="font-mono text-[20px] font-semibold text-text-dim tabular-nums mt-0.5">
+            {todaySells}
+          </dd>
+        </div>
+        <div class="px-4 py-3.5">
+          <dt class="font-mono text-[10px] uppercase tracking-[0.14em] text-text-muted">
+            allocated
+          </dt>
+          <dd id="today-allocated"
+              class="font-mono text-[20px] font-semibold text-text tabular-nums mt-0.5">
+            {fmtUsd(todayAllocated)}
+          </dd>
+        </div>
+      </dl>
     </section>
 
     {/* ============ § 1 — CEO LOG di oggi ============ */}
-    <hr class="mt-20 border-t border-border-soft" />
-    <section class="mt-12 reveal">
+    <hr class="mt-12 border-t border-border-soft" />
+    <section class="mt-8 reveal">
       <h2 class="font-mono text-[12px] uppercase tracking-[0.18em] text-pos mb-5">
         § 1 · CEO observation log
       </h2>
-      <article class="rounded-lg border border-border bg-surface p-6">
+      <article id="ceo-today" class="rounded-lg border border-border bg-surface p-6">
         <div class="font-mono text-[11px] text-text-muted mb-3 flex justify-between gap-3">
-          <span>Day {mockCEOLog.today.dayNumber} · {fmtDate(mockCEOLog.today.date + "T00:00:00Z")}</span>
-          <span class="opacity-60">via {mockCEOLog.today.model}</span>
+          <span id="ceo-today-meta">Day {mockCEOLog.today.dayNumber} · {fmtDate(mockCEOLog.today.date + "T00:00:00Z")}</span>
+          <span id="ceo-today-model" class="opacity-60">via {mockCEOLog.today.model}</span>
         </div>
-        <p class="text-text leading-[1.7] text-[15px] italic">
+        <p id="ceo-today-text" class="text-text leading-[1.7] text-[15px] italic">
           "{mockCEOLog.today.text}"
         </p>
       </article>
     </section>
 
     {/* ============ § 2 — INSTRUMENTS ============ */}
-    <hr class="mt-20 border-t border-border-soft" />
-    <section class="mt-12">
+    <hr class="mt-12 border-t border-border-soft" />
+    <section class="mt-8">
       <h2 class="reveal font-mono text-[12px] uppercase tracking-[0.18em] text-pos mb-7">
         § 2 · Instruments
       </h2>
 
-      {/* ============ GRID BOT (header + portfolio card + assets) ============
-           Ported verbatim from web/dashboard.html — only colors/spacing
-           adapted to web_astro design tokens. */}
-      <div class="reveal">
-        {/* Header bot — barra colorata + nome + meta + sottotitolo italic inline */}
-        <div class="flex items-center gap-3 mb-4 flex-wrap">
-          <div class="w-[3px] h-[22px] rounded-sm" style="background:#22c55e"></div>
-          <div class="font-mono text-[14px] text-text uppercase tracking-[0.05em] font-semibold">
-            Grid Bot
-          </div>
-          <div class="font-mono text-[11px] text-text-muted">— ${mockGrid.initial} initial</div>
-          <div class="font-sans text-[13px] text-text-muted italic">· {gridSubtitle}</div>
-        </div>
+      {/* ============ HORIZONTAL PIPELINE LAYOUT ============
+           TF (left) + shared coins (center) + GRID (right) on top row.
+           Native coins under each parent on the bottom row. */}
 
-        {/* Portfolio card */}
-        <div class="rounded-lg border border-border bg-surface p-7">
-          <div class="font-mono text-[11px] text-text-muted mb-1">Net worth</div>
-          <div class="flex items-baseline gap-3 flex-wrap">
-            <span class="text-[clamp(32px,7vw,44px)] font-bold tracking-tight text-text leading-none">
-              {fmtUsd(mockGrid.netWorth)}
+      {/* === TOP ROW: TF (left) + Shared (center) + GRID (right) === */}
+      <div class="relative grid grid-cols-1 lg:grid-cols-[1fr_140px_1fr] gap-3 items-stretch">
+
+        {/* === TF CARD (left) === */}
+        <article class="rounded-lg border border-border bg-surface p-6">
+          <div class="flex items-center gap-3 mb-4 flex-wrap">
+            <div class="w-[3px] h-[22px] rounded-sm" style="background:#f59e0b"></div>
+            <div class="font-mono text-[14px] text-text uppercase tracking-[0.05em] font-semibold">
+              Trend Follower
+            </div>
+            <div class="font-mono text-[10px] text-text-muted">— <span id="tf-budget">…</span> · beta</div>
+          </div>
+          <div class="font-sans text-[12px] text-text-muted italic mb-2">{tfSubtitle}</div>
+
+          {/* Day + Cash to reinvest — populated by JS */}
+          <div class="font-mono text-[10px] text-text-muted mb-3 flex flex-wrap gap-x-3 gap-y-1">
+            <span>Day <span id="tf-day">…</span></span>
+            <span class="text-border">·</span>
+            <span>Cash to reinvest: <span id="tf-cash-reinvest" class="text-text">…</span></span>
+          </div>
+
+          <div class="font-mono text-[11px] text-text-muted">Net worth</div>
+          <div class="flex items-baseline gap-2 flex-wrap mt-1">
+            <span id="tf-nw"
+                  class="text-[clamp(28px,5vw,38px)] font-bold tracking-tight text-text leading-none">
+              —
             </span>
-            <span class={`font-mono text-[14px] ${mockGrid.pnlAbs >= 0 ? "text-pos" : "text-neg"}`}>
-              {fmtSigned(mockGrid.pnlAbs)} ({fmtPct(mockGrid.pnlPct)})
+            <span id="tf-pnl-pct" class="font-mono text-[12px] text-text-muted">
+              —
             </span>
           </div>
 
-          {/* P&L breakdown — 4 colonne in linea su desktop, 2x2 su mobile */}
-          <div class="my-6 border-t border-border-soft"></div>
-          <div class="font-mono text-[11px] text-text-muted mb-3">P&amp;L breakdown</div>
-          <div class="grid grid-cols-2 md:grid-cols-4 gap-y-4 gap-x-4 font-mono">
-            <div class="text-center">
-              <div class="text-[11px] text-text-muted">Realized</div>
-              <div class={`text-[16px] font-medium mt-0.5 ${mockGrid.realized >= 0 ? "text-pos" : "text-neg"}`}>
-                {fmtSigned(mockGrid.realized)}
-              </div>
-              <div class="text-[10px] text-text-muted mt-0.5 leading-tight">profits from sells</div>
+          <div class="my-4 border-t border-border-soft"></div>
+          <div class="grid grid-cols-2 gap-y-3 gap-x-4 font-mono">
+            <div>
+              <div class="text-[10px] text-text-muted">Realized</div>
+              <div id="tf-realized" class="text-[14px] font-medium text-text-muted">—</div>
             </div>
-            <div class="text-center">
-              <div class="text-[11px] text-text-muted">Unrealized</div>
-              <div class={`text-[16px] font-medium mt-0.5 ${mockGrid.unrealized >= 0 ? "text-pos" : "text-neg"}`}>
-                {fmtSigned(mockGrid.unrealized)}
-              </div>
-              <div class="text-[10px] text-text-muted mt-0.5 leading-tight">on paper · open positions</div>
+            <div>
+              <div class="text-[10px] text-text-muted">Unrealized</div>
+              <div id="tf-unrealized" class="text-[14px] font-medium text-text-muted">—</div>
             </div>
-            <div class="text-center">
-              <div class="text-[11px] text-text-muted">Fees paid</div>
-              <div class="text-[16px] font-medium text-neg mt-0.5">-{fmtUsd(mockGrid.fees)}</div>
-              <div class="text-[10px] text-text-muted mt-0.5 leading-tight">paper mode · informational</div>
+            <div>
+              <div class="text-[10px] text-text-muted">Fees paid</div>
+              <div id="tf-fees" class="text-[14px] font-medium text-text-muted">—</div>
             </div>
-            <div class="text-center">
-              <div class="text-[11px] text-text-muted">Skim reserved</div>
-              <div class="text-[16px] font-medium text-pos mt-0.5">+{fmtUsd(gridSkim, 4)}</div>
-              <div class="text-[10px] text-text-muted mt-0.5 leading-tight">subset of realized, set aside</div>
+            <div>
+              <div class="text-[10px] text-text-muted">Skim</div>
+              <div id="tf-skim" class="text-[14px] font-medium text-text-muted">—</div>
             </div>
           </div>
 
-          {/* Cash allocation — bar visibile con segmenti distinti */}
-          <div class="my-6 border-t border-border-soft"></div>
-          <div class="flex justify-between mb-2 font-mono">
-            <span class="text-[11px] text-text-muted">Cash allocation</span>
-            <span class="text-[11px] text-text">{mockGrid.cashPct.toFixed(0)}% cash</span>
+          <div class="my-4 border-t border-border-soft"></div>
+          <div class="flex justify-between font-mono mb-2">
+            <span class="text-[10px] text-text-muted">Cash</span>
+            <span id="tf-cash-pct" class="text-[10px] text-text">—</span>
           </div>
-          <div class="h-2 bg-border rounded-md overflow-hidden flex">
-            {mockGrid.assets.map((a) => {
-              const usedPct = (a.mtmValue / mockGrid.initial) * 100;
-              return (
-                <div style={`width:${usedPct}%;background:${a.color}`}></div>
-              );
-            })}
+          <div id="tf-cash-bar" class="h-2 bg-border rounded-md overflow-hidden flex"></div>
+        </article>
+
+        {/* === SHARED COINS (center) === */}
+        <div class="relative flex flex-col items-center justify-start
+                    px-2 lg:px-4 self-start pt-4">
+
+          {/* Horizontal arrow + "promoted" label */}
+          <div class="flex flex-col items-center mb-3 w-full">
+            <span class="font-mono text-[9px] uppercase tracking-[0.22em] mb-1"
+                  style="color:#38bdf8">
+              promoted
+            </span>
+            <svg width="160" height="14" viewBox="0 0 160 14" class="w-full max-w-[200px]"
+                 preserveAspectRatio="none" aria-hidden="true">
+              <line x1="2"  y1="7" x2="148" y2="7"
+                    stroke="#38bdf8" stroke-width="1.5" stroke-opacity="0.55"/>
+              <polygon points="146,2 156,7 146,12" fill="#38bdf8" fill-opacity="0.7"/>
+            </svg>
           </div>
-          {/* Legend con separatori e spacing esplicito */}
-          <div class="mt-2.5 flex items-center flex-wrap font-mono text-[10px] text-text-muted">
-            {mockGrid.assets.map((a, idx) => {
-              const pct = (a.mtmValue / mockGrid.initial) * 100;
-              return (
-                <>
-                  {idx > 0 && <span class="mx-2.5 text-border">·</span>}
-                  <span class="inline-flex items-center gap-1.5">
-                    <span class="inline-block w-2 h-2 rounded-sm" style={`background:${a.color}`}></span>
-                    {a.short} {pct.toFixed(0)}%
-                  </span>
-                </>
-              );
-            })}
-            <span class="mx-2.5 text-border">·</span>
-            <span>Cash {mockGrid.cashPct.toFixed(0)}%</span>
+
+          {/* Shared cards stacked vertically — populated by JS from
+              bot_config WHERE managed_by='tf_grid' AND is_active=true. */}
+          <div id="shared-cards" class="flex flex-col gap-2 w-full"></div>
+
+          <div class="mt-4 font-mono text-[9px] uppercase tracking-[0.18em] text-text-muted text-center">
+            picked by TF<br/>managed by Grid
           </div>
         </div>
 
-        {/* Asset cards — 3 colonne sempre (anche mobile, sono compatte) */}
-        <div class="grid grid-cols-3 gap-2 mt-2">
-          {mockGrid.assets.map((a) => (
-            <div class="rounded-lg border border-border bg-surface p-4">
-              <div class="font-mono text-[11px] tracking-[0.05em]" style={`color:${a.color}`}>
-                {a.short}
-              </div>
-              <div class="text-[18px] font-semibold text-text my-1">{fmtUsd(a.mtmValue)}</div>
-              <div class="font-mono text-[10px] text-text-muted">avg {fmtPrice(a.avgBuy)}</div>
-              <div class={`font-mono text-[11px] mt-1 ${a.unrealized >= 0 ? "text-pos" : "text-neg"}`}>
-                {fmtSigned(a.unrealized)} ({fmtPct((a.unrealized / a.alloc) * 100)})
-              </div>
+        {/* === GRID CARD (right) === */}
+        <article class="h-full rounded-lg border border-border bg-surface p-6">
+          <div class="flex items-center gap-3 mb-4 flex-wrap">
+            <div class="w-[3px] h-[22px] rounded-sm" style="background:#22c55e"></div>
+            <div class="font-mono text-[14px] text-text uppercase tracking-[0.05em] font-semibold">
+              Grid Bot
             </div>
-          ))}
-        </div>
+            <div class="font-mono text-[10px] text-text-muted">— <span id="grid-budget">…</span> · live</div>
+          </div>
+          <div class="font-sans text-[12px] text-text-muted italic mb-2">{gridSubtitle}</div>
+
+          {/* Day + Cash to reinvest — populated by JS */}
+          <div class="font-mono text-[10px] text-text-muted mb-3 flex flex-wrap gap-x-3 gap-y-1">
+            <span>Day <span id="grid-day">…</span></span>
+            <span class="text-border">·</span>
+            <span>Cash to reinvest: <span id="grid-cash-reinvest" class="text-text">…</span></span>
+          </div>
+
+          <div class="font-mono text-[11px] text-text-muted">Net worth</div>
+          <div class="flex items-baseline gap-2 flex-wrap mt-1">
+            <span id="grid-nw"
+                  class="text-[clamp(28px,5vw,38px)] font-bold tracking-tight text-text leading-none">
+              —
+            </span>
+            <span id="grid-pnl-pct" class="font-mono text-[12px] text-text-muted">
+              —
+            </span>
+          </div>
+
+          <div class="my-4 border-t border-border-soft"></div>
+          <div class="grid grid-cols-2 gap-y-3 gap-x-4 font-mono">
+            <div>
+              <div class="text-[10px] text-text-muted">Realized</div>
+              <div id="grid-realized" class="text-[14px] font-medium text-text-muted">—</div>
+            </div>
+            <div>
+              <div class="text-[10px] text-text-muted">Unrealized</div>
+              <div id="grid-unrealized" class="text-[14px] font-medium text-text-muted">—</div>
+            </div>
+            <div>
+              <div class="text-[10px] text-text-muted">Fees paid</div>
+              <div id="grid-fees" class="text-[14px] font-medium text-text-muted">—</div>
+            </div>
+            <div>
+              <div class="text-[10px] text-text-muted">Skim</div>
+              <div id="grid-skim" class="text-[14px] font-medium text-text-muted">—</div>
+            </div>
+          </div>
+
+          <div class="my-4 border-t border-border-soft"></div>
+          <div class="flex justify-between font-mono mb-2">
+            <span class="text-[10px] text-text-muted">Cash</span>
+            <span id="grid-cash-pct" class="text-[10px] text-text">—</span>
+          </div>
+          <div id="grid-cash-bar" class="h-2 bg-border rounded-md overflow-hidden flex"></div>
+        </article>
       </div>
 
-      {/* ============ TF BOT (stesso pattern) ============ */}
-      <div class="reveal mt-14">
-        <div class="flex items-center gap-3 mb-4 flex-wrap">
-          <div class="w-[3px] h-[22px] rounded-sm" style="background:#f59e0b"></div>
-          <div class="font-mono text-[14px] text-text uppercase tracking-[0.05em] font-semibold">
-            Trend Follower
-          </div>
-          <div class="font-mono text-[11px] text-text-muted">
-            — ${mockTF.initial} initial · <span style="color:#f59e0b">beta</span>
-          </div>
-          <div class="font-sans text-[13px] text-text-muted italic">· {tfSubtitle}</div>
-        </div>
-
-        <div class="rounded-lg border border-border bg-surface p-7">
-          <div class="font-mono text-[11px] text-text-muted mb-1">Net worth</div>
-          <div class="flex items-baseline gap-3 flex-wrap">
-            <span class="text-[clamp(32px,7vw,44px)] font-bold tracking-tight text-text leading-none">
-              {fmtUsd(mockTF.netWorth)}
-            </span>
-            <span class={`font-mono text-[14px] ${mockTF.pnlAbs >= 0 ? "text-pos" : "text-neg"}`}>
-              {fmtSigned(mockTF.pnlAbs)} ({fmtPct(mockTF.pnlPct)})
-            </span>
-          </div>
-
-          <div class="my-6 border-t border-border-soft"></div>
-          <div class="font-mono text-[11px] text-text-muted mb-3">P&amp;L breakdown</div>
-          <div class="grid grid-cols-2 md:grid-cols-4 gap-y-4 gap-x-4 font-mono">
-            <div class="text-center">
-              <div class="text-[11px] text-text-muted">Realized</div>
-              <div class={`text-[16px] font-medium mt-0.5 ${mockTF.realized >= 0 ? "text-pos" : "text-neg"}`}>
-                {fmtSigned(mockTF.realized)}
-              </div>
-              <div class="text-[10px] text-text-muted mt-0.5 leading-tight">profits from sells</div>
-            </div>
-            <div class="text-center">
-              <div class="text-[11px] text-text-muted">Unrealized</div>
-              <div class={`text-[16px] font-medium mt-0.5 ${mockTF.unrealized >= 0 ? "text-pos" : "text-neg"}`}>
-                {fmtSigned(mockTF.unrealized)}
-              </div>
-              <div class="text-[10px] text-text-muted mt-0.5 leading-tight">on paper · open positions</div>
-            </div>
-            <div class="text-center">
-              <div class="text-[11px] text-text-muted">Fees paid</div>
-              <div class="text-[16px] font-medium text-neg mt-0.5">-{fmtUsd(mockTF.fees)}</div>
-              <div class="text-[10px] text-text-muted mt-0.5 leading-tight">paper mode · informational</div>
-            </div>
-            <div class="text-center">
-              <div class="text-[11px] text-text-muted">Skim reserved</div>
-              <div class="text-[16px] font-medium text-pos mt-0.5">+{fmtUsd(tfSkim, 4)}</div>
-              <div class="text-[10px] text-text-muted mt-0.5 leading-tight">subset of realized, set aside</div>
-            </div>
-          </div>
-
-          <div class="my-6 border-t border-border-soft"></div>
-          <div class="flex justify-between mb-2 font-mono">
-            <span class="text-[11px] text-text-muted">Cash allocation</span>
-            <span class="text-[11px] text-text">{mockTF.cashPct.toFixed(0)}% cash</span>
-          </div>
-          <div class="h-2 bg-border rounded-md overflow-hidden flex">
-            {mockTF.assets.map((a) => {
-              const usedPct = (a.mtmValue / mockTF.initial) * 100;
-              return (
-                <div style={`width:${usedPct}%;background:${a.color}`}></div>
-              );
-            })}
-          </div>
-          <div class="mt-2.5 flex items-center flex-wrap font-mono text-[10px] text-text-muted">
-            {mockTF.assets.map((a, idx) => {
-              const pct = (a.mtmValue / mockTF.initial) * 100;
-              return (
-                <>
-                  {idx > 0 && <span class="mx-2.5 text-border">·</span>}
-                  <span class="inline-flex items-center gap-1.5">
-                    <span class="inline-block w-2 h-2 rounded-sm" style={`background:${a.color}`}></span>
-                    {a.short} {pct.toFixed(0)}%
-                  </span>
-                </>
-              );
-            })}
-            <span class="mx-2.5 text-border">·</span>
-            <span>Cash {mockTF.cashPct.toFixed(0)}%</span>
-          </div>
-        </div>
-
-        <div class="grid grid-cols-3 gap-2 mt-2">
-          {mockTF.assets.map((a) => (
-            <div class="rounded-lg border border-border bg-surface p-4">
-              <div class="font-mono text-[11px] tracking-[0.05em]" style={`color:${a.color}`}>
-                {a.short}
-              </div>
-              <div class="text-[18px] font-semibold text-text my-1">
-                {a.mtmValue > 0 ? fmtUsd(a.mtmValue) : "$0.00"}
-              </div>
-              <div class="font-mono text-[10px] text-text-muted">live {fmtPrice(a.livePrice)}</div>
-              <div class={`font-mono text-[11px] mt-1 ${a.unrealized >= 0 ? "text-pos" : "text-neg"}`}>
-                {fmtSigned(a.unrealized)} ({fmtPct((a.unrealized / a.alloc) * 100)})
-              </div>
-            </div>
-          ))}
-        </div>
+      {/* === BOTTOM ROW: native coins under each parent card.
+          Populated by JS from bot_config:
+          - tf-natives:   managed_by='trend_follower' AND is_active=true
+          - grid-natives: managed_by='manual' (always BTC/SOL/BONK in v3) */}
+      <div class="mt-4 grid grid-cols-1 lg:grid-cols-[1fr_140px_1fr] gap-3 items-start">
+        <div id="tf-natives" class="grid grid-cols-3 gap-2 h-full"></div>
+        <div></div>
+        <div id="grid-natives" class="grid grid-cols-3 gap-2 h-full"></div>
       </div>
 
       {/* ============ SENTINEL + SHERPA staged — 2 colonne affiancate ============ */}
@@ -355,8 +330,8 @@ const tfSkim   = 0;
     </section>
 
     {/* ============ § 3 — CHARTS affiancati ============ */}
-    <hr class="mt-20 border-t border-border-soft" />
-    <section class="mt-12 reveal">
+    <hr class="mt-12 border-t border-border-soft" />
+    <section class="mt-8 reveal">
       <h2 class="font-mono text-[12px] uppercase tracking-[0.18em] text-pos mb-6">
         § 3 · Performance · time series
       </h2>
@@ -397,8 +372,8 @@ const tfSkim   = 0;
     </section>
 
     {/* ============ § 4 — RECENT TRADES ============ */}
-    <hr class="mt-20 border-t border-border-soft" />
-    <section class="mt-12 reveal">
+    <hr class="mt-12 border-t border-border-soft" />
+    <section class="mt-8 reveal">
       <div class="flex items-baseline justify-between flex-wrap gap-3 mb-5">
         <h2 class="font-mono text-[12px] uppercase tracking-[0.18em] text-pos">
           § 4 · Recent activity
@@ -443,24 +418,35 @@ const tfSkim   = 0;
     </section>
 
     {/* ============ § 5 — CEO LOG ARCHIVE ============ */}
-    <hr class="mt-20 border-t border-border-soft" />
-    <section class="mt-12 reveal">
+    <hr class="mt-12 border-t border-border-soft" />
+    <section class="mt-8 reveal">
       <h2 class="font-mono text-[12px] uppercase tracking-[0.18em] text-pos mb-6">
         § 5 · Earlier from the log
       </h2>
-      <div class="space-y-6">
+      {/* Scrollable archive window — pattern from web/dashboard.html
+          (.commentary-history): fixed max-height with overflow scroll,
+          smaller font for the entries since they're ancillary. */}
+      <div id="ceo-archive"
+           class="rounded-lg border border-border bg-surface
+                  max-h-[320px] overflow-y-auto
+                  divide-y divide-border-soft">
         {mockCEOLog.archive.map((e) => (
-          <article class="border-l border-border-soft pl-5">
-            <div class="font-mono text-[10.5px] uppercase tracking-[0.16em] text-text-muted mb-1.5">
+          <article class="px-4 py-3">
+            <div class="font-mono text-[10px] uppercase tracking-[0.16em] text-pos/60 mb-1">
               Day {e.dayNumber} · {fmtDate(e.date + "T00:00:00Z")}
             </div>
-            <p class="text-text-dim text-[15px] leading-relaxed italic">"{e.text}"</p>
+            <p class="text-text-dim text-[13px] leading-[1.6] italic">"{e.text}"</p>
           </article>
         ))}
       </div>
     </section>
 
   </main>
+
+  {/* Live data wiring — replaces mock values element by element. */}
+  <script>
+    import "../scripts/dashboard-live.ts";
+  </script>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" is:inline></script>
   <script>

@@ -30,8 +30,13 @@ export const mockGrid = {
   todayBuys:      3,
   todaySells:     3,
   todayAllocated: 28.55,   // capitale messo a lavoro oggi (somma cost dei buy)
+  /* 5 slot in totale: 3 fissi (manual) + 2 dinamici (tf_grid).
+     I 2 slot tf_grid sono placeholder finché TF non passa coin in
+     Tier 1-2. Il numero finale sarà dinamico (3-5) quando colleghiamo
+     Supabase. */
   assets: [
     {
+      source:  "manual" as const,
       symbol:  "BTC/USDT",
       short:   "BTC",
       color:   "#378ADD",
@@ -45,6 +50,7 @@ export const mockGrid = {
       unrealized: 9.81,
     },
     {
+      source:  "manual" as const,
       symbol:  "SOL/USDT",
       short:   "SOL",
       color:   "#5DCAA5",
@@ -58,6 +64,7 @@ export const mockGrid = {
       unrealized: 5.01,
     },
     {
+      source:  "manual" as const,
       symbol:  "BONK/USDT",
       short:   "BONK",
       color:   "#EF9F27",
@@ -69,6 +76,34 @@ export const mockGrid = {
       livePrice: 0.0000190,
       realized: 3.37,
       unrealized: -6.40,
+    },
+    {
+      source:  "tf_grid" as const,
+      symbol:  "TRX/USDT",
+      short:   "TRX",
+      color:   "#e11d48",
+      alloc:   30,                  // budget tipico tf_grid (Tier 2)
+      cashLeft: 7.25,
+      holdings: 67.0,
+      mtmValue: 22.75,
+      avgBuy:  0.337,
+      livePrice: 0.339,
+      realized: 0.0,
+      unrealized: 0.42,
+    },
+    {
+      source:  "tf_grid" as const,
+      symbol:  "DOGE/USDT",
+      short:   "DOGE",
+      color:   "#f97316",
+      alloc:   30,
+      cashLeft: 3.63,
+      holdings: 148.0,
+      mtmValue: 26.37,
+      avgBuy:  0.178,
+      livePrice: 0.178,
+      realized: 0.78,
+      unrealized: 0.34,
     },
   ],
 };
@@ -91,10 +126,13 @@ export const mockTF = {
   todayBuys:      1,
   todaySells:     1,
   todayAllocated: 9.64,
+  /* TF post-handoff: 1 coin nativa Tier 3 (gestione TF pura) +
+     fino a 2 promosse a tf_grid (visibili come "trofeo" della selezione,
+     ma gestite e contabilizzate da Grid). */
   assets: [
-    { symbol: "ETH/USDT",   short: "ETH",   color: "#a78bfa", alloc: 33.34, holdings: 0.0072, mtmValue: 22.94, livePrice: 3186.10, realized: 1.10, unrealized: 0.61 },
-    { symbol: "AVAX/USDT",  short: "AVAX",  color: "#fb7185", alloc: 33.33, holdings: 0.41,   mtmValue:  9.88, livePrice:  24.10, realized: 0.84, unrealized: 0.55 },
-    { symbol: "ARB/USDT",   short: "ARB",   color: "#34d399", alloc: 33.33, holdings: 0,      mtmValue:  0,    livePrice:   0.78, realized: 1.24, unrealized: 0.58 },
+    { source: "manual"  as const, symbol: "ETH/USDT",   short: "ETH",   color: "#a78bfa", alloc: 100,   holdings: 0.0072, mtmValue: 22.94, livePrice: 3186.10, realized: 1.10, unrealized: 0.61 },
+    { source: "tf_grid" as const, symbol: "TRX/USDT",   short: "TRX",   color: "#e11d48", alloc: 30,    holdings: 67.0,   mtmValue: 22.75, livePrice: 0.339,   realized: 0.0,  unrealized: 0.42 },
+    { source: "tf_grid" as const, symbol: "DOGE/USDT",  short: "DOGE",  color: "#f97316", alloc: 30,    holdings: 148.0,  mtmValue: 26.37, livePrice: 0.178,   realized: 0.78, unrealized: 0.34 },
   ],
 };
 
