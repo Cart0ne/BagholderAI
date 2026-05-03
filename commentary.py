@@ -139,33 +139,37 @@ def get_tf_state(supabase_client):
         except Exception:
             tf_budget = 100.0
 
-        # 2. bot_config: which TF coins are currently active
+        # 2. bot_config: which TF coins are currently active.
+        # Include tf_grid coins (Tier 1-2 GRID-managed) — they're TF-selected
+        # and TF-funded, so they belong in the TF totals (Brief 46b).
         cfg = (
             supabase_client.table("bot_config")
-            .select("symbol, is_active, capital_allocation")
-            .eq("managed_by", "trend_follower")
+            .select("symbol, is_active, capital_allocation, managed_by")
+            .in_("managed_by", ["trend_follower", "tf_grid"])
             .execute()
         )
         tf_config = cfg.data or []
         active_set = {c["symbol"] for c in tf_config if c.get("is_active")}
 
-        # 3. trades: all TF trades (newest first)
+        # 3. trades: all TF trades (newest first), incl. tf_grid trades.
         tr = (
             supabase_client.table("trades")
             .select("symbol, side, amount, price, cost, fee, realized_pnl, created_at")
             .eq("config_version", "v3")
-            .eq("managed_by", "trend_follower")
+            .in_("managed_by", ["trend_follower", "tf_grid"])
             .order("created_at", desc=True)
             .execute()
         )
         tf_trades = tr.data or []
 
-        # 4. reserve_ledger: skim filtered by managed_by directly
+        # 4. reserve_ledger: skim filtered by managed_by (tf_grid skim is
+        # currently 0 — skim_pct=0 in allocator — but include for forward
+        # compatibility if the policy changes).
         sk = (
             supabase_client.table("reserve_ledger")
             .select("amount")
             .eq("config_version", "v3")
-            .eq("managed_by", "trend_follower")
+            .in_("managed_by", ["trend_follower", "tf_grid"])
             .execute()
         )
         skim_total = sum(float(r.get("amount") or 0) for r in (sk.data or []))

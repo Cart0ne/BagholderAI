@@ -31,8 +31,10 @@ def main():
     notifier = SyncTelegramNotifier()
 
     # === Pull live state ===
-    # Today's Grid trades (manual bots only — exclude TF since the report
-    # bundle keeps them separate via the `tf` block).
+    # Today's Grid trades (manual bots only — exclude TF + tf_grid since
+    # the report bundle keeps them separate via the `tf` block).
+    # Brief 46b: tf_grid coins are TF-funded, so they belong in the TF
+    # totals, NOT in the Grid totals — filter them out here.
     today_iso = date.today().isoformat()
     grid_trades_today = (
         sb.table("trades")
@@ -41,18 +43,21 @@ def main():
         .execute()
         .data or []
     )
-    grid_today = [t for t in grid_trades_today if t.get("managed_by") != "trend_follower"]
+    grid_today = [t for t in grid_trades_today if t.get("managed_by") == "manual"]
 
     today_buys = sum(1 for t in grid_today if t.get("side") == "buy")
     today_sells = sum(1 for t in grid_today if t.get("side") == "sell")
     day_realized = sum(float(t.get("realized_pnl") or 0) for t in grid_today)
     day_fees = sum(float(t.get("fee") or 0) for t in grid_today)
 
-    # === Build per-coin Grid positions from bot_config (manual TF coins) ===
+    # === Build per-coin Grid positions from bot_config (manual bots only) ===
+    # Brief 46b: tf_grid coins are TF-funded → must NOT show up in Grid
+    # totals. Strict equality on 'manual' (the prior !=trend_follower
+    # filter incorrectly included tf_grid).
     manual_cfgs = (
         sb.table("bot_config")
         .select("*")
-        .neq("managed_by", "trend_follower")
+        .eq("managed_by", "manual")
         .eq("is_active", True)
         .execute()
         .data or []

@@ -5,7 +5,7 @@ Rules in HARDCODED_RULES cannot be modified by the AI agent.
 """
 
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -193,11 +193,20 @@ GRID_INSTANCES = [
 ]
 
 def get_grid_config(symbol: str) -> GridInstanceConfig:
-    """Look up a grid instance config by symbol. Falls back to default BTC config."""
+    """Look up a grid instance config by symbol. Falls back to default BTC config.
+
+    Always returns a COPY of the underlying dataclass — callers (e.g.
+    grid_runner) overwrite cfg.symbol when spawning a TF-created bot, and
+    mutating the shared GRID_INSTANCES entry would corrupt the global list
+    inside that subprocess. The corruption surfaced as DOGE replacing BTC
+    in the daily report when the DOGE grid_runner won the daily-report
+    race: its mutated GRID_INSTANCES[0] iterated [DOGE, SOL, BONK] instead
+    of [BTC, SOL, BONK]. dataclasses.replace makes a clean shallow copy.
+    """
     for cfg in GRID_INSTANCES:
         if cfg.symbol == symbol:
-            return cfg
-    return GRID_INSTANCES[0]  # default = BTC/USDT
+            return replace(cfg)
+    return replace(GRID_INSTANCES[0])  # default = BTC/USDT
 
 
 # === Trend Follower Configuration ===
