@@ -109,6 +109,63 @@ def fetch_binance_prices(symbols):
         return {}
 
 
+def _analyze_coin_fifo(coin_trades):
+    """
+    FIFO replay over a single coin's trades — exact Python port of the
+    dashboard's analyzeCoin (web_astro/src/scripts/dashboard-live.ts:396).
+
+    The bot's trades.realized_pnl column is biased on pre-53a sells (it used
+    avg_buy_price as cost basis). We never read that column for aggregates;
+    we recompute realized from scratch via strict FIFO so backend numbers
+    match the dashboard byte-for-byte.
+
+    Returns dict with: realized, open_cost, open_amount, net_invested, fees.
+      - realized   : Σ over sells of (sell_cost − fifo_cost_basis)
+      - open_cost  : cost basis of lots still open (after FIFO consumption)
+      - open_amount: amount of base asset still held
+      - net_invested: Σ buy.cost − Σ sell.cost (USDT cash flow)
+      - fees       : Σ fee across all trades
+    """
+    sorted_trades = sorted(coin_trades, key=lambda t: t.get("created_at") or "")
+    queue = []  # list of {amount, cost} — open BUY lots in FIFO order
+    realized = 0.0
+    fees = 0.0
+    net_invested = 0.0
+    for t in sorted_trades:
+        amt = float(t.get("amount") or 0)
+        cost = float(t.get("cost") or 0)
+        fees += float(t.get("fee") or 0)
+        if t.get("side") == "buy":
+            queue.append({"amount": amt, "cost": cost})
+            net_invested += cost
+        else:
+            basis = 0.0
+            rem = amt
+            while rem > 1e-6 and queue:
+                lot = queue[0]
+                if lot["amount"] <= rem + 1e-6:
+                    basis += lot["cost"]
+                    rem -= lot["amount"]
+                    queue.pop(0)
+                else:
+                    portion = rem / lot["amount"]
+                    basis += lot["cost"] * portion
+                    lot["cost"] -= lot["cost"] * portion
+                    lot["amount"] -= rem
+                    rem = 0
+            realized += cost - basis
+            net_invested -= cost
+    open_amount = sum(l["amount"] for l in queue)
+    open_cost = sum(l["cost"] for l in queue)
+    return {
+        "realized": realized,
+        "open_cost": open_cost,
+        "open_amount": open_amount,
+        "net_invested": net_invested,
+        "fees": fees,
+    }
+
+
 def get_tf_state(supabase_client):
     """
     Fetch TF (Trend Follower) state for inclusion in Haiku's context.
@@ -178,12 +235,9 @@ def get_tf_state(supabase_client):
         )
         skim_total = sum(float(r.get("amount") or 0) for r in (sk.data or []))
 
-        # Use the SAME method as tf.html: per-coin analyzeCoin → sum cashLeft +
-        # cashReturned. This keeps Haiku's numbers in sync with the public
-        # dashboard (single source of truth, no second arithmetic to reconcile).
-
-        # Per-symbol skim (tf.html filters by symbols-in-TF-config, so TF skim
-        # picks up rows where the symbol was historically TF-traded).
+        # Per-symbol skim across all symbols ever TF-traded (active or not).
+        # Mirrors the dashboard's skimFor() filter — picks up rows where the
+        # symbol is in tf_config OR in any TF trade (covers deallocated coins).
         sk_all = (
             supabase_client.table("reserve_ledger")
             .select("symbol, amount")
@@ -191,85 +245,59 @@ def get_tf_state(supabase_client):
             .execute()
         )
         tf_sym_set = {c["symbol"] for c in tf_config}
+        for t in tf_trades:
+            tf_sym_set.add(t["symbol"])
         skim_by_sym = {}
         for r in (sk_all.data or []):
             if r.get("symbol") in tf_sym_set:
                 skim_by_sym[r["symbol"]] = skim_by_sym.get(r["symbol"], 0) + float(r.get("amount") or 0)
         skim_total = sum(skim_by_sym.values())
 
-        # Total allocated capital across active TF coins
-        total_alloc_active = sum(
-            float(c.get("capital_allocation") or 0)
-            for c in tf_config if c.get("is_active")
-        )
-        unalloc = tf_budget - total_alloc_active
-
         # Fetch live prices for active TF symbols
         live_prices = fetch_binance_prices(sorted(active_set))
 
+        # === DASHBOARD-IDENTICAL FORMULA (web_astro/dashboard-live.ts) ===
+        # netWorth = budget + realized_FIFO + unrealized
+        # cash     = netWorth − holdings − skim
+        # Realized comes from FIFO replay (NOT from trades.realized_pnl, which
+        # is biased on pre-53a sells). One source of truth: identical to what
+        # the user sees on the dashboard.
         active_positions = []
         holdings_value = 0.0
         total_unrealized = 0.0
-        total_cash = 0.0  # sum of per-coin cashLeft + cashReturned
+        realized_total = 0.0
+        fees_total = 0.0
+        today_str = str(date.today())
 
+        # Group trades by symbol for FIFO. Includes trades from deallocated
+        # coins, so their historical realized stays counted.
+        trades_by_sym = {}
+        for t in tf_trades:
+            trades_by_sym.setdefault(t["symbol"], []).append(t)
+
+        # Realized + fees aggregated across ALL TF coins (active or deallocated).
+        for sym, coin_trades in trades_by_sym.items():
+            a = _analyze_coin_fifo(coin_trades)
+            realized_total += a["realized"]
+            fees_total += a["fees"]
+
+        # Per-coin breakdown — only currently-configured coins show up in
+        # active_positions (consistent with prior behavior).
         for cfg_row in tf_config:
             sym = cfg_row["symbol"]
             is_active = bool(cfg_row.get("is_active"))
-            alloc = float(cfg_row.get("capital_allocation") or 0)
-            coin_trades = [t for t in tf_trades if t["symbol"] == sym]
+            coin_trades = trades_by_sym.get(sym, [])
             if not coin_trades and not is_active:
                 continue
 
-            total_bought = sum(float(t.get("cost") or 0) for t in coin_trades if t["side"] == "buy")
-            total_sold = sum(float(t.get("cost") or 0) for t in coin_trades if t["side"] == "sell")
-            realized_pnl = sum(float(t.get("realized_pnl") or 0) for t in coin_trades)
-            net_holdings = sum(
-                float(t.get("amount") or 0) * (1 if t["side"] == "buy" else -1)
-                for t in coin_trades
-            )
-            net_spent = total_bought - total_sold
-            position_closed = net_holdings <= 0.000001
-            skim_for_coin = skim_by_sym.get(sym, 0)
+            a = _analyze_coin_fifo(coin_trades)
+            open_amt = a["open_amount"]
+            open_cost = a["open_cost"]
+            realized_coin = a["realized"]
 
-            if not is_active:
-                # Inactive: capital returned to TF pool. 52a: USDT flow
-                # (sold − bought − skim) instead of realized_pnl, which
-                # carried phantom fees from paper-mode accounting.
-                total_cash += (total_sold - total_bought) - skim_for_coin
-                continue
-
-            # Active coin: FIFO to find open lots
-            sorted_trades = sorted(coin_trades, key=lambda t: t.get("created_at") or "")
-            queue = []
-            for t in sorted_trades:
-                if t["side"] == "buy":
-                    queue.append({
-                        "amount": float(t.get("amount") or 0),
-                        "price": float(t.get("price") or 0),
-                        "cost": float(t.get("cost") or 0),
-                    })
-                else:
-                    remaining = float(t.get("amount") or 0)
-                    while remaining > 0.000001 and queue:
-                        lot = queue[0]
-                        if lot["amount"] <= remaining + 0.000001:
-                            remaining -= lot["amount"]
-                            queue.pop(0)
-                        else:
-                            lot["cost"] -= remaining * lot["price"]
-                            lot["amount"] -= remaining
-                            remaining = 0
-            open_amt = sum(l["amount"] for l in queue)
-            open_cost = sum(l["cost"] for l in queue)
-
-            # 52a: unified USDT-flow formula for both open AND closed.
-            # Mirrors bot._available_cash(): alloc − invested + received − reserve.
-            cash_left = alloc - net_spent - skim_for_coin
-            total_cash += cash_left
-
-            # Per-coin "today" stats (used by the Telegram daily report so
-            # the TF section can match Grid's per-coin breakdown).
-            today_str = str(date.today())
+            # Today's per-coin activity (still uses DB realized_pnl since it's
+            # an intra-day delta, not a cumulative FIFO sum — bias is post-53a
+            # so today's number is correct).
             coin_today_trades = [
                 t for t in coin_trades if (t.get("created_at") or "").startswith(today_str)
             ]
@@ -280,10 +308,7 @@ def get_tf_state(supabase_client):
             coin_today_buys = sum(1 for t in coin_today_trades if t["side"] == "buy")
             coin_today_sells = sum(1 for t in coin_today_trades if t["side"] == "sell")
 
-            # Live unrealized for active coin holding open lots. Coins with
-            # holdings=0 (closed cycle, idle re-entry) still get listed —
-            # value=0, unrealized=0, but realized + today stats are real.
-            if open_amt > 0.000001:
+            if open_amt > 1e-6:
                 avg_buy = open_cost / open_amt if open_amt else 0
                 live_price = live_prices.get(sym, avg_buy)
                 value = open_amt * live_price
@@ -300,7 +325,7 @@ def get_tf_state(supabase_client):
                     "holdings": round(open_amt, 8),
                     "unrealized_pnl": round(unrealized, 2),
                     "unrealized_pnl_pct": round(unrealized_pct, 2),
-                    "realized_pnl": round(realized_pnl, 4),
+                    "realized_pnl": round(realized_coin, 4),
                     "realized_today": round(coin_today_realized, 4),
                     "trades_today": len(coin_today_trades),
                     "buys_today": coin_today_buys,
@@ -308,8 +333,6 @@ def get_tf_state(supabase_client):
                     "position_closed": False,
                 })
             else:
-                # Active TF coin but currently flat (holdings=0): still report
-                # so the user sees that yes, the bot is managing it.
                 active_positions.append({
                     "symbol": sym,
                     "value_usd": 0.0,
@@ -319,7 +342,7 @@ def get_tf_state(supabase_client):
                     "holdings": 0.0,
                     "unrealized_pnl": 0.0,
                     "unrealized_pnl_pct": 0.0,
-                    "realized_pnl": round(realized_pnl, 4),
+                    "realized_pnl": round(realized_coin, 4),
                     "realized_today": round(coin_today_realized, 4),
                     "trades_today": len(coin_today_trades),
                     "buys_today": coin_today_buys,
@@ -327,15 +350,13 @@ def get_tf_state(supabase_client):
                     "position_closed": True,
                 })
 
-        realized_total = sum(float(t.get("realized_pnl") or 0) for t in tf_trades)
-
-        # Net Worth = total_cash + unalloc + holdings + skim (tf.html formula)
-        total_value = total_cash + unalloc + holdings_value + skim_total
+        # Dashboard identity (single source of truth):
+        total_value = tf_budget + realized_total + total_unrealized
+        cash = total_value - holdings_value - skim_total
         total_pnl = total_value - tf_budget
 
-        # Today's activity
-        today = str(date.today())
-        today_trades = [t for t in tf_trades if (t.get("created_at") or "").startswith(today)]
+        # Today's aggregate activity (intra-day, DB realized is fine here).
+        today_trades = [t for t in tf_trades if (t.get("created_at") or "").startswith(today_str)]
         realized_today = sum(float(t.get("realized_pnl") or 0) for t in today_trades)
         buys_today = sum(1 for t in today_trades if t["side"] == "buy")
         sells_today = sum(1 for t in today_trades if t["side"] == "sell")
@@ -346,6 +367,9 @@ def get_tf_state(supabase_client):
             "realized_total": round(realized_total, 2),
             "realized_today": round(realized_today, 2),
             "unrealized_total": round(total_unrealized, 2),
+            "fees_total": round(fees_total, 2),
+            "cash": round(cash, 2),
+            "holdings_value": round(holdings_value, 2),
             "trades_today": len(today_trades),
             "buys_today": buys_today,
             "sells_today": sells_today,
@@ -355,6 +379,170 @@ def get_tf_state(supabase_client):
         }
     except Exception as e:
         logger.warning(f"Could not fetch TF state: {e}")
+        return safe_default
+
+
+def get_grid_state(supabase_client):
+    """
+    Fetch Grid bot state for the daily report — single source of truth,
+    byte-for-byte identical to the public dashboard.
+
+    Filter: config_version='v3' AND managed_by='manual'. Brief 46b: tf_grid
+    coins are TF-funded, not Grid — they belong in get_tf_state instead.
+
+    Returns the same shape as the legacy _build_portfolio_summary so callers
+    in grid_runner.py and send_daily_reports_now.py can swap it in without
+    touching the report renderer. Adds dashboard-identical fields (realized,
+    unrealized, fees, skim) so the Telegram report can mirror what the user
+    sees on bagholderai.lol/dashboard.
+
+    Never raises — returns a safe-default dict on error.
+    """
+    safe_default = {
+        "total_value": 500.0,
+        "cash": 500.0,
+        "holdings_value": 0.0,
+        "initial_capital": 500.0,
+        "total_pnl": 0.0,
+        "realized_total": 0.0,
+        "unrealized_total": 0.0,
+        "fees_total": 0.0,
+        "skim_total": 0.0,
+        "positions": [],
+    }
+    try:
+        # 1. bot_config: which Grid coins are configured (manual = Grid).
+        cfg = (
+            supabase_client.table("bot_config")
+            .select("symbol, is_active, capital_allocation, managed_by")
+            .eq("managed_by", "manual")
+            .execute()
+        )
+        grid_config = cfg.data or []
+        # Grid budget = sum of capital_allocation across manual coins.
+        # Fixed by design in v3 (BTC + SOL + BONK = $500). Inactive coins
+        # still contribute their slice to the budget (config persists even
+        # when paused).
+        grid_budget = sum(float(c.get("capital_allocation") or 0) for c in grid_config)
+        if grid_budget <= 0:
+            grid_budget = 500.0  # fallback if config is empty
+
+        # 2. trades: all Grid trades, ascending order for FIFO.
+        tr = (
+            supabase_client.table("trades")
+            .select("symbol, side, amount, price, cost, fee, realized_pnl, created_at")
+            .eq("config_version", "v3")
+            .eq("managed_by", "manual")
+            .order("created_at", desc=False)
+            .execute()
+        )
+        grid_trades = tr.data or []
+
+        # 3. reserve_ledger: skim across all Grid symbols (any managed_by).
+        # The dashboard collects skim by symbol set, so manual+grid+null all
+        # land in the Grid bucket if the symbol is BTC/SOL/BONK.
+        grid_sym_set = {c["symbol"] for c in grid_config}
+        for t in grid_trades:
+            grid_sym_set.add(t["symbol"])
+        sk_all = (
+            supabase_client.table("reserve_ledger")
+            .select("symbol, amount")
+            .eq("config_version", "v3")
+            .execute()
+        )
+        skim_by_sym = {}
+        for r in (sk_all.data or []):
+            sym = r.get("symbol")
+            if sym in grid_sym_set:
+                skim_by_sym[sym] = skim_by_sym.get(sym, 0.0) + float(r.get("amount") or 0)
+        skim_total = sum(skim_by_sym.values())
+
+        # 4. Live prices for active Grid symbols.
+        active_syms = sorted({c["symbol"] for c in grid_config if c.get("is_active")})
+        live_prices = fetch_binance_prices(active_syms)
+
+        # === DASHBOARD-IDENTICAL FORMULA ===
+        # Same identity as get_tf_state and dashboard-live.ts:
+        #   netWorth = budget + realized_FIFO + unrealized
+        #   cash     = netWorth − holdings − skim
+        positions = []
+        holdings_value = 0.0
+        total_unrealized = 0.0
+        realized_total = 0.0
+        fees_total = 0.0
+        today_str = str(date.today())
+
+        trades_by_sym = {}
+        for t in grid_trades:
+            trades_by_sym.setdefault(t["symbol"], []).append(t)
+
+        # Aggregate realized + fees across all Grid coins.
+        for sym, coin_trades in trades_by_sym.items():
+            a = _analyze_coin_fifo(coin_trades)
+            realized_total += a["realized"]
+            fees_total += a["fees"]
+
+        # Per-coin breakdown for the report (only configured coins).
+        for cfg_row in grid_config:
+            sym = cfg_row["symbol"]
+            coin_trades = trades_by_sym.get(sym, [])
+            a = _analyze_coin_fifo(coin_trades)
+            open_amt = a["open_amount"]
+            open_cost = a["open_cost"]
+            realized_coin = a["realized"]
+
+            # Today's per-coin (for the "Today: N trades" footer)
+            coin_today_trades = [
+                t for t in coin_trades if (t.get("created_at") or "").startswith(today_str)
+            ]
+            coin_today_buys = sum(1 for t in coin_today_trades if t["side"] == "buy")
+            coin_today_sells = sum(1 for t in coin_today_trades if t["side"] == "sell")
+
+            avg_buy = open_cost / open_amt if open_amt > 1e-6 else 0.0
+            live_price = live_prices.get(sym, avg_buy)
+            value = open_amt * live_price if open_amt > 1e-6 else 0.0
+            unrealized = value - open_cost if open_amt > 1e-6 else 0.0
+            unrealized_pct = (
+                ((live_price / avg_buy - 1) * 100) if avg_buy > 0 else 0.0
+            )
+
+            if open_amt > 1e-6:
+                holdings_value += value
+                total_unrealized += unrealized
+
+            positions.append({
+                "symbol": sym,
+                "holdings": round(open_amt, 8),
+                "value": round(value, 4),
+                "avg_buy_price": round(avg_buy, 8),
+                "live_price": round(live_price, 8),
+                "unrealized_pnl": round(unrealized, 4),
+                "unrealized_pnl_pct": round(unrealized_pct, 2),
+                "realized_pnl": round(realized_coin, 4),
+                "trades_today": len(coin_today_trades),
+                "buys_today": coin_today_buys,
+                "sells_today": coin_today_sells,
+            })
+
+        total_value = grid_budget + realized_total + total_unrealized
+        cash = total_value - holdings_value - skim_total
+        total_pnl = total_value - grid_budget
+
+        return {
+            "total_value": round(total_value, 2),
+            "cash": round(cash, 2),
+            "holdings_value": round(holdings_value, 2),
+            "initial_capital": round(grid_budget, 2),
+            "total_pnl": round(total_pnl, 2),
+            "realized_total": round(realized_total, 2),
+            "unrealized_total": round(total_unrealized, 2),
+            "fees_total": round(fees_total, 2),
+            "skim_total": round(skim_total, 2),
+            "skim_by_sym": {s: round(v, 2) for s, v in skim_by_sym.items()},
+            "positions": positions,
+        }
+    except Exception as e:
+        logger.warning(f"Could not fetch Grid state: {e}")
         return safe_default
 
 

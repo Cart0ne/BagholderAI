@@ -305,11 +305,19 @@ class TelegramNotifier:
         )
 
         # === GRID section ===
+        # Same shape as the TF block below: header line with total + P&L,
+        # second line with the cumulative breakdown (realized / skim / fees)
+        # so the user sees the same metrics on both bots without scrolling.
+        grid_realized_total = float(data.get("realized_total") or 0)
+        grid_skim_total = float(data.get("skim_total") or 0)
+        grid_fees_total = float(data.get("fees_total") or 0)
         text += (
             f"\n{'─' * 15}\n"
             f"🟢 <b>Grid: ${grid_val:.2f}</b> / ${grid_initial:.0f} · "
             f"P&L: {grid_pnl_emoji} ${grid_pnl:+.2f} ({grid_pnl_pct:+.1f}%)\n"
             f"Cash: ${cash:.2f} · Holdings: ${holdings_val:.2f}\n"
+            f"Realized total: ${grid_realized_total:+.2f} · "
+            f"Skim: ${grid_skim_total:.2f} · Fees: ${grid_fees_total:.2f}\n"
         )
 
         positions = data.get("positions", [])
@@ -350,13 +358,14 @@ class TelegramNotifier:
         if tf:
             tf_realized_total = float(tf.get("realized_total") or 0)
             tf_skim = float(tf.get("skim_total") or 0)
+            tf_fees = float(tf.get("fees_total") or 0)
 
             text += (
                 f"\n{'─' * 15}\n"
                 f"📈 <b>Trend Follower: ${tf_val:.2f}</b> / ${tf_budget:.0f} · "
                 f"P&L: {tf_pnl_emoji} ${tf_pnl:+.2f} ({tf_pnl_pct:+.1f}%)\n"
                 f"Realized total: ${tf_realized_total:+.2f} · "
-                f"Skim: ${tf_skim:.2f}\n"
+                f"Skim: ${tf_skim:.2f} · Fees: ${tf_fees:.2f}\n"
             )
 
             tf_positions = tf.get("active_positions") or []
@@ -398,7 +407,9 @@ class TelegramNotifier:
                 text += "  No active TF positions.\n"
 
         # Reserve summary (Grid only — TF skim is shown above in TF section)
-        reserves = data.get("reserves", {})
+        # Prefer skim_by_sym from get_grid_state (always present, FIFO-safe).
+        # Fall back to the legacy reserves dict for callers that don't pass it.
+        reserves = data.get("skim_by_sym") or data.get("reserves") or {}
         if reserves and any(v > 0 for v in reserves.values()):
             total_reserve = sum(reserves.values())
             text += f"\n{'─' * 15}\n🏦 <b>Grid Reserve</b>\n"

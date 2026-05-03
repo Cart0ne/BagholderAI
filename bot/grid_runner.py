@@ -1540,65 +1540,25 @@ def _force_liquidate(bot, exchange, trade_logger, notifier, symbol: str,
 
 def _build_portfolio_summary(trade_logger, exchange, current_bot, current_symbol: str) -> dict:
     """
-    Build a consolidated portfolio summary across all grid instances.
-    Queries DB positions + live prices to calculate total portfolio value.
+    Consolidated Grid portfolio summary.
 
-    FIX Session 12:
-    - initial_capital uses MAX_CAPITAL ($500), not sum of grid allocations ($180)
-    - Cash calculated globally, not per-instance (which clamped to $0)
+    Single source of truth: delegates to commentary.get_grid_state, which
+    runs the FIFO replay identical to the public dashboard. The legacy
+    formula (initial − bought + received) ignored skim and used the biased
+    realized_pnl column from the DB, producing report numbers that drifted
+    from the dashboard by up to $14.
+
+    The trade_logger / exchange / current_bot args are kept for backward
+    compatibility with callers — they're no longer used here, but the
+    signature stays stable so grid_runner's main loop is untouched.
     """
-    initial_capital = HardcodedRules.MAX_CAPITAL
-
-    total_invested_all = 0.0
-    total_received_all = 0.0
-    holdings_value = 0.0
-    positions = []
-
-    for inst in GRID_INSTANCES:
-        pos = trade_logger.get_open_position(inst.symbol, config_version="v3")
-        h = pos["holdings"]
-        total_invested_all += pos["total_invested"]
-        total_received_all += pos["total_received"]
-
-        if h > 0:
-            # Use current bot's price if same symbol, otherwise fetch
-            if inst.symbol == current_symbol:
-                live_price = current_bot.state.last_price if current_bot.state else 0
-            else:
-                try:
-                    ticker = exchange.fetch_ticker(inst.symbol)
-                    live_price = ticker["last"]
-                except Exception:
-                    live_price = pos["avg_buy_price"]  # fallback
-
-            value = h * live_price
-            unrealized = (live_price - pos["avg_buy_price"]) * h if pos["avg_buy_price"] > 0 else 0
-            unrealized_pct = ((live_price / pos["avg_buy_price"]) - 1) * 100 if pos["avg_buy_price"] > 0 else 0
-            holdings_value += value
-            positions.append({
-                "symbol": inst.symbol,
-                "holdings": h,
-                "value": value,
-                "avg_buy_price": pos["avg_buy_price"],
-                "unrealized_pnl": unrealized,
-                "unrealized_pnl_pct": unrealized_pct,
-                "realized_pnl": pos["realized_pnl"],
-                "live_price": live_price,
-            })
-
-    # Global cash: what's left from the real initial investment
-    cash = max(0.0, initial_capital - total_invested_all + total_received_all)
-    total_value = cash + holdings_value
-    total_pnl = total_value - initial_capital
-
-    return {
-        "total_value": total_value,
-        "cash": cash,
-        "holdings_value": holdings_value,
-        "initial_capital": initial_capital,
-        "total_pnl": total_pnl,
-        "positions": positions,
-    }
+    from commentary import get_grid_state
+    state = get_grid_state(trade_logger.client)
+    # Telegram renderer expects the same keys the legacy summary returned.
+    # get_grid_state already matches them (total_value, cash, holdings_value,
+    # initial_capital, total_pnl, positions) and adds extras (realized_total,
+    # unrealized_total, fees_total, skim_total) that the renderer can use.
+    return state
 
 
 def _print_status(bot: GridBot):
