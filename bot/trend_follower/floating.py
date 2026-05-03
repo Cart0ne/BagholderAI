@@ -10,7 +10,10 @@ Algorithm (Option B1, ledger-based):
     floating = Σ_deallocated_TF_bots (received − invested − reserve)
 
 Where a "deallocated TF bot" is a row in bot_config with
-managed_by='trend_follower' AND is_active=false AND net_holdings=0.
+managed_by IN ('trend_follower', 'tf_grid') AND is_active=false
+AND net_holdings=0. tf_grid coins are TF-selected, GRID-managed:
+the capital is TF's, so retained PnL on liquidation must flow into
+TF's floating cash pool (Brief 46b — "i soldi sono di TF").
 The net_holdings guard ensures we don't count bots that were killed
 without liquidating (crypto would still be locked, not liquid USDT).
 """
@@ -33,7 +36,7 @@ def compute_tf_floating_cash(supabase) -> tuple[float, list[dict]]:
     try:
         cfg_rows = supabase.table("bot_config").select(
             "symbol,is_active,managed_by"
-        ).eq("managed_by", "trend_follower").execute()
+        ).in_("managed_by", ["trend_follower", "tf_grid"]).execute()
     except Exception as e:
         logger.warning(f"[floating] Could not load bot_config: {e}")
         return 0.0, []
@@ -48,7 +51,7 @@ def compute_tf_floating_cash(supabase) -> tuple[float, list[dict]]:
     try:
         trade_rows = supabase.table("trades").select(
             "symbol,side,cost,amount"
-        ).eq("managed_by", "trend_follower").eq(
+        ).in_("managed_by", ["trend_follower", "tf_grid"]).eq(
             "config_version", "v3"
         ).in_("symbol", deallocated).execute()
     except Exception as e:

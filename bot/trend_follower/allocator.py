@@ -109,8 +109,9 @@ def _fetch_unrealized_pnl(supabase, symbol: str, current_price: float) -> float:
       (current_price - avg_buy_price) * holdings
 
     Reconstructs holdings + weighted-avg cost basis by replaying every
-    TF trade (managed_by='trend_follower', config_version='v3') for the
-    symbol in chronological order — matching grid_bot's own cost accounting.
+    TF trade (managed_by IN ('trend_follower','tf_grid'), config_version='v3')
+    for the symbol in chronological order — matching grid_bot's own cost
+    accounting. tf_grid trades count as TF capital (Brief 46b).
 
     Returns 0.0 on any failure or when no open position exists, which is
     the safe default for the SWAP profit gate (neither blocks nor forces).
@@ -122,7 +123,7 @@ def _fetch_unrealized_pnl(supabase, symbol: str, current_price: float) -> float:
             supabase.table("trades")
             .select("side,amount,price")
             .eq("symbol", symbol)
-            .eq("managed_by", "trend_follower")
+            .in_("managed_by", ["trend_follower", "tf_grid"])
             .eq("config_version", "v3")
             .order("created_at", desc=False)
             .execute()
@@ -828,11 +829,19 @@ def decide_allocations(
             continue
 
         tier_info, max_pct = _get_tier_info(coin["symbol"], coin_tiers)
-        # 45c: initial_lots policy — T1/T2 keep 1 lot in reserve for dips;
-        # T3 fires everything at entry (illiquid coins don't wait for dips).
-        initial_lots_for_tier = (
-            lots_for_tier if tier_key == 3 else max(0, lots_for_tier - 1)
-        )
+        # initial_lots policy:
+        # - T3 (trend_follower): fires everything at entry (illiquid coins
+        #   don't wait for dips — fast rotation).
+        # - T1/T2 (tf_grid): fire ONE lot at entry, keep the rest as cash
+        #   reserve for buy-the-dip — same patient pattern as the manual
+        #   BTC/SOL/BONK grids. Earlier policy (45c) kept only "lots-1" in
+        #   reserve, which on T2 (3 lots → 2 initial) deployed ~67% of
+        #   capital up front and left only ~$7 of dip-buy headroom on a
+        #   $22 allocation.
+        if tier_key == 3:
+            initial_lots_for_tier = lots_for_tier
+        else:
+            initial_lots_for_tier = 1 if lots_for_tier > 0 else 0
         config_snapshot = {
             "symbol": coin["symbol"],
             "capital_allocation": round(alloc_amount, 2),
@@ -959,9 +968,13 @@ def resize_active_allocations(
         cpt_cap, max(6.0, round(legacy_target_alloc / legacy_lots, 2))
     )
 
+    # tf_grid coins are TF-selected, GRID-managed: capital is TF's, so they
+    # must be resized alongside trend_follower coins as the floating budget
+    # grows/shrinks (Brief 46b — "i soldi sono di TF").
     tf_active = [
         a for a in current_allocations
-        if a.get("is_active") and a.get("managed_by") == "trend_follower"
+        if a.get("is_active")
+        and a.get("managed_by") in ("trend_follower", "tf_grid")
         and not a.get("pending_liquidation")
     ]
 
