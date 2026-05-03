@@ -932,3 +932,538 @@ function renderGridNatives(
   `).join("");
   el.innerHTML = manualCards;
 }
+
+/* ====================================================================
+   5. § 3 PERFORMANCE — charts (cumulative line + weekly stacked bars).
+   Approach mirrors legacy /web/dashboard.html (FIFO realized, MTM via
+   daily_pnl.total_value + reconstructed TF) with two changes:
+     - explicit managed_by=eq.grid filter on daily_pnl (legacy omitted it,
+       which would silently break if the bot ever wrote TF snapshots)
+     - bars aggregated to weekly by default (monthly when ALL > 1 yr),
+       with net labels rendered as HTML row outside the canvas
+   Range selector (1M / 3M / ALL) re-renders both charts on click.
+   ==================================================================== */
+
+type DailyPnlRow = {
+  date: string;
+  total_value: string | number;
+  realized_pnl_today: string | number;
+  total_pnl: string | number;
+};
+
+(async () => {
+  /* Wait for the Chart.js CDN script to attach window.Chart. */
+  const Chart = await (async () => {
+    for (let i = 0; i < 50; i++) {
+      const c = (window as any).Chart;
+      if (c) return c;
+      await new Promise(r => setTimeout(r, 100));
+    }
+    return null;
+  })();
+  if (!Chart) {
+    console.warn("[dashboard-live] Chart.js never loaded — § 3 skipped");
+    return;
+  }
+  Chart.defaults.font.family = "'JetBrains Mono', monospace";
+  Chart.defaults.color = "#9aa3b8";
+
+  /* ----- Fetch in parallel: Grid daily_pnl + ALL v3 trades ----- */
+  let dailyPnlRows: DailyPnlRow[] = [];
+  let allTrades: AllTrade[] = [];
+  try {
+    const [dp, tr] = await Promise.all([
+      sbq<DailyPnlRow[]>(
+        "daily_pnl",
+        "select=date,total_value,realized_pnl_today,total_pnl" +
+        "&managed_by=eq.grid&order=date.asc",
+      ),
+      sbq<AllTrade[]>(
+        "trades",
+        "select=symbol,side,amount,price,cost,realized_pnl,created_at,managed_by" +
+        "&config_version=eq.v3&order=created_at.asc",
+      ),
+    ]);
+    dailyPnlRows = dp ?? [];
+    allTrades = tr ?? [];
+  } catch (err) {
+    console.warn("[dashboard-live] § 3 fetch failed:", err);
+    return;
+  }
+
+  /* Filter from V3 launch onward (matches legacy dashboard). */
+  dailyPnlRows = dailyPnlRows.filter(d => d.date >= V3_LAUNCH_ISO.slice(0, 10));
+
+  const gridTrades = allTrades.filter(t => t.managed_by === "manual");
+  const tfTrades   = allTrades.filter(t =>
+    t.managed_by === "trend_follower" || t.managed_by === "tf_grid",
+  );
+
+  /* ----- FIFO daily realized aggregation per coin (matches legacy
+     dailyFifoBySymbol). Returns { 'YYYY-MM-DD': realizedSum }. ----- */
+  function dailyFifoBySymbol(trades: AllTrade[]): Record<string, number> {
+    const bySym: Record<string, AllTrade[]> = {};
+    for (const t of trades) (bySym[t.symbol] ||= []).push(t);
+    const out: Record<string, number> = {};
+    for (const sym of Object.keys(bySym)) {
+      const sorted = [...bySym[sym]].sort(
+        (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+      );
+      const queue: { amount: number; cost: number }[] = [];
+      for (const t of sorted) {
+        const day = (t.created_at || "").slice(0, 10);
+        const amt = Number(t.amount || 0);
+        if (t.side === "buy") {
+          queue.push({ amount: amt, cost: Number(t.cost || 0) });
+        } else {
+          const revenue = Number(t.cost || 0);
+          let basis = 0, rem = amt;
+          while (rem > 1e-6 && queue.length > 0) {
+            const lot = queue[0];
+            if (lot.amount <= rem + 1e-6) {
+              basis += lot.cost;
+              rem   -= lot.amount;
+              queue.shift();
+            } else {
+              const portion = rem / lot.amount;
+              basis      += lot.cost * portion;
+              lot.cost   -= lot.cost * portion;
+              lot.amount -= rem;
+              rem = 0;
+            }
+          }
+          out[day] = (out[day] || 0) + (revenue - basis);
+        }
+      }
+    }
+    return out;
+  }
+
+  const gridDailyRealized = dailyFifoBySymbol(gridTrades);
+  const tfDailyRealized   = dailyFifoBySymbol(tfTrades);
+
+  /* ----- TF MTM reconstruction per day (~5% margin, see legacy comment).
+     Returns the TF total_value at the end of `dateStr`. Approximation:
+       cash = TF_BUDGET + realized - net_invested
+       holdings_value = sum(open_amount * last_seen_price)
+     Used only for the cumulative MTM line; bars use realized only. ----- */
+  function reconstructTFForDay(dateStr: string): number {
+    const TF_BUDGET = 100;
+    const endOfDay = dateStr + "T23:59:59";
+    const inWindow = tfTrades.filter(t => t.created_at <= endOfDay);
+    if (!inWindow.length) return 0;
+    const realized = inWindow.reduce(
+      (s, t) => s + Number(t.realized_pnl || 0), 0,
+    );
+    const bySym: Record<string, { netAmt: number; netInvested: number; lastPrice: number }> = {};
+    const sorted = [...inWindow].sort(
+      (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+    );
+    for (const t of sorted) {
+      const sym = t.symbol;
+      if (!bySym[sym]) bySym[sym] = { netAmt: 0, netInvested: 0, lastPrice: 0 };
+      const amt = Number(t.amount || 0);
+      const cost = Number(t.cost || 0);
+      const price = Number((t as any).price || 0);
+      if (price > 0) bySym[sym].lastPrice = price;
+      if (t.side === "buy") {
+        bySym[sym].netAmt += amt;
+        bySym[sym].netInvested += cost;
+      } else {
+        const avgPrice = bySym[sym].netAmt > 0
+          ? bySym[sym].netInvested / bySym[sym].netAmt
+          : 0;
+        bySym[sym].netAmt -= amt;
+        bySym[sym].netInvested -= amt * avgPrice;
+        if (bySym[sym].netAmt < 1e-6) {
+          bySym[sym].netAmt = 0;
+          bySym[sym].netInvested = 0;
+        }
+      }
+    }
+    let holdingsValue = 0;
+    let netInvested = 0;
+    for (const sym of Object.keys(bySym)) {
+      if (bySym[sym].netAmt > 1e-6) {
+        holdingsValue += bySym[sym].netAmt * bySym[sym].lastPrice;
+        netInvested   += bySym[sym].netInvested;
+      }
+    }
+    const cash = TF_BUDGET + realized - netInvested;
+    return Math.max(0, cash + holdingsValue);
+  }
+
+  /* ----- Aggregation helpers (week = Monday-anchored, ISO-style) ----- */
+  const weekKey = (dateStr: string): string => {
+    const d = new Date(dateStr + "T00:00:00");
+    const day = d.getDay();                  /* 0=Sun..6=Sat */
+    const diffToMonday = day === 0 ? -6 : 1 - day;
+    const monday = new Date(d);
+    monday.setDate(d.getDate() + diffToMonday);
+    return monday.toISOString().slice(0, 10);
+  };
+  const monthKey = (dateStr: string): string => dateStr.slice(0, 7);
+
+  /* ----- Build full daily series from V3 launch through today ----- */
+  type DailyPoint = {
+    date: string;
+    realizedDay: { grid: number; tf: number };
+    realizedCum: number;
+    mtmCum: number;
+  };
+
+  function buildDailySeries(): DailyPoint[] {
+    /* Date range: V3 launch → max(daily_pnl last date, today). */
+    const startDate = V3_LAUNCH_ISO.slice(0, 10);
+    const today = new Date();
+    const todayStr = today.toISOString().slice(0, 10);
+    const lastDp = dailyPnlRows.length
+      ? dailyPnlRows[dailyPnlRows.length - 1].date
+      : startDate;
+    const endStr = todayStr > lastDp ? todayStr : lastDp;
+
+    /* Index daily_pnl by date for quick MTM lookup. */
+    const dpByDate: Record<string, DailyPnlRow> = {};
+    for (const r of dailyPnlRows) dpByDate[r.date] = r;
+
+    const out: DailyPoint[] = [];
+    let cumGrid = 0, cumTF = 0;
+    let cur = new Date(startDate + "T00:00:00Z");
+    const endD = new Date(endStr + "T00:00:00Z");
+    while (cur <= endD) {
+      const dStr = cur.toISOString().slice(0, 10);
+      const gridDay = gridDailyRealized[dStr] || 0;
+      const tfDay   = tfDailyRealized[dStr] || 0;
+      cumGrid += gridDay;
+      cumTF   += tfDay;
+      const realizedCum = +(cumGrid + cumTF).toFixed(2);
+
+      /* MTM = Grid total_value (from daily_pnl) + reconstructed TF. */
+      const dp = dpByDate[dStr];
+      let mtmCum: number;
+      if (dp) {
+        const gridVal = Number(dp.total_value || 0);
+        const tfVal = reconstructTFForDay(dStr);
+        /* Subtract initial capital so the line shows P&L not net worth.
+           Initial = $500 pre-TF, $600 post-TF (April 15). */
+        const TF_START = TF_LAUNCH_ISO.slice(0, 10);
+        const initial = dStr >= TF_START ? 600 : 500;
+        mtmCum = +(gridVal + tfVal - initial).toFixed(2);
+      } else {
+        /* No daily_pnl snapshot for this day yet — fall back to realized
+           (MTM line will hug the realized line for these points). */
+        mtmCum = realizedCum;
+      }
+
+      out.push({
+        date: dStr,
+        realizedDay: { grid: gridDay, tf: tfDay },
+        realizedCum,
+        mtmCum,
+      });
+      cur.setUTCDate(cur.getUTCDate() + 1);
+    }
+    return out;
+  }
+
+  const fullDaily = buildDailySeries();
+
+  /* ----- Aggregations for line (sample-last) and bars (sum) ----- */
+  type LineRow = { date: string; realizedCum: number; mtmCum: number };
+  type BarRow  = { key: string; grid: number; tf: number; lastDate: string };
+
+  function aggregateLine(data: DailyPoint[], periodFn: (d: string) => string): LineRow[] {
+    const byPeriod: Record<string, { date: string; realizedCum: number; mtmCum: number }> = {};
+    for (const d of data) {
+      const k = periodFn(d.date);
+      if (!byPeriod[k] || d.date > byPeriod[k].date) {
+        byPeriod[k] = { date: d.date, realizedCum: d.realizedCum, mtmCum: d.mtmCum };
+      }
+    }
+    return Object.keys(byPeriod).sort().map(k => byPeriod[k]);
+  }
+  function aggregateBars(data: DailyPoint[], periodFn: (d: string) => string): BarRow[] {
+    const byPeriod: Record<string, { grid: number; tf: number; lastDate: string }> = {};
+    for (const d of data) {
+      const k = periodFn(d.date);
+      if (!byPeriod[k]) byPeriod[k] = { grid: 0, tf: 0, lastDate: d.date };
+      byPeriod[k].grid += d.realizedDay.grid;
+      byPeriod[k].tf   += d.realizedDay.tf;
+      if (d.date > byPeriod[k].lastDate) byPeriod[k].lastDate = d.date;
+    }
+    return Object.keys(byPeriod).sort().map(k => ({
+      key: k,
+      grid: +byPeriod[k].grid.toFixed(2),
+      tf:   +byPeriod[k].tf.toFixed(2),
+      lastDate: byPeriod[k].lastDate,
+    }));
+  }
+
+  /* ----- Chart instances + state ----- */
+  let cumChart: any = null;
+  let barChart: any = null;
+  let currentRange: "1M" | "3M" | "ALL" = "1M";
+  let netValues: number[] = [];
+  let inProgressFlags: boolean[] = [];
+
+  function fmtLabel(dateStr: string, granularity: "daily" | "weekly" | "monthly"): string {
+    const d = new Date(dateStr + "T00:00:00");
+    if (granularity === "monthly") {
+      return d.toLocaleDateString("en-US", { month: "short", year: "2-digit" });
+    }
+    return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  }
+
+  function roundRect(ctx: any, x: number, y: number, w: number, h: number, r: number) {
+    if (r > w / 2) r = w / 2;
+    if (r > h / 2) r = h / 2;
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, y + h - r);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    ctx.lineTo(x + r, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
+  }
+
+  /* HTML net-row sync — reads bar pixel positions from Chart.js and
+     writes <span> labels into #net-row, absolutely positioned over each
+     bar. Called via plugin.afterRender, so it self-recalculates on resize. */
+  function syncNetRow(chart: any) {
+    const row = document.getElementById("net-row");
+    if (!row) return;
+    row.classList.add("show");
+    const meta0 = chart.getDatasetMeta(0);
+    if (!meta0 || !meta0.data) { row.innerHTML = ""; return; }
+    const canvas = chart.canvas;
+    const canvasLeft = canvas.offsetLeft;
+    let html = "";
+    meta0.data.forEach((bar: any, i: number) => {
+      const net = netValues[i] ?? 0;
+      const inProg = inProgressFlags[i] ?? false;
+      /* Decide on the rounded-to-cents value so the label always matches
+         what the tooltip shows (cents precision). A "flat" period is one
+         where Grid + TF round to exactly $0.00 — typically a week with no
+         trades at all, or one where Grid and TF perfectly cancel. */
+      const rounded = +net.toFixed(2);
+      let label: string, cls: string;
+      if (rounded === 0) {
+        label = "±$0.00";
+        cls = "net-flat";
+      } else if (rounded > 0) {
+        label = "+$" + rounded.toFixed(2);
+        cls = "net-pos";
+      } else {
+        label = "-$" + Math.abs(rounded).toFixed(2);
+        cls = "net-neg";
+      }
+      if (inProg) cls += " net-inprog";
+      const leftPx = canvasLeft + bar.x;
+      html += `<span class="net-label ${cls}" style="left:${leftPx}px;">${label}</span>`;
+    });
+    row.innerHTML = html;
+  }
+
+  const netLabelPlugin = {
+    id: "netLabel",
+    afterRender: (chart: any) => syncNetRow(chart),
+  };
+
+  /* ----- Main render — called on init and on every range button click ----- */
+  function renderCharts() {
+    let windowed: DailyPoint[];
+    if (currentRange === "1M")      windowed = fullDaily.slice(-30);
+    else if (currentRange === "3M") windowed = fullDaily.slice(-90);
+    else                            windowed = fullDaily.slice();
+
+    if (!windowed.length) return;
+
+    /* Granularity decision: bars always weekly (monthly only on ALL>1yr).
+       Line stays daily until ALL>1yr, then weekly. */
+    let lineGran: "daily" | "weekly" | "monthly" = "daily";
+    let barGran:  "daily" | "weekly" | "monthly" = "weekly";
+    if (currentRange === "ALL" && windowed.length > 365) {
+      lineGran = "weekly";
+      barGran  = "monthly";
+    }
+
+    /* ----- Line data ----- */
+    const lineRows: LineRow[] = lineGran === "daily"
+      ? windowed.map(d => ({ date: d.date, realizedCum: d.realizedCum, mtmCum: d.mtmCum }))
+      : aggregateLine(windowed, lineGran === "weekly" ? weekKey : monthKey);
+    const cumLabels = lineRows.map(r => fmtLabel(r.date, lineGran));
+    const realizedData = lineRows.map(r => r.realizedCum);
+    const mtmData = lineRows.map(r => r.mtmCum);
+
+    /* ----- Bar data ----- */
+    const barRows: BarRow[] = aggregateBars(windowed, barGran === "weekly" ? weekKey : monthKey);
+    const barLabels = barRows.map(r => fmtLabel(r.key, barGran));
+    const gridBars = barRows.map(r => r.grid);
+    const tfBars = barRows.map(r => r.tf);
+
+    /* ----- Net values + in-progress flags (last bar = current period) ----- */
+    netValues = barRows.map(r => +(r.grid + r.tf).toFixed(2));
+    const todayStr = new Date().toISOString().slice(0, 10);
+    inProgressFlags = barRows.map((r, i) => {
+      if (i !== barRows.length - 1) return false;
+      if (barGran === "weekly") {
+        const weekEnd = new Date(r.key + "T00:00:00");
+        weekEnd.setDate(weekEnd.getDate() + 6);
+        return todayStr <= weekEnd.toISOString().slice(0, 10);
+      }
+      if (barGran === "monthly") {
+        return todayStr.slice(0, 7) === r.key;
+      }
+      return todayStr === r.lastDate;
+    });
+
+    /* ----- Bar colors with in-progress treatment on last bar ----- */
+    const gridColors = barRows.map((_r, i) => inProgressFlags[i]
+      ? "rgba(34,197,94,0.32)" : "rgba(34,197,94,0.7)");
+    const gridBorders = barRows.map((_r, i) => inProgressFlags[i]
+      ? "rgba(34,197,94,0.55)" : "#22c55e");
+    const tfColors = barRows.map((_r, i) => inProgressFlags[i]
+      ? "rgba(245,158,11,0.32)" : "rgba(245,158,11,0.7)");
+    const tfBorders = barRows.map((_r, i) => inProgressFlags[i]
+      ? "rgba(245,158,11,0.55)" : "#f59e0b");
+
+    /* ----- Update labels ----- */
+    const cumLabelEl = document.getElementById("cumul-label");
+    if (cumLabelEl) {
+      cumLabelEl.textContent = lineGran === "daily"
+        ? "Cumulative P&L · Grid + TF"
+        : "Cumulative P&L · Grid + TF (weekly)";
+    }
+    const barLabelEl = document.getElementById("bar-label");
+    if (barLabelEl) {
+      barLabelEl.textContent = barGran === "weekly"
+        ? "Weekly realized · Grid + TF stacked"
+        : barGran === "monthly"
+          ? "Monthly realized · Grid + TF stacked"
+          : "Daily realized · Grid + TF stacked";
+    }
+
+    /* ----- Render Cumulative line ----- */
+    if (cumChart) cumChart.destroy();
+    const cumCanvas = document.getElementById("chart-cumul") as HTMLCanvasElement;
+    if (cumCanvas) {
+      cumChart = new Chart(cumCanvas, {
+        type: "line",
+        data: {
+          labels: cumLabels,
+          datasets: [
+            { label: "Realized", data: realizedData,
+              borderColor: "#22c55e", backgroundColor: "rgba(34,197,94,0.06)",
+              borderWidth: 2, fill: "origin", tension: 0.3, pointRadius: 0,
+              pointHoverRadius: 4, pointBackgroundColor: "#22c55e",
+              pointBorderColor: "#0a0a0a", pointBorderWidth: 2 },
+            { label: "MTM", data: mtmData,
+              borderColor: "rgba(134,239,172,0.6)", borderWidth: 1.5,
+              borderDash: [5, 5], fill: false, tension: 0.3, pointRadius: 0,
+              pointHoverRadius: 4 },
+          ],
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          interaction: { mode: "index", intersect: false },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: "rgba(0,0,0,0.85)",
+              borderColor: "rgba(255,255,255,0.1)", borderWidth: 1,
+              titleFont: { size: 10 }, bodyFont: { size: 11 },
+              displayColors: false,
+              callbacks: {
+                label: (ctx: any) => {
+                  const v = ctx.parsed.y;
+                  const sign = v >= 0 ? "+" : "";
+                  const name = ctx.datasetIndex === 0 ? "Realized" : "MTM";
+                  return `${name}: ${sign}$${v.toFixed(2)}`;
+                },
+              },
+            },
+          },
+          scales: {
+            x: { grid: { display: false }, ticks: { font: { size: 9 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 8 } },
+            y: { grid: { color: "rgba(255,255,255,0.04)" }, ticks: { font: { size: 9 },
+                 callback: (v: any) => `${v >= 0 ? "+" : ""}$${v}` } },
+          },
+        },
+      });
+    }
+
+    /* ----- Render Bars ----- */
+    if (barChart) barChart.destroy();
+    const barCanvas = document.getElementById("chart-daily") as HTMLCanvasElement;
+    if (barCanvas) {
+      barChart = new Chart(barCanvas, {
+        type: "bar",
+        data: {
+          labels: barLabels,
+          datasets: [
+            { label: "Grid", data: gridBars,
+              backgroundColor: gridColors, borderColor: gridBorders,
+              borderWidth: 1, borderRadius: 3, stack: "pnl" },
+            { label: "TF", data: tfBars,
+              backgroundColor: tfColors, borderColor: tfBorders,
+              borderWidth: 1, borderRadius: 3, stack: "pnl" },
+          ],
+        },
+        plugins: [netLabelPlugin],
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          interaction: { mode: "index", intersect: false },
+          layout: { padding: { top: 6, bottom: 6 } },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: "rgba(0,0,0,0.85)",
+              borderColor: "rgba(255,255,255,0.1)", borderWidth: 1,
+              titleFont: { size: 10 }, bodyFont: { size: 11 },
+              displayColors: true,
+              callbacks: {
+                label: (ctx: any) => {
+                  const v = ctx.parsed.y;
+                  const sign = v >= 0 ? "+" : "";
+                  return `${ctx.dataset.label}: ${sign}$${v.toFixed(2)}`;
+                },
+                footer: (items: any[]) => {
+                  let sum = 0;
+                  for (const it of items) sum += it.parsed.y;
+                  const sign = sum >= 0 ? "+" : "";
+                  return `Net: ${sign}$${sum.toFixed(2)}`;
+                },
+              },
+            },
+          },
+          scales: {
+            x: { stacked: true, grid: { display: false },
+                 ticks: { font: { size: 9 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 8 } },
+            y: { stacked: true, grid: { color: "rgba(255,255,255,0.04)" },
+                 ticks: { font: { size: 9 },
+                          callback: (v: any) => `${v >= 0 ? "+" : ""}$${v}` } },
+          },
+        },
+      });
+    }
+  }
+
+  /* ----- Wire up the range selector buttons ----- */
+  const rangeBtns = document.querySelectorAll<HTMLButtonElement>("#range-selector .range-btn");
+  rangeBtns.forEach(btn => {
+    btn.addEventListener("click", () => {
+      const r = btn.dataset.range as "1M" | "3M" | "ALL" | undefined;
+      if (!r) return;
+      currentRange = r;
+      rangeBtns.forEach(b => b.classList.remove("is-active"));
+      btn.classList.add("is-active");
+      renderCharts();
+    });
+  });
+
+  renderCharts();
+})();
