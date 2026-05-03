@@ -311,3 +311,115 @@ Sessione 4 ~3h (3 prototipi + merge v1→v5) + sessione 5 ~5h (layout pipeline +
 4. **Brief 46c — Charts**: 4 decisioni di sostanza prima di poter codare (vedi `web_astro/Brief_46c_Charts.md`)
 5. **Layout pipeline su mobile**: la freccia orizzontale TF→GRID dovrà diventare verticale su schermi stretti (≤768px). Il layout intero collassa naturalmente in colonna ma la freccia direzionale va ruotata. Iterazione futura
 6. **Eliminare i prototipi A/B/C**? Sono stati utili durante la prototipazione ma ora che dashboard.astro è il vincitore, li teniamo come riferimento o si committa una pulizia?
+
+---
+
+## Aggiornamento — sessione 6 (2026-05-03 sera)
+
+**Status post-sessione 6:** /dashboard chiusa (§ 3 Charts wired), /blueprint + /roadmap portate dal vecchio sito. STYLEGUIDE.md scritto come fonte unica di pattern + palette + lezioni dolorose. Mancano ora solo /howwework (la "difficile" col React) e le pagine legali.
+
+### Brief 46c — Charts chiuso (commit `adfce34`)
+
+**Decisione di sostanza**: replicato il pattern del vecchio dashboard (Grid + TF aggregato, FIFO ricalcolato lato browser, MTM da `daily_pnl.total_value` + ricostruzione TF approssimata ~5%) **rovesciando** le decisioni iniziali del CEO. Motivo: il brief 46c suggeriva al CEO che "raw = come la vecchia", ma la vecchia in realtà ricalcola FIFO. Replicare la vecchia significa fare quello che fa la vecchia, non quello che il brief diceva (sbagliando) che la vecchia facesse.
+
+**Aggiunto** filtro `managed_by=eq.grid` esplicito su `daily_pnl` che la vecchia non aveva (bomba a tempo se mai il bot scrivesse snapshot TF — disinnescata).
+
+**Iterazione UX importante** (1h di brainstorm con Max): le barre giornaliere stacked Grid+TF su 35-90-200-500 giorni di dati diventano illeggibili. Soluzione finale dopo 4 round di mockup standalone HTML:
+- **Selettore range** `1M / 3M / All` in alto (sopra entrambi i grafici)
+- **Barre weekly di default** (mai daily), monthly se >365 giorni
+- **Linea cumulata daily** fino a 365 giorni
+- **Etichetta netto sopra ogni barra** posizionata fuori dal canvas (riga HTML allineata via Chart.js API ai centri delle barre) — niente più rosso-su-arancione del primo tentativo con pillole sopra le barre
+- **Settimana in corso stilizzata** con opacità ridotta + colore tenue
+
+**Bug numerico fix**: la soglia "settimana flat" usava `Math.abs(net) < 0.5` come trigger di `±$0.00`, ma una settimana con netto -$0.20 (TF -$7.58 + Grid +$7.38) mostrava `±$0.00` mentre il tooltip diceva `-$0.20`. Fix: `if (+net.toFixed(2) === 0)` — solo i veri zero numerici sono flat, tutto il resto mostra il netto reale.
+
+**Mockup esplorativi**: durante le decisioni UX abbiamo creato `web_astro/mockup_46c_charts.html` con dataset finto e toggle di varianti. Eliminato dopo l'approvazione finale (era "palestra", non produzione). Pattern riusabile: per decisioni visive ambigue, mockup standalone HTML > prototipi astro (più veloce, no build, iterazione di secondi).
+
+### Porting /blueprint (commit `a04f1c9`)
+
+**Doppio porting necessario** — il primo è stato un fallimento educativo:
+
+1. **v1**: ho ricostruito blueprint **ignorando i pattern di /diary e /dashboard**. Container `max-w-3xl` invece di `max-w-4xl`. Hero senza meta-strip. Sezioni con `<h2 text-[18px] font-bold>` invece del pattern mono `§ N · title`. Max ha reagito: *"mi vien da piangere e non so se arrabbiarmi con te o con i tuoi predecessori delle vecchie chat... possibile che nessuno dei tuoi predecessori abbia scritto le regole di come impaginare?"*
+
+2. **v2**: rifatto leggendo prima i file esistenti. Container `max-w-4xl`. Hero pattern verbatim da diary. Sezioni `<hr> + § N`. Approvato in 5 minuti.
+
+**Lezione registrata**: leggere il codice esistente PRIMA di scrivere. Non fidarsi della propria interpretazione di un brief — guardare cosa fanno le pagine già approvate.
+
+**Componente nuovo creato e poi non usato**: `AnnouncementBar.astro` (parcheggiato per Volume promo su /guide e /howwework). CEO ha chiesto di toglierlo da blueprint dopo averlo visto. Lasciato nel repo per un futuro uso, regola degli "almeno 3" violata ma volontariamente — c'è già il piano di usarlo.
+
+### Porting /roadmap (commit `a04f1c9`)
+
+**Decisione architetturale**: separare dato e markup. `src/data/roadmap.ts` (490 righe, tipato) + `src/pages/roadmap.astro` (334 righe, render). Editing futuro: tocchi solo il `.ts` per aggiungere task/phase, il template è stabile.
+
+**Native `<details>`** per collapse/expand invece di JS toggle. Zero byte di JavaScript, accessibile, funziona offline. Subsection di Phase 8 (le 207 task del backlog, raggruppate per Phase 1/2/7/9/10/11/Open) usano lo stesso pattern annidato.
+
+**Sequenza dolorosa di 6 round di iterazione UI** che ha portato a forgiare lo styleguide:
+
+1. **Phase 8 invisibile** — sezione con `class="reveal"` alta migliaia di pixel. L'IntersectionObserver con threshold 0.08 non scatta mai per elementi enormi. Fix: rimuovere `reveal` da wrapper di liste lunghe. **Regola registrata**: `.reveal` mai su elementi con altezza data-driven illimitata
+2. **Padding richiesto vario**: `py-3` → `py-5` → `py-7` → ecc. Ogni iterazione richiedeva di ricaricare il browser, e Max vedeva ancora la versione vecchia. Per 3 round abbiamo discusso di "la pagina è strettissima" mentre io vedevo padding 28px dal headless screenshot
+3. **Diagnosi del vero bug**: avevamo **due dev server attivi** (4321 e 4323). Max guardava il 4321 (codice stale), io modificavo file e Vite rigenerava sul 4323. **Regola registrata**: prima di avviare un nuovo dev server, killare gli orfani (`lsof -ti:4321,4322,4323 | xargs kill -9`)
+4. **Dopo il restart pulito**: padding `py-7` finalmente visibile su entrambi. Confermato che `py-5` era il valore giusto
+5. **Phase 8 di nuovo invisibile** dopo refactoring che aveva spostato `reveal` su section wrapper con tutte le 9 phase dentro. Stesso bug di prima. Stesso fix
+6. **Problema CSS scope**: la regola `details > summary { padding-left: 22px }` per il caret rotante stava colpendo anche il `<details>` del menu mobile in SiteHeader. Fix: scope con `.roadmap-page details > summary`. **Regola registrata**: regole CSS che riguardano `<details>` o altri elementi semantici comuni vanno SEMPRE scoping a una classe pagina-specifica
+
+**Decisione di stato finale**: tutte le phase chiuse di default tranne Phase 8 (la "messy backlog" che il visitatore viene a vedere). Sub-section interne tutte chiuse, click per aprire. `NEW` ambra come prefisso su Phase 9/10/11 (le sezioni post-blueprint del backlog).
+
+### STYLEGUIDE.md (commit `cfc3bb9`)
+
+**File creato**: `web_astro/STYLEGUIDE.md` — 696 righe, 19 sezioni. Ragione di esistenza spiegata in apertura: *"le prime 5 sessioni di sviluppo del sito Astro hanno cristallizzato delle scelte (container width, hero, spaziatura, palette) che vivevano solo nel codice. Ogni nuova pagina veniva ricostruita ex novo, i predecessori erano costretti all'archeologia."*
+
+Sezioni più dense:
+- § 5 Design tokens (palette completa, regola "mai hex letterali")
+- § 6 Cheat sheet typography (h1, h2, body, badge ecc. con classi esatte)
+- § 7 Componenti riutilizzabili (table, callout, lista, badge — snippet copia-incollabili)
+- § 8 Reveal & animazioni (3 regole tassative, una di queste è la `.reveal` su wrapper lunghi)
+- § 11 Dev workflow (un solo server, cache busting)
+- § 12 **8 lezioni dolorose** con sintomo → causa → fix
+- § 17 **Checklist nuova pagina** (10 punti)
+
+**Memoria persistente aggiunta**: `~/.claude/.../memory/reference_web_astro_styleguide.md` punta a `web_astro/STYLEGUIDE.md`. Indice MEMORY.md aggiornato. Ogni futuro Claude (CC o CEO) lo trova automaticamente senza dover archeologare.
+
+### Lezioni di processo (sessione 6)
+
+**Cosa ha funzionato**:
+- **Mockup standalone HTML per decisioni UX**: per i charts abbiamo creato un file `mockup_46c_charts.html` con dataset finto + toggle varianti. Iterazione di secondi (refresh browser, no build). Decidere a parole su "etichetta sopra o sotto la barra" è impossibile — vedere immediatamente è risolutivo
+- **Estrarre dato in `src/data/<page>.ts`**: per /roadmap il file `.ts` è un export tipato. TypeScript notifica se cambi una shape che il template usava. Editing futuro low-friction
+- **Memoria reference verso STYLEGUIDE.md**: invece di memorizzare le regole una a una, ho memorizzato un puntatore. Lo styleguide stesso è il "single source of truth" — si aggiorna lì, la memoria resta concisa
+
+**Cosa NON ha funzionato**:
+- **Saltare la lettura dei file esistenti**: ricostruito blueprint da zero senza guardare diary/dashboard. 1h sprecata in v1 + rebuild. Lezione: prima di scrivere, leggere
+- **Due dev server contemporaneamente attivi**: 30 minuti di "il padding non cambia" mentre io vedevo il padding giusto e Max il vecchio. Procedure operative: prima di `npm run dev`, kill di orfani
+- **Fixare in piccoli passi senza visione complessiva**: Max ha chiesto 3 modifiche insieme (`py-5` + Phase 8 aperta + `NEW` ambra). Le ho fatte una alla volta, ognuna con un build/refresh in mezzo. Avrei dovuto fare un'unica Edit a 3 modifiche e un solo refresh
+- **Avere fede nei valori del browser senza verificare**: per 2 round di "la pagina è strettissima" ho insistito che `py-7` era applicato (lo era, sul mio server). Avrei dovuto chiedere subito a Max **quale URL stava guardando**. Confermato: era 4321, non 4323
+
+### Cose risolte vs. cose deferred (sessione 6)
+
+**Risolte**:
+- ✅ Brief 46c chiuso — § 3 Charts live con range selector + weekly bars + net labels HTML allineati alle barre
+- ✅ /blueprint live — 14 sezioni verbatim, allineata a /diary e /dashboard nel design system
+- ✅ /roadmap live — 297 task in 9 phase con `<details>` collassabili, dato separato in `src/data/roadmap.ts`
+- ✅ STYLEGUIDE.md — fonte unica per pattern + palette + spaziatura + lezioni
+- ✅ Memoria persistente: `reference_web_astro_styleguide.md` puntatore allo styleguide
+- ✅ Componente `AnnouncementBar.astro` parcheggiato per uso futuro (guide, howwework)
+
+**Deferred**:
+- 🟡 /howwework — la "difficile" perché richiede React (`@astrojs/react`) o port JSX→Astro vanilla. Decisione architetturale rinviata: aggiungere React all'Astro o fare port verso vanilla? Lo styleguide ne parla in § 19 ("Roadmap del documento")
+- 🟡 Pagine legali (/terms, /privacy, /refund) — porting rapido, ~20min totali
+- 🟡 Analytics (Umami, Vercel) non ancora portati nel Layout. Da fare prima del switch domain
+- 🟡 Eliminazione `dashboard-a/b/c.astro` (i prototipi della sessione 4) — ancora in repo come riferimento. Il nuovo dashboard.astro è il vincitore stabile
+- 🟡 Mobile pipeline TF→GRID arrow (freccia orizzontale che diventa verticale su mobile) — iterazione futura
+
+### Tempo cumulativo (sessioni 1-6)
+
+Sessione 6 ~5h (charts wiring + /blueprint v1 fail + v2 + /roadmap + 6 round di iterazione UI + STYLEGUIDE) → **cumulato ~24h totali** per il progetto web_astro.
+
+**Stato del sito** (post-sessione 6):
+- 6 pagine live in locale: home, /dashboard (con § 3 charts live), /diary, /blueprint, /roadmap
+- Manca solo /howwework + pagine legali per parità completa col vecchio /web
+- Lo styleguide rende ogni pagina nuova un esercizio di **applicazione pattern**, non di scoperta
+
+### Domande aperte aggiunte per il CEO (sessione 6)
+
+7. **/howwework**: aggiungiamo React all'Astro per portare `web_proto/how_we_work_interactive.jsx` 1:1, oppure facciamo port verso Astro vanilla con `<details>` + animazioni CSS? La prima è più fedele al prototipo, la seconda mantiene il bundle leggero. Decisione architetturale che impatta TUTTE le pagine future (se aggiungiamo React, è disponibile ovunque)
+8. **Switch domain**: con 6/8 pagine portate, manca /howwework + pagine legali per la parità. Procediamo a deploy preview Vercel adesso (per validare in produzione lentamente) o aspettiamo che TUTTE le pagine siano pronte?
+9. **Mockup HTML come pattern di lavoro**: il file `mockup_46c_charts.html` ha dimostrato che per decisioni UX ambigue, un mockup standalone supera per velocità qualunque prototipo Astro. Lo registriamo come metodo da seguire? Lo styleguide può menzionarlo come "tool consigliato" in una sezione dedicata
