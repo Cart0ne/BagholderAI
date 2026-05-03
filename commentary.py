@@ -90,7 +90,11 @@ def fetch_binance_prices(symbols):
         import urllib.parse
         # BTC/USDT → BTCUSDT
         binance_syms = [s.replace("/", "") for s in symbols]
-        params = urllib.parse.quote(_json.dumps(binance_syms))
+        # Compact JSON (no whitespace) — Binance rejects "[\"A\", \"B\"]"
+        # with the URL-encoded space (%20) as 400 Bad Request, while
+        # "[\"A\",\"B\"]" works. json.dumps default emits ", " with a
+        # space; force separators=(",",":") to drop it.
+        params = urllib.parse.quote(_json.dumps(binance_syms, separators=(",", ":")))
         url = f"https://api.binance.com/api/v3/ticker/price?symbols={params}"
         req = urllib.request.Request(url, headers={"User-Agent": "BagHolderAI/1.0"})
         with urllib.request.urlopen(req, timeout=5) as resp:
