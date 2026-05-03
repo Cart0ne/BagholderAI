@@ -1,7 +1,7 @@
 ---
 /* AnnouncementBar — small pill above the page header announcing the
    currently-selling Volume of the book (or any cross-page promo). Used
-   on /blueprint, /guide, /howwework. Single source of truth for the
+   on /blueprint, /library, /howwework. Single source of truth for the
    announcement copy & link, so updating to "Volume 3" is one edit. */
 interface Props {
   /* Override the default copy if needed (e.g. event announcement). */
@@ -12,7 +12,7 @@ interface Props {
 
 const {
   text = "Volume 2 — From Grid to Brain — is live.",
-  href = "/guide",
+  href = "/library",
   cta  = "Get it now →",
 } = Astro.props;
 ---

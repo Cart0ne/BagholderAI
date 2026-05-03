@@ -1,0 +1,783 @@
+---
+import Layout from "../layouts/Layout.astro";
+---
+
+<Layout
+  title="The Library — BagHolderAI"
+  description="Three volumes documenting an AI-led crypto trading experiment. From zero to grid, from grid to brain, from brain to reality."
+  current="library"
+>
+
+  {/* Fraunces — editorial serif. Loaded ONLY on /library because the
+      shelf is the only place we use it. Documented as exception in
+      STYLEGUIDE § 5 (palette/font tokens). */}
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT,WONK@0,9..144,400;0,9..144,500;0,9..144,700;0,9..144,900;1,9..144,400;1,9..144,500;1,9..144,700&display=swap" />
+
+  {/* ============================================================ HERO */}
+  <section class="mx-auto max-w-4xl px-4 pt-10 pb-6 sm:px-6 sm:pt-14 sm:pb-8">
+
+    <h1 class="text-[28px] font-semibold leading-[1.12] tracking-tight
+               text-text sm:text-[34px] md:text-[40px] md:leading-[1.08]">
+      The <span class="text-primary">library</span>.
+    </h1>
+
+    <p class="mt-3 max-w-2xl text-[14.5px] leading-[1.55] text-text-dim
+              sm:text-[15px]">
+      Three volumes documenting an AI-led trading experiment. From the
+      first line of code to the moment the bot started picking its
+      own coins.
+    </p>
+
+    <div class="mt-5 flex flex-wrap items-center gap-3 font-mono text-[10.5px]
+                uppercase tracking-[0.16em] text-text-muted">
+      <span class="inline-flex items-center gap-1.5">
+        <span class="inline-block h-1.5 w-1.5 rounded-full bg-pos
+                     shadow-[0_0_8px_rgba(134,239,172,0.7)]"></span>
+        2 volumes out
+      </span>
+      <span class="text-border">·</span>
+      <span>volume 3 · in progress</span>
+      <span class="text-border">·</span>
+      <span>203 pages · 52 sessions</span>
+    </div>
+  </section>
+
+  {/* ============================================ § 1 — WHY READ THESE
+       Above the shelf so the visitor has a reason to look at the
+       books, not just three pretty spines. */}
+  <section class="mx-auto max-w-4xl px-4 sm:px-6">
+    <hr class="border-t border-border-soft" />
+    <div class="mt-8">
+      <h2 class="font-mono text-[12px] uppercase tracking-[0.18em] text-pos mb-5">
+        § 1 · Why read these
+      </h2>
+
+      <p class="text-[14.5px] leading-[1.7] text-text-dim mb-4">
+        Most "build an AI trading bot" content stops at the happy path
+        — here's how it works, here's the curve, here's the
+        disclaimer. These volumes document everything that happened
+        between those slides: the 2 AM bugs, the misnamed columns,
+        the trades that looked like wins until FIFO accounting kicked
+        in.
+      </p>
+
+      <p class="text-[14.5px] leading-[1.7] text-text-dim">
+        Each volume is a continuous narrative across sessions, not a
+        manual. Read them in order if you want the full arc; read
+        Volume II if you only care about the brain.
+      </p>
+    </div>
+  </section>
+
+  {/* =========================================================== SHELF
+       Visible only on lg+ (≥1024px). The 3D shelf is desktop-only by
+       design — opening a 800px book on a 768px tablet would overflow.
+       The fallback below renders the same content as plain cards. */}
+  <section class="library-shelf mx-auto hidden max-w-6xl px-4 lg:block sm:px-6">
+    <div class="shelf-stage">
+      <div class="shelf">
+        <div class="shelf-glow"></div>
+        <div class="shelf-plank"></div>
+
+        {/* Volume 1 */}
+        <div class="shelf-book b1" data-vol="b1">
+          <div class="spine">
+            <div class="spine-content">
+              <div class="spine-num">I</div>
+              <div class="spine-title">From Zero to Grid</div>
+              <div class="spine-mark">B·H·AI</div>
+            </div>
+          </div>
+          <div class="book-open-content">
+            <div class="open-cover" style="background-image: url('/cover_vol1_final.jpg');"></div>
+            <div class="open-details">
+              <div class="open-numeral">I</div>
+              <div class="open-meta">
+                <span class="accent">Volume I</span>
+                <span>2026</span>
+                <span>23 sessions</span>
+                <span>95 pages</span>
+                <span>PDF</span>
+              </div>
+              <h2 class="open-title">From Zero to Grid</h2>
+              <p class="open-subtitle">When "buy low, sell high" became code.</p>
+              <p class="open-pull">"From 'what's an API' to live automated trading. Every mistake, every breakthrough."</p>
+              <p class="open-desc">Volume I documents the transition from idea to running system — choosing the stack, designing the grid architecture, debugging at 2AM, learning why the gap between trading theory and trading code is wider than it looks.</p>
+              <div class="open-ctas">
+                <a class="book-btn book-btn-primary"
+                   href="https://payhip.com/b/a4yMc"
+                   target="_blank" rel="noopener"
+                   data-umami-event="buy-click"
+                   data-umami-event-source="library-shelf-v1">
+                  €4.99 · Payhip ↗
+                </a>
+                <a class="book-btn book-btn-secondary"
+                   href="https://payhip.com/preview/a4yMc"
+                   target="_blank" rel="noopener"
+                   data-umami-event="preview-click"
+                   data-umami-event-source="library-shelf-v1">
+                  ↓ Free preview
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Volume 2 (default open) */}
+        <div class="shelf-book b2 open" data-vol="b2">
+          <div class="spine">
+            <div class="spine-content">
+              <div class="spine-num">II</div>
+              <div class="spine-title">From Grid to Brain</div>
+              <div class="spine-mark">B·H·AI</div>
+            </div>
+          </div>
+          <div class="book-open-content">
+            <div class="open-cover" style="background-image: url('/cover_vol2_final.jpg');"></div>
+            <div class="open-details">
+              <div class="open-numeral">II</div>
+              <div class="open-meta">
+                <span class="accent">Volume II</span>
+                <span>2026</span>
+                <span>29 sessions</span>
+                <span>108 pages</span>
+                <span>PDF</span>
+              </div>
+              <h2 class="open-title">From Grid to Brain</h2>
+              <p class="open-subtitle">When the bot stopped following rules and started picking coins.</p>
+              <p class="open-pull">"29 sessions of getting it wrong, then less wrong, then occasionally right."</p>
+              <p class="open-desc">Volume II is the chapter where the system grew a brain — an AI-driven scanner that ranks coins by signal strength, allocates capital across volume tiers, and rotates positions when the trend shifts. Every loss documented, every lesson kept.</p>
+              <div class="open-ctas">
+                <a class="book-btn book-btn-primary"
+                   href="https://payhip.com/b/NHw53"
+                   target="_blank" rel="noopener"
+                   data-umami-event="buy-click"
+                   data-umami-event-source="library-shelf-v2">
+                  €4.99 · Payhip ↗
+                </a>
+                <a class="book-btn book-btn-secondary"
+                   href="https://payhip.com/preview/NHw53"
+                   target="_blank" rel="noopener"
+                   data-umami-event="preview-click"
+                   data-umami-event-source="library-shelf-v2">
+                  ↓ Free preview
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Volume 3 */}
+        <div class="shelf-book b3" data-vol="b3">
+          <div class="spine">
+            <div class="spine-content">
+              <div class="spine-num">III</div>
+              <div class="spine-title">From Brain to Reality</div>
+              <div class="spine-mark">SOON</div>
+            </div>
+          </div>
+          <div class="book-open-content">
+            <div class="open-cover placeholder">
+              <div class="ph-num">III</div>
+              <div class="ph-text">Cover · Coming</div>
+            </div>
+            <div class="open-details">
+              <div class="open-numeral">III</div>
+              <div class="open-meta">
+                <span>Volume III</span>
+                <span>In progress</span>
+                <span>ETA TBD</span>
+              </div>
+              <h2 class="open-title">From Brain to Reality</h2>
+              <p class="open-subtitle">The bot trades. The brain thinks. Now the question.</p>
+              <p class="open-pull">"Does any of it actually make money?"</p>
+              <p class="open-desc">Volume III will document the next chapter — taking the autonomous brain to live capital, measuring what's real, killing what isn't.</p>
+              <div class="v3-state">⌛ Cover &amp; release date pending</div>
+              <div class="open-ctas">
+                <a class="book-btn book-btn-secondary"
+                   href="https://t.me/BagHolderAI_report"
+                   target="_blank" rel="noopener">
+                  📡 Notify me on Telegram
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  {/* ========================================== SHELF FALLBACK (<lg) */}
+  {/* Plain card stack for tablet & mobile. Standard fund palette,
+      no Fraunces, no 3D. Same content as the shelf above. */}
+  <section class="mx-auto mt-8 max-w-4xl px-4 sm:px-6 lg:hidden">
+    <div class="space-y-5">
+
+      {/* Volume 1 */}
+      <article class="overflow-hidden rounded-lg border border-border bg-surface
+                      sm:grid sm:grid-cols-[200px_1fr]">
+        <div class="aspect-[3/4] w-full bg-cover bg-center sm:aspect-auto sm:h-full"
+             style="background-image: url('/cover_vol1_final.jpg');"></div>
+        <div class="p-5 sm:p-6">
+          <div class="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[10px]
+                      uppercase tracking-[0.16em] text-text-muted">
+            <span class="text-pos">Volume I</span>
+            <span class="text-border">·</span>
+            <span>2026</span>
+            <span class="text-border">·</span>
+            <span>23 sessions</span>
+            <span class="text-border">·</span>
+            <span>95 pages</span>
+            <span class="text-border">·</span>
+            <span>PDF</span>
+          </div>
+          <h3 class="mt-2 text-[22px] font-semibold leading-tight text-text">
+            From Zero to Grid
+          </h3>
+          <p class="mt-1 text-[14px] italic text-text-dim">
+            When "buy low, sell high" became code.
+          </p>
+          <p class="mt-4 border-l-2 border-pos pl-3 text-[14px] leading-[1.55] text-text">
+            "From 'what's an API' to live automated trading. Every
+            mistake, every breakthrough."
+          </p>
+          <p class="mt-4 text-[14px] leading-[1.6] text-text-dim">
+            Volume I documents the transition from idea to running
+            system — choosing the stack, designing the grid
+            architecture, debugging at 2AM.
+          </p>
+          <div class="mt-5 flex flex-wrap gap-3">
+            <a href="https://payhip.com/b/a4yMc"
+               target="_blank" rel="noopener"
+               data-umami-event="buy-click"
+               data-umami-event-source="library-card-v1"
+               class="rounded-md bg-pos px-4 py-2 font-mono text-[11px] font-semibold
+                      uppercase tracking-[0.14em] text-bg
+                      transition-colors hover:bg-pos/90">
+              €4.99 · Payhip ↗
+            </a>
+            <a href="https://payhip.com/preview/a4yMc"
+               target="_blank" rel="noopener"
+               data-umami-event="preview-click"
+               data-umami-event-source="library-card-v1"
+               class="rounded-md border border-border-soft px-4 py-2
+                      font-mono text-[11px] font-semibold uppercase tracking-[0.14em]
+                      text-text-dim transition-colors
+                      hover:border-text-muted hover:text-text">
+              ↓ Free preview
+            </a>
+          </div>
+        </div>
+      </article>
+
+      {/* Volume 2 */}
+      <article class="overflow-hidden rounded-lg border border-neu/30
+                      bg-surface ring-1 ring-neu/10
+                      sm:grid sm:grid-cols-[200px_1fr]">
+        <div class="aspect-[3/4] w-full bg-cover bg-center sm:aspect-auto sm:h-full"
+             style="background-image: url('/cover_vol2_final.jpg');"></div>
+        <div class="p-5 sm:p-6">
+          <div class="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[10px]
+                      uppercase tracking-[0.16em] text-text-muted">
+            <span class="text-neu">Volume II · live</span>
+            <span class="text-border">·</span>
+            <span>2026</span>
+            <span class="text-border">·</span>
+            <span>29 sessions</span>
+            <span class="text-border">·</span>
+            <span>108 pages</span>
+            <span class="text-border">·</span>
+            <span>PDF</span>
+          </div>
+          <h3 class="mt-2 text-[22px] font-semibold leading-tight text-text">
+            From Grid to Brain
+          </h3>
+          <p class="mt-1 text-[14px] italic text-text-dim">
+            When the bot stopped following rules and started picking
+            coins.
+          </p>
+          <p class="mt-4 border-l-2 border-neu pl-3 text-[14px] leading-[1.55] text-text">
+            "29 sessions of getting it wrong, then less wrong, then
+            occasionally right."
+          </p>
+          <p class="mt-4 text-[14px] leading-[1.6] text-text-dim">
+            Volume II is the chapter where the system grew a brain — an
+            AI-driven scanner that ranks coins by signal strength,
+            allocates capital across volume tiers, and rotates
+            positions when the trend shifts. Every loss documented,
+            every lesson kept.
+          </p>
+          <div class="mt-5 flex flex-wrap gap-3">
+            <a href="https://payhip.com/b/NHw53"
+               target="_blank" rel="noopener"
+               data-umami-event="buy-click"
+               data-umami-event-source="library-card-v2"
+               class="rounded-md bg-neu px-4 py-2 font-mono text-[11px] font-semibold
+                      uppercase tracking-[0.14em] text-bg
+                      transition-colors hover:bg-neu/90">
+              €4.99 · Payhip ↗
+            </a>
+            <a href="https://payhip.com/preview/NHw53"
+               target="_blank" rel="noopener"
+               data-umami-event="preview-click"
+               data-umami-event-source="library-card-v2"
+               class="rounded-md border border-border-soft px-4 py-2
+                      font-mono text-[11px] font-semibold uppercase tracking-[0.14em]
+                      text-text-dim transition-colors
+                      hover:border-text-muted hover:text-text">
+              ↓ Free preview
+            </a>
+          </div>
+        </div>
+      </article>
+
+      {/* Volume 3 */}
+      <article class="overflow-hidden rounded-lg border border-border-soft bg-surface/60
+                      sm:grid sm:grid-cols-[200px_1fr]">
+        <div class="flex aspect-[3/4] w-full flex-col items-center justify-center
+                    gap-3 border-b border-dashed border-border-soft bg-bg/40 p-5
+                    sm:aspect-auto sm:h-full sm:border-b-0 sm:border-r">
+          <div class="font-serif text-[64px] italic leading-none text-text-muted/60">III</div>
+          <div class="font-mono text-[10px] uppercase tracking-[0.18em] text-text-muted">
+            cover · coming
+          </div>
+        </div>
+        <div class="p-5 sm:p-6">
+          <div class="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[10px]
+                      uppercase tracking-[0.16em] text-text-muted">
+            <span>Volume III</span>
+            <span class="text-border">·</span>
+            <span>in progress</span>
+            <span class="text-border">·</span>
+            <span>ETA TBD</span>
+          </div>
+          <h3 class="mt-2 text-[22px] font-semibold leading-tight text-text">
+            From Brain to Reality
+          </h3>
+          <p class="mt-1 text-[14px] italic text-text-dim">
+            The bot trades. The brain thinks. Now the question.
+          </p>
+          <p class="mt-4 border-l-2 border-border pl-3 text-[14px] leading-[1.55] text-text">
+            "Does any of it actually make money?"
+          </p>
+          <p class="mt-4 text-[14px] leading-[1.6] text-text-dim">
+            Volume III will document the next chapter — taking the
+            autonomous brain to live capital, measuring what's real,
+            killing what isn't.
+          </p>
+          <div class="mt-4 inline-block rounded border border-border-soft px-3 py-1.5
+                      font-mono text-[10px] uppercase tracking-[0.16em] text-text-muted">
+            ⌛ Cover &amp; release date pending
+          </div>
+          <div class="mt-5">
+            <a href="https://t.me/BagHolderAI_report"
+               target="_blank" rel="noopener"
+               class="rounded-md border border-border-soft px-4 py-2
+                      font-mono text-[11px] font-semibold uppercase tracking-[0.14em]
+                      text-text-dim transition-colors
+                      hover:border-text-muted hover:text-text">
+              📡 Notify me on Telegram
+            </a>
+          </div>
+        </div>
+      </article>
+
+    </div>
+  </section>
+
+  {/* ============================================================ MAIN */}
+  <main class="mx-auto max-w-4xl px-4 pb-24 sm:px-6">
+
+    {/* ============ § 2 — BY THE NUMBERS ============ */}
+    <hr class="mt-12 border-t border-border-soft" />
+    <section class="mt-8">
+      <h2 class="font-mono text-[12px] uppercase tracking-[0.18em] text-pos mb-5">
+        § 2 · By the numbers
+      </h2>
+
+      <div class="grid grid-cols-2 gap-px overflow-hidden rounded-lg
+                  border border-border bg-border sm:grid-cols-4">
+        <div class="bg-surface px-4 py-5 text-center">
+          <div class="font-mono text-[24px] font-semibold text-pos tabular-nums">203</div>
+          <div class="mt-1 font-mono text-[10px] uppercase tracking-[0.16em] text-text-muted">
+            pages
+          </div>
+        </div>
+        <div class="bg-surface px-4 py-5 text-center">
+          <div class="font-mono text-[24px] font-semibold text-pos tabular-nums">52</div>
+          <div class="mt-1 font-mono text-[10px] uppercase tracking-[0.16em] text-text-muted">
+            sessions
+          </div>
+        </div>
+        <div class="bg-surface px-4 py-5 text-center">
+          <div class="font-mono text-[24px] font-semibold text-pos tabular-nums">2</div>
+          <div class="mt-1 font-mono text-[10px] uppercase tracking-[0.16em] text-text-muted">
+            volumes out
+          </div>
+        </div>
+        <div class="bg-surface px-4 py-5 text-center">
+          <div class="font-mono text-[24px] font-semibold text-pos tabular-nums">1</div>
+          <div class="mt-1 font-mono text-[10px] uppercase tracking-[0.16em] text-text-muted">
+            ai ceo
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</Layout>
+
+{/* ====================================================== SCRIPT IMPORT */}
+<script>
+  import "../scripts/library.ts";
+</script>
+
+{/* ====================================================== SCOPED STYLES */}
+<style is:inline>
+  /* ============================================================
+     LIBRARY SHELF — 3D openable books
+     Documented exception to STYLEGUIDE §5 (palette tokens) and §6
+     (font tokens). The shelf is a "library showcase" with its own
+     visual language — Fraunces serif + jewel-tone book covers.
+     All selectors are scoped under .library-shelf to avoid leakage.
+     ============================================================ */
+  .library-shelf {
+    --display: 'Fraunces', 'Times New Roman', serif;
+    --book-mono: 'JetBrains Mono', 'SF Mono', 'Menlo', monospace;
+    --book-cyan: #67e8f9;        /* matches site --neu */
+    --book-cyan-dim: rgba(103, 232, 249, 0.45);
+    --book-green: #86efac;       /* matches site --pos */
+    --shelf-wood: linear-gradient(180deg, #1a1410 0%, #100c0a 60%, #060403 100%);
+  }
+
+  .library-shelf .shelf-stage {
+    position: relative;
+    perspective: 2000px;
+    perspective-origin: 50% 70%;
+    padding: 16px 0 0;
+    margin-bottom: 60px;
+  }
+  .library-shelf .shelf {
+    position: relative;
+    height: 540px;
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    gap: 0;
+    transform-style: preserve-3d;
+  }
+  .library-shelf .shelf-plank {
+    position: absolute;
+    left: -8%; right: -8%; bottom: -32px;
+    height: 40px;
+    background: var(--shelf-wood);
+    transform: rotateX(58deg);
+    transform-origin: top center;
+    box-shadow: 0 30px 60px -10px rgba(0,0,0,0.85), inset 0 1px 0 rgba(255,255,255,0.04);
+    border-radius: 1px;
+  }
+  .library-shelf .shelf-plank::before {
+    content: '';
+    position: absolute; inset: 0;
+    background:
+      repeating-linear-gradient(90deg, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 1px, transparent 1px, transparent 80px),
+      repeating-linear-gradient(90deg, rgba(0,0,0,0.4) 0px, rgba(0,0,0,0.4) 2px, transparent 2px, transparent 240px);
+    mix-blend-mode: overlay;
+  }
+  .library-shelf .shelf-plank::after {
+    content: '';
+    position: absolute; left: 0; right: 0; top: 0; height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08) 30%, rgba(255,255,255,0.08) 70%, transparent);
+  }
+  .library-shelf .shelf-glow {
+    position: absolute;
+    left: 20%; right: 20%; top: -40px;
+    height: 80px;
+    background: radial-gradient(ellipse at center, rgba(234,179,8,0.06), transparent 70%);
+    pointer-events: none;
+    z-index: -1;
+  }
+
+  .library-shelf .shelf-book {
+    position: relative;
+    width: 80px;
+    height: 500px;
+    cursor: pointer;
+    transform-style: preserve-3d;
+    transition:
+      width 0.75s cubic-bezier(0.65, 0.05, 0.36, 1),
+      transform 0.75s cubic-bezier(0.65, 0.05, 0.36, 1),
+      margin 0.75s cubic-bezier(0.65, 0.05, 0.36, 1);
+  }
+  .library-shelf .shelf-book + .shelf-book { margin-left: 5px; }
+  .library-shelf .shelf-book.open {
+    width: 800px;
+    cursor: default;
+    transform: translateZ(50px);
+    margin-left: 22px;
+    margin-right: 22px;
+  }
+  .library-shelf .shelf-book.open + .shelf-book { margin-left: 22px; }
+
+  .library-shelf .shelf-book .spine {
+    position: absolute;
+    inset: 0;
+    border-radius: 1px 3px 3px 1px;
+    transform-style: preserve-3d;
+    box-shadow:
+      inset -3px 0 8px rgba(0,0,0,0.6),
+      inset 3px 0 0 rgba(255,255,255,0.05),
+      0 8px 30px -6px rgba(0,0,0,0.8),
+      0 30px 50px -20px rgba(0,0,0,0.6);
+    transition: opacity 0.4s ease;
+  }
+  .library-shelf .shelf-book.b1 .spine {
+    background:
+      linear-gradient(180deg, rgba(134,239,172,0.18), rgba(0,0,0,0)),
+      linear-gradient(90deg, #0e1d12 0%, #182a1d 50%, #0a160e 100%);
+  }
+  .library-shelf .shelf-book.b2 .spine {
+    background:
+      linear-gradient(180deg, rgba(103,232,249,0.22), rgba(0,0,0,0)),
+      linear-gradient(90deg, #0a1c20 0%, #0f2c33 50%, #061418 100%);
+  }
+  .library-shelf .shelf-book.b3 .spine {
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.06), rgba(0,0,0,0)),
+      linear-gradient(90deg, #161616 0%, #1f1f1f 50%, #0d0d0d 100%);
+  }
+  .library-shelf .shelf-book .spine::before {
+    content: '';
+    position: absolute; left: 8px; right: 8px;
+    top: 22px; height: 2px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.22), transparent);
+  }
+  .library-shelf .shelf-book .spine::after {
+    content: '';
+    position: absolute; left: 8px; right: 8px;
+    bottom: 28px; height: 2px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  }
+  .library-shelf .spine-content {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: space-between;
+    padding: 32px 0 30px;
+  }
+  .library-shelf .spine-num {
+    font-family: var(--display);
+    font-style: italic; font-weight: 400;
+    font-size: 18px;
+    color: rgba(255,255,255,0.5);
+    letter-spacing: 0.1em;
+  }
+  .library-shelf .shelf-book.b1 .spine-num { color: var(--book-green); }
+  .library-shelf .shelf-book.b2 .spine-num { color: var(--book-cyan); }
+  .library-shelf .spine-title {
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    font-family: var(--display);
+    font-weight: 900;
+    font-size: 18px;
+    letter-spacing: 0.04em;
+    color: #f4f0e8;
+    text-shadow: 0 1px 0 rgba(0,0,0,0.6);
+  }
+  .library-shelf .shelf-book.b1 .spine-title { color: #d6f5d6; }
+  .library-shelf .shelf-book.b2 .spine-title { color: #d3f4f8; }
+  .library-shelf .shelf-book.b3 .spine-title { color: rgba(255,255,255,0.4); }
+  .library-shelf .spine-mark {
+    font-family: var(--book-mono);
+    font-size: 9px;
+    letter-spacing: 0.25em;
+    color: rgba(255,255,255,0.55);
+    text-transform: uppercase;
+  }
+  .library-shelf .shelf-book.b1 .spine-mark { color: rgba(134,239,172,0.7); }
+  .library-shelf .shelf-book.b2 .spine-mark { color: rgba(103,232,249,0.75); }
+
+  .library-shelf .shelf-book:not(.open):hover { transform: translateY(-10px) translateZ(20px); }
+  .library-shelf .shelf-book:not(.open):hover .spine {
+    box-shadow:
+      inset -3px 0 8px rgba(0,0,0,0.6),
+      inset 3px 0 0 rgba(255,255,255,0.08),
+      0 14px 44px -6px rgba(0,0,0,0.95),
+      0 44px 60px -20px rgba(0,0,0,0.7);
+  }
+
+  .library-shelf .book-open-content {
+    position: absolute; inset: 0;
+    border-radius: 2px 6px 6px 2px;
+    background: linear-gradient(135deg, #161413 0%, #0d0c0b 100%);
+    box-shadow:
+      0 30px 60px -15px rgba(0,0,0,0.85),
+      inset 0 0 0 1px rgba(255,255,255,0.06),
+      inset 0 0 80px rgba(0,0,0,0.4);
+    opacity: 0;
+    transition: opacity 0.45s ease 0.35s;
+    overflow: hidden;
+    display: grid;
+    grid-template-columns: 354px 1fr;
+    gap: 0;
+  }
+  .library-shelf .shelf-book.open .book-open-content { opacity: 1; }
+  .library-shelf .shelf-book.open .spine { opacity: 0; }
+  .library-shelf .book-open-content::before {
+    content: '';
+    position: absolute;
+    left: 354px; top: 16px; bottom: 16px;
+    width: 1px;
+    background: linear-gradient(180deg, transparent, rgba(255,255,255,0.08) 20%, rgba(255,255,255,0.08) 80%, transparent);
+    z-index: 2;
+  }
+
+  .library-shelf .open-cover {
+    background-size: cover; background-position: center;
+    position: relative;
+    box-shadow: inset -8px 0 24px rgba(0,0,0,0.6);
+  }
+  .library-shelf .open-cover.placeholder {
+    background: linear-gradient(135deg, #1a1a1a 0%, #0d0d0d 100%);
+    border-right: 1px dashed rgba(255,255,255,0.18);
+    display: flex; align-items: center; justify-content: center;
+    flex-direction: column; gap: 14px; padding: 24px; text-align: center;
+  }
+  .library-shelf .open-cover.placeholder .ph-num {
+    font-family: var(--display); font-style: italic; font-weight: 400;
+    font-size: 84px; color: rgba(255,255,255,0.18); line-height: 1;
+  }
+  .library-shelf .open-cover.placeholder .ph-text {
+    font-family: var(--book-mono); font-size: 10px;
+    letter-spacing: 0.25em; text-transform: uppercase;
+    color: rgba(255,255,255,0.3);
+  }
+
+  .library-shelf .open-details {
+    padding: 36px 38px 32px 42px;
+    display: flex; flex-direction: column;
+    position: relative;
+    overflow: hidden;
+  }
+  .library-shelf .open-numeral {
+    position: absolute;
+    top: -16px; right: 20px;
+    font-family: var(--display);
+    font-style: italic; font-weight: 400;
+    font-variation-settings: "opsz" 144, "SOFT" 100, "WONK" 1;
+    font-size: 180px;
+    line-height: 1;
+    color: rgba(255,255,255,0.05);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .library-shelf .b1 .open-numeral { color: rgba(134,239,172,0.10); }
+  .library-shelf .b2 .open-numeral { color: rgba(103,232,249,0.11); }
+  .library-shelf .open-meta {
+    font-family: var(--book-mono); font-size: 10px;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    color: rgba(255,255,255,0.4);
+    margin-bottom: 14px;
+    display: flex; gap: 14px; flex-wrap: wrap;
+    position: relative; z-index: 1;
+  }
+  .library-shelf .open-meta span { color: rgba(255,255,255,0.85); }
+  .library-shelf .b1 .open-meta .accent { color: var(--book-green); }
+  .library-shelf .b2 .open-meta .accent { color: var(--book-cyan); }
+  .library-shelf .open-title {
+    font-family: var(--display);
+    font-weight: 700;
+    font-variation-settings: "opsz" 96, "SOFT" 30, "WONK" 1;
+    font-size: 38px;
+    line-height: 1.02;
+    letter-spacing: -0.025em;
+    color: #fff;
+    margin-bottom: 6px;
+    position: relative; z-index: 1;
+  }
+  .library-shelf .open-subtitle {
+    font-family: var(--display);
+    font-style: italic; font-weight: 400;
+    font-size: 17px;
+    color: rgba(255,255,255,0.4);
+    margin-bottom: 22px;
+    position: relative; z-index: 1;
+  }
+  .library-shelf .open-pull {
+    font-family: var(--display);
+    font-weight: 400;
+    font-size: 16px; line-height: 1.5;
+    color: rgba(255,255,255,0.85);
+    padding: 8px 0 8px 18px;
+    border-left: 2px solid;
+    margin-bottom: 18px;
+    position: relative; z-index: 1;
+  }
+  .library-shelf .b1 .open-pull { border-color: var(--book-green); }
+  .library-shelf .b2 .open-pull { border-color: var(--book-cyan); }
+  .library-shelf .open-desc {
+    font-family: var(--display);
+    font-size: 14px; line-height: 1.65;
+    color: rgba(255,255,255,0.55);
+    margin-bottom: 24px;
+    position: relative; z-index: 1;
+  }
+  .library-shelf .open-ctas {
+    display: flex; gap: 14px; flex-wrap: wrap;
+    margin-top: auto;
+    position: relative; z-index: 1;
+  }
+  .library-shelf .book-btn {
+    font-family: var(--book-mono);
+    font-size: 11px; font-weight: 500;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    padding: 12px 20px; border-radius: 2px;
+    text-decoration: none;
+    transition: transform 0.2s ease, filter 0.2s ease, border-color 0.2s ease;
+    display: inline-flex; align-items: center; gap: 10px;
+  }
+  .library-shelf .book-btn-primary {
+    background: var(--book-cyan);
+    color: #061418;
+    border: 1px solid var(--book-cyan);
+  }
+  .library-shelf .b1 .book-btn-primary {
+    background: var(--book-green);
+    color: #061410;
+    border-color: var(--book-green);
+  }
+  .library-shelf .book-btn-primary:hover { transform: translateY(-2px); filter: brightness(1.1); }
+  .library-shelf .book-btn-secondary {
+    background: transparent;
+    color: rgba(255,255,255,0.85);
+    border: 1px solid rgba(255,255,255,0.2);
+  }
+  .library-shelf .book-btn-secondary:hover { border-color: rgba(255,255,255,0.85); transform: translateY(-2px); }
+  .library-shelf .v3-state {
+    font-family: var(--book-mono); font-size: 10px;
+    color: rgba(255,255,255,0.4);
+    letter-spacing: 0.15em; text-transform: uppercase;
+    padding: 10px 14px;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 2px;
+    margin-bottom: 18px;
+    display: inline-block;
+    position: relative; z-index: 1;
+  }
+
+  /* Tighter shelf for 1024-1279px laptops (book aperto 800px era
+     troppo grande, overflow su 1024). Sotto 1024 lo scaffale è
+     hidden via Tailwind .lg:block — c'è il fallback card. */
+  @media (min-width: 1024px) and (max-width: 1279px) {
+    .library-shelf .shelf-book { width: 70px; height: 460px; }
+    .library-shelf .shelf-book.open { width: 640px; }
+    .library-shelf .book-open-content { grid-template-columns: 280px 1fr; }
+    .library-shelf .book-open-content::before { left: 280px; }
+    .library-shelf .open-details { padding: 28px 30px 24px 32px; }
+    .library-shelf .open-title { font-size: 32px; }
+    .library-shelf .open-numeral { font-size: 140px; }
+    .library-shelf .shelf { height: 500px; }
+  }
+</style>
