@@ -154,7 +154,7 @@ const WORKFLOW = [
   },
 ];
 
-const AUTOPLAY_MS = 12000;
+const AUTOPLAY_MS = 6000;
 const MOBILE_BREAKPOINT = 768;
 
 /* ============================================================
@@ -717,7 +717,11 @@ function KeyInsight() {
    ============================================================ */
 export default function HowWeWorkInteractive() {
   const isMobile = useIsMobile();
-  const [selectedNode, setSelectedNode] = useState(null);
+  /* Open with CEO selected by default. The detail panel is already
+     visible at first render, so clicking another role/connection
+     swaps the panel content instead of expanding the page height —
+     no vertical "jump" of the workflow timeline below. */
+  const [selectedNode, setSelectedNode] = useState("ceo");
   const [selectedConn, setSelectedConn] = useState(null);
   const [activeStep, setActiveStep] = useState(0);
   const [autoplayActive, setAutoplayActive] = useState(true);
@@ -798,14 +802,10 @@ export default function HowWeWorkInteractive() {
         </div>
       </div>
 
-      {/* Hint when nothing selected */}
-      {selectedNode === null && selectedConn === null && (
-        <div className="mb-6 text-center font-mono text-[10px] text-text-muted">
-          Click on a role or a connection to explore
-        </div>
-      )}
-
-      {/* Detail panels (mutually exclusive) */}
+      {/* Detail panels (mutually exclusive). CEO is opened by default
+         on first render so the panel area is never empty — clicking
+         another role/connection swaps the content without shifting
+         the timeline below. */}
       {selectedNode && (
         <div className="mb-6">
           <DetailPanel

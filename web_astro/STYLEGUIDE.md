@@ -226,6 +226,20 @@ appaiono i 3 attori del progetto):
 - Max (board)  → `text-amber-400` `#fbbf24`
 - CC (intern)  → `text-cc` `#818cf8`
 
+**Bot colors — eccezione documentata** (su `/dashboard` e `global.css`
+per le `.bot-card`):
+- Grid bot   → `#22c55e` (green saturato, NON `--color-pos`)
+- TF bot     → `#f59e0b` (amber saturato, NON `--color-amber-400`)
+- Sentinel   → `#3b82f6` (blu)
+- Sherpa     → `#ef4444` (rosso)
+
+Sono **identità di prodotto** (i bot del fondo), non palette di
+design system. Sono saturati per leggere i numeri a colpo d'occhio
+sulla dashboard. Vivono in `.bot-card.*-active`, `.bot-pill.live-*`,
+e in alcuni inline `style="color:#..."` su `dashboard.astro`.
+Non sostituire con i token desaturati — perderebbero la loro
+funzione di "indicatore di salute bot".
+
 ### Font
 
 ```css

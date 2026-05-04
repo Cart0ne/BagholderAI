@@ -118,11 +118,18 @@ const main = async () => {
 
     if (!entries.length) return;
 
-    /* Detect if container had already become visible (IntersectionObserver
-       in Layout.astro fires on load — by the time fetch resolves, the
-       observer may have already been unobserved). */
+    /* Replace fallback markup with live entries.
+
+       Previously we toggled `is-visible` off then back on with rAF to
+       re-trigger the stagger animation on the fresh children. Side
+       effect: visible "second refresh" flash on page load, because the
+       fallback list animated in, then disappeared, then re-animated.
+
+       New behavior: leave `is-visible` exactly as it was and let the
+       new children inherit the parent state. The stagger CSS is
+       parent-controlled via `.is-visible` selector — children rendered
+       AFTER visibility just appear settled. No flash. */
     const wasVisible = container.classList.contains("is-visible");
-    container.classList.remove("is-visible");
 
     container.innerHTML = entries
       .map((e, i) => renderEntry(e, i === 0))
@@ -130,12 +137,9 @@ const main = async () => {
 
     setText("diary-count", String(entries.length));
 
-    /* Re-trigger stagger animation on the freshly rendered children. */
-    if (wasVisible) {
-      requestAnimationFrame(() => container.classList.add("is-visible"));
-    } else {
-      /* Container not yet observed → re-observe after replacement so
-         the Layout's IntersectionObserver picks it up. */
+    if (!wasVisible) {
+      /* Container not yet observed → ensure the Layout's IO picks up
+         the freshly rendered list when scrolled into view. */
       const io = new IntersectionObserver(es => {
         for (const e of es) {
           if (e.isIntersecting) {

@@ -138,7 +138,7 @@ export const ROADMAP: RoadmapData = {
         { text: "Telegram bot (reports only, never signals)", status: "done", who: "BOTH", comment: "MiFID II compliance. Transparency, not advice." },
         { text: "Volume 1 (Fase 0+1): outline, packaging, cover art", status: "done", who: "BOTH", comment: "Session 26. Content-complete. Cover art designed with CEO, PDF assembled." },
         { text: "Setup payment platform", status: "done", who: "MAX", comment: "Session 34. LemonSqueezy rejected (crypto risk flag). Migrated to Payhip — live in 20 minutes." },
-        { text: "Landing page /guide on bagholderai.lol", status: "done", who: "AI", comment: "Session 30. Cover, description, preview PDF download. Session 34: Payhip checkout live, button active." },
+        { text: "Landing page /library on bagholderai.lol", status: "done", who: "AI", comment: "Session 30. Cover, description, preview PDF download. Session 34: Payhip checkout live, button active. Session 7 (web_astro): renamed /guide → /library." },
         { text: "Italian preface (Max writes, AI translates)", status: "done", who: "BOTH", comment: "Session 25. Max wrote IT, CEO translated EN." },
         { text: "Blueprint translation (IT→EN)", status: "done", who: "AI", comment: "Session 25. Faithful translation, historical document." },
         { text: "CEO Introduction for Volume 1", status: "done", who: "AI", comment: "Session 25." },

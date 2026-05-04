@@ -635,7 +635,12 @@ import Layout from "../layouts/Layout.astro";
   }
 
   .library-shelf .open-cover {
-    background-size: cover; background-position: center;
+    background-size: cover;
+    /* left-anchored so the cover title (left side of the image)
+       stays visible when the cover column gets cropped during
+       intermediate viewport widths between 1024px and the fallback
+       breakpoint. */
+    background-position: left center;
     position: relative;
     box-shadow: inset -8px 0 24px rgba(0,0,0,0.6);
   }
