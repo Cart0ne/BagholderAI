@@ -1,0 +1,1097 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BagHolderAI — Grid</title>
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔒</text></svg>">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      /* Palette aligned to the web_astro design system (sessione 8).
+         Bot identity colors (--green, --green-dim, --amber) kept saturated
+         per STYLEGUIDE §5 exception — they're product identity, not
+         desaturated palette. Everything else uses the new tokens. */
+      --mono: 'SF Mono', 'Cascadia Code', 'Fira Code', 'Consolas', 'Liberation Mono', 'Menlo', monospace;
+      --sans: 'SF Pro Display', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Helvetica Neue', sans-serif;
+      --green: #22c55e;                       /* Grid/TF bot identity (kept saturated) */
+      --green-dim: rgba(34, 197, 94, 0.4);    /* (kept) */
+      --yellow: #fcd34d;                      /* warning, aligned to yellow-300 */
+      --red: #fca5a5;                         /* loss/error, aligned to --color-neg */
+      --blue: #7dd3fc;                        /* aligned to --color-primary (brand sky) */
+      --teal: #67e8f9;                        /* aligned to --color-neu */
+      --amber: #f59e0b;                       /* TF bot identity (kept saturated) */
+      --border: #2a3556;                      /* aligned to --color-border (was rgba) */
+      --surface: #172037;                     /* aligned to --color-surface */
+      --text: #e8ecf5;                        /* aligned to --color-text */
+      --text-dim: #9aa3b8;                    /* aligned to --color-text-dim */
+      --text-body: #9aa3b8;                   /* unified with text-dim */
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      min-height: 100vh;
+      background-color: #0f1626;       /* aligned to --color-bg (was #0a0a0a pure black) */
+      color: var(--text);
+      font-family: var(--sans);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body::before {
+      content: '';
+      position: fixed; inset: 0; opacity: 0.03;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px);
+      background-size: 60px 60px;
+      pointer-events: none; z-index: 0;
+    }
+
+    .container {
+      max-width: 880px;
+      margin: 0 auto;
+      padding: 20px 16px 80px;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Header */
+    .top-bar {
+      font-family: var(--mono); font-size: 11px; color: var(--text-dim);
+      margin-bottom: 16px; letter-spacing: 0.05em; padding-top: 12px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .top-bar .dot { color: var(--red); }
+
+    h1 {
+      font-size: clamp(24px, 6vw, 36px); font-weight: 700; line-height: 1.1;
+      letter-spacing: -0.03em; color: #fff; margin-bottom: 4px;
+    }
+    h1 .ai { color: var(--green); }
+    h1 .admin { color: var(--red); font-size: 0.5em; vertical-align: super; letter-spacing: 0.05em; }
+
+    .section-title {
+      font-size: 12px; font-family: var(--mono); text-transform: uppercase;
+      letter-spacing: 0.1em; color: var(--green); margin-bottom: 12px; margin-top: 32px;
+    }
+
+    section { margin-bottom: 16px; }
+
+    /* Cards */
+    .card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px; padding: 16px; margin-bottom: 8px;
+    }
+
+    /* Auth gate */
+    #auth-gate {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      min-height: 60vh; gap: 16px;
+    }
+    #auth-gate .lock { font-size: 48px; margin-bottom: 8px; }
+    #auth-gate input {
+      font-family: var(--mono); font-size: 16px; padding: 12px 16px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px; color: var(--text); width: 260px; text-align: center;
+      outline: none; transition: border-color 0.2s;
+    }
+    #auth-gate input:focus { border-color: var(--green); }
+    #auth-gate input::placeholder { color: var(--text-dim); }
+    #auth-gate .err { color: var(--red); font-family: var(--mono); font-size: 12px; min-height: 18px; }
+    #auth-gate button {
+      font-family: var(--mono); font-size: 13px; padding: 10px 28px;
+      background: transparent; border: 1px solid var(--green); color: var(--green);
+      border-radius: 6px; cursor: pointer; transition: all 0.2s;
+    }
+    #auth-gate button:hover { background: var(--green); color: #0a0a0a; }
+
+    /* Dashboard */
+    #dashboard { display: none; }
+
+    /* Overview stats */
+    .stats-row {
+      display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px;
+    }
+    .stats-row + .stats-row { margin-top: 8px; }
+    .stat-box {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px; padding: 12px;
+    }
+    .stat-label { font-family: var(--mono); font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; }
+    .stat-value { font-size: 20px; font-weight: 700; color: #fff; margin-top: 2px; }
+    .stat-sub { font-family: var(--mono); font-size: 10px; color: var(--text-dim); margin-top: 2px; }
+
+    /* Coin cards */
+    .coin-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px; padding: 16px; margin-bottom: 10px;
+    }
+    .coin-header {
+      display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;
+    }
+    .coin-name { font-size: 16px; font-weight: 700; color: #fff; }
+    .coin-status {
+      font-family: var(--mono); font-size: 11px; padding: 3px 10px;
+      border-radius: 20px; font-weight: 500;
+    }
+    .status-dead { background: rgba(239,68,68,0.15); color: var(--red); }
+    .status-low { background: rgba(234,179,8,0.15); color: var(--yellow); }
+    .status-ok { background: rgba(34,197,94,0.15); color: var(--green); }
+
+    .coin-grid {
+      display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 12px;
+    }
+    .coin-stat .cs-label { font-family: var(--mono); font-size: 10px; color: var(--text-dim); }
+    .coin-stat .cs-value { font-size: 14px; font-weight: 600; color: var(--text); }
+
+    /* Capacity bar */
+    .cap-bar-wrap { margin-bottom: 4px; }
+    .cap-bar-label {
+      display: flex; justify-content: space-between;
+      font-family: var(--mono); font-size: 10px; color: var(--text-dim); margin-bottom: 4px;
+    }
+    .cap-bar {
+      height: 8px; background: rgba(255,255,255,0.06); border-radius: 4px;
+      overflow: hidden;
+    }
+    .cap-bar-fill { height: 100%; border-radius: 4px; transition: width 0.4s ease; }
+
+    /* Config editor */
+    .config-section { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+    .config-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+    }
+    .config-field label {
+      font-family: var(--mono); font-size: 10px; color: var(--text-dim);
+      display: block; margin-bottom: 2px; text-transform: uppercase; letter-spacing: 0.03em;
+    }
+    .config-field input {
+      font-family: var(--mono); font-size: 14px; padding: 8px 10px;
+      background: rgba(255,255,255,0.04); border: 1px solid var(--border);
+      border-radius: 6px; color: #fff; width: 100%; outline: none;
+      transition: border-color 0.2s;
+    }
+    .config-field input:focus { border-color: var(--green); }
+    .config-field input.changed { border-color: var(--yellow); }
+
+    .save-row {
+      display: flex; gap: 8px; margin-top: 12px; align-items: center;
+    }
+    .btn-save {
+      font-family: var(--mono); font-size: 12px; padding: 8px 20px;
+      background: transparent; border: 1px solid var(--green); color: var(--green);
+      border-radius: 6px; cursor: pointer; transition: all 0.2s;
+    }
+    .btn-save:hover { background: var(--green); color: #0a0a0a; }
+    .btn-save:disabled { opacity: 0.3; cursor: default; }
+    .save-status { font-family: var(--mono); font-size: 11px; color: var(--text-dim); }
+
+    /* Recent trades */
+    .trades-table {
+      width: 100%; font-family: var(--mono); font-size: 12px;
+      border-collapse: collapse;
+    }
+    .trades-table th {
+      text-align: left; font-size: 10px; color: var(--text-dim);
+      padding: 6px 8px; border-bottom: 1px solid var(--border);
+      text-transform: uppercase; letter-spacing: 0.05em; font-weight: 400;
+    }
+    .trades-table td {
+      padding: 8px 8px; border-bottom: 1px solid rgba(255,255,255,0.03);
+      color: var(--text-body);
+    }
+    .trades-table .buy-row td:first-child { color: var(--green); }
+    .trades-table .sell-row td:first-child { color: var(--red); }
+
+    /* Alerts */
+    .alert {
+      padding: 12px 16px; border-radius: 8px; margin-bottom: 8px;
+      font-family: var(--mono); font-size: 12px; line-height: 1.5;
+    }
+    .alert-red { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.2); color: #fca5a5; }
+    .alert-yellow { background: rgba(234,179,8,0.1); border: 1px solid rgba(234,179,8,0.2); color: #fde047; }
+    .alert-green { background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.2); color: #86efac; }
+
+    /* Refresh */
+    .refresh-bar {
+      font-family: var(--mono); font-size: 10px; color: var(--text-dim);
+      text-align: center; margin-top: 24px; padding: 8px;
+    }
+    .refresh-bar button {
+      background: transparent; border: 1px solid var(--border); color: var(--text-dim);
+      font-family: var(--mono); font-size: 10px; padding: 4px 12px; border-radius: 4px;
+      cursor: pointer; margin-left: 8px;
+    }
+    .refresh-bar button:hover { border-color: var(--green); color: var(--green); }
+
+    /* Config select (grid_mode dropdown) */
+    .config-field select {
+      font-family: var(--mono); font-size: 14px; padding: 8px 10px;
+      background: rgba(255,255,255,0.04); border: 1px solid var(--border);
+      border-radius: 6px; color: #fff; width: 100%; outline: none;
+      transition: border-color 0.2s; cursor: pointer;
+      -webkit-appearance: none; appearance: none;
+    }
+    .config-field select:focus { border-color: var(--green); }
+    .config-field select.changed { border-color: var(--yellow); }
+    .config-field select option { background: var(--surface); color: var(--text); }
+
+    /* Parameter group label */
+    .param-group-label {
+      font-family: var(--mono); font-size: 9px; letter-spacing: 0.1em;
+      text-transform: uppercase; color: var(--text-dim);
+      margin: 10px 0 6px; padding-bottom: 4px;
+      border-bottom: 1px solid var(--border);
+    }
+    .param-group-label.pct-label { color: var(--teal); }
+    .param-group-label.safety-label { color: var(--yellow); }
+
+    /* Fixed grid fields: dim when pct mode is active */
+    .fixed-grid-fields { transition: opacity 0.3s; }
+    .fixed-grid-fields.dimmed { opacity: 0.3; pointer-events: none; }
+
+    /* Responsive */
+    @media (max-width: 480px) {
+      .stats-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .coin-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .config-grid { grid-template-columns: 1fr; }
+      .stat-value { font-size: 16px; }
+    }
+
+    /* Nav bar */
+    .navbar {
+      display: flex; gap: 16px; justify-content: flex-end;
+      font-family: var(--mono); font-size: 11px;
+      padding: 10px 0 12px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 12px;
+    }
+    .navbar a {
+      color: var(--text-dim); text-decoration: none; letter-spacing: 0.05em;
+      text-transform: uppercase; transition: color 0.2s;
+    }
+    .navbar a:hover { color: var(--green); }
+    .navbar a.active { color: var(--red); }
+
+    /* Footer */
+    footer {
+      padding-top: 32px; border-top: 1px solid var(--border);
+      font-family: var(--mono); font-size: 11px; color: rgba(255,255,255,0.4);
+      line-height: 1.8; text-align: center;
+    }
+    footer .sub { color: rgba(255,255,255,0.3); }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <!-- Auth Gate -->
+    <div id="auth-gate">
+      <div class="lock">🔒</div>
+      <div style="font-family: var(--mono); font-size: 12px; color: var(--text-dim);">BAGHOLDER<span style="color: var(--red);">AI</span> GRID</div>
+      <input type="password" id="pw-input" placeholder="password" autocomplete="off">
+      <div class="err" id="pw-err"></div>
+      <button id="pw-btn">Unlock</button>
+    </div>
+
+    <!-- Dashboard (hidden until auth) -->
+    <div id="dashboard">
+
+      <!-- Navbar -->
+      <nav class="navbar">
+        <a href="/">← Home</a>
+        <a class="active" href="/grid">Grid</a>
+        <a href="/tf">TF Control</a>
+      </nav>
+
+      <!-- Header -->
+      <div class="top-bar">
+        <span><span class="dot">●</span> GRID — private</span>
+        <span id="last-update"></span>
+      </div>
+      <h1>🎒 BagHolder<span class="ai">AI</span> <span class="admin">GRID</span></h1>
+
+      <!-- Alerts -->
+      <div id="alerts" style="margin-top: 16px;"></div>
+
+      <!-- Portfolio Overview -->
+      <div class="section-title">Portfolio overview</div>
+      <div id="overview-row1" class="stats-row"></div>
+      <div id="overview-row2" class="stats-row"></div>
+      <div id="overview-row3" class="stats-row"></div>
+
+      <!-- Per-Coin Status -->
+      <div class="section-title">Grid status per coin</div>
+      <div id="coin-cards"></div>
+
+      <!-- Recent Trades -->
+      <div class="section-title">Recent trades</div>
+      <div class="card" style="overflow-x: auto;">
+        <table class="trades-table" id="trades-table">
+          <thead>
+            <tr><th>Side</th><th>Coin</th><th>Price</th><th>Cost</th><th>Buy @</th><th>P&amp;L</th><th>Time</th></tr>
+          </thead>
+          <tbody id="trades-body"></tbody>
+        </table>
+      </div>
+
+      <div class="refresh-bar">
+        Last refresh: <span id="refresh-time">—</span> · <span id="refresh-status">auto every 5m</span>
+        <button onclick="loadAll()">↻ Refresh</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // === CONFIG ===
+    var SB_URL = 'https://pxdhtmqfwjwjhtcoacsn.supabase.co';
+    var SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB4ZGh0bXFmd2p3amh0Y29hY3NuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4NDI1OTIsImV4cCI6MjA4OTQxODU5Mn0.G76lvYWrqlM0z2RoSkU1uAglfMBKN_rXvBGOQhb4kdg';
+    var ADMIN_HASH = '8a308134250d16e95b79019171e5cb37ed436a14e2800f22b98e0fa20ac6f9eb'; // sha256 of 'password' — CHANGE THIS
+    var COLORS = { 'BTC/USDT': '#378ADD', 'SOL/USDT': '#5DCAA5', 'BONK/USDT': '#EF9F27' };
+    var SHORT = { 'BTC/USDT': 'BTC', 'SOL/USDT': 'SOL', 'BONK/USDT': 'BONK' };
+    // Decimal precision per coin to surface sub-step dust without rounding it away
+    var DUST_DECIMALS = { 'BTC/USDT': 8, 'SOL/USDT': 6, 'BONK/USDT': 6 };
+
+    // === AUTH ===
+    async function sha256(msg) {
+      var buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(msg));
+      return Array.from(new Uint8Array(buf)).map(function(b) { return b.toString(16).padStart(2, '0'); }).join('');
+    }
+
+    async function tryAuth() {
+      var pw = document.getElementById('pw-input').value;
+      var hash = await sha256(pw);
+      if (hash === ADMIN_HASH) {
+        sessionStorage.setItem('bh_admin', '1');
+        showDashboard();
+      } else {
+        document.getElementById('pw-err').textContent = 'wrong password';
+        document.getElementById('pw-input').value = '';
+      }
+    }
+
+    document.getElementById('pw-btn').onclick = tryAuth;
+    document.getElementById('pw-input').addEventListener('keydown', function(e) { if (e.key === 'Enter') tryAuth(); });
+
+    if (sessionStorage.getItem('bh_admin') === '1') showDashboard();
+
+    function showDashboard() {
+      document.getElementById('auth-gate').style.display = 'none';
+      document.getElementById('dashboard').style.display = 'block';
+      loadAll();
+      setInterval(function() { loadAll(); }, 300000);
+    }
+
+    // === SUPABASE HELPERS ===
+    function sbGet(table, params) {
+      return fetch(SB_URL + '/rest/v1/' + table + '?' + (params || ''), {
+        headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY }
+      }).then(function(r) { if (!r.ok) throw new Error(r.status); return r.json(); });
+    }
+
+    function sbInsert(table, data) {
+      return fetch(SB_URL + '/rest/v1/' + table, {
+        method: 'POST',
+        headers: {
+          'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY,
+          'Content-Type': 'application/json', 'Prefer': 'return=minimal'
+        },
+        body: JSON.stringify(data)
+      }).then(function(r) { if (!r.ok) throw new Error(r.status); });
+    }
+
+    function sbPatch(table, matchCol, matchVal, data) {
+      return fetch(SB_URL + '/rest/v1/' + table + '?' + matchCol + '=eq.' + encodeURIComponent(matchVal), {
+        method: 'PATCH',
+        headers: {
+          'apikey': SB_KEY,
+          'Authorization': 'Bearer ' + SB_KEY,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=representation'
+        },
+        body: JSON.stringify(data)
+      }).then(function(r) {
+        if (!r.ok) throw new Error(r.status);
+        return r.json();
+      }).then(function(rows) {
+        // 39i: PostgREST returns 200 + [] when RLS silently blocks the
+        // update. Without this guard the UI shows "Saved ✓" while the
+        // DB never changed.
+        if (!Array.isArray(rows) || rows.length === 0) {
+          throw new Error('no rows updated (RLS policy?)');
+        }
+        return rows;
+      });
+    }
+
+    // === FORMATTERS ===
+    function fmt(n, d) { return Number(n).toFixed(d === undefined ? 2 : d); }
+    function fmtUsd(n) { return '$' + fmt(n); }
+    function fmtPrice(p) {
+      p = Number(p);
+      if (p === 0) return '$0.00';
+      if (p >= 1) return '$' + p.toFixed(2);
+      if (p >= 0.01) return '$' + p.toFixed(4);
+      if (p >= 0.0001) return '$' + p.toFixed(6);
+      return '$' + p.toFixed(8);
+    }
+    function timeAgo(dt) {
+      var ms = Date.now() - new Date(dt).getTime();
+      var m = Math.floor(ms / 60000);
+      if (m < 60) return m + 'm ago';
+      var h = Math.floor(m / 60);
+      if (h < 24) return h + 'h ago';
+      return Math.floor(h / 24) + 'd ago';
+    }
+
+    // === LOAD DATA ===
+    var configData = [];
+    var tradesData = [];
+    var pnlData = [];
+    var totalRealizedAll = 0;
+    var skimReserveTotal = 0;
+    var skimBySymbol = {};  // symbol -> total skim amount
+    var livePrices = {};  // symbol -> price
+
+    async function fetchLivePrices() {
+      try {
+        var symbols = ['BTCUSDT', 'SOLUSDT', 'BONKUSDT'];
+        var res = await fetch('https://api.binance.com/api/v3/ticker/price?symbols=' + encodeURIComponent(JSON.stringify(symbols)));
+        var data = await res.json();
+        data.forEach(function(t) {
+          // Convert BTCUSDT → BTC/USDT
+          var sym = t.symbol.replace('USDT', '/USDT');
+          livePrices[sym] = Number(t.price);
+        });
+      } catch (e) {
+        console.warn('Live prices unavailable:', e);
+      }
+    }
+
+    async function loadAll() {
+      // Admin shows only manually-managed bots. TF-managed bots (trend_follower
+      // + tf_grid) live in /tf.html.
+      var settled = await Promise.allSettled([
+        sbGet('bot_config', 'managed_by=not.in.(trend_follower,tf_grid)&order=symbol'),
+        sbGet('trades', 'select=symbol,side,amount,price,cost,fee,realized_pnl,created_at&config_version=eq.v3&managed_by=not.in.(trend_follower,tf_grid)&order=created_at.desc'),
+        sbGet('daily_pnl', 'order=date.desc&limit=10'),
+        sbGet('reserve_ledger', 'select=symbol,amount&config_version=eq.v3'),
+        fetchLivePrices()
+      ]);
+
+      var failed = settled.filter(function(r) { return r.status === 'rejected'; });
+      if (failed.length > 0) {
+        console.error('Load partial failure:', failed.map(function(r) { return r.reason; }));
+        document.getElementById('refresh-status').textContent = '⚠ errore caricamento — riprovo';
+        document.getElementById('refresh-status').style.color = 'var(--red, #e74c3c)';
+        // Retry after 5s if there were failures
+        setTimeout(loadAll, 5000);
+        return;
+      }
+
+      configData = settled[0].value;
+      tradesData = settled[1].value;
+      pnlData = settled[2].value;
+      var skimRows = settled[3].value;
+      // Restrict skim to the symbols shown here (manual bots) so TF skim
+      // doesn't leak into the admin reserve total.
+      var adminSymSet = {};
+      configData.forEach(function(c) { adminSymSet[c.symbol] = true; });
+      var adminSkim = skimRows.filter(function(r) { return adminSymSet[r.symbol]; });
+      skimReserveTotal = adminSkim.reduce(function(s, r) { return s + Number(r.amount || 0); }, 0);
+      skimBySymbol = {};
+      adminSkim.forEach(function(r) {
+        if (r.symbol) skimBySymbol[r.symbol] = (skimBySymbol[r.symbol] || 0) + Number(r.amount || 0);
+      });
+      // FIFO realized recalc per symbol — DB realized_pnl uses avg_buy_price
+      // basis which overstates per-trade profit on high-volatility coins.
+      // Strict FIFO restores the Realized + Unrealized = Total P&L identity.
+      var _realFifo = {};
+      tradesData.slice().sort(function(a, b) {
+        return new Date(a.created_at) - new Date(b.created_at);
+      }).forEach(function(t) {
+        var sym = t.symbol;
+        if (!_realFifo[sym]) _realFifo[sym] = { queue: [], realized: 0 };
+        var s = _realFifo[sym];
+        var amt = Number(t.amount || 0);
+        var price = Number(t.price || 0);
+        if (t.side === 'buy') {
+          s.queue.push({ amount: amt, price: price, cost: Number(t.cost) });
+        } else {
+          var rev = Number(t.cost || 0);
+          var basis = 0;
+          var rem = amt;
+          while (rem > 0.000001 && s.queue.length > 0) {
+            var lot = s.queue[0];
+            if (lot.amount <= rem + 0.000001) {
+              basis += lot.cost;
+              rem -= lot.amount;
+              s.queue.shift();
+            } else {
+              var p = rem / lot.amount;
+              basis += lot.cost * p;
+              lot.cost -= lot.cost * p;
+              lot.amount -= rem;
+              rem = 0;
+            }
+          }
+          s.realized += (rev - basis);
+        }
+      });
+      totalRealizedAll = Object.values(_realFifo).reduce(function(s, x) {
+        return s + x.realized;
+      }, 0);
+      render();
+      document.getElementById('refresh-time').textContent = new Date().toLocaleTimeString();
+      document.getElementById('refresh-status').textContent = 'auto every 5m';
+      document.getElementById('refresh-status').style.color = '';
+    }
+
+    // === RENDER ===
+    function render() {
+      renderAlerts();
+      renderOverview();
+      renderCoinCards();
+      renderTrades();
+    }
+
+    function renderAlerts() {
+      var el = document.getElementById('alerts');
+      var alerts = [];
+
+      // Check unallocated capital
+      var totalAlloc = configData.reduce(function(s, c) { return s + Number(c.capital_allocation); }, 0);
+      var unalloc = 500 - totalAlloc;
+      if (unalloc > 50) {
+        alerts.push({ type: 'yellow', text: '$' + fmt(unalloc, 0) + ' unallocated (' + fmt(unalloc / 5, 0) + '% of portfolio doing nothing)' });
+      }
+
+      // Check per-coin cash
+      configData.forEach(function(cfg) {
+        var sym = cfg.symbol;
+        var analysis = analyzeCoin(sym, cfg);
+        if (analysis.buysLeft === 0) {
+          alerts.push({ type: 'red', text: SHORT[sym] + ' is tapped out — $' + fmt(analysis.cashLeft) + ' cash, needs $' + fmt(Number(cfg.capital_per_trade)) + '/buy' });
+        } else if (analysis.buysLeft === 1) {
+          alerts.push({ type: 'yellow', text: SHORT[sym] + ' has only 1 buy left ($' + fmt(analysis.cashLeft) + ' remaining)' });
+        }
+      });
+
+      if (alerts.length === 0) {
+        alerts.push({ type: 'green', text: 'All systems nominal. Bots have cash to operate.' });
+      }
+
+      el.innerHTML = alerts.map(function(a) {
+        return '<div class="alert alert-' + a.type + '">' + a.text + '</div>';
+      }).join('');
+    }
+
+    function analyzeCoin(symbol, cfg) {
+      var alloc = Number(cfg.capital_allocation);
+      var costPerTrade = Number(cfg.capital_per_trade);
+      var coinTrades = tradesData.filter(function(t) { return t.symbol === symbol; });
+      var totalBought = coinTrades.filter(function(t) { return t.side === 'buy'; }).reduce(function(s, t) { return s + Number(t.cost); }, 0);
+      var totalSold = coinTrades.filter(function(t) { return t.side === 'sell'; }).reduce(function(s, t) { return s + Number(t.cost); }, 0);
+      var realizedPnl = coinTrades.reduce(function(s, t) { return s + Number(t.realized_pnl || 0); }, 0);
+      var netHoldings = coinTrades.reduce(function(s, t) {
+        return s + (t.side === 'buy' ? Number(t.amount) : -Number(t.amount));
+      }, 0);
+      var buyCount = coinTrades.filter(function(t) { return t.side === 'buy'; }).length;
+      var sellCount = coinTrades.filter(function(t) { return t.side === 'sell'; }).length;
+      var netSpent = totalBought - totalSold;
+      var positionClosed = netHoldings <= 0.000001; // fully sold out
+
+      // FIFO reconstruction: open lots = cost basis + count of slots actually filled
+      var sortedTrades = coinTrades.slice().sort(function(a, b) {
+        return new Date(a.created_at) - new Date(b.created_at);
+      });
+      var buyQueue = [];
+      sortedTrades.forEach(function(t) {
+        if (t.side === 'buy') {
+          buyQueue.push({ amount: Number(t.amount), price: Number(t.price || 0), cost: Number(t.cost) });
+        } else {
+          var remaining = Number(t.amount);
+          while (remaining > 0.000001 && buyQueue.length > 0) {
+            var lot = buyQueue[0];
+            if (lot.amount <= remaining + 0.000001) {
+              remaining -= lot.amount;
+              buyQueue.shift();
+            } else {
+              lot.cost -= remaining * lot.price;
+              lot.amount -= remaining;
+              remaining = 0;
+            }
+          }
+        }
+      });
+      var openLots = buyQueue.length;
+      var openCost = buyQueue.reduce(function(s, l) { return s + l.cost; }, 0);
+
+      var skimForCoin = skimBySymbol[symbol] || 0;
+      // 52a: unified USDT-flow formula for both open AND closed positions.
+      // Mirrors bot._available_cash(): alloc − invested + received − reserve.
+      // netSpent = invested − received; skim is physically moved to
+      // reserve_ledger on every profitable sell and must be subtracted here
+      // to match the bot's real operational cash. Closed positions: netSpent
+      // is typically negative (sold > bought) → cashLeft > alloc.
+      var cashLeft = alloc - netSpent - skimForCoin;
+      var buysLeft = costPerTrade > 0 ? Math.floor(cashLeft / costPerTrade) : 0;
+      // Capacity bar reflects how much of the allocation is committed to open lots,
+      // not total volume traded.
+      var capacityPct = alloc > 0 ? (openCost / alloc) * 100 : 0;
+      var maxCapacity = costPerTrade > 0 ? Math.floor(alloc / costPerTrade) : 0;
+      var lastTrade = coinTrades.length > 0 ? coinTrades[0] : null;
+
+      return {
+        alloc: alloc, costPerTrade: costPerTrade,
+        totalBought: totalBought, totalSold: totalSold,
+        realizedPnl: realizedPnl, netHoldings: netHoldings,
+        buyCount: buyCount, sellCount: sellCount,
+        netSpent: netSpent, openCost: openCost, openLots: openLots,
+        cashLeft: cashLeft,
+        buysLeft: buysLeft, capacityPct: Math.min(capacityPct, 100),
+        maxCapacity: maxCapacity, lastTrade: lastTrade
+      };
+    }
+
+    function renderOverview() {
+      var totalAlloc = configData.reduce(function(s, c) { return s + Number(c.capital_allocation); }, 0);
+      var unalloc = 500 - totalAlloc;
+
+      var totalCash = 0;
+      var totalDeployed = 0;
+      configData.forEach(function(cfg) {
+        var a = analyzeCoin(cfg.symbol, cfg);
+        totalCash += a.cashLeft;
+        if (a.netHoldings > 0.000001) totalDeployed += a.openCost;
+      });
+
+      // Unrealized P&L — computed live from holdings × live prices
+      var totalUnrealized = 0;
+      var unrealizedBySymbol = [];
+      var holdingsValue = 0;
+      configData.forEach(function(cfg) {
+        var a = analyzeCoin(cfg.symbol, cfg);
+        if (a.netHoldings <= 0.000001) return;
+        var livePrice = livePrices[cfg.symbol];
+        if (!livePrice) return;
+        // Reconstruct FIFO queue to get avg buy of remaining open lots
+        var coinTrades = tradesData
+          .filter(function(t) { return t.symbol === cfg.symbol; })
+          .slice()
+          .sort(function(a, b) { return new Date(a.created_at) - new Date(b.created_at); });
+        var buyQueue = [];
+        coinTrades.forEach(function(t) {
+          if (t.side === 'buy') {
+            buyQueue.push({ amount: Number(t.amount), price: Number(t.price || 0), cost: Number(t.cost) });
+          } else {
+            var remaining = Number(t.amount);
+            while (remaining > 0.000001 && buyQueue.length > 0) {
+              var lot = buyQueue[0];
+              if (lot.amount <= remaining + 0.000001) {
+                remaining -= lot.amount;
+                buyQueue.shift();
+              } else {
+                lot.cost -= remaining * lot.price;
+                lot.amount -= remaining;
+                remaining = 0;
+              }
+            }
+          }
+        });
+        var openAmt = buyQueue.reduce(function(s, l) { return s + l.amount; }, 0);
+        var openCost = buyQueue.reduce(function(s, l) { return s + l.cost; }, 0);
+        var netHoldings = openAmt;
+        if (netHoldings <= 0) return;
+        var avgBuyOpen = openAmt > 0 ? openCost / openAmt : 0;
+        var val = netHoldings * livePrice;
+        var unr = avgBuyOpen > 0 ? (livePrice - avgBuyOpen) * netHoldings : 0;
+        holdingsValue += val;
+        totalUnrealized += unr;
+        unrealizedBySymbol.push({ sym: cfg.symbol.split('/')[0], val: unr });
+      });
+
+      // Net Worth = cash (after skim) + unalloc + holdings + skim reserve.
+      // Skim is physically moved out of bot cash to reserve_ledger, but it's
+      // still ours — adding it back gives the full patrimony.
+      var netWorth = totalCash + unalloc + holdingsValue + skimReserveTotal;
+      // Authoritative Total P&L = actual net worth delta vs initial capital.
+      // Using (realized_sum + unrealized) would ignore fees paid at every trade
+      // and overstate P&L by the cumulative fee total.
+      var INITIAL_CAPITAL = 500;
+      var totalPnl = netWorth - INITIAL_CAPITAL;
+      var totalFees = tradesData.reduce(function(s, t) { return s + Number(t.fee || 0); }, 0);
+
+      var pnlColor = totalPnl >= 0 ? 'var(--green)' : 'var(--red)';
+      var realSign = totalRealizedAll >= 0 ? '+' : '';
+      var unrSign = totalUnrealized >= 0 ? '+' : '';
+      var feeSign = totalFees > 0 ? '-' : '';
+
+      var unrBreakdown = unrealizedBySymbol.map(function(x) {
+        var s = x.val >= 0 ? '+$' : '-$';
+        return x.sym + ': ' + s + Math.abs(x.val).toFixed(2);
+      }).join(' · ');
+
+      var unrColor = totalUnrealized >= 0 ? 'var(--green)' : 'var(--red)';
+
+      document.getElementById('overview-row1').innerHTML =
+        '<div class="stat-box">' +
+          '<div class="stat-label">Net Worth</div>' +
+          '<div class="stat-value">$' + fmt(netWorth) + '</div>' +
+          '<div class="stat-sub">cash + holdings + skim reserve</div>' +
+        '</div>' +
+        '<div class="stat-box">' +
+          '<div class="stat-label">Total P&L</div>' +
+          '<div class="stat-value" style="color:' + pnlColor + ';">' + (totalPnl >= 0 ? '+' : '') + '$' + fmt(totalPnl) + '</div>' +
+          '<div class="stat-sub">= Net Worth − $' + fmt(INITIAL_CAPITAL) + ' starting capital</div>' +
+        '</div>' +
+        '<div class="stat-box">' +
+          '<div class="stat-label">Skim Reserve</div>' +
+          '<div class="stat-value" style="color:var(--green);">+$' + skimReserveTotal.toFixed(4) + '</div>' +
+          '<div class="stat-sub">set aside from profits · ' + (netWorth > 0 ? (skimReserveTotal / netWorth * 100).toFixed(2) + '% of net worth' : '—') + '</div>' +
+        '</div>';
+
+      document.getElementById('overview-row2').innerHTML =
+        '<div class="stat-box">' +
+          '<div class="stat-label">Cash to reinvest</div>' +
+          '<div class="stat-value">$' + fmt(totalCash + unalloc) + '</div>' +
+          '<div class="stat-sub">operational, ready for trading</div>' +
+        '</div>' +
+        '<div class="stat-box">' +
+          '<div class="stat-label">Deployed</div>' +
+          '<div class="stat-value">$' + fmt(holdingsValue) + '</div>' +
+          '<div class="stat-sub">market value · cost $' + fmt(totalDeployed) + ' ' + (totalUnrealized >= 0 ? '+' : '') + '$' + fmt(totalUnrealized) + ' unrealized</div>' +
+        '</div>' +
+        '<div class="stat-box">' +
+          '<div class="stat-label">Unrealized P&L</div>' +
+          '<div class="stat-value" style="color:' + unrColor + ';">' + unrSign + '$' + fmt(totalUnrealized) + '</div>' +
+          '<div class="stat-sub">' + (unrBreakdown || '—') + '</div>' +
+        '</div>';
+
+      // Dust v3 monitor: net residual per symbol that is NOT sellable on
+      // Binance (holdings × price < MIN_NOTIONAL). Active positions above
+      // the floor are real holdings, not dust — they're already shown in
+      // the Deployed card. This filter prevents manual bots' live
+      // holdings from inflating the dust figure.
+      var DUST_MIN_NOTIONAL_USD = 5.0;
+      var dustTotalUsd = 0;
+      var dustParts = [];
+      configData.forEach(function(cfg) {
+        var a = analyzeCoin(cfg.symbol, cfg);
+        if (a.netHoldings <= 0) return;
+        var livePrice = livePrices[cfg.symbol] || 0;
+        var usd = a.netHoldings * livePrice;
+        if (usd >= DUST_MIN_NOTIONAL_USD) return;  // real position, not dust
+        dustTotalUsd += usd;
+        var decimals = DUST_DECIMALS[cfg.symbol] || 6;
+        var short = SHORT[cfg.symbol] || cfg.symbol;
+        dustParts.push(short + ': ' + a.netHoldings.toFixed(decimals));
+      });
+      var dustBreakdown = dustParts.length ? dustParts.join(' · ') : '—';
+      var dustColor = dustTotalUsd > 1 ? 'var(--yellow)' : 'var(--muted)';
+
+      // Two side-by-side cards in row 3: Fees Paid (cumulative, already
+      // inside Total P&L) + Dust v3 (sub-min_notional residuals).
+      document.getElementById('overview-row3').innerHTML =
+        '<div class="stat-box">' +
+          '<div class="stat-label">Fees Paid</div>' +
+          '<div class="stat-value" style="color:var(--muted);">-$' + fmt(totalFees) + '</div>' +
+          '<div class="stat-sub">Binance + BNB discount on every buy/sell — tracked for reference · not deducted in paper mode</div>' +
+        '</div>' +
+        '<div class="stat-box" style="grid-column: 2 / -1;">' +
+          '<div class="stat-label">Dust v3</div>' +
+          '<div class="stat-value" style="color:' + dustColor + ';">$' + dustTotalUsd.toFixed(4) + '</div>' +
+          '<div class="stat-sub">' + dustBreakdown + '</div>' +
+        '</div>';
+    }
+
+    function renderCoinCards() {
+      var el = document.getElementById('coin-cards');
+      el.innerHTML = configData.map(function(cfg) {
+        var sym = cfg.symbol;
+        var short = SHORT[sym] || sym;
+        var color = COLORS[sym] || '#888';
+        var a = analyzeCoin(sym, cfg);
+
+        var positionClosed = a.netHoldings <= 0.000001;
+        var statusClass = positionClosed ? 'status-ok' : a.buysLeft === 0 ? 'status-dead' : a.buysLeft <= 1 ? 'status-low' : 'status-ok';
+        var statusText = positionClosed ? 'CLOSED — awaiting re-entry' : a.buysLeft === 0 ? 'TAPPED OUT' : a.buysLeft + ' buys left';
+
+        var barColor = a.buysLeft === 0 ? 'var(--red)' : a.buysLeft <= 1 ? 'var(--yellow)' : color;
+
+        return '<div class="coin-card" id="card-' + short + '">' +
+          '<div class="coin-header">' +
+            '<span class="coin-name" style="color:' + color + ';">' + short + '</span>' +
+            '<span class="coin-status ' + statusClass + '">' + statusText + '</span>' +
+          '</div>' +
+          '<div class="coin-grid">' +
+            '<div class="coin-stat"><div class="cs-label">Cash</div><div class="cs-value">' + fmtUsd(a.cashLeft) + '</div></div>' +
+            '<div class="coin-stat"><div class="cs-label">Open cost basis</div><div class="cs-value">' + fmtUsd(a.openCost) + '</div></div>' +
+            '<div class="coin-stat"><div class="cs-label">Realized</div><div class="cs-value" style="color:' + (a.realizedPnl >= 0 ? 'var(--green)' : 'var(--red)') + ';">' + (a.realizedPnl >= 0 ? '+' : '') + fmtUsd(a.realizedPnl) + '</div></div>' +
+            '<div class="coin-stat"><div class="cs-label">Trades</div><div class="cs-value">' + a.buyCount + 'B / ' + a.sellCount + 'S</div></div>' +
+            '<div class="coin-stat"><div class="cs-label">Open lots</div><div class="cs-value">' + (positionClosed ? 'Position closed' : a.openLots + ' / ' + a.maxCapacity + ' filled') + '</div></div>' +
+            '<div class="coin-stat"><div class="cs-label">Last trade</div><div class="cs-value">' + (a.lastTrade ? timeAgo(a.lastTrade.created_at) : '—') + '</div></div>' +
+          '</div>' +
+          '<div class="cap-bar-wrap">' +
+            '<div class="cap-bar-label"><span>Capital usage</span><span>' + fmt(a.capacityPct, 0) + '%</span></div>' +
+            '<div class="cap-bar"><div class="cap-bar-fill" style="width:' + a.capacityPct + '%; background:' + barColor + ';"></div></div>' +
+          '</div>' +
+          '<div class="config-section">' +
+            '<div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-bottom:8px;">PARAMETERS</div>' +
+            '<div class="param-group-label">Trading Parameters</div>' +
+            '<div class="config-grid">' +
+              configField(short, 'capital_allocation', 'Allocation ($)', cfg.capital_allocation) +
+              configField(short, 'capital_per_trade', '$/Trade', cfg.capital_per_trade) +
+              configField(short, 'skim_pct', 'Skim % (profit reserve)', cfg.skim_pct) +
+            '</div>' +
+            '<div class="param-group-label pct-label">Percentage Grid</div>' +
+            '<div class="config-grid">' +
+              configFieldSelect(short, 'grid_mode', 'Grid mode', cfg.grid_mode, ['fixed', 'percentage']) +
+              configField(short, 'buy_pct', 'Buy %', cfg.buy_pct) +
+              configField(short, 'sell_pct', 'Sell %', cfg.sell_pct) +
+              configField(short, 'profit_target_pct', 'Min Profit %', cfg.profit_target_pct) +
+              configField(short, 'idle_reentry_hours', 'Idle re-entry (hours)', cfg.idle_reentry_hours) +
+            '</div>' +
+            '<div class="param-group-label safety-label">⚠️ Safety</div>' +
+            '<div class="config-grid">' +
+              configField(short, 'stop_buy_drawdown_pct', 'Stop-buy drawdown %', cfg.stop_buy_drawdown_pct) +
+            '</div>' +
+            '<div class="param-group-label" id="fixed-label-' + short + '">Fixed Grid</div>' +
+            '<div class="fixed-grid-fields' + (cfg.grid_mode === 'percentage' ? ' dimmed' : '') + '" id="fixed-fields-' + short + '">' +
+              '<div class="config-grid">' +
+                configField(short, 'grid_levels', 'Grid levels', cfg.grid_levels) +
+                configField(short, 'grid_lower', 'Grid lower', cfg.grid_lower) +
+                configField(short, 'grid_upper', 'Grid upper', cfg.grid_upper) +
+                configField(short, 'reserve_floor_pct', 'Reserve %', cfg.reserve_floor_pct) +
+              '</div>' +
+            '</div>' +
+            '<div class="save-row">' +
+              '<button class="btn-save" id="save-' + short + '" onclick="saveConfig(\'' + sym + '\', \'' + short + '\')" disabled>Save changes</button>' +
+              '<span class="save-status" id="status-' + short + '"></span>' +
+            '</div>' +
+          '</div>' +
+        '</div>';
+      }).join('');
+
+      // Mark original values and attach change listeners
+      configData.forEach(function(cfg) {
+        var short = SHORT[cfg.symbol];
+        var allFields = ['grid_mode', 'buy_pct', 'sell_pct', 'profit_target_pct', 'skim_pct',
+          'capital_allocation', 'grid_levels', 'grid_lower', 'grid_upper',
+          'capital_per_trade', 'reserve_floor_pct', 'idle_reentry_hours',
+        'stop_buy_drawdown_pct'];
+        allFields.forEach(function(field) {
+          var input = document.getElementById('cfg-' + short + '-' + field);
+          if (input) {
+            input.dataset.original = input.value;
+            var eventName = input.tagName === 'SELECT' ? 'change' : 'input';
+            input.addEventListener(eventName, function() {
+              var changed = this.value !== this.dataset.original;
+              this.classList.toggle('changed', changed);
+              checkChanges(short);
+              if (field === 'grid_mode') updateFixedGridDimming(short, this.value);
+            });
+          }
+        });
+      });
+    }
+
+    var SUBLABELS = {
+      'sell_pct': 'Per-lot trigger: sells when price rises this % above that lot\'s buy price',
+      'profit_target_pct': 'Safety gate: blocks ALL sells unless price is this % above avg buy. 0 = disabled.',
+      'buy_pct': 'Buys when price drops this % below the last buy price',
+      'skim_pct': '% of each sell\'s profit routed to reserve instead of reinvested',
+      'stop_buy_drawdown_pct': 'Blocks NEW buys when total unrealized loss exceeds this % of allocation. Existing lots unaffected (Strategy A still applies). Re-enables after first profitable sell. 0 = disabled.'
+    };
+
+    function configField(short, field, label, value) {
+      var sub = SUBLABELS[field] ? '<small style="display:block;color:var(--text-dim);font-size:9px;margin-top:2px;line-height:1.3;">' + SUBLABELS[field] + '</small>' : '';
+      return '<div class="config-field">' +
+        '<label>' + label + sub + '</label>' +
+        '<input type="text" inputmode="decimal" id="cfg-' + short + '-' + field + '" value="' + (value != null ? value : '') + '">' +
+      '</div>';
+    }
+
+    function configFieldSelect(short, field, label, value, options) {
+      var opts = options.map(function(o) {
+        return '<option value="' + o + '"' + (o === value ? ' selected' : '') + '>' + o + '</option>';
+      }).join('');
+      return '<div class="config-field">' +
+        '<label>' + label + '</label>' +
+        '<select id="cfg-' + short + '-' + field + '">' + opts + '</select>' +
+      '</div>';
+    }
+
+    function updateFixedGridDimming(short, mode) {
+      var el = document.getElementById('fixed-fields-' + short);
+      if (el) el.classList.toggle('dimmed', mode === 'percentage');
+    }
+
+    function checkChanges(short) {
+      var fields = ['grid_mode', 'buy_pct', 'sell_pct', 'profit_target_pct', 'skim_pct',
+        'capital_allocation', 'grid_levels', 'grid_lower', 'grid_upper',
+        'capital_per_trade', 'reserve_floor_pct', 'idle_reentry_hours',
+        'stop_buy_drawdown_pct'];
+      var hasChanges = fields.some(function(f) {
+        var input = document.getElementById('cfg-' + short + '-' + f);
+        return input && input.value !== input.dataset.original;
+      });
+      var btn = document.getElementById('save-' + short);
+      if (btn) btn.disabled = !hasChanges;
+    }
+
+    async function saveConfig(symbol, short) {
+      var btn = document.getElementById('save-' + short);
+      var status = document.getElementById('status-' + short);
+      btn.disabled = true;
+      status.textContent = 'Saving...';
+      status.style.color = 'var(--yellow)';
+
+      var allFields = ['grid_mode', 'buy_pct', 'sell_pct', 'profit_target_pct', 'skim_pct',
+        'capital_allocation', 'grid_levels', 'grid_lower', 'grid_upper',
+        'capital_per_trade', 'reserve_floor_pct', 'idle_reentry_hours',
+        'stop_buy_drawdown_pct'];
+
+      var data = {};
+      var changes = [];
+      var invalidField = null;
+      allFields.forEach(function(f) {
+        if (invalidField) return;
+        var input = document.getElementById('cfg-' + short + '-' + f);
+        if (!input) return;
+        // Normalize comma to dot for decimal fields (iOS Italian locale fix)
+        var rawVal = input.value;
+        var normVal = typeof rawVal === 'string' ? rawVal.replace(',', '.') : rawVal;
+        var newVal;
+        if (f === 'grid_mode') {
+          newVal = normVal;
+        } else if (f === 'grid_levels') {
+          newVal = parseInt(normVal);
+          if (isNaN(newVal)) { invalidField = f; return; }
+        } else {
+          newVal = parseFloat(normVal);
+          if (isNaN(newVal)) { invalidField = f; return; }
+        }
+        data[f] = newVal;
+        if (input.value !== input.dataset.original) {
+          changes.push({ symbol: symbol, parameter: f, old_value: input.dataset.original, new_value: normVal, changed_by: 'manual-ceo' });
+        }
+      });
+
+      if (invalidField) {
+        status.textContent = 'Invalid number in ' + invalidField;
+        status.style.color = 'var(--red)';
+        btn.disabled = false;
+        return;
+      }
+
+      try {
+        await sbPatch('bot_config', 'symbol', symbol, data);
+
+        // Log each changed field to config_changes_log (best-effort)
+        var auditOk = true;
+        if (changes.length > 0) {
+          try {
+            await Promise.all(changes.map(function(c) { return sbInsert('config_changes_log', c); }));
+          } catch (logErr) {
+            console.warn('config_changes_log write failed:', logErr);
+            auditOk = false;
+          }
+        }
+
+        status.textContent = auditOk ? 'Saved ✓' : 'Saved (audit log failed)';
+        status.style.color = auditOk ? 'var(--green)' : 'var(--yellow)';
+        allFields.forEach(function(f) {
+          var input = document.getElementById('cfg-' + short + '-' + f);
+          if (input) { input.dataset.original = input.value; input.classList.remove('changed'); }
+        });
+        setTimeout(function() { loadAll(); }, 1000);
+      } catch (e) {
+        status.textContent = 'Error — ' + e.message;
+        status.style.color = 'var(--red)';
+        btn.disabled = false;
+      }
+    }
+
+    function renderTrades() {
+      var body = document.getElementById('trades-body');
+
+      // FIFO match: for each sell, compute weighted-avg buy price of consumed lots.
+      // Annotates each sell row with _buyPriceAvg. Processed per-symbol, chronologically.
+      var bySym = {};
+      tradesData.forEach(function(t) {
+        (bySym[t.symbol] = bySym[t.symbol] || []).push(t);
+      });
+      Object.keys(bySym).forEach(function(sym) {
+        var sorted = bySym[sym].slice().sort(function(a, b) {
+          return new Date(a.created_at) - new Date(b.created_at);
+        });
+        var queue = [];
+        sorted.forEach(function(t) {
+          if (t.side === 'buy') {
+            queue.push({ amount: Number(t.amount), price: Number(t.price || 0) });
+          } else {
+            var remaining = Number(t.amount);
+            var consumedCost = 0;
+            var consumedAmt = 0;
+            while (remaining > 0.000001 && queue.length > 0) {
+              var lot = queue[0];
+              if (lot.amount <= remaining + 0.000001) {
+                consumedCost += lot.amount * lot.price;
+                consumedAmt += lot.amount;
+                remaining -= lot.amount;
+                queue.shift();
+              } else {
+                consumedCost += remaining * lot.price;
+                consumedAmt += remaining;
+                lot.amount -= remaining;
+                remaining = 0;
+              }
+            }
+            t._buyPriceAvg = consumedAmt > 0 ? consumedCost / consumedAmt : 0;
+          }
+        });
+      });
+
+      var recent = tradesData.slice(0, 20);
+      body.innerHTML = recent.map(function(t) {
+        var cls = t.side === 'buy' ? 'buy-row' : 'sell-row';
+        var dt = new Date(t.created_at);
+        var timeStr = dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' ' + dt.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+        var buyAtCell = '<td style="color:var(--text-dim);">—</td>';
+        var pnlCell = '<td style="color:var(--text-dim);">—</td>';
+        if (t.side === 'sell') {
+          buyAtCell = '<td>' + (t._buyPriceAvg > 0 ? fmtPrice(t._buyPriceAvg) : '—') + '</td>';
+          var pnl = Number(t.realized_pnl || 0);
+          var pnlColor = pnl >= 0 ? 'var(--green)' : 'var(--red)';
+          var pnlSign = pnl >= 0 ? '+' : '';
+          pnlCell = '<td style="color:' + pnlColor + ';">' + pnlSign + fmtUsd(pnl) + '</td>';
+        }
+        return '<tr class="' + cls + '">' +
+          '<td>' + t.side.toUpperCase() + '</td>' +
+          '<td>' + (SHORT[t.symbol] || t.symbol) + '</td>' +
+          '<td>' + fmtPrice(t.price) + '</td>' +
+          '<td>' + fmtUsd(t.cost) + '</td>' +
+          buyAtCell +
+          pnlCell +
+          '<td>' + timeStr + '</td>' +
+        '</tr>';
+      }).join('');
+    }
+  </script>
+  <footer>
+    <div>Built by an AI that can't trade, with a human that can't say no.</div>
+    <div class="sub">This is an experimental project. No financial advice. No guaranteed returns.</div>
+    <div class="sub">This is a work-in-progress project. Want to collaborate? → <a href="mailto:bagholderai@proton.me" style="color:inherit;border-bottom:1px dotted rgba(255,255,255,0.3);text-decoration:none;">bagholderai@proton.me</a></div>
+    <div class="sub" style="margin-top: 8px;">
+      <a href="/terms" style="color:inherit;border-bottom:1px dotted rgba(255,255,255,0.3);text-decoration:none;">Terms</a> ·
+      <a href="/privacy" style="color:inherit;border-bottom:1px dotted rgba(255,255,255,0.3);text-decoration:none;">Privacy</a> ·
+      <a href="/refund" style="color:inherit;border-bottom:1px dotted rgba(255,255,255,0.3);text-decoration:none;">Refund Policy</a>
+    </div>
+  </footer>
+</body>
+</html>
