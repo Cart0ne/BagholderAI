@@ -186,7 +186,15 @@ def main():
             print(f"[INFO] No new posts since ID {since_id}. Nothing to write.")
         else:
             print("[WARN] No posts fetched. Profile empty or API filtering everything out.")
-        sys.exit(0)
+        return {
+            "new_posts": 0,
+            "originals": 0,
+            "replies": 0,
+            "total_impressions": 0,
+            "top_post": None,
+            "report_path": None,
+            "cost_usd": 0.0,
+        }
 
     # 4. Process posts
     posts = []
@@ -318,6 +326,21 @@ def main():
 
     print(f"[INFO] Report saved: {out_path.relative_to(Path(__file__).parent.parent)}")
     print(f"[INFO] Estimated cost: ${cost:.3f}")
+
+    top_post = top3[0] if top3 else None
+    return {
+        "new_posts": total,
+        "originals": originals_count,
+        "replies": replies_count,
+        "total_impressions": total_impr,
+        "top_post": {
+            "text": top_post["text_full"],
+            "impressions": top_post["impressions"],
+            "url": top_post["url"],
+        } if top_post else None,
+        "report_path": str(out_path),
+        "cost_usd": cost,
+    }
 
 
 if __name__ == "__main__":
