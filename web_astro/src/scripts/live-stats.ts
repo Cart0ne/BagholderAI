@@ -79,11 +79,29 @@ const todayStartUtcIso = new Date(
   ),
 ).toISOString();
 
-sbq<Trade[]>(
-  "trades",
-  "select=symbol,side,amount,cost,created_at" +
-  "&config_version=eq.v3&order=created_at.asc",
-).then(rows => {
+/* Two parallel fetches (Grid manual + TF trend_follower/tf_grid).
+   Reason: Supabase enforces a hard 1000-row cap on the anon role,
+   regardless of `limit=` or `Range:` headers. We crossed it on
+   2026-05-04 (1003 v3 trades total). Splitting by managed_by keeps
+   each fetch under the cap (Grid: 395, TF: 608 today). The FIFO
+   replay below works correctly because each symbol is owned by a
+   single bot (BTC=manual, DOGE=trend_follower, TRX=tf_grid, etc.)
+   so per-symbol queues never mix across bots. */
+Promise.all([
+  sbq<Trade[]>(
+    "trades",
+    "select=symbol,side,amount,cost,created_at" +
+    "&config_version=eq.v3&managed_by=eq.manual&order=created_at.asc",
+  ),
+  sbq<Trade[]>(
+    "trades",
+    "select=symbol,side,amount,cost,created_at" +
+    "&config_version=eq.v3&managed_by=in.(trend_follower,tf_grid)&order=created_at.asc",
+  ),
+]).then(([gridRows, tfRows]) => {
+  const rows = [...gridRows, ...tfRows].sort(
+    (a, b) => a.created_at.localeCompare(b.created_at),
+  );
   const bySym: Record<string, Trade[]> = {};
   for (const t of rows ?? []) {
     (bySym[t.symbol] ||= []).push(t);

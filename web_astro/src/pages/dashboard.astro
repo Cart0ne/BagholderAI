@@ -453,7 +453,18 @@ const tfSubtitle   = "The breakout hunter";
             </span>
           </div>
           <div class="overflow-x-auto rounded-lg border border-border bg-surface">
-            <table class="w-full font-mono text-[12.5px]">
+            <table class="w-full table-fixed font-mono text-[12.5px]">
+              {/* Fixed column widths so Grid and TF tables align identically.
+                 Without this, each <table> auto-sizes from its own content
+                 (e.g. TF p&l shows "@ buy avg", Grid often doesn't), giving
+                 different column widths between the two tables. */}
+              <colgroup>
+                <col style="width:24%" />
+                <col style="width:11%" />
+                <col style="width:18%" />
+                <col style="width:17%" />
+                <col style="width:30%" />
+              </colgroup>
               <thead class="border-b border-border-soft">
                 <tr class="text-text-muted uppercase tracking-[0.1em] text-[10px]">
                   <th class="px-3 py-2.5 text-left">when</th>
@@ -480,7 +491,14 @@ const tfSubtitle   = "The breakout hunter";
             <span class="font-mono text-[9px] text-text-muted">incl. tf_grid</span>
           </div>
           <div class="overflow-x-auto rounded-lg border border-border bg-surface">
-            <table class="w-full font-mono text-[12.5px]">
+            <table class="w-full table-fixed font-mono text-[12.5px]">
+              <colgroup>
+                <col style="width:24%" />
+                <col style="width:11%" />
+                <col style="width:18%" />
+                <col style="width:17%" />
+                <col style="width:30%" />
+              </colgroup>
               <thead class="border-b border-border-soft">
                 <tr class="text-text-muted uppercase tracking-[0.1em] text-[10px]">
                   <th class="px-3 py-2.5 text-left">when</th>

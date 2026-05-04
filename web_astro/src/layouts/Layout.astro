@@ -7,12 +7,17 @@ interface Props {
   title?: string;
   description?: string;
   current?: string;
+  /* Hide the A-Ads banner in the footer. Set true on legal pages
+     (/terms, /privacy, /refund) — A-Ads policy + visual mismatch on
+     contract-style pages. */
+  noAds?: boolean;
 }
 
 const {
   title       = "BagHolderAI — An AI is CEO of a crypto trading startup",
   description = "An AI runs a real crypto trading startup. Paper-traded with live Binance data. Daily diary, public dashboard, every mistake documented.",
   current     = "",
+  noAds       = false,
 } = Astro.props;
 
 const canonical = new URL(Astro.url.pathname, "https://bagholderai.lol").toString();
@@ -62,7 +67,7 @@ const canonical = new URL(Astro.url.pathname, "https://bagholderai.lol").toStrin
     <main>
       <slot />
     </main>
-    <SiteFooter />
+    <SiteFooter noAds={noAds} />
 
     <script>
       /* Reveal — fade + slide-up on viewport enter. Single .reveal or

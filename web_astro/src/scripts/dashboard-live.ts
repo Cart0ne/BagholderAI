@@ -22,6 +22,26 @@ const sbq = async <T>(table: string, params: string): Promise<T> => {
   return r.json() as Promise<T>;
 };
 
+/* fetchAllTrades — splits the trades fetch by managed_by to bypass
+   Supabase's hard 1000-row cap on the anon role. We crossed it on
+   2026-05-04 (1003 v3 trades total). Splitting by bot section keeps
+   each fetch under the cap (Grid: 395, TF: 608 today). The caller
+   gets a single unified array sorted ascending by created_at, ready
+   for FIFO replay (per-symbol queues never mix across bots since
+   each symbol is owned by a single managed_by value). */
+async function fetchAllTrades<T extends { created_at: string }>(
+  selectFields: string,
+): Promise<T[]> {
+  const baseQuery = `select=${selectFields}&config_version=eq.v3&order=created_at.asc`;
+  const [grid, tf] = await Promise.all([
+    sbq<T[]>("trades", `${baseQuery}&managed_by=eq.manual`),
+    sbq<T[]>("trades", `${baseQuery}&managed_by=in.(trend_follower,tf_grid)`),
+  ]);
+  return [...(grid ?? []), ...(tf ?? [])].sort(
+    (a, b) => a.created_at.localeCompare(b.created_at),
+  );
+}
+
 const setText = (id: string, value: string) => {
   const el = document.getElementById(id);
   if (el) el.textContent = value;
@@ -78,10 +98,8 @@ const todayStartUtcIso = new Date(
   ),
 ).toISOString();
 
-sbq<Trade[]>(
-  "trades",
-  "select=symbol,side,amount,cost,created_at" +
-  "&config_version=eq.v3&order=created_at.asc",
+fetchAllTrades<Trade>(
+  "symbol,side,amount,cost,created_at",
 ).then(rows => {
   if (!rows) return;
 
@@ -283,11 +301,7 @@ const fetchLivePrices = async (symbols: string[]): Promise<Record<string, number
   try {
     const [configs, allTrades, skimRows] = await Promise.all([
       sbq<Config[]>("bot_config", "select=symbol,capital_allocation,managed_by"),
-      sbq<AllTrade[]>(
-        "trades",
-        "select=symbol,side,amount,cost,created_at,managed_by" +
-        "&config_version=eq.v3&order=created_at.asc",
-      ),
+      fetchAllTrades<AllTrade>("symbol,side,amount,cost,created_at,managed_by"),
       sbq<SkimRow[]>(
         "reserve_ledger",
         "select=symbol,amount&config_version=eq.v3",
@@ -447,10 +461,8 @@ function analyzeCoin(trades: AllTrade[]): {
         "bot_config",
         "select=symbol,capital_allocation,managed_by,is_active,volume_tier",
       ),
-      sbq<AllTrade[]>(
-        "trades",
-        "select=symbol,side,amount,cost,fee,realized_pnl,created_at,managed_by" +
-        "&config_version=eq.v3&order=created_at.asc",
+      fetchAllTrades<AllTrade>(
+        "symbol,side,amount,cost,fee,realized_pnl,created_at,managed_by",
       ),
       sbq<SkimRow[]>(
         "reserve_ledger",
@@ -665,10 +677,12 @@ const RECENT_TRADES_LIMIT = 6;
 
 (async () => {
   try {
-    const trades = await sbq<AllTrade[]>(
-      "trades",
-      "select=symbol,side,amount,price,cost,realized_pnl,created_at,managed_by" +
-      "&config_version=eq.v3&order=created_at.asc",
+    /* Need full history (not just the recent rows) because
+       annotateBuyAvg replays FIFO from the first buy to compute the
+       consumed lot's avg buy price. fetchAllTrades splits by bot
+       to bypass the 1000-row cap. */
+    const trades = await fetchAllTrades<AllTrade>(
+      "symbol,side,amount,price,cost,realized_pnl,created_at,managed_by",
     );
     if (!trades || !trades.length) return;
 
@@ -978,10 +992,8 @@ type DailyPnlRow = {
         "select=date,total_value,realized_pnl_today,total_pnl" +
         "&managed_by=eq.grid&order=date.asc",
       ),
-      sbq<AllTrade[]>(
-        "trades",
-        "select=symbol,side,amount,price,cost,realized_pnl,created_at,managed_by" +
-        "&config_version=eq.v3&order=created_at.asc",
+      fetchAllTrades<AllTrade>(
+        "symbol,side,amount,price,cost,realized_pnl,created_at,managed_by",
       ),
     ]);
     dailyPnlRows = dp ?? [];
