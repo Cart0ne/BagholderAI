@@ -27,6 +27,12 @@
   --color-neu:            #67e8f9;
   --color-neg:            #fca5a5;
 
+  /* — role accent (used on /howwework) —————————————
+     CC = Claude Code (the intern). Indigo, distinct from
+     primary/neu/pos so the three project actors each have
+     their own identity color. */
+  --color-cc:             #818cf8;
+
   /* — tipografia ———————————————————————————————— */
   --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Text",
                system-ui, sans-serif;

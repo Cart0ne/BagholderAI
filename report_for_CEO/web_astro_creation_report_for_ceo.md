@@ -423,3 +423,120 @@ Sessione 6 ~5h (charts wiring + /blueprint v1 fail + v2 + /roadmap + 6 round di 
 7. **/howwework**: aggiungiamo React all'Astro per portare `web_proto/how_we_work_interactive.jsx` 1:1, oppure facciamo port verso Astro vanilla con `<details>` + animazioni CSS? La prima è più fedele al prototipo, la seconda mantiene il bundle leggero. Decisione architetturale che impatta TUTTE le pagine future (se aggiungiamo React, è disponibile ovunque)
 8. **Switch domain**: con 6/8 pagine portate, manca /howwework + pagine legali per la parità. Procediamo a deploy preview Vercel adesso (per validare in produzione lentamente) o aspettiamo che TUTTE le pagine siano pronte?
 9. **Mockup HTML come pattern di lavoro**: il file `mockup_46c_charts.html` ha dimostrato che per decisioni UX ambigue, un mockup standalone supera per velocità qualunque prototipo Astro. Lo registriamo come metodo da seguire? Lo styleguide può menzionarlo come "tool consigliato" in una sezione dedicata
+
+---
+
+## Aggiornamento — sessione 7 (2026-05-03 sera tardi)
+
+**Status post-sessione 7:** **9/9 pagine portate.** Pagine legali + /library (ex /guide, rinominata) + /howwework (con React island ibrido) tutte live in locale. Sito Astro al pari del vecchio /web in numero di pagine. Manca solo deploy preview Vercel + decisioni board sul rinnovo nome/dominio/identità.
+
+### /terms, /privacy, /refund — porting rapido (commit `0cede95`)
+
+Tre pagine legali portate verbatim dal vecchio sito al nuovo design system. Niente decisioni di sostanza, applicazione meccanica dei pattern STYLEGUIDE:
+
+- **Terms** (8 sezioni): Introduction, Products, No Financial Advice (con callout giallo), AI-Generated Content, IP, Liability, Changes, Contact
+- **Privacy** (8 sezioni): Overview, What We Collect, What We Don't Collect (bullet `›` verde), Third-Party Services (bullet `›` verde), Data Retention, Your Rights, Changes, Contact
+- **Refund** (5 sezioni): Digital Products — No Refunds (con **green framing callout** "All sales are final."), We Make This Fair, Exceptions, Chargebacks, Contact
+
+**Footer del Layout** già linkava a tutte e 3 (era pronto da prima). Header NON aggiornato — le pagine legali stanno solo nel footer, com'è giusto. Tempo: ~30 minuti totali.
+
+### /guide → /library — rename + scaffale 3D (commit `972e0a1`)
+
+**Decisione di naming chiusa col CEO**: `/guide` era fuorviante (suggeriva tutorial gratuito, era invece pagina di vendita libri). Confronto a 4: `/guide` ❌ → `/store` ❌ (troppo SaaS) → `/books` ⚠ (piatto) → **`/library` ✅**.
+
+Motivazione finale per `/library`: il copy del sito vecchio già diceva *"The Library — three volumes documenting an AI-led trading experiment"*. Lo scaffale 3D è letteralmente una libreria. Tono coerente: Lab notebook, Construction log, Blueprint, Roadmap, **Library**. Nomi che evocano un fondo che documenta sé stesso, non un'azienda che vende.
+
+**Porting scaffale 3D 1:1** dal vecchio sito con palette adattata:
+- Cyan vecchio `#22d3ee` → `#67e8f9` (= `--neu` nuovo)
+- Green vecchio `#22c55e` → `#86efac` (= `--pos` nuovo)
+- Gradient interni delle copertine libro lasciati intatti (sono asset del libro, non palette di sistema)
+- **Fraunces** caricato SOLO su `/library` (eccezione documentata allo STYLEGUIDE § 5)
+- Tutti i selettori CSS scopati sotto `.library-shelf` per zero leakage
+
+**Strategia responsive necessaria**:
+- Shelf 3D solo su **≥1024px** (libro aperto era 800px, overflow su tablet)
+- Su 1024-1279 lo shelf è **rimpicciolito** (libro aperto 640px)
+- Su **<1024px** mostro un fallback **stack di 3 card libro** con palette del fondo nuovo, niente Fraunces, niente 3D
+- Stesso contenuto identico tra le due viste, solo presentazione diversa
+
+**Cleanup di § Why read these**: inizialmente piazzato in fondo, Max ha richiesto in cima ("contesto → prodotto → numeri"). Anche **rimosso AnnouncementBar** dalla pagina (banner che linkava a sé stessa = anti-pattern). Spazio tra "Why read these" e scaffale ridotto da ~90px a ~16px (`shelf-stage padding-top` da 50 a 16).
+
+**Rename references aggiornate** in 5 punti:
+- `SiteHeader.astro` (label "Book" → "Library")
+- `AnnouncementBar.astro` (default href + commento)
+- `index.astro` (pill Volume 2 + link "Library →" sezione Story)
+- Cover images `cover_vol1_final.jpg` + `cover_vol2_final.jpg` copiate da `/web` a `public/`
+
+**TODO deploy**: aggiungere redirect 301 `/guide` → `/library` in `vercel.json` per non perdere link esterni esistenti.
+
+### /howwework — React island ibrida (sessione 7 in corso)
+
+**Decisione architetturale chiusa**: Astro al 95% statico + isole React dove serve interattività (filosofia di Astro). Aggiunto `@astrojs/react` con `npx astro add react` — ora React è disponibile per tutte le pagine future, ma il bundle viene caricato **solo** dove c'è un componente React montato. Le altre 8 pagine restano statiche pure.
+
+**Architettura della pagina ibrida**:
+- Hero + intro = Astro statico
+- **§ 1 The team & the workflow** = isola React (`<HowWeWorkInteractive client:visible />`)
+- § 2 Tools, § 3 Lessons (8), § 4 Rules of engagement (12), § 5 Memory, § 6 Replicate = Astro statico
+
+Risultato: pagina ricca di contenuti come la live vecchia (8 lezioni, 12 regole, ecc.), ma con il "wow" interattivo del prototipo React in alto invece delle 3 card team statiche.
+
+**Componente React `HowWeWorkInteractive.jsx`** (~600 righe):
+- 3 nodi org chart (CEO/Max/CC) posizionati assoluti, click espande dettaglio
+- 3 frecce SVG curve con label cliccabile + pallino animato che scorre lungo la curva
+- Workflow timeline 7 step con auto-play **12 secondi** (deciso dopo confronto 5/8/12/15/20s)
+- **Stop-on-click**: l'auto-play si ferma alla prima interazione manuale dell'utente — pattern carousel/gallery
+- Detect viewport con `useIsMobile()` hook (`window.matchMedia` su `<768px`)
+- **Mobile fallback** completo: 3 card team verticali con info **già aperte** + 3 paragrafi connessioni + workflow lineare (no click necessari, no auto-play)
+
+**Decisioni di palette**:
+- CEO → `text-pos` `#86efac` (verde)
+- Max → `text-amber-400` `#fbbf24` (giallo)
+- CC → **nuovo token `text-cc` `#818cf8`** (indaco) aggiunto a `global.css` → ogni ruolo ha la sua identità cromatica unica
+- Le emoji dei 3 attori (🤖 Claude, 🧑 Max, ⚡ CC) **identiche alla home** per coerenza cross-page
+
+**Build pulita**: 13 pagine totali, 1.63s, zero warning. React bundling lazy correttamente: il bundle React (~40kb gz) viene caricato solo quando l'isola entra in viewport.
+
+### Cose risolte vs. cose deferred (sessione 7)
+
+**Risolte**:
+- ✅ /terms, /privacy, /refund portate (commit `0cede95`)
+- ✅ /guide rinominata in /library con scaffale 3D 1:1 + responsive fallback (commit `972e0a1`)
+- ✅ /howwework con React island ibrida (passi 1-5 fatti, ultimo commit pendente)
+- ✅ React (`@astrojs/react`) integrato — ora disponibile per pagine future (es. "ufficio coi bot")
+- ✅ Token `--color-cc` aggiunto a global.css per identità Claude Code
+
+**Deferred**:
+- 🟡 STYLEGUIDE.md § 20 React Islands — pattern d'uso (`client:visible` vs `client:load`, scoping CSS, mobile fallback) da documentare ora che ho il primo caso d'uso vero. **Da fare nella prossima sessione** prima che la conoscenza si disperda
+- 🟡 Eliminazione `dashboard-a/b/c.astro` — ancora in repo come riferimento
+- 🟡 Mobile pipeline TF→GRID arrow (freccia verticale su <768px)
+- 🟡 Analytics (Umami, Vercel) da portare nel Layout prima del switch domain
+- 🟡 Redirect 301 `/guide` → `/library` da configurare in `vercel.json` quando deployeremo
+- 🟡 Caccia ai piccoli bug + migliorie varie su tutte le pagine (sessione 8 prevista)
+
+### Tempo cumulativo (sessioni 1-7)
+
+Sessione 7 ~3h (legali ~30min + library con scaffale 3D + responsive ~1h30 + react island /howwework ~1h) → **cumulato ~27h totali** per il progetto web_astro.
+
+**Stato del sito** (post-sessione 7):
+- **9/9 pagine live in locale**: home, /dashboard, /diary, /blueprint, /roadmap, /terms, /privacy, /refund, /library, /howwework
+- Parità completa col vecchio /web in numero di pagine
+- `@astrojs/react` integrato, isole disponibili per pagine future (es. visione "ufficio coi bot")
+- Lo STYLEGUIDE è "single source of truth" e funziona — Sessione 7 è stata "applicazione pattern" non "scoperta"
+
+### Lezioni di processo (sessione 7)
+
+**Cosa ha funzionato**:
+- **Una domanda alla volta su decisioni architetturali**: Max si è lamentato a metà dell'isola React che andavo "troppo veloce". Riformulato in 3 domande secche (auto-play timing? mobile strategy? colore CC?) consegnate una per messaggio. Ha funzionato: Max ha potuto pensare a una cosa per volta invece di rispondere a 4 domande sparate insieme
+- **Ibrido statico+isola** invece di "tutto React" o "tutto vanilla": il prototipo React era pensato come componente, non come pagina intera. Tenere il 90% Astro statico (Lessons, Rules, Memory) e l'isola solo dove serve interazione = il vantaggio di Astro brilla
+- **Mobile fallback come decisione UX, non tecnica**: l'org chart con 3 nodi assoluti su 375px era "stretto ma stava". B (3 card statiche su mobile) ha vinto su A (org chart ovunque) perché chi legge un sito su iPhone vuole **contenuto leggibile**, non interattività spettacolare
+
+**Cosa NON ha funzionato**:
+- **Sparare 4 domande di decisione tutte insieme**: la prima volta che ho descritto il piano /howwework ho elencato 4 punti. Max: *"vai troppo veloce"*. Lezione: per decisioni di sostanza, una domanda per messaggio, con pro/contro chiari per ogni opzione
+- **Provare a sostituire emoji 🎒 del CEO con SVG zaino azzurro**: ho creato `BackpackIcon.jsx` (160 righe), modificato 3 punti, poi Max ha realizzato *"ho fatto un errore... ci sono già 3 emoji per claude, max e CC nella home, usiamo le stesse anche in howwework"*. Le emoji giuste erano 🤖 / 🧑 / ⚡, identiche alla home. Lezione: **prima di creare un asset visivo nuovo, controllare se esiste già coerenza altrove**. 15 minuti persi a creare poi rimuovere SVG inutile
+- **Banner pagina che linka a sé stessa**: avevo messo `<AnnouncementBar />` su /library ma il banner linkava a /library — auto-referenziale, anti-pattern. Max l'ha visto e l'ha rimosso. Stesso problema che il CEO aveva risolto in sessione 6 togliendolo da blueprint. Lezione: l'AnnouncementBar è utile SOLO su pagine **non** legate al prodotto annunciato
+
+### Domande aperte aggiunte per il CEO (sessione 7)
+
+10. **STYLEGUIDE § 20 React Islands**: documentare ora i pattern d'uso (`client:visible` di default, mobile fallback con `useIsMobile`, scoping styles via `style` tag inline JSX, niente Astro-scoped CSS dentro componenti React) — alta priorità prima che la conoscenza si disperda
+11. **Switch domain**: con **9/9 pagine portate** (parità completa col vecchio sito), siamo pronti per deploy preview Vercel? Lo STYLEGUIDE registra l'analytics (Umami + Vercel) come "non-ancora-portati" — questo è l'ultimo gate prima del go-live
+12. **Sessione 8 — caccia ai bug**: Max ha proposto un giro di rifiniture cross-page invece di una pagina nuova. Approccio: lista tutti i piccoli problemi visti durante l'uso reale del sito locale, fixarli in batch, poi commit unico

@@ -1,0 +1,419 @@
+---
+import Layout from "../layouts/Layout.astro";
+import HowWeWorkInteractive from "../components/HowWeWorkInteractive.jsx";
+---
+
+<Layout
+  title="How We Work — BagHolderAI"
+  description="A CEO, a Co-Founder, and an Intern walk into a terminal. How BagHolderAI is actually built — the human process behind the AI trading agent."
+  current="howwework"
+>
+
+  {/* ============================================================ HERO */}
+  <section class="mx-auto max-w-4xl px-4 pt-10 pb-6 sm:px-6 sm:pt-14 sm:pb-8">
+
+    <h1 class="text-[28px] font-semibold leading-[1.12] tracking-tight
+               text-text sm:text-[34px] md:text-[40px] md:leading-[1.08]">
+      How we <span class="text-primary">work</span>.
+    </h1>
+
+    <p class="mt-3 max-w-2xl text-[14.5px] leading-[1.55] text-text-dim
+              sm:text-[15px]">
+      A CEO, a Co-Founder, and an Intern walk into a terminal. Three
+      entities collaborate on this project. None of them fully
+      understand what the others are doing. Things get shipped anyway.
+    </p>
+
+    <div class="mt-5 flex flex-wrap items-center gap-3 font-mono text-[10.5px]
+                uppercase tracking-[0.16em] text-text-muted">
+      <span class="inline-flex items-center gap-1.5">
+        <span class="inline-block h-1.5 w-1.5 rounded-full bg-pos
+                     shadow-[0_0_8px_rgba(134,239,172,0.7)]"></span>
+        v2.0 · march 2026
+      </span>
+      <span class="text-border">·</span>
+      <span>updated when workflow changes</span>
+      <span class="text-border">·</span>
+      <span>3 entities · 1 terminal</span>
+    </div>
+  </section>
+
+  {/* ============================================================ MAIN */}
+  <main class="mx-auto max-w-4xl px-4 pb-24 sm:px-6">
+
+    {/* ============ § 1 — TEAM + WORKFLOW (REACT ISLAND) ============
+         The org chart with clickable nodes, SVG connections, and the
+         interactive workflow timeline come from the React component
+         below. Loaded lazily when scrolled into view (client:visible).
+
+         Everything else on this page is static Astro. */}
+    <hr class="mt-4 border-t border-border-soft" />
+    <section class="mt-8">
+      <h2 class="font-mono text-[12px] uppercase tracking-[0.18em] text-pos mb-5">
+        § 1 · The team & the workflow
+      </h2>
+
+      <p class="mb-6 text-[14.5px] leading-[1.7] text-text-dim">
+        Click on any role or any connection between roles to see how
+        the collaboration actually works. The workflow timeline below
+        runs through one full session, end to end.
+      </p>
+
+      <HowWeWorkInteractive client:visible />
+    </section>
+
+    {/* ============ § 2 — THE TOOLS ============ */}
+    <hr class="mt-12 border-t border-border-soft" />
+    <section class="mt-8">
+      <h2 class="font-mono text-[12px] uppercase tracking-[0.18em] text-pos mb-5">
+        § 2 · The tools
+      </h2>
+
+      <div class="grid gap-3 sm:grid-cols-2">
+        <div class="rounded-lg border border-border bg-surface p-4">
+          <div class="font-mono text-[13px] font-semibold text-text">
+            Claude Projects
+          </div>
+          <div class="mt-1 font-mono text-[11px] leading-[1.5] text-text-dim">
+            The CEO's boardroom. Strategy, documents, Supabase
+            connector for live data.
+          </div>
+        </div>
+        <div class="rounded-lg border border-border bg-surface p-4">
+          <div class="font-mono text-[13px] font-semibold text-text">
+            Claude Code
+          </div>
+          <div class="mt-1 font-mono text-[11px] leading-[1.5] text-text-dim">
+            The intern's desk. Terminal access, file editing, git
+            operations. Briefed via CLAUDE.md + memory.md on every
+            session start.
+          </div>
+        </div>
+        <div class="rounded-lg border border-border bg-surface p-4">
+          <div class="font-mono text-[13px] font-semibold text-text">
+            Supabase
+          </div>
+          <div class="mt-1 font-mono text-[11px] leading-[1.5] text-text-dim">
+            Database. Every trade logged, every snapshot saved.
+            Dashboard-ready.
+          </div>
+        </div>
+        <div class="rounded-lg border border-border bg-surface p-4">
+          <div class="font-mono text-[13px] font-semibold text-text">
+            Binance API
+          </div>
+          <div class="mt-1 font-mono text-[11px] leading-[1.5] text-text-dim">
+            Live prices for paper trading. No auth needed for
+            read-only.
+          </div>
+        </div>
+        <div class="rounded-lg border border-border bg-surface p-4">
+          <div class="font-mono text-[13px] font-semibold text-text">
+            Telegram
+          </div>
+          <div class="mt-1 font-mono text-[11px] leading-[1.5] text-text-dim">
+            Daily reports, trade alerts, bot status. Private + public
+            channels.
+          </div>
+        </div>
+        <div class="rounded-lg border border-border bg-surface p-4">
+          <div class="font-mono text-[13px] font-semibold text-text">
+            Vercel + GitHub
+          </div>
+          <div class="mt-1 font-mono text-[11px] leading-[1.5] text-text-dim">
+            Site hosting, public repo. Everything transparent.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    {/* ============ § 3 — LESSONS WE LEARNED ============ */}
+    <hr class="mt-12 border-t border-border-soft" />
+    <section class="mt-8">
+      <h2 class="font-mono text-[12px] uppercase tracking-[0.18em] text-pos mb-5">
+        § 3 · Lessons we learned
+      </h2>
+
+      <div class="space-y-5">
+        <div class="border-l-2 border-pos/60 pl-4">
+          <div class="font-mono text-[13px] font-semibold text-text">
+            "The free-but-complicated solution isn't worth the time
+            lost."
+          </div>
+          <p class="mt-1 text-[14px] leading-[1.6] text-text-dim">
+            Max's time is the most valuable resource. If a free
+            solution takes 3 hours and a paid one takes 5 minutes,
+            the paid one wins.
+          </p>
+        </div>
+
+        <div class="border-l-2 border-pos/60 pl-4">
+          <div class="font-mono text-[13px] font-semibold text-text">
+            Direct data access changes everything.
+          </div>
+          <p class="mt-1 text-[14px] leading-[1.6] text-text-dim">
+            For 10 sessions, every piece of trading data reached the
+            CEO through copy-pasted Telegram messages. The Supabase
+            connector made the CEO a functioning executive instead of
+            a blind one.
+          </p>
+        </div>
+
+        <div class="border-l-2 border-pos/60 pl-4">
+          <div class="font-mono text-[13px] font-semibold text-text">
+            Tight grids burn capital in declining markets.
+          </div>
+          <p class="mt-1 text-[14px] leading-[1.6] text-text-dim">
+            The v1 parameters bought too much, too fast. In 3 days,
+            93% of BTC capital was deployed underwater. The v2
+            philosophy: wide grids, spaced levels, cash in reserve.
+          </p>
+        </div>
+
+        <div class="border-l-2 border-pos/60 pl-4">
+          <div class="font-mono text-[13px] font-semibold text-text">
+            The intern goes rogue without constraints.
+          </div>
+          <p class="mt-1 text-[14px] leading-[1.6] text-text-dim">
+            Claude Code once tried to "help" by testing a database
+            connection nobody asked for. Now there are rules: no
+            external connections, no launching the bot, stop when
+            the task is complete.
+          </p>
+        </div>
+
+        <div class="border-l-2 border-pos/60 pl-4">
+          <div class="font-mono text-[13px] font-semibold text-text">
+            One number matters.
+          </div>
+          <p class="mt-1 text-[14px] leading-[1.6] text-text-dim">
+            "I put in €500, it's now worth €X." If the report doesn't
+            answer this in the first line, the report is failing its
+            job.
+          </p>
+        </div>
+
+        <div class="border-l-2 border-pos/60 pl-4">
+          <div class="font-mono text-[13px] font-semibold text-text">
+            Crypto is the lore, not the product.
+          </div>
+          <p class="mt-1 text-[14px] leading-[1.6] text-text-dim">
+            BagHolderAI is not a crypto project. It's a project about
+            an AI running a business, set in the world of crypto. The
+            AI-runs-a-startup angle is what's actually novel.
+          </p>
+        </div>
+
+        <div class="border-l-2 border-pos/60 pl-4">
+          <div class="font-mono text-[13px] font-semibold text-text">
+            Don't manufacture what you already have.
+          </div>
+          <p class="mt-1 text-[14px] leading-[1.6] text-text-dim">
+            Trading results are inherently unpredictable. Diary
+            entries vary naturally in tone. The reader doesn't know if
+            today's post will be a celebration or a disaster — but
+            both are rewarding because they're real. No editorial
+            calendar. Publish when something worth sharing happens.
+          </p>
+        </div>
+
+        <div class="border-l-2 border-pos/60 pl-4">
+          <div class="font-mono text-[13px] font-semibold text-text">
+            Write everything down. Immediately.
+          </div>
+          <p class="mt-1 text-[14px] leading-[1.6] text-text-dim">
+            Don't wait until you have something impressive. Our first
+            diary entry was about buying a domain and failing to
+            install a Python package. It's honest, it's real, and
+            it's the foundation.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    {/* ============ § 4 — RULES OF ENGAGEMENT ============ */}
+    <hr class="mt-12 border-t border-border-soft" />
+    <section class="mt-8">
+      <h2 class="font-mono text-[12px] uppercase tracking-[0.18em] text-pos mb-5">
+        § 4 · Rules of engagement
+      </h2>
+
+      <div class="rounded-lg border border-border bg-surface p-5
+                  font-mono text-[13px] leading-[2] text-text-dim">
+        <div>
+          <span class="mr-2 font-semibold text-pos/70">01</span>
+          One session = one chat. Never mix sessions.
+        </div>
+        <div>
+          <span class="mr-2 font-semibold text-pos/70">02</span>
+          Every session = one diary chapter.
+        </div>
+        <div>
+          <span class="mr-2 font-semibold text-pos/70">03</span>
+          The intern does <span class="font-semibold text-neg">NOT</span> make
+          external connections unless told to.
+        </div>
+        <div>
+          <span class="mr-2 font-semibold text-pos/70">04</span>
+          The intern does <span class="font-semibold text-neg">NOT</span> launch
+          the trading bot. Ever.
+        </div>
+        <div>
+          <span class="mr-2 font-semibold text-pos/70">05</span>
+          Always use python3.13. Never python3.
+        </div>
+        <div>
+          <span class="mr-2 font-semibold text-pos/70">06</span>
+          No Google services on the site (China constraint).
+        </div>
+        <div>
+          <span class="mr-2 font-semibold text-pos/70">07</span>
+          Telegram sends reports, never real-time signals (MiFID II).
+        </div>
+        <div>
+          <span class="mr-2 font-semibold text-pos/70">08</span>
+          Max has veto power. The AI leads, the human decides.
+        </div>
+        <div>
+          <span class="mr-2 font-semibold text-pos/70">09</span>
+          pandas-ta is <span class="font-semibold text-neg">BANNED</span> until
+          Phase 2 — pulls numba, fails on Python 3.13.
+        </div>
+        <div>
+          <span class="mr-2 font-semibold text-pos/70">10</span>
+          Supabase SQL: column additions + row updates as two separate
+          statements, never combined.
+        </div>
+        <div>
+          <span class="mr-2 font-semibold text-pos/70">11</span>
+          The domain is bagholderai.lol —{" "}
+          <span class="font-semibold text-neg">NOT</span> bagholder.lol.
+        </div>
+        <div>
+          <span class="mr-2 font-semibold text-pos/70">12</span>
+          roadmap.html: always validate JS const with{" "}
+          <code class="text-[11px] text-text">node -e eval</code>{" "}
+          before delivering.
+        </div>
+      </div>
+    </section>
+
+    {/* ============ § 5 — HOW MEMORY ACTUALLY WORKS ============ */}
+    <hr class="mt-12 border-t border-border-soft" />
+    <section class="mt-8">
+      <h2 class="font-mono text-[12px] uppercase tracking-[0.18em] text-pos mb-5">
+        § 5 · How memory actually works
+      </h2>
+
+      <p class="mb-5 text-[14.5px] leading-[1.7] text-text-dim">
+        There are two separate memory systems in this project, and
+        they work very differently.
+      </p>
+
+      <div class="space-y-5">
+        <div class="border-l-2 border-pos/60 pl-4">
+          <div class="font-mono text-[13px] font-semibold text-text">
+            The CEO (Claude Projects)
+          </div>
+          <p class="mt-1 text-[14px] leading-[1.6] text-text-dim">
+            Doesn't use a file. At the start of every conversation,
+            the system injects a structured summary of the project
+            state, rules, and current priorities. On top of that, the
+            CEO has a personal notebook (<code class="font-mono text-[12px] text-text">memory_user_edits</code>)
+            where it can add, modify, or delete specific reminders. It
+            also has access to all project files (Blueprint, Roadmap,
+            Diary) and can search them before answering.
+          </p>
+        </div>
+
+        <div class="border-l-2 border-pos/60 pl-4">
+          <div class="font-mono text-[13px] font-semibold text-text">
+            The Intern (Claude Code)
+          </div>
+          <p class="mt-1 text-[14px] leading-[1.6] text-text-dim">
+            Resets completely every session. No memory carries over
+            automatically. Its only continuity comes from two files:{" "}
+            <code class="font-mono text-[12px] text-text">CLAUDE.md</code>{" "}
+            in the repo root (project rules it reads on startup) and{" "}
+            <code class="font-mono text-[12px] text-text">memory.md</code>{" "}
+            (which it updates at the end of each task with what was
+            done and what to remember). Without these files, the
+            intern starts every session as if it's day one.
+          </p>
+        </div>
+
+        <div class="border-l-2 border-pos/60 pl-4">
+          <div class="font-mono text-[13px] font-semibold text-text">
+            The Human (Max)
+          </div>
+          <p class="mt-1 text-[14px] leading-[1.6] text-text-dim">
+            The bridge. Carries context between the two AIs,
+            translates strategic decisions into intern briefs, and
+            catches when either AI is working from stale information.
+            The three-way split works because each participant
+            compensates for the others' constraints: the CEO thinks
+            but can't execute, the intern executes but can't remember,
+            and Max can do both but doesn't scale.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    {/* ============ § 6 — WANT TO REPLICATE THIS? ============ */}
+    <hr class="mt-12 border-t border-border-soft" />
+    <section class="mt-8">
+      <h2 class="font-mono text-[12px] uppercase tracking-[0.18em] text-pos mb-5">
+        § 6 · Want to replicate this?
+      </h2>
+
+      <p class="mb-5 text-[14.5px] leading-[1.7] text-text-dim">
+        This workflow isn't specific to crypto. It works for any
+        project where you want an AI to lead the architecture while a
+        human handles reality.
+      </p>
+
+      <div class="space-y-4">
+        <div>
+          <div class="font-mono text-[13px] font-semibold text-amber-400">
+            1. Get Claude Pro + Claude Code
+          </div>
+          <p class="mt-1 text-[14px] leading-[1.6] text-text-dim">
+            Claude Projects is the CEO's brain (upload your docs).
+            Claude Code is the intern (installs via CLI, runs in
+            VSCode).
+          </p>
+        </div>
+        <div>
+          <div class="font-mono text-[13px] font-semibold text-amber-400">
+            2. Create briefing files
+          </div>
+          <p class="mt-1 text-[14px] leading-[1.6] text-text-dim">
+            CLAUDE.md in your repo root — what the project is, what
+            the stack is, critical rules. The intern reads it
+            automatically.
+          </p>
+        </div>
+        <div>
+          <div class="font-mono text-[13px] font-semibold text-amber-400">
+            3. Connect your data
+          </div>
+          <p class="mt-1 text-[14px] leading-[1.6] text-text-dim">
+            If you have a database, connect it to Claude via
+            connectors. The CEO querying data directly is a
+            qualitative improvement. We waited 10 sessions. Don't.
+          </p>
+        </div>
+        <div>
+          <div class="font-mono text-[13px] font-semibold text-amber-400">
+            4. Start writing immediately
+          </div>
+          <p class="mt-1 text-[14px] leading-[1.6] text-text-dim">
+            Don't wait until you have something impressive. The
+            documentation IS the product.
+          </p>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</Layout>
