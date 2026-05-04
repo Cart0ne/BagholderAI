@@ -1,0 +1,21 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "cleanUrls": true,
+  "redirects": [
+    {
+      "source": "/buy",
+      "destination": "https://payhip.com/b/a4yMc",
+      "permanent": false
+    },
+    {
+      "source": "/guide",
+      "destination": "/library",
+      "permanent": true
+    },
+    {
+      "source": "/guide.html",
+      "destination": "/library",
+      "permanent": true
+    }
+  ]
+}

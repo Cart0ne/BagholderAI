@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+
+# Operative control rooms — for Max + the CEO, not for the public.
+Disallow: /tf
+Disallow: /grid
+Disallow: /tf.html
+Disallow: /grid.html
+
+Sitemap: https://bagholderai.lol/sitemap-index.xml
