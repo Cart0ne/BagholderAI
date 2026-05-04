@@ -60,6 +60,40 @@ const canonical = new URL(Astro.url.pathname, "https://bagholderai.lol").toStrin
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet"
           href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" />
+
+    {/* Analytics — verbatim port from old site (web/*.html). Loaded
+       once via Layout so all pages get tracked.
+       - Umami: cookieless, GDPR-friendly, same website ID as old site
+         for metrics continuity. Skipped on localhost/LAN/.local.
+       - Vercel Web Analytics: served from origin (not blocked by
+         list-based adblockers). Respects localStorage va.disabled=1
+         for owner self-exclusion (mirrors Umami's umami.disabled). */}
+    <script is:inline>
+      try {
+        const h = location.hostname;
+        const isLocal = h === 'localhost' || h === '127.0.0.1' ||
+                        h.startsWith('192.168.') || h.startsWith('10.') ||
+                        h.startsWith('172.') || h.endsWith('.local');
+        if (!isLocal) {
+          const s = document.createElement('script');
+          s.defer = true;
+          s.src = 'https://cloud.umami.is/script.js';
+          s.dataset.websiteId = '63807366-641f-4c72-8e61-3bec7b725697';
+          s.dataset.domains = 'bagholderai.lol,www.bagholderai.lol';
+          document.head.appendChild(s);
+        }
+      } catch(e) {}
+    </script>
+    <script is:inline>
+      try {
+        if (localStorage.getItem('va.disabled') !== '1') {
+          var va = document.createElement('script');
+          va.defer = true;
+          va.src = '/_vercel/insights/script.js';
+          document.head.appendChild(va);
+        }
+      } catch(e) {}
+    </script>
   </head>
 
   <body class="font-sans antialiased">
