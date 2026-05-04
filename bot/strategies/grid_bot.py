@@ -89,9 +89,9 @@ class GridBot:
         reserve_ledger=None,            # ReserveLedger instance (Session 20b)
         skim_pct: float = 0.0,          # % of sell profit to skim into reserve
         idle_reentry_hours: float = 24.0,  # hours idle (holdings=0) before forced re-entry
-        tf_stop_loss_pct: float = 0.0,  # 39a: TF stop-loss threshold as % of allocation (0 = disabled)
+        tf_stop_loss_pct: float = 0.0,  # 39a: TF stop-loss threshold as % of open value (0 = disabled)
         stop_buy_drawdown_pct: float = 0.0,  # 39b: manual stop-buy threshold as % of allocation (0 = disabled)
-        tf_take_profit_pct: float = 0.0,  # 39c: TF take-profit threshold as % of allocation (0 = disabled)
+        tf_take_profit_pct: float = 0.0,  # 39c: TF take-profit threshold as % of open value (0 = disabled)
         tf_profit_lock_enabled: bool = False,  # 45f: opt-in switch for proactive Profit Lock exit
         tf_profit_lock_pct: float = 0.0,       # 45f: net PnL threshold (% of alloc) that triggers Profit Lock
         tf_exit_after_n_enabled: bool = True,   # 45g: kill-switch for the gain-saturation breaker
@@ -951,12 +951,13 @@ class GridBot:
                 and self.state.avg_buy_price > 0
                 and not self._stop_loss_triggered):
             unrealized = (current_price - self.state.avg_buy_price) * self.state.holdings
-            loss_threshold = -(self.capital * self.tf_stop_loss_pct / 100)
+            open_value = self.state.avg_buy_price * self.state.holdings
+            loss_threshold = -(open_value * self.tf_stop_loss_pct / 100)
             if unrealized <= loss_threshold:
                 logger.warning(
                     f"[{self.symbol}] STOP-LOSS TRIGGERED: unrealized ${unrealized:.2f} "
                     f"<= threshold ${loss_threshold:.2f} "
-                    f"({self.tf_stop_loss_pct:.0f}% of allocation ${self.capital:.2f}). "
+                    f"({self.tf_stop_loss_pct:.0f}% of open value ${open_value:.2f}). "
                     f"Liquidating all {len(self._pct_open_positions)} lots."
                 )
                 self._stop_loss_triggered = True
@@ -1063,12 +1064,13 @@ class GridBot:
                 and not self._take_profit_triggered
                 and not self._stop_loss_triggered):
             unrealized = (current_price - self.state.avg_buy_price) * self.state.holdings
-            profit_threshold = self.capital * self.tf_take_profit_pct / 100
+            open_value = self.state.avg_buy_price * self.state.holdings
+            profit_threshold = open_value * self.tf_take_profit_pct / 100
             if unrealized >= profit_threshold:
                 logger.warning(
                     f"[{self.symbol}] TAKE-PROFIT TRIGGERED: unrealized ${unrealized:.2f} "
                     f">= threshold ${profit_threshold:.2f} "
-                    f"({self.tf_take_profit_pct:.0f}% of allocation ${self.capital:.2f}). "
+                    f"({self.tf_take_profit_pct:.0f}% of open value ${open_value:.2f}). "
                     f"Liquidating all {len(self._pct_open_positions)} lots."
                 )
                 self._take_profit_triggered = True
@@ -1579,6 +1581,17 @@ class GridBot:
         self._last_trade_time = datetime.utcnow()
         self._self_heal_attempted = False  # real trade happened, allow self-heal again if needed
 
+        # 51b fix (2026-05-04): reset trailing peak on every confirmed TF buy.
+        # Without this, a peak from an earlier lot survives a last-shot buy at a
+        # lower price and arms the trailing stop on a fresh lot that never had a
+        # gain (DOGE 2026-05-04: lot A buy $0.1124 → peak $0.1136 → last-shot
+        # lot B $0.1095 → trailing fired 1 min later, sold both at -2% from
+        # stale peak). Reset only when the trailing feature is enabled on a TF
+        # bot; manual bots and disabled-trailing TF bots are unaffected.
+        if (self.managed_by == "trend_follower"
+                and self.tf_trailing_stop_pct > 0):
+            self._trailing_peak_price = price
+
         if old_last_buy == 0:
             reason = f"Pct buy: first buy at market {fmt_price(price)} (reference established)"
         else:
@@ -1824,7 +1837,7 @@ class GridBot:
         if self._stop_loss_triggered:
             reason = (
                 f"STOP-LOSS: price {fmt_price(price)} forces liquidation "
-                f"(lot buy {fmt_price(lot_buy_price)}, threshold {self.tf_stop_loss_pct:.0f}% of alloc)"
+                f"(lot buy {fmt_price(lot_buy_price)}, threshold {self.tf_stop_loss_pct:.0f}% of open value)"
             )
         elif self._trailing_stop_triggered:
             reason = (
@@ -1834,7 +1847,7 @@ class GridBot:
         elif self._take_profit_triggered:
             reason = (
                 f"TAKE-PROFIT: price {fmt_price(price)} crystallizes gains "
-                f"(lot buy {fmt_price(lot_buy_price)}, threshold {self.tf_take_profit_pct:.0f}% of alloc)"
+                f"(lot buy {fmt_price(lot_buy_price)}, threshold {self.tf_take_profit_pct:.0f}% of open value)"
             )
         elif self._profit_lock_triggered:
             reason = (
