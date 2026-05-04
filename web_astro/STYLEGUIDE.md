@@ -213,11 +213,18 @@ Definite in `src/styles/global.css` come variabili Tailwind v4.
 | `text-neu` / `bg-neu` | `#67e8f9` | neutro, "active", info |
 | `text-neg` / `bg-neg` | `#fca5a5` | negativo, loss, error |
 | `text-yellow-300` | `#fcd34d` | "todo", "open", warning |
-| `text-amber-400` | `#fbbf24` | "NEW" tag, sezione TF (vs Grid) |
+| `text-amber-400` | `#fbbf24` | "NEW" tag, sezione TF (vs Grid), Max identity |
+| `text-cc` / `bg-cc` | `#818cf8` | Claude Code (CC) identity, on /howwework |
 
 **Regola palette**: mai colori arbitrari (`#22c55e`, `#ef4444`, ecc.).
 Sempre token. Se serve un colore nuovo, prima si aggiunge a
 `global.css` come variabile, poi si usa.
+
+**Role colors** (su `/howwework` e potenzialmente altri posti dove
+appaiono i 3 attori del progetto):
+- CEO (Claude) → `text-pos` `#86efac`
+- Max (board)  → `text-amber-400` `#fbbf24`
+- CC (intern)  → `text-cc` `#818cf8`
 
 ### Font
 
@@ -681,16 +688,252 @@ Prima di creare `src/pages/<nome>.astro`, fai questo:
 Se aggiungi una pagina nuova e scopri un pattern non descritto qui,
 **aggiornalo subito**. Sezioni candidate per crescita futura:
 
-- Componente React (quando arriverà `/howwework` interattivo): come
-  installare `@astrojs/react`, regole su `client:load` vs
-  `client:visible`, perché i React component sono "isole" e cosa
-  significa per il bundle
 - Analytics (Umami + Vercel): dove vanno gli script, come testare
   l'opt-out per il proprietario
 - Internationalization: se mai servirà IT/EN, dove vivono le copy
 
 ---
 
-*Documento creato 2026-05-03 (Session 54). Aggiornato dal Claude Code
-che lavora sul sito. Quando trovi un pattern utile, aggiungilo. Quando
-trovi una lezione dolorosa, scrivila in § 12 prima che svanisca.*
+## 20. React Islands
+
+Aggiunto in Sessione 7 (2026-05-03 sera) quando abbiamo portato
+`/howwework`. La regola d'oro di Astro: **95% statico, isole React
+solo dove serve interattività vera**. Se stai pensando "metto React
+così posso usare gli hook", probabilmente non ti serve — Astro +
+piccoli `<script>` vanilla copre il 90% dei casi.
+
+### 20.1 Quando usare un'isola React
+
+**Sì, isola React** se hai TUTTO questo:
+- Stato condiviso tra componenti che cambia con interazione (es. "se
+  clicchi nodo X, gli altri si chiudono")
+- Render condizionale complesso che dipende da stato (panel che appare
+  in posizione ≠ basata su quale nodo è aperto)
+- Layout calcolato dinamicamente (es. SVG paths tra coordinate di DOM
+  elements ricalcolati su `resize`)
+- Componente parametrico riusabile in più pagine (futuro)
+
+**No React, basta vanilla** se:
+- Solo show/hide (`<details>` HTML5 nativo)
+- Solo conteggio numerico animato (script TS in `src/scripts/<page>.ts`)
+- Interazione locale a singolo elemento (event listener inline)
+- Live data fetching (pattern `dashboard-live.ts`)
+
+`/howwework` qualifica come isola perché ha tutti i 4 punti "sì": 3
+nodi cliccabili che si influenzano a vicenda, panel con render
+condizionale (DetailPanel vs ConnectionPanel), SVG curves calcolate
+da DOM rect, e auto-play workflow timer con stop-on-click.
+
+### 20.2 Setup `@astrojs/react`
+
+Una volta sola per tutto il progetto:
+
+```bash
+cd web_astro
+npm_config_cache=/tmp/npmcache-astro npx astro add react --yes
+```
+
+Modifica `astro.config.mjs` (aggiunge `react()` in `integrations`),
+`tsconfig.json` (jsx: "react-jsx"), e installa `@astrojs/react` +
+`react` + `react-dom`. Reversibile.
+
+### 20.3 Direttive `client:*` — quale scegliere
+
+Sintassi: `<MyComponent client:visible />` nel template Astro.
+
+| Direttiva | Quando | Bundle behavior |
+|---|---|---|
+| `client:visible` | **Default per noi.** Carica React quando l'isola entra in viewport. | Lazy, ~40kb gz scaricato solo se serve |
+| `client:load` | Isola critica above-the-fold che serve hydratata subito | Eager, blocca rendering iniziale |
+| `client:idle` | Isola sotto la fold ma da prepare in anticipo | Carica quando il browser è idle |
+| `client:only="react"` | Niente SSR, render solo client (uso: componenti che leggono `window`/`localStorage` subito) | No HTML statico nel build |
+
+**Regola**: usa sempre `client:visible` salvo che ci sia un motivo
+specifico per scegliere altro. Su `/howwework` l'isola è in §1 ma
+spesso fuori dal viewport iniziale (utente vede prima hero), quindi
+`client:visible` è ottimale.
+
+### 20.4 Pattern colore: token CSS vs hex inline
+
+**Problema reale**: dentro un componente React puoi usare classi
+Tailwind che mappano ai token CSS (`text-pos`, `bg-surface`, ecc.),
+ma quando devi applicare un colore **dinamico** via `style={{}}` inline
+(es. `borderColor: TEAM[id].color`) Tailwind non funziona — devi
+passare un valore literal.
+
+**Soluzione**: parallel hex constant accanto al token name:
+
+```jsx
+const TEAM = {
+  ceo: {
+    accent: "pos",          // for Tailwind classes
+    accentHex: "#86efac",   // for inline style props
+    // ...
+  },
+};
+
+// Tailwind utility (palette token, preferred):
+<span className="text-pos">CEO</span>
+
+// Inline dynamic (when value is computed):
+<div style={{ borderColor: m.accentHex }}>...</div>
+```
+
+Sì, è duplicazione. È accettabile perché i colori dinamici nei React
+component sono rari, e leggere `getComputedStyle(document.documentElement)
+.getPropertyValue('--color-pos')` per ogni render è peggio.
+
+### 20.5 Aggiungere un nuovo design token
+
+Se la pagina React richiede un colore **non** già nello styleguide
+(es. CC indigo `#818cf8` su `/howwework`):
+
+1. Aggiungi a `src/styles/global.css` dentro `@theme { ... }`:
+   ```css
+   --color-cc: #818cf8;
+   ```
+2. Tailwind v4 lo espone automaticamente come `text-cc`, `bg-cc`,
+   `border-cc`, `ring-cc`
+3. Documenta in § 5 di questo styleguide
+4. Usa il token con preferenza per le classi Tailwind, il `#hex`
+   parallel solo dove serve inline style
+
+**Regola**: non aggiungere token "perché magari servirà". Aggiungi
+solo quando una pagina lo richiede DAVVERO. Token non usati sono
+debito di design system.
+
+### 20.6 Animazioni dentro React: niente `<style>` Astro
+
+Astro scopa gli stili `<style>` dentro `.astro` ai dati `data-astro-cid-*`
+delle istanze. Dentro un `.jsx`/`.tsx`, Astro **non vede** il render
+React e non può scoping. Quindi:
+
+```jsx
+// ❌ Non funziona — Astro non processa questo
+function MyComponent() {
+  return (
+    <>
+      <style>{`@keyframes foo { ... }`}</style>
+      <div className="animate-[foo_1s_linear]">...</div>
+    </>
+  );
+}
+
+// ✅ Funziona — keyframes globali via plain string injected via <style>
+const KEYFRAMES = `
+  @keyframes hwwSlideUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+`;
+
+function MyComponent() {
+  return (
+    <>
+      <style>{KEYFRAMES}</style>
+      <div style={{ animation: "hwwSlideUp 0.3s ease" }}>...</div>
+    </>
+  );
+}
+```
+
+**Prefissa** sempre i nomi keyframe con un namespace della pagina
+(`hwwSlideUp`, non `slideUp`) per evitare collisione con classi
+globali in `global.css` (che ha già `.reveal` con animazioni).
+
+### 20.7 Mobile fallback con `useIsMobile`
+
+Pattern usato su `/howwework` per scegliere tra org chart desktop
+e card stack mobile:
+
+```jsx
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)");
+    const update = () => setIsMobile(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+  return isMobile;
+}
+```
+
+**Regole**:
+- `useState(false)` come iniziale → su SSR/first paint il render è
+  desktop. Subito dopo l'idratazione, `useEffect` aggiorna se
+  necessario. Niente flash di contenuto sbagliato perché l'isola è
+  `client:visible` e l'utente arriva all'isola scrolling — già
+  idratata
+- Breakpoint a 767px (`<sm`) per allinearsi a Tailwind `sm` (≥640) /
+  `md` (≥768). Per /howwework ho usato 767 perché a 768 (tablet)
+  l'org chart entra ancora con margine
+- Decidi **prima** se ha senso un fallback statico mobile vs forzare
+  il desktop layout responsive. Per interazioni complesse (org chart,
+  scaffale 3D di /library) il fallback è quasi sempre meglio
+
+### 20.8 Stop-on-click su auto-play
+
+Pattern carousel: l'utente arriva sulla pagina, il timer avanza. Al
+primo click manuale, il timer si ferma (l'utente "ha preso in carico"
+il widget).
+
+```jsx
+const [autoplayActive, setAutoplayActive] = useState(true);
+
+useEffect(() => {
+  if (!autoplayActive) return;
+  const id = setInterval(() => { /* advance */ }, 12000);
+  return () => clearInterval(id);
+}, [autoplayActive]);
+
+const handleStepClick = (i) => {
+  setActiveStep(i);
+  setAutoplayActive(false);  // <-- stop-on-click
+};
+```
+
+**Timing**: 12s è il valore deciso su /howwework dopo confronto
+5/8/12/15/20s. Sotto 8s = ipnotico. Sopra 15s = "non si muove più".
+12s = "respiro" — abbastanza tempo per leggere uno step senza fretta.
+
+### 20.9 Quando l'isola NON deve essere un'isola
+
+Se trovi che l'isola React è il 90% della pagina, **stai sbagliando
+direzione**. Quel pezzo dovrebbe essere o:
+- Astro statico (se il contenuto non è interattivo)
+- Una pagina React app a sé (con SSR off, `output: 'static'` non
+  funziona bene per questo)
+
+L'isola è "isola" quando ha attorno terra ferma statica. Su
+/howwework, le sezioni Tools/Lessons/Rules/Memory/Replicate
+(70% del contenuto della pagina) sono Astro statico. L'isola è solo
+§1 The team & the workflow. Se rovesci la proporzione, riconsidera.
+
+---
+
+## 21. Riferimenti incrociati (aggiornato post-sessione 7)
+
+- **Pattern hero**: vedi `src/pages/diary.astro` (più semplice) o
+  `src/pages/dashboard.astro` (con counter live)
+- **Pattern lista lunga**: vedi `src/pages/diary.astro` (entries) o
+  `src/pages/roadmap.astro` (phase con `<details>`)
+- **Pattern documento testuale**: vedi `src/pages/blueprint.astro`
+  (14 sezioni, tabelle, callout) o `src/pages/howwework.astro`
+  (sezioni statiche + 1 isola)
+- **Pattern live data**: vedi `src/scripts/dashboard-live.ts` (fetch
+  Supabase + render con FIFO + Chart.js plugin)
+- **Pattern reveal/animazioni**: vedi `src/layouts/Layout.astro`
+  (script bottom) e `src/styles/global.css` (CSS rules)
+- **Pattern eccezione visiva pagina** (Fraunces + scaffale 3D): vedi
+  `src/pages/library.astro` — eccezione documentata, scoping `.library-shelf`
+- **Pattern React island**: vedi `src/components/HowWeWorkInteractive.jsx`
+  (usato da `src/pages/howwework.astro` con `client:visible`)
+
+---
+
+*Documento creato 2026-05-03 (Session 54). § 20 React Islands aggiunto
+2026-05-04 dopo Sessione 7. Aggiornato dal Claude Code che lavora sul
+sito. Quando trovi un pattern utile, aggiungilo. Quando trovi una
+lezione dolorosa, scrivila in § 12 prima che svanisca.*
