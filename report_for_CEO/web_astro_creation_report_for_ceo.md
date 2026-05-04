@@ -540,3 +540,206 @@ Sessione 7 ~3h (legali ~30min + library con scaffale 3D + responsive ~1h30 + rea
 10. **STYLEGUIDE § 20 React Islands**: documentare ora i pattern d'uso (`client:visible` di default, mobile fallback con `useIsMobile`, scoping styles via `style` tag inline JSX, niente Astro-scoped CSS dentro componenti React) — alta priorità prima che la conoscenza si disperda
 11. **Switch domain**: con **9/9 pagine portate** (parità completa col vecchio sito), siamo pronti per deploy preview Vercel? Lo STYLEGUIDE registra l'analytics (Umami + Vercel) come "non-ancora-portati" — questo è l'ultimo gate prima del go-live
 12. **Sessione 8 — caccia ai bug**: Max ha proposto un giro di rifiniture cross-page invece di una pagina nuova. Approccio: lista tutti i piccoli problemi visti durante l'uso reale del sito locale, fixarli in batch, poi commit unico
+
+---
+
+## Aggiornamento — sessione 8 (2026-05-04) — **GO LIVE**
+
+**Status post-sessione 8:** Il sito Astro nuovo è **online su `bagholderai.lol`**. Switch fatto a metà giornata dopo caccia bug + 4 fix critici trovati durante uso reale + porting tf.html/grid.html con restyling colori. Search Console aggiornato con sitemap nuova.
+
+### Apertura sessione — pulizia tecnica sessione 7
+
+3 commit di chiusura sessione 7 fatti la sera prima venivano committati a mente fresca:
+
+- `e19ceb3` — feat: /howwework + React island + setup `@astrojs/react` + token `--color-cc`
+- `485a9d4` — docs: STYLEGUIDE § 20 React Islands + § 5 role colors mapping
+- `5ba3c03` — fix: 4 bug fix sessione 8 (vedi sotto) + cleanup prototipi `dashboard-a/b/c.astro`
+
+**STYLEGUIDE § 20 — React Islands**: 9 sotto-sezioni che documentano i pattern emersi durante /howwework. Punti chiave:
+- Quando usare un'isola React (criteri concreti) vs Astro vanilla
+- `client:visible` come default (vs `load`/`idle`/`only`)
+- Pattern colore: token CSS Tailwind class quando possibile, hex parallel constant solo per `style={{color}}` dinamico
+- Niente `<style>` Astro-scoped dentro JSX (Astro non scopa il React render). Soluzione: keyframe come stringa JS iniettata via `<style>{KEYFRAMES}</style>` con prefisso namespace
+- `useIsMobile()` hook con `window.matchMedia` per mobile fallback (no SSR mismatch perché il componente è `client:visible`)
+- Stop-on-click su auto-play timer (carousel pattern)
+- "Quando l'isola NON deve essere un'isola": se l'interattivo è il 90% della pagina, ripensa l'architettura
+
+§ 5 della STYLEGUIDE estesa con:
+- Token `text-cc` `#818cf8` documentato
+- **Bot identity colors come eccezione esplicita**: Grid `#22c55e` + TF `#f59e0b` + Sentinel `#3b82f6` + Sherpa `#ef4444` saturati per "indicatore di salute bot a colpo d'occhio". NON sostituire con token desaturati
+- Role colors mapping esplicito CEO → pos / Max → amber-400 / CC → cc
+
+### Caccia bug — 4 fix in batch (commit `5ba3c03`)
+
+Max ha aperto il sito locale e ha trovato 4 problemi durante uso normale. Pattern da sessione 6 applicato: lista completa prima, poi fix in batch.
+
+**Bug 1 — /diary: scattino al caricamento**
+La lista entry partiva con fallback statico (2 entries hardcoded) staggered, poi al fetch Supabase il container veniva rimpiazzato → l'animazione ripartiva da capo, "doppio refresh" visibile. Fix: non toggleare più `is-visible` durante il replace fallback→live; i nuovi figli ereditano la visibilità dal parent senza re-animarsi.
+
+**Bug 2 — /library: cover libro tagliata su titolo**
+Lo scaffale 3D usa `background-position: center` per le copertine. A larghezze intermedie tra 1024 e 1280px, la cover Volume 2 (con "BagHolderAI" e sottotitolo a sinistra) veniva tagliata sul lato destro mostrando solo metà titolo. Fix: `background-position: left center` — il titolo del libro (sempre a sinistra delle cover Payhip) resta sempre visibile.
+
+**Bug 3 — /howwework: workflow timer troppo lento**
+Auto-play 12 secondi sulla timeline = troppo, l'utente non capisce cosa cambia tra uno step e l'altro. Confronto rapido sui valori: 5s troppo ipnotico, 8s ancora "look at me", 12s "respiro" ma confonde, **6s vincente** (Max: "abbassiamo a 6 secondi"). Fix: `AUTOPLAY_MS = 6000`.
+
+**Bug 4 — /howwework: workflow timeline scattava verso il basso al primo click**
+Cliccando un nodo dell'org chart si apriva il pannello dettaglio sotto, spingendo la timeline e tutto il resto della pagina di ~280px verso il basso. L'utente perdeva il punto di lettura.
+
+Brainstorm 30 minuti su 4 strategie possibili (A: panel fixed/sticky, B: panel dentro l'area chart, C: panel con altezza fissa pre-allocata, D: 2 colonne tutta pagina). Tutte avevano contro più gravi del problema. Soluzione finale **proposta da Max**: aprire la pagina con CEO già selezionato di default. **Il pannello è sempre visibile dal primo render**, quindi cliccando un altro nodo/connessione il contenuto **swappa** invece di **espandere**. Niente shift della timeline.
+
+Fix: `useState("ceo")` invece di `useState(null)` per `selectedNode`. + rimossa la scritta "Click on a role or a connection to explore" che ora è ridondante.
+
+**Cleanup prototipi**: `dashboard-a.astro`, `dashboard-b.astro`, `dashboard-c.astro` (sessione 4) eliminati. Build da 13 → 10 pagine. Erano già nella lista deferred da 2 sessioni.
+
+**Lezione di processo (Max)**: a metà /howwework Max ha chiesto di salvare in memoria *"non fare screenshot via headless dopo Edit visivi"*. Vedrò io nel browser, gli screenshot sprecano tempo+token. Memoria persistente aggiornata.
+
+### tf.html + grid.html — port + restyling colori (commit `d08290f`)
+
+**Decisione di sostanza** (Max): le control room operative TF e Grid del sito vecchio (1773 + 1093 righe di HTML+CSS+JS monolitico) **non vanno rifatte**, vanno **portate verbatim** in `web_astro/public/`. Astro le serve identiche al vecchio.
+
+Restyling minimale solo dei colori per allineare al design system nuovo:
+- `body bg #0a0a0a` (nero) → `#0f1626` (--color-bg blu)
+- `--text/--text-dim/--text-body/--border/--surface` → token nuovi
+- `--red/--blue/--teal/--yellow` → desaturati a token nuovi
+- **Bot identity colors mantenuti saturati**: `--green: #22c55e` (Grid) e `--amber: #f59e0b` (TF) — eccezione documentata in STYLEGUIDE § 5
+
+NIENTE cambiamenti strutturali, NIENTE modifiche al JavaScript, NIENTE swap dei font (SF Pro Display + SF Mono restano). I bot operano correttamente, Max li usa ogni giorno.
+
+L'originale `web/tf.html` e `web/grid.html` lasciati intatti come safety net (file backup mai sostituiti).
+
+### Pre-launch SEO (commit `ea9ea65`)
+
+5 file di infrastruttura aggiunti per non perdere indicizzazione Google al momento dello switch:
+
+1. **`web_astro/vercel.json`** — config Vercel per il nuovo Root Directory
+   - `cleanUrls: true` (per servire /tf e /grid senza .html)
+   - Redirect `/buy` → Payhip (ereditato dal vecchio)
+   - **Redirect 301 `/guide` → `/library`** (era TODO da sessione 7, ora chiuso)
+
+2. **`@astrojs/sitemap`** — integrazione Astro che genera `dist/sitemap-index.xml` automaticamente al build dalle pagine. 10 URL pubblici, /tf e /grid filtrati esplicitamente (control room operative non per Google). `site: 'https://bagholderai.lol'` configurato.
+
+3. **`public/robots.txt`** — Allow all + Disallow `/tf` `/grid` `/tf.html` `/grid.html` + sitemap reference.
+
+4. **`public/og-image.png`** (186KB) — copiato dal vecchio sito. Senza questo, condividere link su X/Telegram/HN avrebbe mostrato preview vuota.
+
+5. **Layout.astro: meta tags OG completi** — `og:image` + `og:image:width/height/locale` + `twitter:image` + `twitter:title` + `twitter:description`. Erano tutti mancanti, restavano solo `og:type` `og:title` `og:description`.
+
+### Tasto dolente — bug PostgREST 1000 row cap (commit `1ac87b3`)
+
+**Il bug più subdolo della sessione**, scoperto da Max guardando ZEC su /dashboard.
+
+**Sintomo iniziale**: dashboard mostra card ZEC con `avg —` invece del prezzo medio. Investigazione lunga (anche perché Max e CC stavano parlando esattamente mentre il sell ZEC arrivava — confusione su "non c'è sell" vs "il sell è arrivato 30 secondi fa").
+
+**Diagnosi**: scoperto che **Supabase impone un cap server-side hard di 1000 righe sulla tabella trades** per il ruolo anon, **indipendentemente da `limit=` o header `Range:`**. Tested: 1003 trade in DB ma fetch restituisce solo 999 ordinati per `created_at.asc`. I 4 trade più recenti (incluso il sell ZEC delle 13:14 UTC) **non arrivavano mai nel browser**.
+
+Conseguenza: il FIFO replay del dashboard processava solo trade fino al #999, vedendo le posizioni come ancora aperte quando in realtà erano già state chiuse. La card ZEC mostrava `avg —` perché lo script credeva ci fosse ancora 0.015 ZEC in mano (riga buy senza sell), ma il calcolo `openCost / openAmount` con dati incompleti dava NaN → `—`.
+
+**Tentativi falliti** (documentati per memoria):
+1. Aumentare `limit=50000` → ignorato dal server, sempre 1000 righe restituite
+2. Header `Range: 0-49999` → idem, ignorato
+
+**Fix vincente — pattern già usato da `tf.html`**:
+- Le coin del bot hanno `managed_by` fisso (BTC=manual sempre, DOGE=trend_follower sempre, TRX=tf_grid sempre)
+- Filtrando lato server `managed_by=eq.manual` ricevi solo i 395 trade Grid (sotto cap)
+- Filtrando `managed_by=in.(trend_follower,tf_grid)` ricevi solo i 608 TF (sotto cap)
+- Il FIFO replay lavora ancora correttamente perché ogni simbolo è gestito da un solo bot, le code per simbolo non si mescolano cross-bot
+
+**Implementazione**: nuova helper `fetchAllTrades<T>(selectFields)` in `dashboard-live.ts` che fa 2 fetch parallele (Grid + TF) e ritorna array unificato sortato per `created_at`. Migrazione di tutte le 6 fetch FIFO esistenti (5 in dashboard-live.ts + 1 in live-stats.ts).
+
+Risultato: ZEC sell delle 13:14 UTC visibile **immediatamente** nel dashboard al refresh dopo il fix. Cap PostgREST disinnescato.
+
+### Polish dashboard tabelle (stesso commit `1ac87b3`)
+
+**Problema**: le tabelle Recent Activity Grid e TF avevano larghezze colonne diverse perché ogni `<table>` auto-dimensionava le colonne dal proprio contenuto (TF mostra `@ buy avg` annotation sui sell, Grid quasi mai). Risultato: visivamente disallineate.
+
+**Fix**: aggiunto `table-fixed` + `<colgroup>` con `<col style="width:24%/11%/18%/17%/30%">` identico in entrambe le tabelle. Adesso allineate a pixel.
+
+### A-Ads — port verbatim, opt-out per legali (stesso commit `1ac87b3`)
+
+Iframe A-Ads (`data-aa='2431743'`, `size=Adaptive`, `728x90`) era presente sul vecchio sito su /index.html e /dashboard.html. Sul nuovo sito **non c'era da nessuna parte**.
+
+**Decisione architetturale (Max)**: invece di duplicarlo per ogni pagina come nel vecchio, lo metto **una sola volta** dentro `SiteFooter.astro` come prima sezione. Appare automaticamente su tutte le 9 pagine pubbliche.
+
+**Eccezione opt-out** per /terms, /privacy, /refund: nuovo prop `noAds?: boolean` su Layout, le 3 legali lo passano a `true`. Motivazione: A-Ads policy + visual mismatch su pagine contrattuali.
+
+**Vincoli A-Ads** documentati nel commento del codice (Max ricorda che A-Ads ha già contestato una volta per visual tampering):
+- Iframe verbatim, no modifiche
+- 728×90 desktop, max-width:100% mobile (lascia A-Ads gestire lo scaling)
+- **NIENTE opacity, transforms, width override** sull'iframe
+- /tf e /grid (statici in public/) automaticamente non lo hanno (footer Astro non li tocca)
+
+### Switch Vercel — go-live
+
+Max ha fatto la procedura di switch sul dashboard Vercel in ~10 minuti:
+
+1. Settings → General → **Root Directory**: `web` → `web_astro`
+2. Framework Preset: auto-rilevato come **Astro**
+3. Build Command / Output Directory / Install Command: lasciati ai default Astro
+4. Save → Vercel mostra warning "Configuration differ" (atteso — significa che il deployment vivo usa ancora la config vecchia)
+5. Deployments → 3 puntini sul deployment più recente → **Redeploy** (con "Use existing Build Cache" disattivato per build fresca)
+6. Build Vercel ~1 minuto: `npm install`, `npm run build`, deploy `dist/`
+7. **Live**.
+
+### Search Console — sitemap nuova
+
+Post-switch, Max ha fatto il submit della nuova sitemap su Google Search Console:
+- URL: `https://bagholderai.lol/sitemap-index.xml` (Astro convention, NON `sitemap.xml`)
+- Search Console → Sitemap → Aggiungi sitemap → Invia
+- Verifica del dominio era già configurata via DNS TXT (sopravvive lo switch — la verifica Google è sul DNS, non sul sito)
+
+Da fare nei prossimi giorni:
+- Search Console → Inspection → home → "Request Indexing" per accelerare re-crawl
+- Monitorare A-Ads dashboard per qualche giorno: se compare warning "ad unit not visible" o simili, segnalare immediatamente
+
+### Cose risolte vs. cose deferred (sessione 8)
+
+**Risolte**:
+- ✅ /howwework + React island + STYLEGUIDE § 20 + token `--color-cc` (commit `e19ceb3` `485a9d4`)
+- ✅ 4 bug fix critici da uso reale (`5ba3c03`)
+- ✅ Cleanup prototipi dashboard-a/b/c
+- ✅ Port tf.html + grid.html con restyling colori (`d08290f`)
+- ✅ Vercel.json + sitemap + robots + redirect /guide→/library + OG meta (`ea9ea65`)
+- ✅ **Bug PostgREST 1000-row cap** disinnescato con split fetch by managed_by (`1ac87b3`)
+- ✅ Tabelle Recent Activity allineate (table-fixed + colgroup)
+- ✅ A-Ads portato in SiteFooter con opt-out per legali
+- ✅ **Switch domain — sito Astro live su bagholderai.lol**
+- ✅ Search Console sitemap aggiornata
+- ✅ Memoria persistente: regola "no screenshot dopo Edit visivi"
+
+**Deferred**:
+- 🟡 Search Console: Request Indexing per home (tu, qualche giorno)
+- 🟡 Monitor A-Ads scan per qualche giorno
+- 🟡 Mobile pipeline TF→GRID arrow (rimasta da sessione 5-6, non bloccante)
+- 🟡 Analytics Umami non ancora portati nel Layout — al momento il sito ha solo Vercel Analytics built-in
+- 🟡 **Server-side FIFO** come refactor architetturale: bot scrive `buy_avg_price` su trades al sell, dashboard legge senza replay. Risolverà definitivamente il cap 1000 quando saremo a 5000+ trade. Brief separato da scrivere
+
+### Tempo cumulativo (sessioni 1-8)
+
+Sessione 8 ~5h (3 commit chiusura + caccia bug + tf/grid + SEO + diagnosi cap PostgREST + switch Vercel + Search Console) → **cumulato ~32h totali** per il progetto web_astro.
+
+**Stato del sito** (post-sessione 8):
+- **9/9 pagine live in produzione** su `bagholderai.lol` (home, dashboard, diary, blueprint, roadmap, library, howwework, terms, privacy, refund — più /tf e /grid statiche)
+- Sitemap submitted, OG cards, redirect 301 /guide → /library
+- A-Ads attivo su 7 pagine pubbliche, off su 3 legali
+- 1003 trade gestiti correttamente lato browser via split fetch by managed_by
+- React island disponibile per pagine future (ufficio coi bot, ecc)
+
+### Lezioni di processo (sessione 8)
+
+**Cosa ha funzionato**:
+- **Lista bug completa prima di fixare**: pattern da sessione 6 ripreso. Max ha consegnato 3 bug insieme (diary scattino + library cover + howwework timing), io ho fixato in batch in un solo refresh per Max. Più efficiente del fix-uno-per-volta
+- **Soluzione semplice quando il complicato non funziona**: 30 min di brainstorm su layout 2 colonne per fix shift workflow, poi Max propone "apri con CEO selezionato di default". 5 righe di codice, problema risolto. Quando le soluzioni complesse cercano di mascherare il sintomo invece di risolvere la causa, fermarsi e cercare un trick più diretto
+- **Investigare il "non funziona" prima di tirare a indovinare**: il bug ZEC sembrava un display issue triviale. Investigazione profonda ha rivelato cap PostgREST 1000 — un problema architetturale silenzioso che si sarebbe manifestato in modo casuale ad alti volumi. Senza l'investigazione, avremmo "fixato" superficialmente cambiando solo `fmtPriceJs(0)` per non mostrare `—`, mascherando il problema vero
+- **Pattern del vecchio sito quando funziona**: tf.html aveva da sempre il filtro `managed_by` server-side. Copiando il pattern abbiamo evitato la PostgREST 1000-cap. Il vecchio sito ha lezioni da insegnare anche dopo il refactoring
+
+**Cosa NON ha funzionato**:
+- **Il fix `limit=50000` come prima reazione al cap PostgREST**: ho aggiunto il parametro a tutte le 6 fetch + commento. Falso fix: il cap è server-side, ignora il client. 10 minuti persi prima di testare con curl che effettivamente PostgREST risponde sempre con 1000. Lezione: **prima testare l'ipotesi, poi modificare il codice**
+- **Tentativo di sostituire emoji 🎒 con SVG zaino**: copia-incollato dal sessione 7, errore identico. Max ha realizzato troppo tardi che l'emoji giusta era già nella home. 15 min persi. Lezione (registrata in memoria di sessione 7): **prima di creare asset visivo, verificare coerenza con altre pagine**
+- **Mancanza di auto-refresh sul dashboard**: il vecchio dashboard si rinfresca ogni 5 min, il nuovo no. Bug minore (Max si è ricordato che ricaricando manualmente vede dati nuovi), ma è regressione. **TODO sessione futura**: aggiungere `setInterval` di re-fetch ogni 5 min al dashboard
+
+### Domande aperte aggiunte per il CEO (sessione 8)
+
+13. **Server-side FIFO**: il fix split-by-managed_by funziona fino a ~3000 trade per bot (cap 1000 × 3 split possibili = ~3000). Per la mainnet vera dobbiamo passare a server-side FIFO (bot scrive `buy_avg_price` su trades al sell, dashboard legge senza replay). Brief separato da scrivere quando saremo a 50% del threshold (~1500 trade per bot). Stima oggi: a ~30 trade/giorno, ~50 giorni di ulteriore margine prima di doverci pensare
+14. **Auto-refresh dashboard**: aggiungere o no `setInterval` di re-fetch ogni 5 min come il vecchio? Pro: dato live senza ricaricare. Contro: ogni refresh è ~12 fetch parallele Supabase, su una pagina lasciata aperta tutto il giorno fa molte richieste. Alternativa più leggera: refresh solo dei numeri principali (today P&L, today trades, recent activity), non dei chart. Da decidere
+15. **Analytics Umami**: portarlo dal vecchio sito o lasciare solo Vercel Analytics built-in? Umami dà più controllo (no cookies, GDPR-friendly, dashboard self-hosted). Vercel basta per metrics base. Per il livello di traffico attuale (~100-500/giorno), entrambi vanno bene. Decisione cosmetica
+16. **Visione "ufficio coi bot"**: era già in roadmap come futuro. Adesso che React è integrato, è più semplice da realizzare. Ha senso prima dello show HN per "wow effect"?
