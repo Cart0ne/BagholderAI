@@ -25,6 +25,7 @@ from db.client import get_client
 from db.event_logger import log_event
 from utils.telegram_notifier import SyncTelegramNotifier
 from bot.health_check import run_health_check
+from bot.db_maintenance import maybe_run_maintenance
 
 logger = logging.getLogger("bagholderai.orchestrator")
 
@@ -452,6 +453,15 @@ def run_orchestrator():
                     run_health_check(client=supabase)
                 except Exception as e:
                     logger.error(f"Periodic health check crashed: {e}", exc_info=True)
+
+            # 59b: daily DB retention cleanup. The maybe_ wrapper is a no-op
+            # except at MAINTENANCE_HOUR_UTC, and only runs once per UTC day
+            # — calling it every poll is fine and cheap. Wrapped in try so
+            # a transient Supabase failure cannot take the orchestrator down.
+            try:
+                maybe_run_maintenance(supabase, notifier)
+            except Exception as e:
+                logger.error(f"DB maintenance crashed: {e}", exc_info=True)
 
             time.sleep(POLL_INTERVAL)
 
