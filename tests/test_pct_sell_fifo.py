@@ -298,12 +298,52 @@ def test_total_pnl_matches_external_fifo():
     print(f"  fifo ground truth = ${fifo_pnl:+.4f}  ✓ (zero drift)\n")
 
 
+def test_57a_brief_canonical_fifo_vs_avg():
+    """57a brief test: buy 100@$1.00, buy 100@$1.50, sell 100@$1.20.
+    FIFO P&L must be +$20 (sold the $1.00 lot at $1.20).
+    NOT −$5 (which is what avg_buy_price=$1.25 would yield).
+    Verifies the bot writes the FIFO number, not the avg.
+    """
+    print("=" * 60)
+    print("TEST 6: 57a canonical — FIFO P&L vs avg_buy_price bias")
+    print("=" * 60)
+    bot = make_bot()
+
+    # Two buys at different prices
+    bot._pct_open_positions.append({"amount": 100.0, "price": 1.00})
+    bot._pct_open_positions.append({"amount": 100.0, "price": 1.50})
+    bot.state.holdings = 200.0
+    bot.state.avg_buy_price = 1.25  # what an avg-based formula would store
+
+    # Sell exactly 100 (= first lot size) at $1.20
+    # FIFO consumes lot1 ($1.00) → revenue 120, basis 100, pnl +$20
+    # Avg-based would compute basis = 100 * 1.25 = 125 → pnl −$5 (wrong)
+    trade = bot._execute_percentage_sell(price=1.20)
+    assert trade is not None, "Sell must execute"
+
+    expected_pnl = 100.0 * 1.20 - 100.0 * 1.00  # = +20.0
+    avg_based_wrong = 100.0 * 1.20 - 100.0 * 1.25  # = −5.0
+    actual_pnl = trade["realized_pnl"]
+
+    assert_close(actual_pnl, expected_pnl, tol=1e-9, label="trade.realized_pnl")
+    assert_close(bot.state.realized_pnl, expected_pnl, tol=1e-9,
+                 label="state.realized_pnl")
+    # Sanity: definitely not the avg-based answer
+    assert abs(actual_pnl - avg_based_wrong) > 1.0, \
+        "P&L must differ from avg-based bias by at least $1"
+    print(f"  buy 100@$1.00, buy 100@$1.50, sell 100@$1.20")
+    print(f"  expected (FIFO):      +${expected_pnl:.2f}")
+    print(f"  what avg would give:  ${avg_based_wrong:+.2f}  (rejected)")
+    print(f"  bot realized_pnl:     ${actual_pnl:+.2f}  ✓\n")
+
+
 if __name__ == "__main__":
     test_single_lot_sell()
     test_multi_lot_consume_two_lots_full()
     test_multi_lot_consume_crosses_boundary()
     test_last_lot_crosses_two_lots_via_state_desync()
     test_total_pnl_matches_external_fifo()
+    test_57a_brief_canonical_fifo_vs_avg()
     print("=" * 60)
     print("All FIFO consume tests passed ✓")
     print("=" * 60)

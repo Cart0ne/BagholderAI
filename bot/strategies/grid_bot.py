@@ -886,7 +886,18 @@ class GridBot:
                 )
                 return None
 
-        if self.strategy == "A" and price < self.state.avg_buy_price:
+        # 57a: Strategy A guard checks the FIFO lot being sold, not avg_buy_price.
+        # On a multi-lot position the avg can drift toward market and let the
+        # bot sell a lot that is realy underwater while the avg looks profitable.
+        # Falls back to avg_buy_price only if the FIFO queue is empty (legacy /
+        # restart edge); _execute_sell here is the fixed-mode path which today
+        # is unused, so this is preventative for any future fixed-mode revival.
+        lot_buy_price = (
+            self._pct_open_positions[0]["price"]
+            if self._pct_open_positions
+            else self.state.avg_buy_price
+        )
+        if self.strategy == "A" and price < lot_buy_price:
             # 39a/39c/45f/45g/51b: TF bots can override Strategy A on
             # stop-loss, trailing-stop, take-profit, profit-lock,
             # gain-saturation, or bearish exit (mixed-lots liquidation).
@@ -914,11 +925,11 @@ class GridBot:
                     reason = "BEARISH EXIT"
                 logger.warning(
                     f"{reason} OVERRIDE: Sell at {fmt_price(price)} < "
-                    f"avg buy {fmt_price(self.state.avg_buy_price)} ({self.symbol})."
+                    f"lot buy {fmt_price(lot_buy_price)} ({self.symbol})."
                 )
             else:
                 logger.info(
-                    f"BLOCKED: Sell at {fmt_price(price)} < avg buy {fmt_price(self.state.avg_buy_price)}. "
+                    f"BLOCKED: Sell at {fmt_price(price)} < lot buy {fmt_price(lot_buy_price)}. "
                     f"Strategy A never sells at loss."
                 )
                 return None
@@ -955,7 +966,11 @@ class GridBot:
         # from cash (total_invested/total_received don't include them).
         # Subtracting them here was creating phantom losses (~$7 cumulative
         # on Grid manual). Live mode decision deferred until go-live.
-        cost_basis = amount * self.state.avg_buy_price
+        # 57a: cost_basis derives from the FIFO lot's buy price, not from
+        # the rolling avg_buy_price. Avg drifts toward market on multi-lot
+        # positions and quietly biases realized_pnl. lot_buy_price was
+        # already resolved above for the Strategy A guard; reuse it here.
+        cost_basis = amount * lot_buy_price
         buy_fee = cost_basis * self.FEE_RATE
         realized_pnl = revenue - cost_basis
 
