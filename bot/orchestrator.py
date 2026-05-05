@@ -31,7 +31,7 @@ logger = logging.getLogger("bagholderai.orchestrator")
 
 POLL_INTERVAL = 30          # seconds between bot_config reconciliations
 MAX_RESTART_ATTEMPTS = 5    # consecutive crash restarts before giving up on a symbol
-HEALTH_CHECK_INTERVAL = 30 * 60  # 57a: periodic FIFO/holdings/cash integrity check
+HEALTH_CHECK_INTERVAL = 24 * 60 * 60  # 57a: daily FIFO/holdings/cash integrity check
 # 44a: cap Telegram spam from the main-loop exception handler. Network
 # blackouts (httpx ConnectTimeout, etc.) can raise the same exception
 # every POLL_INTERVAL for tens of minutes; without a cooldown that
