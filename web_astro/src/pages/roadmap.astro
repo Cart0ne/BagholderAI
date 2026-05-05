@@ -182,11 +182,21 @@ function whoChip(w: Who): string {
                 {done}/{total}
               </span>
             </div>
-            <span class={`shrink-0 rounded-full border px-2.5 py-0.5
-                          font-mono text-[9px] uppercase tracking-[0.16em]
-                          ${badge.cls}`}>
-              {badge.label}
-            </span>
+            <div class="flex items-center gap-2 shrink-0">
+              {phase.id === 9 && (
+                <span class="rounded-full border border-amber-400/40
+                             bg-amber-400/5 px-2.5 py-0.5
+                             font-mono text-[9px] uppercase tracking-[0.16em]
+                             text-amber-300">
+                  ● Living milestone
+                </span>
+              )}
+              <span class={`rounded-full border px-2.5 py-0.5
+                            font-mono text-[9px] uppercase tracking-[0.16em]
+                            ${badge.cls}`}>
+                {badge.label}
+              </span>
+            </div>
           </summary>
 
           <div class="px-3 pb-4">
@@ -203,10 +213,6 @@ function whoChip(w: Who): string {
                   {sections.map((g) => {
                     const subDone  = g.tasks.filter(t => t.status === "done").length;
                     const subTotal = g.tasks.length;
-                    /* "NEW" tag for backlog sub-sections introduced after the
-                       original blueprint (Phases 9, 10, 11). Visual marker so
-                       the reader can spot what's been added beyond the plan. */
-                    const isNew = /^Phase\s+(9|10|11)\b/.test(g.title);
                     return (
                       <details class="rounded-lg border border-border-soft
                                       bg-surface/30 overflow-hidden group/sub">
@@ -215,11 +221,6 @@ function whoChip(w: Who): string {
                                         hover:bg-surface/60 transition-colors">
                           <span class="font-mono text-[11px] uppercase
                                        tracking-[0.14em] text-text-dim">
-                            {isNew && (
-                              <span class="mr-2 text-amber-400 font-semibold tracking-[0.18em]">
-                                NEW
-                              </span>
-                            )}
                             {g.title}
                           </span>
                           <span class="font-mono text-[10px] text-text-muted
