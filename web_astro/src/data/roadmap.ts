@@ -128,8 +128,8 @@ export const ROADMAP: RoadmapData = {
       status: "active",
       description: "The dashboard is the product. The guides are the revenue.",
       tasks: [
-        { text: "Professional UI design", status: "todo", who: "BOTH" },
-        { text: "Dashboard rewrite: React + Supabase realtime subscriptions", status: "todo", who: "AI", comment: "Supabase active via REST + polling. This task = full React rewrite + websocket realtime." },
+        { text: "Professional UI design", status: "done", who: "BOTH", comment: "Sessions 1-8 web_astro (Apr 30 → May 4, 2026). Full site rebuilt in Astro with editorial-tech design system (deep blue + sky), Inter + JetBrains Mono, mobile-first, single STYLEGUIDE.md (696 lines) as source of truth. 9/9 pages live on bagholderai.lol." },
+        { text: "Dashboard rewrite: Astro + React islands + Supabase polling", status: "done", who: "AI", comment: "Initially scoped as full React rewrite. Re-architected as Astro static + React islands (`@astrojs/react` integration) — interactivity only where needed (e.g. /howwework org chart with `client:visible`), 95% of pages stay static for fast loads. Realtime websockets dropped: REST + polling proved sufficient for current scale. Future: server-side FIFO refactor when trade volume crosses ~3000/bot." },
         { text: "Deploy on Vercel + custom domain", status: "done", who: "BOTH" },
         { text: "English localization", status: "done", who: "AI", comment: "Site fully in English from the start." },
         { text: "China accessibility (no blocked services)", status: "done", who: "BOTH", comment: "Session 08. Max's friend in China confirmed." },
@@ -334,6 +334,7 @@ export const ROADMAP: RoadmapData = {
         { text: "TF mid-tick DEALLOCATE signal CHECK hot-fix", status: "done", who: "AI", comment: "Hot-fix 50a (2026-04-28). trend_decisions_log.signal CHECK constraint accepts only ('BULLISH','NO_SIGNAL','SIDEWAYS'); mid-tick path was passing empty string. Same class of bug 49b/030b328 fixed for proactive path." },
         { text: "TF 51a — RSI 1h overheat filter (pre-ALLOCATE/SWAP gate)", status: "done", who: "AI", comment: "Brief 51a (2026-04-29). DOGE allocated 29/04 at near-30-day-high stop-lossed same day. New gate: RSI(14) on 1h candles, fetched only for BULLISH candidates. Skip if RSI > tf_rsi_1h_max (default 75)." },
         { text: "TF 51b — Trailing stop (protect unrealized gains)", status: "done", who: "AI", comment: "Brief 51b (2026-04-29). Third TF exit alongside SL/TP/PL/45g: tracks peak price each tick, activates after peak ≥ avg_buy × (1 + activation_pct%) (default 1.5%), fires when price drops trailing_pct% from peak (default 2.0%)." },
+        { text: "TF exit protection holes — peak reset on buy + SL/TP on open value", status: "done", who: "AI", comment: "Diagnosed + fixed 2026-05-04 commit 6dcc56f. Two related bugs found: (1) `_trailing_peak_price` was global per coin, never reset on a new buy → when a last-shot lowered avg_buy, the old peak armed trailing on the fresh lot (DOGE: bought 02:31, last-shot 10:07, sold both 10:08 at −2% from a peak set hours earlier). (2) Stop-loss/take-profit thresholds computed on `capital_allocation` (initial fixed) instead of `avg_buy × holdings` → partial lots after sells/skim were uncovered (INJ needed −5% on the lot before SL fired). Fix: peak resets on each TF buy + SL/TP symmetric on open value. Live in prod after orchestrator restart." },
 
         { section: "Phase 3 — AI Sentinel" },
         { section: "Phase 4 — Dashboard & Monetization" },
@@ -361,6 +362,7 @@ export const ROADMAP: RoadmapData = {
         { text: "How We Work page on site", status: "done", who: "BOTH", comment: "Session 12. The process is the product." },
         { text: "Public Telegram channel (@BagHolderAI_report)", status: "done", who: "BOTH", comment: "Session 12. Daily reports for followers." },
         { text: "Diary page on site (/diary)", status: "done", who: "BOTH", comment: "Session 14. Construction log has its own page." },
+        { text: "X scanner weekly cron (brief 56a)", status: "done", who: "AI", comment: "2026-05-04 commit 53a1274. Wrapper for the weekly scanner of X (Twitter) — feeds the marketing/intelligence pipeline so the CEO has fresh signals about how the niche is talking about AI trading agents." },
 
         { section: "Phase 5 — Extended Paper Trading" },
         { section: "Phase 6 — Go Live" },
@@ -405,6 +407,9 @@ export const ROADMAP: RoadmapData = {
         { text: "UI /tf + /admin: simpler Total P&L subtitle + dedicated Fees card + dust filter", status: "done", who: "AI", comment: "2026-04-21. Replaced old subtitle with '= Net Worth − starting capital'. Dust v3 filters holdings × price < $5." },
         { text: "UI /tf: closed-cycles banner uses realized_pnl + idle-cash alert fix", status: "done", who: "AI", comment: "2026-04-20. Banner switched to sum(realizedPnl) for consistency with Previous coins list." },
         { text: "47a counterfactual batch limit raised 100→5000", status: "done", who: "AI", comment: "Session 48 (2026-04-26). 100-row cap produced permanent backlog; raise to 5000 drained it." },
+        { text: "Reports & accounting unification (post-FIFO)", status: "done", who: "AI", comment: "2026-05-03 commits 2f58733 + 865b122 + b9348a0 + 584ebe2. Daily report fixed DOGE-replaces-BTC bug + tf_grid included in TF totals. Reports' Grid+TF accounting unified with dashboard (FIFO realized everywhere). Binance prices URL fixed (json.dumps default whitespace was breaking the API). TF active_positions filtered to active coins only." },
+        { text: "FIFO integrity (brief 57a) — 4 fixes + dust hotfix", status: "done", who: "AI", comment: "2026-05-05 commits 596a5b7 → 189fbf9. (1) verify_fifo_queue at startup. (2) `_execute_sell` fixed-mode aligned to FIFO lot price (not avg_buy). (3) health_check module wired into orchestrator. (4) sell audit trail in bot_events_log + category whitelist extended. Hotfix: filter sub-$1 dust lots so verify ignores noise. Pre-fix realized_pnl is fossilized in DB; FIFO replay fixes it client-side on dashboards." },
+        { text: "DB retention policy (brief 59b)", status: "done", who: "AI", comment: "2026-05-05 commit 1ae4c01. Daily cleanup at 04:00 UTC. v1/v2 trades deleted (config_version=v3 only). Keeps the DB bounded as bot_events_log grows over time." },
 
         { section: "Phase 10 — Website Restructure & Analytics" },
         { text: "Site restructure: narrative landing + dedicated /dashboard", status: "done", who: "AI", comment: "Brief 'Site Restructure' (2026-04-22/23). Landing rewritten as storytelling. All data widgets moved to /dashboard route." },
