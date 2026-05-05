@@ -24,11 +24,13 @@ from pathlib import Path
 from db.client import get_client
 from db.event_logger import log_event
 from utils.telegram_notifier import SyncTelegramNotifier
+from bot.health_check import run_health_check
 
 logger = logging.getLogger("bagholderai.orchestrator")
 
 POLL_INTERVAL = 30          # seconds between bot_config reconciliations
 MAX_RESTART_ATTEMPTS = 5    # consecutive crash restarts before giving up on a symbol
+HEALTH_CHECK_INTERVAL = 30 * 60  # 57a: periodic FIFO/holdings/cash integrity check
 # 44a: cap Telegram spam from the main-loop exception handler. Network
 # blackouts (httpx ConnectTimeout, etc.) can raise the same exception
 # every POLL_INTERVAL for tens of minutes; without a cooldown that
@@ -272,10 +274,35 @@ def run_orchestrator():
         # Not fatal — carry on; the orphans just stay parked until a
         # future boot retries.
 
+    # 57a: integrity health check at boot. Catches DB-level discrepancies
+    # (FIFO P&L drift, negative holdings, orphan lots, cash divergence)
+    # before the bots start trading. Telegram alert is emitted if any
+    # check fails; the run never raises (errors degrade to per-check
+    # ERROR statuses inside the report).
+    try:
+        report = run_health_check(client=supabase)
+        if report.get("all_ok"):
+            try:
+                notifier.send_message(
+                    f"✅ <b>Health check passed at boot</b>\n"
+                    f"{report.get('n_ok', 0)} checks OK"
+                )
+            except Exception:
+                pass
+        else:
+            logger.warning(
+                f"Boot health check FAILED: "
+                f"{report.get('n_fail', 0)} fail, {report.get('n_error', 0)} error"
+            )
+    except Exception as e:
+        logger.error(f"Health check at boot crashed: {e}", exc_info=True)
+
     first_run = True
     # 44a: timestamp of the last "🚨 Orchestrator error" Telegram. 0 means
     # "never sent" so the first error in a run still alerts immediately.
     _last_error_alert_ts = 0.0
+    # 57a: timestamp of the last periodic health check.
+    _last_health_check_ts = time.time()
     while not shutting_down["v"]:
         try:
             # 1. Desired state from bot_config
@@ -414,6 +441,17 @@ def run_orchestrator():
                     },
                 )
                 first_run = False
+
+            # 57a: periodic integrity check. Fires every HEALTH_CHECK_INTERVAL
+            # regardless of poll cadence — wraps in try/except so a failed
+            # check (DB hiccup, etc.) cannot stop the orchestrator main loop.
+            now_ts = time.time()
+            if (now_ts - _last_health_check_ts) >= HEALTH_CHECK_INTERVAL:
+                _last_health_check_ts = now_ts
+                try:
+                    run_health_check(client=supabase)
+                except Exception as e:
+                    logger.error(f"Periodic health check crashed: {e}", exc_info=True)
 
             time.sleep(POLL_INTERVAL)
 
