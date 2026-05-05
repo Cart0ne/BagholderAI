@@ -197,6 +197,15 @@ def run_orchestrator():
         format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
         datefmt="%H:%M:%S",
     )
+    # Silence chatty third-party loggers. httpx INFO logs every HTTP
+    # call (every Supabase poll, every Telegram getUpdates) with the
+    # full URL — including bot tokens. On the orchestrator alone this
+    # was 98.9% of the log volume and produced thousands of token
+    # leaks per day. Our own bagholderai.* loggers stay at INFO.
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    logging.getLogger("httpcore").setLevel(logging.WARNING)
+    logging.getLogger("telegram").setLevel(logging.WARNING)
+    logging.getLogger("telegram.ext").setLevel(logging.WARNING)
     LOG_DIR.mkdir(exist_ok=True)
 
     supabase = get_client()

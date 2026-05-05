@@ -32,6 +32,13 @@ logging.basicConfig(
     format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
     datefmt="%H:%M:%S",
 )
+# Silence chatty third-party loggers (httpx logs every Supabase/Binance
+# request with the URL; on busy grid bots like BONK ~16% of the log was
+# pure HTTP noise). Our own bagholderai.* loggers stay at INFO.
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
+logging.getLogger("telegram").setLevel(logging.WARNING)
+logging.getLogger("telegram.ext").setLevel(logging.WARNING)
 logger = logging.getLogger("bagholderai.runner")
 
 # Imports from project

@@ -20,6 +20,16 @@ logging.basicConfig(
     format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
     datefmt="%H:%M:%S",
 )
+# Silence the chatty libraries that log every Telegram long-poll request
+# at INFO. The python-telegram-bot library polls getUpdates every ~10s
+# and httpx logs each call as a separate INFO line, with the bot token
+# embedded in the URL. Result: 23 MB of noise + token leak across
+# thousands of lines after a few weeks. We only care about WARNING+ from
+# these libraries; our own bagholderai.x_approve logger stays at INFO.
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
+logging.getLogger("telegram").setLevel(logging.WARNING)
+logging.getLogger("telegram.ext").setLevel(logging.WARNING)
 logger = logging.getLogger("bagholderai.x_approve")
 
 from telegram import Update

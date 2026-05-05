@@ -18,6 +18,14 @@ logging.basicConfig(
     format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
     datefmt="%H:%M:%S",
 )
+# Silence chatty third-party loggers (httpx logs every Supabase /
+# Binance / Telegram call with the URL; the trend_follower polls the
+# scanner every 30 min and would otherwise leak the bot token across
+# hundreds of lines). Our own bagholderai.* loggers stay at INFO.
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
+logging.getLogger("telegram").setLevel(logging.WARNING)
+logging.getLogger("telegram.ext").setLevel(logging.WARNING)
 logger = logging.getLogger("bagholderai.trend")
 
 
