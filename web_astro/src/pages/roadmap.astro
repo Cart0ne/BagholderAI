@@ -154,10 +154,12 @@ function whoChip(w: Who): string {
       const sections = groupBySection(phase.tasks);
       const hasSections = sections.length > 0;
 
-      /* Only Phase 8 (Backlog) opens by default — it's the messy bit
-         the visitor came to see. All other phases stay collapsed so the
-         page is scannable at first paint. */
-      const phaseOpen = phase.id === 8;
+      /* Phase 9 (Validation) opens by default — it's the living
+         milestone the visitor should see first. Phase 8 (Backlog)
+         stays collapsed but is the second-most-likely click. All
+         other phases stay collapsed so the page is scannable at
+         first paint. */
+      const phaseOpen = phase.id === 9;
 
       return (
         <details class="group border-b border-border-soft

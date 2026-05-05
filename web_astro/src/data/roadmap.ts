@@ -6,8 +6,9 @@
      planned — scheduled but not yet started
      todo    — single-task version of "planned" (used inside phase tasks)
      killed  — explicitly abandoned
-   For Phase 8 (Backlog), tasks may include `{ section: "..." }` rows
-   that act as subsection headers grouping the tasks below them. */
+   For Phase 8 (Backlog) and Phase 9 (Validation), tasks may include
+   `{ section: "..." }` rows that act as subsection headers grouping
+   the tasks below them. */
 
 export type TaskStatus = "done" | "active" | "todo" | "killed";
 export type PhaseStatus = "done" | "active" | "planned";
@@ -41,7 +42,7 @@ export interface RoadmapData {
 
 export const ROADMAP: RoadmapData = {
   version: "Versione 1.37 — Maggio 2026",
-  lastUpdated: "2026-05-01",
+  lastUpdated: "2026-05-05",
   phases: [
     {
       id: 0,
@@ -354,6 +355,9 @@ export const ROADMAP: RoadmapData = {
         { text: "Roadmap workflow: HTML-only, killed routine docx generation", status: "done", who: "BOTH", comment: "Session 29." },
         { text: "Project instructions backup (BagHolderAI_Instructions_Backup.md)", status: "done", who: "AI", comment: "Session 29." },
 
+        { section: "Phase 5 — Extended Paper Trading" },
+        { section: "Phase 6 — Go Live" },
+
         { section: "Phase 7 — Marketing & Growth" },
         { text: "Posting Strategy defined", status: "done", who: "AI", comment: "4 content pillars. 10 ready-to-publish posts." },
         { text: "Posting Strategy v1.1: variable reinforcement + flag-it-when-it-happens", status: "done", who: "AI", comment: "Session 11. No calendar. Publish when it matters." },
@@ -362,10 +366,7 @@ export const ROADMAP: RoadmapData = {
         { text: "How We Work page on site", status: "done", who: "BOTH", comment: "Session 12. The process is the product." },
         { text: "Public Telegram channel (@BagHolderAI_report)", status: "done", who: "BOTH", comment: "Session 12. Daily reports for followers." },
         { text: "Diary page on site (/diary)", status: "done", who: "BOTH", comment: "Session 14. Construction log has its own page." },
-        { text: "X scanner weekly cron (brief 56a)", status: "done", who: "AI", comment: "2026-05-04 commit 53a1274. Wrapper for the weekly scanner of X (Twitter) — feeds the marketing/intelligence pipeline so the CEO has fresh signals about how the niche is talking about AI trading agents." },
-
-        { section: "Phase 5 — Extended Paper Trading" },
-        { section: "Phase 6 — Go Live" },
+        { text: "X scanner weekly cron", status: "done", who: "AI", comment: "2026-05-04. Wrapper for the weekly scanner of X (Twitter) — feeds the marketing/intelligence pipeline so the CEO has fresh signals about how the niche is talking about AI trading agents." },
 
         { section: "Open backlog" },
         { text: "Exchange filters: direct step_size read, Decimal rounding, BTC sells unblocked", status: "done", who: "AI", comment: "Session 33. precision.amount was misinterpreted as decimal count." },
@@ -394,7 +395,9 @@ export const ROADMAP: RoadmapData = {
         { text: "Umami: data-domains restricted to bagholderai.lol (no local dev tracking)", status: "done", who: "AI", comment: "Session 30." },
         { text: "Uniform bottom bar on all pages + footer mailto link", status: "done", who: "AI", comment: "Session 30. Consistent cta-link bar." },
 
-        { section: "Phase 9 — Infrastructure & Observability" },
+        { section: "Phase 9 — Validation & Control System" },
+
+        { section: "Phase 10 — Infrastructure & Observability" },
         { text: "Orchestrator graceful shutdown propagates to subprocesses", status: "done", who: "AI", comment: "2026-04-17. SIGINT to children so KeyboardInterrupt handlers run." },
         { text: "Orchestrator shutdown race: stop-loss vs daily-PnL floor", status: "done", who: "AI", comment: "2026-04-18. Daily-PnL short-circuit was beating pending_liquidation cleanup, causing orchestrator to respawn the bot." },
         { text: "Logs unified under /Volumes/Archivio/bagholderai/logs/", status: "done", who: "AI", comment: "2026-04-18. x_poster/ subfolder joins grid_*.log + orchestrator.log + trend_follower.log." },
@@ -408,10 +411,10 @@ export const ROADMAP: RoadmapData = {
         { text: "UI /tf: closed-cycles banner uses realized_pnl + idle-cash alert fix", status: "done", who: "AI", comment: "2026-04-20. Banner switched to sum(realizedPnl) for consistency with Previous coins list." },
         { text: "47a counterfactual batch limit raised 100→5000", status: "done", who: "AI", comment: "Session 48 (2026-04-26). 100-row cap produced permanent backlog; raise to 5000 drained it." },
         { text: "Reports & accounting unification (post-FIFO)", status: "done", who: "AI", comment: "2026-05-03 commits 2f58733 + 865b122 + b9348a0 + 584ebe2. Daily report fixed DOGE-replaces-BTC bug + tf_grid included in TF totals. Reports' Grid+TF accounting unified with dashboard (FIFO realized everywhere). Binance prices URL fixed (json.dumps default whitespace was breaking the API). TF active_positions filtered to active coins only." },
-        { text: "FIFO integrity (brief 57a) — 4 fixes + dust hotfix", status: "done", who: "AI", comment: "2026-05-05 commits 596a5b7 → 189fbf9. (1) verify_fifo_queue at startup. (2) `_execute_sell` fixed-mode aligned to FIFO lot price (not avg_buy). (3) health_check module wired into orchestrator. (4) sell audit trail in bot_events_log + category whitelist extended. Hotfix: filter sub-$1 dust lots so verify ignores noise. Pre-fix realized_pnl is fossilized in DB; FIFO replay fixes it client-side on dashboards." },
-        { text: "DB retention policy (brief 59b)", status: "done", who: "AI", comment: "2026-05-05 commit 1ae4c01. Daily cleanup at 04:00 UTC. v1/v2 trades deleted (config_version=v3 only). Keeps the DB bounded as bot_events_log grows over time." },
+        { text: "FIFO integrity — 4 fixes + dust hotfix", status: "done", who: "AI", comment: "2026-05-05. (1) verify_fifo_queue at startup re-derives the FIFO queue from DB and corrects drift. (2) Fixed-mode sell path aligned to FIFO lot price instead of avg_buy. (3) Health check module wired into the orchestrator. (4) Sell audit trail in bot_events_log + category whitelist extended. Hotfix: filter sub-$1 dust lots so the verifier ignores noise. Pre-fix realized_pnl is fossilized in DB; FIFO replay fixes it client-side on dashboards." },
+        { text: "DB retention policy", status: "done", who: "AI", comment: "2026-05-05. Daily cleanup at 04:00 UTC. v1/v2 trades deleted (config_version=v3 only). Keeps the DB bounded as bot_events_log grows over time." },
 
-        { section: "Phase 10 — Website Restructure & Analytics" },
+        { section: "Phase 11 — Website Restructure & Analytics" },
         { text: "Site restructure: narrative landing + dedicated /dashboard", status: "done", who: "AI", comment: "Brief 'Site Restructure' (2026-04-22/23). Landing rewritten as storytelling. All data widgets moved to /dashboard route." },
         { text: "Unified header/nav across all 10 public pages", status: "done", who: "AI", comment: "Session 45. 7 links + current-page highlighted. Subtitle has fixed 2-line min-height as visual anchor." },
         { text: "Sitewide width bump to 880px (from 720px)", status: "done", who: "AI", comment: "Session 45. Original layout felt cramped once the new header took over." },
@@ -431,7 +434,7 @@ export const ROADMAP: RoadmapData = {
         { text: "Daily reports: TF section + private/public layouts + per-coin activity", status: "done", who: "AI", comment: "Sessions 48-49. Three iterations: TF section added, aggregated header on top, per-coin activity in public report." },
         { text: "TF dashboard: Recent trades on top, Previous coins collapsed", status: "done", who: "AI", comment: "Session 49 (2026-04-27). Hierarchy inversion: live trades sit above closed-cycle archive." },
 
-        { section: "Phase 11 — Numbers Truth & Pre-HN Polish" },
+        { section: "Phase 12 — Numbers Truth & Pre-HN Polish" },
         { text: "Cumulative P&L + stacked Daily P&L charts on /dashboard (50c)", status: "done", who: "AI", comment: "Session 50c (2026-04-28). Realized vs MTM line + stacked Grid/TF daily bars. €500→€600 step neutralized via 'P&L vs starting capital' transform." },
         { text: "TF defaults reset + orphan-period guard (50a)", status: "done", who: "AI", comment: "Session 50a (2026-04-28). 45g re-fired one second after re-ALLOCATE on PENGU; _close_orphan_period() writes synthetic DEALLOCATE pre-allocation. TF defaults: skim_pct=0, stop_buy_drawdown_pct=15." },
         { text: "RSI 1h overheat filter (51a)", status: "done", who: "AI", comment: "Session 51a (2026-04-29). Pre-ALLOCATE/SWAP gate; rejects when 1h RSI ≥ 75. Reuses ccxt OHLCV pulls already cached." },
@@ -443,6 +446,63 @@ export const ROADMAP: RoadmapData = {
         { text: "Homepage compaction + cross-page spacing reduction", status: "done", who: "AI", comment: "Session 53 (commit 854d6b8). Removed TF announcement banner + green framing box. Centered hero. Cross-page sweep: ~150-200px less scroll before bot cards." },
         { text: "Stats strip honesty pass + label fixes", status: "done", who: "AI", comment: "Session 53 (commit 3fd5b08). 'trades executed' → 'orders executed'. realized P&L FIFO-recomputed (~$41 vs raw ~$59). 'LIVE / trading now' → 'PAPER / trading now'." },
         { text: "/admin renamed to /grid (now that TF has its own dashboard)", status: "done", who: "AI", comment: "Session 53 (commit 2bfab84). Renamed web/admin.html → web/grid.html. Internal JS identifiers untouched to preserve sessions. No redirect: clean break, /admin 404s." },
+      ],
+    },
+    {
+      id: 9,
+      title: "Validation & Control System",
+      timeframe: "Ongoing — until the system is provably stable",
+      status: "active",
+      description: "The single source of truth for every quality check. Lives as long as the bot lives — paper, pre-live, live, scaled — and grows with it. Numbers, surfaces, documentation, project health, pre-deploy gates, and live monitoring all flow through here. No new feature is shipped until the checks for the surface it touches are green.",
+      tasks: [
+        { section: "1. Technical integrity — numbers add up, DB is healthy" },
+        { text: "FIFO queue verification before every sell", status: "done", who: "AI", comment: "Re-derives the queue from DB on every tick with holdings > 0; auto-corrects on drift." },
+        { text: "Health check: FIFO P&L reconciliation", status: "done", who: "AI", comment: "DB realized_pnl vs FIFO replay per symbol. Boot + daily." },
+        { text: "Health check: holdings consistency", status: "done", who: "AI", comment: "Σ buys − Σ sells = open lots. No silent divergence." },
+        { text: "Health check: negative holdings guard", status: "done", who: "AI", comment: "Refuses to let any symbol go below zero (data corruption canary)." },
+        { text: "Health check: cash accounting", status: "done", who: "AI", comment: "capital − bought + sold − skim matches the dashboard cash to the cent." },
+        { text: "Health check: orphan lots", status: "done", who: "AI", comment: "Sells without buy_trade_id that aren't FORCED_LIQUIDATION are surfaced." },
+        { text: "DB retention cleanup", status: "done", who: "AI", comment: "Daily 04:00 UTC. Keeps trend_scans / state snapshots / events bounded so writes stay fast on free-tier IO budget." },
+        { text: "Sell audit trail in bot_events_log", status: "done", who: "AI", comment: "Every percentage-mode sell writes lot price + cost basis + queue depth, so a future report disagreement is replayable." },
+        { text: "Schema verification (DB columns vs code expectations)", status: "todo", who: "AI" },
+
+        { section: "2. Surface coherence — every screen tells the same story" },
+        { text: "Homepage P&L = Dashboard P&L = DB FIFO P&L", status: "todo", who: "AI" },
+        { text: "Telegram trade notification P&L = DB realized_pnl", status: "todo", who: "AI" },
+        { text: "tf.html config values = trend_config DB values", status: "todo", who: "AI" },
+        { text: "grid.html config values = bot_config DB values", status: "todo", who: "AI" },
+
+        { section: "3. Living documentation — roadmap and process don't go stale" },
+        { text: "Every brief includes a 'Roadmap impact' section", status: "done", who: "MAX", comment: "Process rule, active from session 59. Briefs without the section get bounced before push." },
+        { text: "Every CC commit updates the roadmap when impacted", status: "done", who: "AI", comment: "Process rule, active from session 59." },
+        { text: "Roadmap staleness alert (>14 days without commits)", status: "todo", who: "AI" },
+        { text: "How We Work staleness alert (>30 days without commits)", status: "todo", who: "AI" },
+        { text: "Diary entry in Supabase = diary .docx (session, date, title)", status: "todo", who: "MAX" },
+        { text: "Project memories review (obsolescence check)", status: "todo", who: "AI" },
+
+        { section: "4. Project health — costs, deploys, backlog hygiene" },
+        { text: "Live site (bagholderai.lol) matches the latest Vercel deploy", status: "todo", who: "AI" },
+        { text: "Monthly infra costs vs bot revenues", status: "todo", who: "BOTH", comment: "Manual review by CEO + Board, monthly." },
+        { text: "Briefs open >14 days without deploy", status: "todo", who: "AI" },
+        { text: "DB disk usage + IO budget monitoring", status: "todo", who: "AI" },
+
+        { section: "5. Pre-deploy gates — code review before push (parked)" },
+        { text: "Critic agent: brief vs diff (Claude API, paid)", status: "todo", who: "AI", comment: "Parked. Reconsider once sections 1–4 are stable." },
+        { text: "Smoke test post-deploy (60s dry-run)", status: "todo", who: "AI", comment: "Parked." },
+        { text: "Auto-revert on crash", status: "todo", who: "AI", comment: "Parked." },
+
+        { section: "6. Pre-live gates — green checks before the first €100 of real money" },
+        { text: "FIFO integrity shipped and stable", status: "done", who: "AI" },
+        { text: "Zero FIFO drift alerts for 7 days", status: "active", who: "AI", comment: "In observation since 2026-05-05." },
+        { text: "Health check passes 100% for 7 days", status: "active", who: "AI", comment: "In observation since 2026-05-05. Baseline 84 FAIL is fossilized pre-fix data and must not grow." },
+        { text: "DB retention stable", status: "done", who: "AI" },
+        { text: "Board approval (Max)", status: "todo", who: "MAX" },
+
+        { section: "7. Post-go-live monitoring — once real money is in, the work intensifies" },
+        { text: "Wallet P&L (Binance fetch_my_trades) reconciled with DB FIFO weekly", status: "todo", who: "AI", comment: "From go-live onward. Drift > threshold raises a Telegram alert." },
+        { text: "Spot-price drift alert (DB cost basis vs current Binance price)", status: "todo", who: "AI", comment: "From go-live onward." },
+        { text: "Daily wallet snapshot (USDT + holdings × spot) vs equity model", status: "todo", who: "AI", comment: "From go-live onward." },
+        { text: "Dust converter via Binance /sapi/v1/asset/dust", status: "todo", who: "AI", comment: "From go-live onward. Avoids real dust accumulating in the wallet." },
       ],
     },
   ],
