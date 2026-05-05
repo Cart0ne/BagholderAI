@@ -456,6 +456,131 @@ class GridBot:
             f" = ${available:.2f} available"
         )
 
+    # ------------------------------------------------------------------
+    # 57a: FIFO queue integrity check.
+    # The bot's in-memory _pct_open_positions queue can drift from the
+    # truth derivable from DB trades (float dust accumulation, restart
+    # edge cases, mid-operation re-init). When it drifts, _execute_percentage_sell
+    # walks the wrong lots and writes a wrong realized_pnl. Re-deriving
+    # the queue from DB before every sell decision catches that.
+    # ------------------------------------------------------------------
+    def verify_fifo_queue(self) -> bool:
+        """Check the in-memory FIFO queue against DB truth and rebuild on drift.
+
+        Re-runs the same replay as init_percentage_state_from_db (filter on
+        symbol + config_version='v3') and compares lot-by-lot with
+        _pct_open_positions. On mismatch: log to bot_events_log, send a
+        Telegram alert, replace the queue with the DB-derived one, recalc
+        holdings + avg_buy_price, return False. On match: return True.
+
+        Never raises — DB errors degrade to "no verify" and return True so
+        a transient Supabase blip can't take the bot down.
+        """
+        if not self.trade_logger:
+            return True
+
+        try:
+            result = (
+                self.trade_logger.client.table("trades")
+                .select("side,amount,price,cost,created_at")
+                .eq("symbol", self.symbol)
+                .eq("config_version", "v3")
+                .order("created_at", desc=False)
+                .execute()
+            )
+            trades = result.data or []
+        except Exception as e:
+            logger.warning(f"[{self.symbol}] FIFO verify failed (DB error): {e}")
+            return True
+
+        # Replay DB trades into a fresh queue (same logic as
+        # init_percentage_state_from_db so the two are guaranteed to agree
+        # under no-drift conditions).
+        db_queue: list = []
+        for t in trades:
+            side = t.get("side")
+            amount = float(t.get("amount", 0))
+            price = float(t.get("price", 0))
+            if side == "buy":
+                db_queue.append({"amount": amount, "price": price})
+            elif side == "sell":
+                remaining = amount
+                while remaining > 1e-12 and db_queue:
+                    oldest = db_queue[0]
+                    if oldest["amount"] <= remaining + 1e-12:
+                        remaining -= oldest["amount"]
+                        db_queue.pop(0)
+                    else:
+                        oldest["amount"] -= remaining
+                        remaining = 0
+
+        mem_queue = self._pct_open_positions or []
+
+        drift = len(db_queue) != len(mem_queue)
+        if not drift:
+            for db_lot, mem_lot in zip(db_queue, mem_queue):
+                if (abs(db_lot["amount"] - mem_lot["amount"]) > 1e-6
+                        or abs(db_lot["price"] - mem_lot["price"]) > 1e-6):
+                    drift = True
+                    break
+
+        if not drift:
+            return True
+
+        logger.warning(
+            f"[{self.symbol}] FIFO DRIFT DETECTED — "
+            f"memory queue: {len(mem_queue)} lots, DB queue: {len(db_queue)} lots. "
+            f"Rebuilding from DB."
+        )
+
+        log_event(
+            severity="warn",
+            category="integrity",
+            event="fifo_drift_detected",
+            symbol=self.symbol,
+            message=f"FIFO queue drift: mem={len(mem_queue)} lots, db={len(db_queue)} lots",
+            details={
+                "mem_queue_summary": [
+                    {"amount": round(float(l["amount"]), 8),
+                     "price": round(float(l["price"]), 8)}
+                    for l in mem_queue[:5]
+                ],
+                "db_queue_summary": [
+                    {"amount": round(float(l["amount"]), 8),
+                     "price": round(float(l["price"]), 8)}
+                    for l in db_queue[:5]
+                ],
+            },
+        )
+
+        # Replace queue and recalc dependent state from the corrected lots.
+        self._pct_open_positions = db_queue
+        if db_queue:
+            total_amount = sum(lot["amount"] for lot in db_queue)
+            weighted_cost = sum(lot["amount"] * lot["price"] for lot in db_queue)
+            self.state.holdings = total_amount
+            self.state.avg_buy_price = (
+                weighted_cost / total_amount if total_amount > 0 else 0.0
+            )
+        else:
+            self.state.holdings = 0.0
+            self.state.avg_buy_price = 0.0
+
+        # Best-effort Telegram alert. A failed send must never bubble out
+        # of a sell-path verify call.
+        try:
+            from utils.telegram_notifier import SyncTelegramNotifier
+            SyncTelegramNotifier().send_message(
+                f"⚠️ <b>FIFO DRIFT — {self.symbol}</b>\n"
+                f"Queue corrected from DB.\n"
+                f"Memory had {len(mem_queue)} lots → DB has {len(db_queue)} lots.\n"
+                f"Holdings: {self.state.holdings:.6f}"
+            )
+        except Exception:
+            pass
+
+        return False
+
     def check_price_and_execute(self, current_price: float) -> list:
         """
         Check current price against grid levels and execute fills.
@@ -1210,6 +1335,15 @@ class GridBot:
                 )
 
         if self.state.holdings > 0 and self._pct_open_positions:
+            # 57a: integrity gate — re-derive the FIFO queue from DB and
+            # rebuild on drift before any sell decision is taken. If the
+            # in-memory queue had diverged (float dust, restart edge,
+            # mid-op re-init), the next sell would consume the wrong lots
+            # and write a wrong realized_pnl. This call is the only thing
+            # standing between a corrupted queue and a Strategy-A
+            # violation on mainnet.
+            self.verify_fifo_queue()
+
             # 39a/39c/45f/45g/51b: stop-loss, trailing-stop, take-profit,
             # profit-lock, gain-saturation or pending-liquidation overrides
             # the per-lot trigger — sell every open lot in one pass. For

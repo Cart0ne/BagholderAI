@@ -637,6 +637,10 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
     bot.setup_grid(price)
     if cfg.grid_mode == "percentage":
         bot.init_percentage_state_from_db()
+        # 57a: belt+suspenders — re-derive the queue and confirm the boot
+        # replay matches itself. Under no drift this is a no-op; if it
+        # flags drift here, the boot init has a bug we want to catch.
+        bot.verify_fifo_queue()
     else:
         bot.restore_state_from_db()
 
