@@ -93,17 +93,45 @@ Da session 59 in poi, ogni brief del CEO contiene una sezione "Roadmap impact" i
 
 ---
 
-## 6. Live Validation (€100 test)
+## 6. Pre-Live Gates (€100 test)
 
-*Stress test con soldi veri. Si fa SOLO dopo che tutti i check della sezione 1 passano per almeno 1 settimana.*
+*Stress test con soldi veri. Si fa SOLO dopo che tutti i check della sezione 1 passano per almeno 1 settimana. Non chiude la validazione: la validazione continua oltre il go-live (sezione 7).*
 
 | Prerequisito | Stato |
 |---|---|
-| Brief 57a implementato e stabile | ✅ |
+| FIFO integrity shipped e stabile | ✅ |
 | Zero FIFO drift alerts per 7 giorni | 🔲 In osservazione dal 5 maggio |
 | Health check passa al 100% per 7 giorni | 🔲 In osservazione dal 5 maggio |
-| DB retention stabile (59b) | ✅ |
+| DB retention stabile | ✅ |
 | Board approval (Max) | 🔲 |
+
+---
+
+## 7. Post-Go-Live Monitoring
+
+*Da go-live in avanti il lavoro di verifica intensifica, non si ferma. Sono check che hanno senso solo con soldi veri sul wallet.*
+
+| Check | Tipo | Frequenza | Stato |
+|---|---|---|---|
+| Wallet P&L (Binance fetch_my_trades) reconciled con DB FIFO | Automatico | Settimanale | 🔲 TODO (post go-live) |
+| Spot-price drift alert (DB cost basis vs prezzo Binance corrente) | Automatico | Continuo | 🔲 TODO (post go-live) |
+| Daily wallet snapshot (USDT + holdings × spot) vs equity model | Automatico | Giornaliero | 🔲 TODO (post go-live) |
+| Dust converter via Binance `/sapi/v1/asset/dust` | Automatico | Settimanale | 🔲 TODO (post go-live) |
+
+---
+
+## 8. Process & Log Hygiene
+
+*I check di sezione 1-7 guardano i numeri dentro al DB. Questa sezione guarda fuori: file di log, processi attivi, configurazioni rumorose, leakage di credenziali. È il livello che il 5 maggio 2026 ha lasciato passare 23 MB di log inutile con il token Telegram in chiaro per 19 giorni — perché non c'era nessun check qui.*
+
+| Check | Tipo | Frequenza | Stato |
+|---|---|---|---|
+| Log file size monitor (alert > 50 MB / file o > 100 KB / giorno) | Automatico | Giornaliero | 🔲 TODO |
+| Log noise ratio (% di righe `httpx`/`telegram` INFO vs righe applicative) | Automatico | Settimanale | 🔲 TODO |
+| Process inventory drift (processi Python > 14 giorni senza restart) | Automatico | Settimanale | 🔲 TODO |
+| Credential leakage scan (token/secret in log files) | Automatico | Settimanale | 🔲 TODO |
+| `httpx` / `telegram` loggers a WARNING in tutti gli entry-point | Manuale | One-shot, già live | ✅ DONE 2026-05-05 (commit `bbc8477`) |
+| Log rotation (compress/cancel > 7 giorni) | Automatico | Giornaliero | 🔲 TODO (estensione di 59b ai file su disco) |
 
 ---
 
@@ -113,3 +141,4 @@ Da session 59 in poi, ogni brief del CEO contiene una sezione "Roadmap impact" i
 |---|---|---|
 | 2026-05-05 | 59 | Documento creato. 57a (FIFO integrity + health check) DONE. 59b (DB retention) DONE. Osservazione 7 giorni avviata per go/no-go test €100 live. |
 | 2026-05-05 | 59 | Correzione attribuzione: i check FIFO/health sono brief **57a** (non 59a). Frequenza health check: cambiata da "ogni 30 min" a "giornaliero" (eliminato spam Telegram, baseline statico non richiede polling più frequente). |
+| 2026-05-05 | 59 | Aggiunte sezione **7. Post-Go-Live Monitoring** (validation continua dopo il go-live) e sezione **8. Process & Log Hygiene** (file system + processi + credenziali — scoperto perché un log da 23 MB con token Telegram in chiaro non era stato individuato da nessun check esistente). Sezione 6 rinominata da "Live validation" a "Pre-live gates" per chiarire che non chiude la validazione. |
