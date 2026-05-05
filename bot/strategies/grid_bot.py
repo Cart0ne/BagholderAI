@@ -1929,6 +1929,35 @@ class GridBot:
         # 52a: paper-mode realized_pnl excludes fees (see _execute_sell comment).
         realized_pnl = revenue - cost_basis
 
+        # 57a: forensic audit trail. One row per percentage-mode sell with
+        # the FIFO numbers as they were at decision time. ~20 sells/day
+        # cluster-wide; cheap. If a future report disagrees with the
+        # broker, we can replay these events to find which trade
+        # introduced drift. Best-effort — log_event swallows DB errors.
+        try:
+            log_event(
+                severity="info",
+                category="trade_audit",
+                event="sell_fifo_detail",
+                symbol=self.symbol,
+                message=(
+                    f"Sell lot: buy@{lot_buy_price}, "
+                    f"amount={amount}, pnl=${realized_pnl:.4f}"
+                ),
+                details={
+                    "lot_buy_price": float(lot_buy_price),
+                    "sell_price": float(price),
+                    "amount": float(amount),
+                    "cost_basis": float(cost_basis),
+                    "revenue": float(revenue),
+                    "realized_pnl": float(realized_pnl),
+                    "queue_depth": len(self._pct_open_positions),
+                    "managed_by": getattr(self, "managed_by", "manual"),
+                },
+            )
+        except Exception:
+            pass
+
         # Now consume the queue to match what we just sold.
         remaining = amount
         while remaining > 1e-9 and self._pct_open_positions:
