@@ -514,21 +514,26 @@ class GridBot:
                         oldest["amount"] -= remaining
                         remaining = 0
 
-        # 57a hotfix: drop dust lots that would never be sellable on the
-        # exchange (sub-min_notional). The runtime path already pops these
-        # in _execute_percentage_sell after a step_size + MIN_NOTIONAL
+        # 57a hotfix v2: drop dust lots that would never be sellable on
+        # the exchange. The runtime path already pops these in
+        # _execute_percentage_sell after a step_size + MIN_NOTIONAL
         # rejection, but the DB still has the buy → replay rebuilds them.
         # Without this filter, verify_fifo_queue flags a permanent drift
         # on any symbol that ever had a partial-sell residual, looping
         # forever (Telegram spam every cycle).
-        # Threshold: $1.00 — well below the smallest Binance MIN_NOTIONAL
-        # ($5 typical) but high enough to catch the dust we've actually
-        # seen (BONK 0.99 tokens × $0.00000623 = $0.000006, BTC
-        # 0.00000706 × $80k = $0.57). Real lots start at $5+.
-        DUST_THRESHOLD_USD = 1.0
+        #
+        # Use the symbol's actual MIN_NOTIONAL from exchange filters when
+        # available (typically $5). Static $1 fallback only when filters
+        # haven't loaded yet, never as the long-term value: a $3.79
+        # SOL dust lot is sub-MIN_NOTIONAL ($5) but above $1, so the
+        # static threshold misses it and the loop reappears.
+        min_notional = float(
+            (self._exchange_filters or {}).get("min_notional") or 0
+        )
+        dust_threshold = min_notional if min_notional > 0 else 1.0
         db_queue = [
             lot for lot in db_queue
-            if lot["amount"] * lot["price"] >= DUST_THRESHOLD_USD
+            if lot["amount"] * lot["price"] >= dust_threshold
         ]
 
         mem_queue = self._pct_open_positions or []

@@ -353,6 +353,59 @@ def test_db_error_returns_true_safely():
     print(f"  ✓ DB error handled, returned True, memory queue preserved")
 
 
+def test_dust_uses_exchange_min_notional():
+    """The dust filter must use the symbol's actual MIN_NOTIONAL when the
+    exchange filters are loaded. A $3.79 SOL dust lot (above the $1
+    static fallback but below the real $5 MIN_NOTIONAL) was triggering
+    a permanent drift loop on 2026-05-06 because the static $1
+    threshold let it through. Reproduces the SOL case exactly:
+    runtime pops it, replay rebuilds it, verify_fifo_queue ignores it.
+    """
+    print("=" * 60)
+    print("TEST 10: dust filter uses exchange MIN_NOTIONAL, not static $1")
+    print("=" * 60)
+    db_trades = [
+        # The "dust" buy: 0.04256888 SOL × $87.18 = $3.71 — above $1, below $5
+        {"side": "buy", "amount": 0.04256888, "price": 87.18, "cost": 3.71,
+         "created_at": "2026-04-22T19:35:43+00:00"},
+        # A real lot still in the position
+        {"side": "buy", "amount": 0.223, "price": 89.65, "cost": 19.99,
+         "created_at": "2026-05-06T13:00:00+00:00"},
+    ]
+    bot = make_bot(db_trades)
+    # Simulate exchange filters loaded with Binance SOL/USDT MIN_NOTIONAL = 5.00
+    bot._exchange_filters = {"min_notional": 5.00, "lot_step_size": 0.01}
+    # Bot RAM popped the dust at runtime — only the real lot remains
+    bot._pct_open_positions = [{"amount": 0.223, "price": 89.65}]
+    bot.state.holdings = 0.223
+    bot.state.avg_buy_price = 89.65
+
+    result = bot.verify_fifo_queue()
+    assert result is True, (
+        "With min_notional=5.00 the $3.71 dust must be ignored → no drift"
+    )
+    # Memory queue must NOT have been rebuilt to include the dust
+    assert len(bot._pct_open_positions) == 1, (
+        "Verify must not have re-introduced the dust into RAM"
+    )
+    assert_close(bot._pct_open_positions[0]["price"], 89.65,
+                 label="real lot intact")
+    print(f"  ✓ $3.71 dust ignored by min_notional=5.00, no spurious drift")
+
+    # And conversely: with min_notional unloaded (e.g. boot before fetch),
+    # static $1 fallback kicks in and the same dust IS counted (drift detected).
+    bot2 = make_bot(db_trades)
+    bot2._exchange_filters = None
+    bot2._pct_open_positions = [{"amount": 0.223, "price": 89.65}]
+    bot2.state.holdings = 0.223
+    bot2.state.avg_buy_price = 89.65
+    result2 = bot2.verify_fifo_queue()
+    assert result2 is False, (
+        "Without exchange filters, $1 fallback should still catch the $3.71 lot"
+    )
+    print(f"  ✓ fallback to $1 static threshold when filters not loaded")
+
+
 # ----------------------------------------------------------------------
 # Runner
 # ----------------------------------------------------------------------
@@ -371,6 +424,7 @@ if __name__ == "__main__":
         test_non_empty_memory_with_empty_db,
         test_idempotent_after_rebuild,
         test_db_error_returns_true_safely,
+        test_dust_uses_exchange_min_notional,
     ]
     failed = 0
     for t in tests:
