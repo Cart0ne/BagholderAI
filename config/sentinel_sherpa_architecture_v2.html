@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BagHolderAI — Sentinel + Sherpa Architecture v2</title>
+<style>
+  body { margin: 0; padding: 2rem; font-family: system-ui, -apple-system, sans-serif; background: #0f0f0f; color: #e0e0e0; }
+  h1 { font-size: 1.2rem; font-weight: 500; margin-bottom: 0.5rem; }
+  .meta { font-size: 0.8rem; color: #888; margin-bottom: 2rem; }
+  .diagram-wrap { max-width: 720px; margin: 0 auto; background: #1a1a1a; border-radius: 12px; padding: 1.5rem; }
+  svg text { font-family: system-ui, -apple-system, sans-serif; }
+  .th { font-size: 14px; font-weight: 500; fill: #e0e0e0; }
+  .ts { font-size: 12px; font-weight: 400; fill: #999; }
+  .arr { stroke: #555; stroke-width: 1.5; }
+  .leader { stroke: #444; stroke-width: 0.5; stroke-dasharray: 4 3; }
+  /* Color ramps - dark mode */
+  .c-coral rect { fill: #4A1B0C; stroke: #F0997B; }
+  .c-coral .th { fill: #F5C4B3; }
+  .c-coral .ts { fill: #F0997B; }
+  .c-teal rect { fill: #085041; stroke: #5DCAA5; }
+  .c-teal .th { fill: #9FE1CB; }
+  .c-teal .ts { fill: #5DCAA5; }
+  .c-gray rect { fill: #2C2C2A; stroke: #B4B2A9; }
+  .c-gray .th { fill: #D3D1C7; }
+  .c-gray .ts { fill: #B4B2A9; }
+  .c-amber rect { fill: #412402; stroke: #EF9F27; }
+  .c-amber .th { fill: #FAC775; }
+  .c-amber .ts { fill: #EF9F27; }
+  .c-blue rect { fill: #042C53; stroke: #85B7EB; }
+  .c-blue .th { fill: #B5D4F4; }
+  .c-blue .ts { fill: #85B7EB; }
+  .c-green rect { fill: #173404; stroke: #97C459; }
+  .c-green .th { fill: #C0DD97; }
+  .c-green .ts { fill: #97C459; }
+  .c-red rect { fill: #501313; stroke: #F09595; }
+  .c-red .th { fill: #F7C1C1; }
+  .c-red .ts { fill: #F09595; }
+  marker path { stroke: #555; }
+  .legend { max-width: 720px; margin: 1.5rem auto 0; font-size: 0.8rem; color: #777; line-height: 1.8; }
+  .legend span { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: middle; margin-right: 4px; }
+  .legend .l-coral { background: #4A1B0C; border: 1px solid #F0997B; }
+  .legend .l-teal { background: #085041; border: 1px solid #5DCAA5; }
+  .legend .l-amber { background: #412402; border: 1px solid #EF9F27; }
+  .legend .l-blue { background: #042C53; border: 1px solid #85B7EB; }
+  .legend .l-green { background: #173404; border: 1px solid #97C459; }
+  .legend .l-red { background: #501313; border: 1px solid #F09595; }
+</style>
+</head>
+<body>
+
+<div class="diagram-wrap">
+<h1>Sentinel + Sherpa — Architecture v2</h1>
+<p class="meta">BagHolderAI · Designed Session 61 · May 6, 2026 · Board-approved</p>
+
+<svg width="100%" viewBox="0 0 680 670" role="img">
+<title>Sentinel + Sherpa architecture v2</title>
+<desc>Data inputs feed Sentinel fast and slow loops, producing a risk score in Supabase. Sherpa reads score, adjusts Grid parameters. Board retains veto and capital control.</desc>
+
+<defs>
+  <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+    <path d="M2 1L8 5L2 9" fill="none" stroke="#555" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </marker>
+  <marker id="arrow-dash" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+    <path d="M2 1L8 5L2 9" fill="none" stroke="#666" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </marker>
+</defs>
+
+<text class="ts" x="195" y="24" text-anchor="middle" opacity="0.5">sprint 1</text>
+<text class="ts" x="485" y="24" text-anchor="middle" opacity="0.5">sprint 2</text>
+
+<g class="c-coral">
+  <rect x="60" y="34" width="270" height="54" rx="8" stroke-width="0.5"/>
+  <text class="th" x="195" y="53" text-anchor="middle" dominant-baseline="central">Fast inputs</text>
+  <text class="ts" x="195" y="73" text-anchor="middle" dominant-baseline="central">BTC price + funding rates · Binance</text>
+</g>
+
+<g class="c-teal">
+  <rect x="350" y="34" width="270" height="54" rx="8" stroke-width="0.5"/>
+  <text class="th" x="485" y="53" text-anchor="middle" dominant-baseline="central">Slow inputs</text>
+  <text class="ts" x="485" y="73" text-anchor="middle" dominant-baseline="central">Fear & Greed + CMC dominance</text>
+</g>
+
+<line x1="195" y1="88" x2="195" y2="160" class="arr" marker-end="url(#arrow)"/>
+<line x1="485" y1="88" x2="485" y2="160" class="arr" marker-end="url(#arrow)"/>
+
+<rect x="40" y="114" width="600" height="152" rx="12" fill="none" stroke="#555" stroke-width="0.5" stroke-dasharray="6 4"/>
+<text class="th" x="340" y="136" text-anchor="middle" dominant-baseline="central">Sentinel</text>
+<text class="ts" x="340" y="150" text-anchor="middle" dominant-baseline="central" opacity="0.5">bot/sentinel/ · multifile</text>
+
+<g class="c-coral">
+  <rect x="60" y="160" width="270" height="54" rx="8" stroke-width="0.5"/>
+  <text class="th" x="195" y="179" text-anchor="middle" dominant-baseline="central">Fast loop</text>
+  <text class="ts" x="195" y="199" text-anchor="middle" dominant-baseline="central">every 1-2 min · crash/pump</text>
+</g>
+
+<g class="c-teal">
+  <rect x="350" y="160" width="270" height="54" rx="8" stroke-width="0.5"/>
+  <text class="th" x="485" y="179" text-anchor="middle" dominant-baseline="central">Slow loop</text>
+  <text class="ts" x="485" y="199" text-anchor="middle" dominant-baseline="central">every 4-6h · regime bull/bear</text>
+</g>
+
+<rect x="60" y="226" width="560" height="28" rx="6" fill="none" stroke="#555" stroke-width="0.5" stroke-dasharray="4 3" opacity="0.35"/>
+<text class="ts" x="340" y="240" text-anchor="middle" dominant-baseline="central" opacity="0.4">sprint 3: + news feed (CryptoPanic / CMC) + LLM classification</text>
+
+<line x1="340" y1="266" x2="340" y2="306" class="arr" marker-end="url(#arrow)"/>
+<text class="ts" x="348" y="290" text-anchor="start" opacity="0.6">risk + opportunity score</text>
+
+<g class="c-gray">
+  <rect x="190" y="308" width="300" height="48" rx="8" stroke-width="0.5"/>
+  <text class="th" x="340" y="325" text-anchor="middle" dominant-baseline="central">Supabase</text>
+  <text class="ts" x="340" y="343" text-anchor="middle" dominant-baseline="central">score · bot_config · config_changes_log</text>
+</g>
+
+<path d="M340 356 L340 376 L225 376 L225 394" fill="none" class="arr" marker-end="url(#arrow)"/>
+<text class="ts" x="288" y="372" text-anchor="end" opacity="0.6">reads score</text>
+
+<g class="c-amber">
+  <rect x="60" y="396" width="330" height="54" rx="8" stroke-width="0.5"/>
+  <text class="th" x="225" y="415" text-anchor="middle" dominant-baseline="central">Sherpa</text>
+  <text class="ts" x="225" y="435" text-anchor="middle" dominant-baseline="central">bot/sherpa/ · score → param changes</text>
+</g>
+
+<g class="c-blue">
+  <rect x="440" y="396" width="190" height="54" rx="8" stroke-width="0.5"/>
+  <text class="th" x="535" y="415" text-anchor="middle" dominant-baseline="central">Board (Max)</text>
+  <text class="ts" x="535" y="435" text-anchor="middle" dominant-baseline="central">veto · 24h cooldown</text>
+</g>
+
+<line x1="440" y1="423" x2="392" y2="423" stroke="#666" stroke-width="0.5" stroke-dasharray="4 3" marker-end="url(#arrow-dash)"/>
+
+<text class="ts" x="225" y="462" text-anchor="middle" opacity="0.4">↻ writes params back to Supabase</text>
+
+<line x1="160" y1="450" x2="122" y2="484" class="arr" marker-end="url(#arrow)"/>
+<line x1="225" y1="450" x2="268" y2="484" class="arr" marker-end="url(#arrow)"/>
+<line x1="290" y1="450" x2="414" y2="484" class="arr" marker-end="url(#arrow)"/>
+
+<line x1="535" y1="450" x2="560" y2="484" stroke="#666" stroke-width="0.5" stroke-dasharray="4 3" marker-end="url(#arrow-dash)"/>
+
+<g class="c-green">
+  <rect x="56" y="486" width="130" height="42" rx="8" stroke-width="0.5"/>
+  <text class="th" x="121" y="500" text-anchor="middle" dominant-baseline="central">buy_pct</text>
+  <text class="ts" x="121" y="518" text-anchor="middle" dominant-baseline="central">0.3 – 3.0%</text>
+</g>
+<g class="c-green">
+  <rect x="202" y="486" width="130" height="42" rx="8" stroke-width="0.5"/>
+  <text class="th" x="267" y="500" text-anchor="middle" dominant-baseline="central">sell_pct</text>
+  <text class="ts" x="267" y="518" text-anchor="middle" dominant-baseline="central">0.8 – 4.0%</text>
+</g>
+<g class="c-green">
+  <rect x="348" y="486" width="130" height="42" rx="8" stroke-width="0.5"/>
+  <text class="th" x="413" y="500" text-anchor="middle" dominant-baseline="central">idle_reentry</text>
+  <text class="ts" x="413" y="518" text-anchor="middle" dominant-baseline="central">0.5 – 6h</text>
+</g>
+<g class="c-red">
+  <rect x="494" y="486" width="130" height="42" rx="8" stroke-width="0.5" stroke-dasharray="4 3"/>
+  <text class="th" x="559" y="500" text-anchor="middle" dominant-baseline="central">capital</text>
+  <text class="ts" x="559" y="518" text-anchor="middle" dominant-baseline="central">Board-only</text>
+</g>
+
+<line x1="267" y1="528" x2="267" y2="548" class="arr"/>
+<line x1="267" y1="548" x2="170" y2="568" class="arr" marker-end="url(#arrow)"/>
+<line x1="267" y1="548" x2="340" y2="568" class="arr" marker-end="url(#arrow)"/>
+<line x1="267" y1="548" x2="510" y2="568" class="arr" marker-end="url(#arrow)"/>
+
+<g class="c-green">
+  <rect x="95" y="570" width="150" height="42" rx="8" stroke-width="0.5"/>
+  <text class="th" x="170" y="585" text-anchor="middle" dominant-baseline="central">Grid: BTC</text>
+  <text class="ts" x="170" y="603" text-anchor="middle" dominant-baseline="central">live TBD</text>
+</g>
+<g class="c-green">
+  <rect x="265" y="570" width="150" height="42" rx="8" stroke-width="0.5"/>
+  <text class="th" x="340" y="585" text-anchor="middle" dominant-baseline="central">Grid: SOL</text>
+  <text class="ts" x="340" y="603" text-anchor="middle" dominant-baseline="central">live</text>
+</g>
+<g class="c-green">
+  <rect x="435" y="570" width="150" height="42" rx="8" stroke-width="0.5"/>
+  <text class="th" x="510" y="585" text-anchor="middle" dominant-baseline="central">Grid: BONK</text>
+  <text class="ts" x="510" y="603" text-anchor="middle" dominant-baseline="central">live</text>
+</g>
+
+<text class="ts" x="340" y="638" text-anchor="middle" opacity="0.4">+ coin da TF rotation (flusso da definire)</text>
+
+</svg>
+</div>
+
+<div class="legend">
+  <strong>Legenda:</strong><br>
+  <span class="l-coral"></span> Fast loop (sprint 1) · 
+  <span class="l-teal"></span> Slow loop (sprint 2) · 
+  <span class="l-amber"></span> Sherpa (regista) · 
+  <span class="l-blue"></span> Board (Max) · 
+  <span class="l-green"></span> Parametri + Grid (live) · 
+  <span class="l-red"></span> Capital (Board-only, locked)<br>
+  Linee tratteggiate = controllo Board / nodi futuri · Frecce piene = flusso dati automatico
+</div>
+
+</body>
+</html>
