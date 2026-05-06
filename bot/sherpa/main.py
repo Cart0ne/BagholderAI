@@ -102,6 +102,15 @@ def run_sherpa() -> None:
     )
 
     last_alert_ts: dict[str, float] = {}
+    # Telegram now alerts only when Sherpa's PROPOSAL changes between
+    # cycles (not when it differs from current bot_config). last_proposed
+    # holds the most recent proposed-params per symbol so we can compare.
+    # Bootstrapped from sherpa_proposals so a restart doesn't generate a
+    # spurious "first message" wave for proposals that haven't changed.
+    last_proposed: dict[str, dict] = _bootstrap_last_proposed(supabase)
+    # last_stop_buy_active mirrors the same logic for the boolean
+    # proposed_stop_buy_active flag — only alert when it flips.
+    last_stop_buy_active: dict[str, bool] = {}
 
     while not shutting_down["v"]:
         try:
@@ -151,6 +160,8 @@ def run_sherpa() -> None:
                     symbol_price=symbol_price,
                     dry_run=dry_run,
                     last_alert_ts=last_alert_ts,
+                    last_proposed=last_proposed,
+                    last_stop_buy_active=last_stop_buy_active,
                 )
 
         except Exception as e:
@@ -164,6 +175,45 @@ def run_sherpa() -> None:
             )
 
         time.sleep(LOOP_INTERVAL_S)
+
+
+def _bootstrap_last_proposed(supabase) -> dict[str, dict]:
+    """Read the latest sherpa_proposals row per active manual symbol so a
+    restart doesn't trigger a fresh Telegram wave for proposals that
+    haven't actually changed.
+
+    Returns a dict {symbol: {buy_pct, sell_pct, idle_reentry_hours}}.
+    Symbols with no prior proposal are simply absent — first cycle after
+    boot will alert as a 'first proposal' for them, which is correct.
+    """
+    out: dict[str, dict] = {}
+    try:
+        # Pull a generous window (last 6 hours, ~180 rows) and pick the
+        # most recent row per symbol. PostgREST doesn't expose DISTINCT ON
+        # via the JS client; doing it client-side is fine for 6 symbols.
+        from datetime import timedelta
+        cutoff = (datetime.now(timezone.utc) - timedelta(hours=6)).isoformat()
+        rows = (
+            supabase.table("sherpa_proposals")
+            .select("symbol, proposed_buy_pct, proposed_sell_pct, "
+                    "proposed_idle_reentry_hours, created_at")
+            .gte("created_at", cutoff)
+            .order("created_at", desc=True)
+            .execute()
+        )
+        for row in (rows.data or []):
+            symbol = row["symbol"]
+            if symbol in out:
+                continue  # already have the most recent for this symbol
+            out[symbol] = {
+                "buy_pct": _f(row.get("proposed_buy_pct")),
+                "sell_pct": _f(row.get("proposed_sell_pct")),
+                "idle_reentry_hours": _f(row.get("proposed_idle_reentry_hours")),
+            }
+        logger.info(f"Bootstrapped last_proposed for {len(out)} symbols")
+    except Exception as e:
+        logger.warning(f"last_proposed bootstrap failed: {e}")
+    return out
 
 
 def _fetch_latest_score(supabase) -> Optional[dict]:
@@ -242,6 +292,8 @@ def _handle_bot(
     symbol_price,
     dry_run: bool,
     last_alert_ts: dict,
+    last_proposed: dict,
+    last_stop_buy_active: dict,
 ) -> None:
     symbol = bot["symbol"]
     current = {
@@ -255,6 +307,23 @@ def _handle_bot(
 
     changed_params = [p for p in PROPOSED_PARAMS if is_changed(current[p], proposed[p])]
     would_have_changed = bool(changed_params)
+
+    # Per-bot alert gating: emit a Telegram only when Sherpa's PROPOSAL
+    # changes between cycles (not when it merely differs from current).
+    # The previous behavior would fire one message every TELEGRAM_THROTTLE_S
+    # for as long as proposed != current — even if Sherpa kept proposing
+    # the same exact thing. The new rule: alert only on a fresh proposal,
+    # then stay silent until the proposal *itself* changes again.
+    prev = last_proposed.get(symbol)
+    proposal_changed = (prev is None) or any(
+        is_changed(prev.get(p), proposed[p]) for p in PROPOSED_PARAMS
+    )
+    last_proposed[symbol] = dict(proposed)
+
+    prev_stop_buy = last_stop_buy_active.get(symbol)
+    stop_buy_flipped = (prev_stop_buy is None and proposed_stop_buy_active) \
+        or (prev_stop_buy is not None and prev_stop_buy != proposed_stop_buy_active)
+    last_stop_buy_active[symbol] = proposed_stop_buy_active
 
     if dry_run:
         # Write to sherpa_proposals only when there's a counterfactual
@@ -283,7 +352,12 @@ def _handle_bot(
                 btc_price=btc_price,
                 symbol_price=symbol_price,
             )
-        if would_have_changed:
+        # Alert gate: would_have_changed is the precondition (no point
+        # telling Max "I'd adjust" when proposed == current), AND the
+        # proposal must have moved since last cycle. Stop-buy flip is
+        # treated as its own alert reason — even if params didn't move,
+        # the risk crossing 90 is news worth surfacing.
+        if (would_have_changed and proposal_changed) or stop_buy_flipped:
             _alert_dry_run(notifier, last_alert_ts, symbol, current, proposed)
         return
 
@@ -327,7 +401,8 @@ def _handle_bot(
                     "risk_score": risk,
                 },
             )
-    if would_have_changed and any(p not in cooldown_locked for p in changed_params):
+    if (would_have_changed and proposal_changed
+            and any(p not in cooldown_locked for p in changed_params)):
         _alert_live(notifier, last_alert_ts, symbol, current, proposed)
 
 
