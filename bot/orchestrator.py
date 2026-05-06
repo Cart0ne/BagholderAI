@@ -77,6 +77,30 @@ def _spawn_trend_follower() -> subprocess.Popen:
     )
 
 
+def _spawn_sentinel() -> subprocess.Popen:
+    """Spawn the Sentinel subprocess (Sprint 1, fast loop only)."""
+    log_file = LOG_DIR / "sentinel.log"
+    f = open(log_file, "a")
+    return subprocess.Popen(
+        [sys.executable, "-m", "bot.sentinel.main"],
+        stdout=f,
+        stderr=subprocess.STDOUT,
+        cwd=str(Path.cwd()),
+    )
+
+
+def _spawn_sherpa() -> subprocess.Popen:
+    """Spawn the Sherpa subprocess (Sprint 1; SHERPA_MODE drives dry/live)."""
+    log_file = LOG_DIR / "sherpa.log"
+    f = open(log_file, "a")
+    return subprocess.Popen(
+        [sys.executable, "-m", "bot.sherpa.main"],
+        stdout=f,
+        stderr=subprocess.STDOUT,
+        cwd=str(Path.cwd()),
+    )
+
+
 def _reconcile_orphan_tf_bots(supabase, notifier) -> None:
     """45: Rescue TF bots whose bot_config says is_active=False but whose
     DB-replayed holdings are non-zero. Typical cause: a liquidation sell
@@ -213,6 +237,14 @@ def run_orchestrator():
 
     grid_processes: dict[str, ProcessInfo] = {}
     tf_process: subprocess.Popen | None = None
+    sentinel_process: subprocess.Popen | None = None
+    sherpa_process: subprocess.Popen | None = None
+    # Sentinel/Sherpa restart accounting. The pattern matches grid bots:
+    # bounded retries with backoff, then give up and Telegram-alert.
+    sentinel_restart_count = 0
+    sherpa_restart_count = 0
+    sentinel_gave_up = False
+    sherpa_gave_up = False
 
     shutting_down = {"v": False}
 
@@ -238,6 +270,12 @@ def run_orchestrator():
         if tf_process is not None and tf_process.poll() is None:
             logger.info("Stopping Trend Follower...")
             tf_process.send_signal(signal.SIGINT)
+        if sentinel_process is not None and sentinel_process.poll() is None:
+            logger.info("Stopping Sentinel...")
+            sentinel_process.send_signal(signal.SIGINT)
+        if sherpa_process is not None and sherpa_process.poll() is None:
+            logger.info("Stopping Sherpa...")
+            sherpa_process.send_signal(signal.SIGINT)
 
         for sym, info in grid_processes.items():
             try:
@@ -249,6 +287,16 @@ def run_orchestrator():
                 tf_process.wait(timeout=10)
             except subprocess.TimeoutExpired:
                 tf_process.kill()
+        if sentinel_process is not None:
+            try:
+                sentinel_process.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                sentinel_process.kill()
+        if sherpa_process is not None:
+            try:
+                sherpa_process.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                sherpa_process.kill()
 
         logger.info("All processes stopped.")
         # 43a: structured event. Use critical severity if the shutdown was
@@ -422,6 +470,75 @@ def run_orchestrator():
                         except Exception:
                             pass
                     tf_process = None
+
+            # 5b. Reconcile Sentinel + Sherpa (Sprint 1, always-on managed
+            # processes). Same restart-with-backoff contract as grid bots:
+            # bounded retries, then give up and alert. There is no enable
+            # flag yet — they're either alive or being relaunched. Either
+            # process can crash without affecting Grid: Sherpa just keeps
+            # using the last sentinel_scores row, Grid keeps using the
+            # parameters bot_config currently holds.
+            if sentinel_process is None:
+                sentinel_process = _spawn_sentinel()
+                logger.info(f"Sentinel spawned (pid={sentinel_process.pid})")
+            elif sentinel_process.poll() is not None and not sentinel_gave_up:
+                sentinel_restart_count += 1
+                if sentinel_restart_count > MAX_RESTART_ATTEMPTS:
+                    logger.error(
+                        f"Sentinel max restarts reached ({MAX_RESTART_ATTEMPTS}); giving up"
+                    )
+                    sentinel_gave_up = True
+                    try:
+                        notifier.send_message(
+                            f"🚨 <b>Sentinel crashed {MAX_RESTART_ATTEMPTS} times</b>\n"
+                            f"Giving up. Manual intervention needed."
+                        )
+                    except Exception:
+                        pass
+                else:
+                    logger.warning(
+                        f"Sentinel crashed — restarting "
+                        f"({sentinel_restart_count}/{MAX_RESTART_ATTEMPTS})"
+                    )
+                    try:
+                        notifier.send_message(
+                            f"🔄 <b>Sentinel restarted</b> "
+                            f"({sentinel_restart_count}/{MAX_RESTART_ATTEMPTS})"
+                        )
+                    except Exception:
+                        pass
+                    sentinel_process = _spawn_sentinel()
+
+            if sherpa_process is None:
+                sherpa_process = _spawn_sherpa()
+                logger.info(f"Sherpa spawned (pid={sherpa_process.pid})")
+            elif sherpa_process.poll() is not None and not sherpa_gave_up:
+                sherpa_restart_count += 1
+                if sherpa_restart_count > MAX_RESTART_ATTEMPTS:
+                    logger.error(
+                        f"Sherpa max restarts reached ({MAX_RESTART_ATTEMPTS}); giving up"
+                    )
+                    sherpa_gave_up = True
+                    try:
+                        notifier.send_message(
+                            f"🚨 <b>Sherpa crashed {MAX_RESTART_ATTEMPTS} times</b>\n"
+                            f"Giving up. Manual intervention needed."
+                        )
+                    except Exception:
+                        pass
+                else:
+                    logger.warning(
+                        f"Sherpa crashed — restarting "
+                        f"({sherpa_restart_count}/{MAX_RESTART_ATTEMPTS})"
+                    )
+                    try:
+                        notifier.send_message(
+                            f"🔄 <b>Sherpa restarted</b> "
+                            f"({sherpa_restart_count}/{MAX_RESTART_ATTEMPTS})"
+                        )
+                    except Exception:
+                        pass
+                    sherpa_process = _spawn_sherpa()
 
             # 6. First-run summary
             if first_run:
