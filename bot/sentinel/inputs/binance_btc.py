@@ -43,6 +43,20 @@ def fetch_ticker_24hr(symbol: str = "BTCUSDT") -> dict:
     }
 
 
+def fetch_price(symbol: str) -> float:
+    """GET /api/v3/ticker/price — single price quote. Light endpoint
+    used by Sherpa to record symbol_price on each proposal.
+    """
+    r = requests.get(
+        f"{_BASE}/api/v3/ticker/price",
+        params={"symbol": symbol},
+        timeout=_TIMEOUT,
+    )
+    r.raise_for_status()
+    raw = r.json()
+    return float(raw["price"])
+
+
 def fetch_klines_1m(symbol: str = "BTCUSDT", limit: int = 60) -> list[tuple[int, float]]:
     """GET /api/v3/klines?interval=1m — used at startup to warm the
     rolling-price buffer instead of waiting an hour. Returns a list of

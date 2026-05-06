@@ -34,6 +34,7 @@ from db.client import get_client
 from db.event_logger import log_event
 from utils.telegram_notifier import SyncTelegramNotifier
 
+from bot.sentinel.inputs.binance_btc import fetch_price
 from bot.sherpa.config_writer import write_parameter
 from bot.sherpa.cooldown_manager import latest_manual_change, parameters_in_cooldown
 from bot.sherpa.parameter_rules import calculate_parameters, is_changed
@@ -132,6 +133,11 @@ def run_sherpa() -> None:
 
             bots = _fetch_active_manual_bots(supabase)
             for bot in bots:
+                # symbol_price is fetched per-bot from Binance spot. Best-
+                # effort: a fetch failure logs and stores None — the row
+                # still gets written, replay can fall back to klines for
+                # that timestamp.
+                symbol_price = _fetch_symbol_price(bot["symbol"])
                 _handle_bot(
                     supabase=supabase,
                     notifier=notifier,
@@ -142,6 +148,7 @@ def run_sherpa() -> None:
                     proposed_regime=proposed_regime,
                     proposed_stop_buy_active=proposed_stop_buy_active,
                     btc_price=score.get("btc_price"),
+                    symbol_price=symbol_price,
                     dry_run=dry_run,
                     last_alert_ts=last_alert_ts,
                 )
@@ -209,6 +216,19 @@ def _fetch_active_manual_bots(supabase) -> list[dict]:
     return res.data or []
 
 
+def _fetch_symbol_price(symbol: str) -> Optional[float]:
+    """Convert 'BONK/USDT' -> 'BONKUSDT' and fetch the spot price.
+    Returns None on any error (network, unknown symbol). Sherpa never
+    blocks on a missing price.
+    """
+    binance_symbol = symbol.replace("/", "")
+    try:
+        return fetch_price(binance_symbol)
+    except Exception as e:
+        logger.warning(f"symbol_price fetch failed for {symbol}: {e}")
+        return None
+
+
 def _handle_bot(
     supabase,
     notifier: SyncTelegramNotifier,
@@ -219,6 +239,7 @@ def _handle_bot(
     proposed_regime: str,
     proposed_stop_buy_active: bool,
     btc_price,
+    symbol_price,
     dry_run: bool,
     last_alert_ts: dict,
 ) -> None:
@@ -250,6 +271,7 @@ def _handle_bot(
             cooldown_parameters=cooldown_locked,
             would_have_changed=would_have_changed,
             btc_price=btc_price,
+            symbol_price=symbol_price,
         )
         log_event(
             severity="info",
@@ -330,6 +352,7 @@ def _insert_proposal(
     cooldown_parameters: list[str],
     would_have_changed: bool,
     btc_price,
+    symbol_price,
 ) -> None:
     try:
         supabase.table("sherpa_proposals").insert({
@@ -349,6 +372,7 @@ def _insert_proposal(
             "cooldown_parameters": cooldown_parameters,
             "would_have_changed": would_have_changed,
             "btc_price": btc_price,
+            "symbol_price": symbol_price,
         }).execute()
     except Exception as e:
         logger.error(f"sherpa_proposals insert failed for {symbol}: {e}")
