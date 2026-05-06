@@ -32,6 +32,12 @@ RETENTION_POLICY: dict[str, dict] = {
     "bot_state_snapshots": {"days":  7, "date_column": "created_at"},
     "bot_events_log":      {"days":  7, "date_column": "created_at"},
     "counterfactual_log":  {"days": 14, "date_column": "created_at"},
+    # Sentinel/Sherpa: 30 days for raw scores (used to verify Sherpa
+    # decisions against actual market state), 60 days for proposals
+    # (so the 7-day weekly counterfactual report always has a full
+    # comparison window even when run a few weeks late).
+    "sentinel_scores":     {"days": 30, "date_column": "created_at"},
+    "sherpa_proposals":    {"days": 60, "date_column": "created_at"},
 }
 
 

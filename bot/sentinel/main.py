@@ -136,19 +136,10 @@ def run_sentinel() -> None:
                     details={"source": "supabase_insert"},
                 )
 
-            log_event(
-                severity="info",
-                category="safety",
-                event="SENTINEL_SCAN",
-                message=f"risk={risk} opp={opp}",
-                details={
-                    "risk_score": risk,
-                    "opportunity_score": opp,
-                    "btc_price": snapshot.get("btc_price"),
-                    "btc_change_1h": snapshot.get("btc_change_1h"),
-                    "funding_rate": funding_rate,
-                },
-            )
+            # Per-scan event logging removed: every scan already lands as
+            # a sentinel_scores row; duplicating it in bot_events_log
+            # doubled the write volume for no gain. Errors and lifecycle
+            # events still go through log_event below.
 
             _maybe_alert(notifier, last_alert_ts, risk, snapshot)
 

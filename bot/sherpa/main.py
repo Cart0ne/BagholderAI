@@ -257,39 +257,32 @@ def _handle_bot(
     would_have_changed = bool(changed_params)
 
     if dry_run:
-        _insert_proposal(
-            supabase=supabase,
-            symbol=symbol,
-            risk=risk,
-            opp=opp,
-            current=current,
-            proposed=proposed,
-            proposed_regime=proposed_regime,
-            current_stop_buy_drawdown_pct=_f(bot.get("stop_buy_drawdown_pct")),
-            proposed_stop_buy_active=proposed_stop_buy_active,
-            cooldown_active=cooldown_active,
-            cooldown_parameters=cooldown_locked,
-            would_have_changed=would_have_changed,
-            btc_price=btc_price,
-            symbol_price=symbol_price,
-        )
-        log_event(
-            severity="info",
-            category="config",
-            event="SHERPA_PROPOSAL",
-            message=f"{symbol} dry_run proposal risk={risk}",
-            symbol=symbol,
-            details={
-                "mode": "dry_run",
-                "current": current,
-                "proposed": proposed,
-                "risk_score": risk,
-                "opportunity_score": opp,
-                "would_have_changed": would_have_changed,
-                "cooldown_parameters": cooldown_locked,
-                "proposed_stop_buy_active": proposed_stop_buy_active,
-            },
-        )
+        # Write to sherpa_proposals only when there's a counterfactual
+        # signal to record: would_have_changed=true OR a stop_buy
+        # would-have-activated event OR a cooldown skip. No-op cycles
+        # (proposed == current, no cooldown, no stop_buy) are pure
+        # noise for replay analysis and would 3x the write volume.
+        # Per-proposal SHERPA_PROPOSAL events also dropped — sherpa_proposals
+        # already captures the row; doubling it in bot_events_log added
+        # ~2,400 rows/day with no information gain. Lifecycle/cooldown/
+        # error events still go through log_event below.
+        if would_have_changed or proposed_stop_buy_active or cooldown_active:
+            _insert_proposal(
+                supabase=supabase,
+                symbol=symbol,
+                risk=risk,
+                opp=opp,
+                current=current,
+                proposed=proposed,
+                proposed_regime=proposed_regime,
+                current_stop_buy_drawdown_pct=_f(bot.get("stop_buy_drawdown_pct")),
+                proposed_stop_buy_active=proposed_stop_buy_active,
+                cooldown_active=cooldown_active,
+                cooldown_parameters=cooldown_locked,
+                would_have_changed=would_have_changed,
+                btc_price=btc_price,
+                symbol_price=symbol_price,
+            )
         if would_have_changed:
             _alert_dry_run(notifier, last_alert_ts, symbol, current, proposed)
         return
