@@ -46,7 +46,7 @@ Preview rimosse da entrambi i volumi.
 
 **Volume 3** — prossimo target di pubblicazione. Coprirà sessions 53+. Nessuna struttura definita ancora. La session 63 è appena iniziata; il volume si chiuderà naturalmente quando un arco narrativo sarà completo (stima grezza: sessioni 70–80).
 
-**Sessione corrente:** 63 (init). Session 62 BUILDING in `diary_entries`, da chiudere a COMPLETE. Il .docx S62 è da produrre.
+**Sessione corrente:** 63 (init). Session 62 diary .docx prodotto; entry in `diary_entries` da chiudere a COMPLETE.
 
 **Check di congruenza diary↔DB:** nessun check automatico attivo. È un TODO nel Validation System §3 ("Diary entry in Supabase = diary .docx"). Da automatizzare.
 
