@@ -1,0 +1,749 @@
+"""
+BagHolderAI - Sell pipeline (Phase 1 split from grid_bot.py).
+
+Contains:
+- _execute_sell: fixed-mode sell at a grid level (legacy v1).
+- _execute_percentage_sell: percentage-mode FIFO sell (v3, hot path).
+- evaluate_gain_saturation: 45g circuit breaker.
+- get_effective_tp: 42a greed-decay tier resolution.
+
+KNOWN BUGS (kept intact for Phase 1 — fix in Phase 2):
+- 60c: _execute_percentage_sell can be called twice in <1s for the same
+  symbol; the DB safety trigger "Duplicate trade rejected within 5s"
+  blocks the 2nd INSERT, but state.holdings/_pct_open_positions/audit
+  have already been mutated for both calls. Result: state.realized_pnl
+  inflated, mem_queue desynced from DB, drift detection rebuilds, loop.
+  See project_60c_fifo_init_bug memory for full diagnosis.
+- The audit `sell_fifo_detail` is written BEFORE log_trade. If log_trade
+  fails (Duplicate trade rejected, or anything else), the audit becomes
+  orphaned (written, no matching trade in `trades`).
+- Dust pop in `handle_step_size_dust` / `handle_economic_dust` mutates
+  state without writing any DB event — sole queue desync source.
+
+# TODO 62a (Phase 2): make _execute_percentage_sell atomic — state changes
+# AFTER log_trade succeeds, with rollback on failure. Move audit AFTER trade.
+# Add client-side idempotency key to short-circuit double-calls before they
+# touch state. See dust_handler.py for the dust event TODO.
+"""
+
+import time
+import logging
+from typing import Optional
+from datetime import datetime, timezone
+from utils.formatting import fmt_price
+from db.event_logger import log_event
+
+# These imports are inside functions where used (kept identical to original).
+
+logger = logging.getLogger("bagholderai.grid")
+
+
+# ----------------------------------------------------------------------
+# 42a: Greed decay TP resolver. Pure-ish (only reads bot state + clock).
+# ----------------------------------------------------------------------
+
+def get_effective_tp(bot) -> tuple:
+    """42a: Greed decay for TF bots. Returns (threshold_pct, age_minutes, tier_used).
+
+    For TF bots with a valid allocated_at + greed_decay_tiers, returns the
+    tp_pct of the highest-minutes tier whose threshold is <= age. When
+    age is below the lowest tier's minutes (pre-first-tier window), the
+    first tier's tp_pct is used — greed decay is authoritative from t=0,
+    not a gradual override that kicks in after N minutes.
+
+    Post-last-tier salvage (CEO decision 2026-04-20 evening): once the
+    bot outlives the highest-minutes tier, fall back to bot.sell_pct
+    as a final safety threshold (if sell_pct > 0). This replaces the
+    awkward 999999-minutes placeholder tier with an actual editable
+    per-coin parameter. Setting sell_pct=0 on a TF coin disables the
+    salvage (bot stays on the last tier's tp_pct forever).
+
+    For anything else (manual bots, missing allocated_at, empty/bad
+    tiers), returns (bot.sell_pct, None, None) — the legacy behavior.
+    """
+    if bot.managed_by not in ("trend_follower", "tf_grid"):
+        return (bot.sell_pct, None, None)
+    if bot.allocated_at is None or not bot.greed_decay_tiers:
+        return (bot.sell_pct, None, None)
+
+    now = datetime.now(timezone.utc)
+    alloc = bot.allocated_at
+    if alloc.tzinfo is None:
+        alloc = alloc.replace(tzinfo=timezone.utc)
+    age_minutes = (now - alloc).total_seconds() / 60.0
+
+    tier_used = None
+    try:
+        tiers = sorted(
+            (t for t in bot.greed_decay_tiers
+             if isinstance(t, dict) and "minutes" in t and "tp_pct" in t),
+            key=lambda t: float(t["minutes"]),
+        )
+    except Exception:
+        return (bot.sell_pct, age_minutes, None)
+    if not tiers:
+        return (bot.sell_pct, age_minutes, None)
+    for tier in tiers:
+        try:
+            if age_minutes >= float(tier["minutes"]):
+                tier_used = tier
+            else:
+                break
+        except Exception:
+            continue
+
+    if tier_used is None:
+        tier_used = tiers[0]
+
+    last_tier_minutes = float(tiers[-1]["minutes"])
+    if age_minutes >= last_tier_minutes and bot.sell_pct > 0:
+        return (
+            float(bot.sell_pct),
+            age_minutes,
+            {"minutes": last_tier_minutes, "tp_pct": float(bot.sell_pct), "source": "sell_pct"},
+        )
+
+    try:
+        return (float(tier_used["tp_pct"]), age_minutes, tier_used)
+    except Exception:
+        return (bot.sell_pct, age_minutes, None)
+
+
+# ----------------------------------------------------------------------
+# 45g: Gain-saturation circuit breaker.
+# ----------------------------------------------------------------------
+
+def evaluate_gain_saturation(bot, current_price: float, trigger_source: str) -> bool:
+    """45g — evaluate the gain-saturation breaker for this coin.
+
+    Counts positive-PnL sells inside the current management period
+    (= since the first ALLOCATE after the last DEALLOCATE on this
+    symbol; ALLOCATE-update does NOT shift the start). When the count
+    reaches the effective N (per-coin override > global default), arms
+    the breaker: sets `_gain_saturation_triggered`, emits the
+    `tf_exit_saturated` event, and lets the existing pending_liquidation
+    pipeline in grid_runner do the actual force-sell + DEALLOCATE row.
+
+    trigger_source: "post_sell" (called from check_price_and_execute
+    after a positive sell) or "proactive_tick" (called from the main
+    loop in grid_runner, covers coins that already have counter>=N at
+    deploy time or whose holdings hit 0 with no pending sells).
+
+    Returns True if the breaker fired this call, False otherwise.
+    Idempotent: a second call after the first trigger is a no-op.
+    """
+    if bot.managed_by != "trend_follower":
+        return False
+    if not bot.tf_exit_after_n_enabled:
+        return False
+    if bot._gain_saturation_triggered:
+        return False
+    # Mutually exclusive with the other latched exits (priority order
+    # mirrors check_price_and_execute).
+    if (bot._stop_loss_triggered
+            or bot._trailing_stop_triggered
+            or bot._take_profit_triggered
+            or bot._profit_lock_triggered):
+        return False
+    if bot.trade_logger is None:
+        return False
+
+    from bot.trend_follower.gain_saturation import (
+        count_positive_sells_since,
+        get_period_start,
+        resolve_effective_n,
+    )
+
+    effective_n = resolve_effective_n(
+        bot.tf_exit_after_n_default,
+        bot.tf_exit_after_n_override,
+    )
+    if effective_n <= 0:
+        return False
+
+    period_start = get_period_start(bot.trade_logger.client, bot.symbol)
+    if period_start is None:
+        return False
+
+    pos_count = count_positive_sells_since(
+        bot.trade_logger.client, bot.symbol, period_start
+    )
+    if pos_count < effective_n:
+        return False
+
+    unrealized = (
+        (current_price - bot.state.avg_buy_price) * bot.state.holdings
+        if bot.state.avg_buy_price > 0 and bot.state.holdings > 0
+        else 0.0
+    )
+    was_override = bot.tf_exit_after_n_override is not None
+    logger.warning(
+        f"[{bot.symbol}] GAIN-SATURATION TRIGGERED ({trigger_source}): "
+        f"{pos_count} positive sells ≥ N={effective_n} "
+        f"({'override' if was_override else 'default'}). "
+        f"Holdings={bot.state.holdings:.6f}, unrealized ${unrealized:.2f}."
+    )
+    # Set the flag BEFORE any side effects so a concurrent buy decision
+    # sees the breaker as already armed (race protection from §3.5 of
+    # the brief). The DEALLOCATE row to trend_decisions_log is emitted
+    # by grid_runner when pending_liquidation fires.
+    bot._gain_saturation_triggered = True
+    log_event(
+        severity="info",
+        category="safety",
+        event="tf_exit_saturated",
+        symbol=bot.symbol,
+        message=f"TF exit after N={effective_n} positive sells",
+        details={
+            "n_threshold": effective_n,
+            "was_override": was_override,
+            "positive_sells_count": pos_count,
+            "period_started_at": period_start.isoformat(),
+            "residual_holdings": float(bot.state.holdings or 0),
+            "residual_avg_buy_price": float(bot.state.avg_buy_price or 0),
+            "exit_price": float(current_price),
+            "liq_value_usd": float(bot.state.holdings or 0) * float(current_price),
+            "liq_pnl_usd": unrealized,
+            "total_period_realized_pnl_usd": float(bot.state.realized_pnl or 0),
+            "trigger_source": trigger_source,
+        },
+    )
+    # holdings=0 case (49b ALGO scenario): no sell to ride, so flag
+    # pending_liquidation directly here. grid_runner picks it up next
+    # tick → _force_liquidate sees no holdings → emits the DEALLOCATE
+    # row + Telegram cycle-close summary → bot exits gracefully.
+    # holdings>0 case: pending_liquidation will be set by the existing
+    # cycle_closed path in _check_percentage_and_execute once the
+    # forced sells empty the queue. Either way we converge.
+    if bot.state.holdings <= 1e-9:
+        bot.pending_liquidation = True
+    return True
+
+
+# ----------------------------------------------------------------------
+# Fixed-mode sell helpers.
+# ----------------------------------------------------------------------
+
+def activate_buy_level(bot, sell_level):
+    """When a sell fills, reactivate the nearest filled buy level below it.
+
+    This lets the grid buy again if price drops back down.
+    """
+    for level in reversed(bot.state.levels):
+        if level.side == "buy" and level.filled and level.price < sell_level.price:
+            level.filled = False
+            level.filled_at = None
+            return
+
+
+def execute_sell(bot, level, price: float) -> Optional[dict]:
+    """
+    Execute a sell at a grid level (fixed mode).
+
+    HARDCODED RULE: Strategy A NEVER sells at a loss.
+    """
+    # Task 10: enforce minimum profit target before selling.
+    # min_profit_pct is a percentage (e.g. 1.0 = 1%), aligned with buy_pct / sell_pct.
+    if bot.min_profit_pct > 0 and bot.state.avg_buy_price > 0:
+        min_price = bot.state.avg_buy_price * (1 + bot.min_profit_pct / 100)
+        if price < min_price:
+            logger.info(
+                f"SKIP: sell at {fmt_price(price)} below min profit target "
+                f"(need {fmt_price(min_price)}, {bot.min_profit_pct:.1f}% above avg buy)"
+            )
+            return None
+
+    # 57a: Strategy A guard checks the FIFO lot being sold, not avg_buy_price.
+    # On a multi-lot position the avg can drift toward market and let the
+    # bot sell a lot that is realy underwater while the avg looks profitable.
+    # Falls back to avg_buy_price only if the FIFO queue is empty (legacy /
+    # restart edge); _execute_sell here is the fixed-mode path which today
+    # is unused, so this is preventative for any future fixed-mode revival.
+    lot_buy_price = (
+        bot._pct_open_positions[0]["price"]
+        if bot._pct_open_positions
+        else bot.state.avg_buy_price
+    )
+    if bot.strategy == "A" and price < lot_buy_price:
+        # 39a/39c/45f/45g/51b: TF bots can override Strategy A on
+        # stop-loss, trailing-stop, take-profit, profit-lock,
+        # gain-saturation, or bearish exit (mixed-lots liquidation).
+        tf_override = (
+            bot.managed_by in ("trend_follower", "tf_grid")
+            and (bot._stop_loss_triggered
+                 or bot._trailing_stop_triggered
+                 or bot._take_profit_triggered
+                 or bot._profit_lock_triggered
+                 or bot._gain_saturation_triggered
+                 or bot.pending_liquidation)
+        )
+        if tf_override:
+            if bot._stop_loss_triggered:
+                reason = "STOP-LOSS"
+            elif bot._trailing_stop_triggered:
+                reason = "TRAILING-STOP"
+            elif bot._take_profit_triggered:
+                reason = "TAKE-PROFIT"
+            elif bot._profit_lock_triggered:
+                reason = "PROFIT-LOCK"
+            elif bot._gain_saturation_triggered:
+                reason = "GAIN-SATURATION"
+            else:
+                reason = "BEARISH EXIT"
+            logger.warning(
+                f"{reason} OVERRIDE: Sell at {fmt_price(price)} < "
+                f"lot buy {fmt_price(lot_buy_price)} ({bot.symbol})."
+            )
+        else:
+            logger.info(
+                f"BLOCKED: Sell at {fmt_price(price)} < lot buy {fmt_price(lot_buy_price)}. "
+                f"Strategy A never sells at loss."
+            )
+            return None
+
+    # Sell the amount that was bought at the corresponding buy level
+    amount = level.order_amount
+
+    if amount <= 0:
+        return None
+
+    # Guard: skip sell if insufficient holdings (1e-10 tolerance for floating-point accumulation)
+    if amount > bot.state.holdings + 1e-10:
+        logger.warning(
+            f"Insufficient holdings for SELL {bot.symbol}: "
+            f"need {amount:.6f}, have {bot.state.holdings:.6f}. Skipping level {fmt_price(level.price)}."
+        )
+        bot.skipped_sells.append({
+            "symbol": bot.symbol,
+            "level_price": level.price,
+            "amount_needed": amount,
+            "holdings": bot.state.holdings,
+        })
+        return None
+
+    revenue = amount * price
+    fee = revenue * bot.FEE_RATE
+
+    # Snapshot for Telegram verification
+    holdings_value_before = bot.state.holdings * price
+
+    # Calculate realized P&L for this trade.
+    # 52a: in paper mode fees are informational only — they are computed
+    # for the `fee` column and `state.total_fees`, but never deducted
+    # from cash (total_invested/total_received don't include them).
+    # Subtracting them here was creating phantom losses (~$7 cumulative
+    # on Grid manual). Live mode decision deferred until go-live.
+    # 57a: cost_basis derives from the FIFO lot's buy price, not from
+    # the rolling avg_buy_price. Avg drifts toward market on multi-lot
+    # positions and quietly biases realized_pnl. lot_buy_price was
+    # already resolved above for the Strategy A guard; reuse it here.
+    cost_basis = amount * lot_buy_price
+    buy_fee = cost_basis * bot.FEE_RATE
+    realized_pnl = revenue - cost_basis
+
+    # Mark level as filled
+    level.filled = True
+    level.filled_at = time.time()
+
+    # Update state — do NOT touch avg_buy_price on sells
+    bot.state.total_received += revenue
+    bot.state.total_fees += fee + buy_fee
+    bot.state.holdings -= amount
+    bot.state.realized_pnl += realized_pnl
+    bot.state.daily_realized_pnl += realized_pnl
+
+    # 39b: profitable sell releases the manual stop-buy gate.
+    if bot._stop_buy_active and realized_pnl > 0:
+        bot._stop_buy_active = False
+        logger.info(
+            f"[{bot.symbol}] STOP-BUY RESET: profitable sell ${realized_pnl:.2f} "
+            f"cleared the block. Buys re-enabled."
+        )
+        log_event(
+            severity="info",
+            category="safety",
+            event="stop_buy_cleared",
+            symbol=bot.symbol,
+            message=f"Manual stop-buy reset after profitable sell ${realized_pnl:.2f}",
+            details={"realized_pnl": realized_pnl},
+        )
+
+    # Reset avg_buy_price when fully sold out
+    if bot.state.holdings <= 0:
+        bot.state.holdings = 0
+        bot.state.avg_buy_price = 0
+
+    # Reactivate the corresponding buy level below
+    activate_buy_level(bot, level)
+
+    bot._daily_trade_count += 1
+
+    trade_data = {
+        "symbol": bot.symbol,
+        "side": "sell",
+        "amount": amount,
+        "price": price,
+        "cost": revenue,
+        "fee": fee,
+        "strategy": bot.strategy,
+        "brain": "grid",
+        "reason": f"Grid sell at level {fmt_price(level.price)} (price rose to {fmt_price(price)})",
+        "mode": bot.mode,
+        "realized_pnl": realized_pnl,
+        "holdings_value_before": holdings_value_before,
+        "managed_by": getattr(bot, "managed_by", "manual"),
+    }
+
+    # Log to database
+    try:
+        bot.trade_logger.log_trade(**trade_data)
+    except Exception as e:
+        logger.error(f"Failed to log trade: {e}")
+
+    logger.info(
+        f"SELL {amount:.6f} {bot.symbol} @ {fmt_price(price)} "
+        f"(revenue: ${revenue:.2f}, fee: ${fee:.4f}, pnl: ${realized_pnl:.4f})"
+    )
+
+    return trade_data
+
+
+# ----------------------------------------------------------------------
+# Percentage-mode sell (HOT PATH — used by all v3 bots).
+# ----------------------------------------------------------------------
+
+def execute_percentage_sell(bot, price: float) -> Optional[dict]:
+    """Execute a percentage-mode sell: sell oldest open lot (FIFO)."""
+    from bot.strategies.dust_handler import handle_step_size_dust, handle_economic_dust
+
+    if not bot._pct_open_positions:
+        return None
+
+    if bot.state.holdings <= 0:
+        logger.info(f"No holdings left to sell {bot.symbol}, skipping pct sell.")
+        return None
+
+    # Resolve the lot first so guards can reference the actual lot price
+    lot = bot._pct_open_positions[0]
+    lot_buy_price = lot["price"]
+
+    # Last-lot logic: if holdings are <= lot size, sell everything in one trade
+    if bot.state.holdings <= lot["amount"] + 1e-10:
+        amount = bot.state.holdings
+    else:
+        amount = lot["amount"]
+
+    # Mirror the same guards as _execute_sell
+    if bot.min_profit_pct > 0 and bot.state.avg_buy_price > 0:
+        min_price = bot.state.avg_buy_price * (1 + bot.min_profit_pct / 100)
+        if price < min_price:
+            logger.info(
+                f"SKIP: pct sell at {fmt_price(price)} below min profit target "
+                f"(need {fmt_price(min_price)}, {bot.min_profit_pct:.1f}% above avg buy)"
+            )
+            return None
+
+    # Strategy A never sells at a loss on the specific lot being sold —
+    # UNLESS this is a TF-managed bot under stop-loss, trailing-stop,
+    # bearish exit, take-profit, profit-lock or gain-saturation
+    # (39a/39c/45f/45g/51b: override so all lots liquidate in one pass
+    # even when some are locally underwater).
+    if bot.strategy == "A" and price < lot_buy_price:
+        tf_override = (
+            bot.managed_by in ("trend_follower", "tf_grid")
+            and (bot._stop_loss_triggered
+                 or bot._trailing_stop_triggered
+                 or bot._take_profit_triggered
+                 or bot._profit_lock_triggered
+                 or bot._gain_saturation_triggered
+                 or bot.pending_liquidation)
+        )
+        if tf_override:
+            if bot._stop_loss_triggered:
+                reason = "STOP-LOSS"
+            elif bot._trailing_stop_triggered:
+                reason = "TRAILING-STOP"
+            elif bot._take_profit_triggered:
+                reason = "TAKE-PROFIT"
+            elif bot._profit_lock_triggered:
+                reason = "PROFIT-LOCK"
+            elif bot._gain_saturation_triggered:
+                reason = "GAIN-SATURATION"
+            else:
+                reason = "BEARISH EXIT"
+            logger.warning(
+                f"{reason} OVERRIDE: Pct sell at {fmt_price(price)} < "
+                f"lot buy {fmt_price(lot_buy_price)} ({bot.symbol})."
+            )
+        else:
+            logger.info(
+                f"BLOCKED: Pct sell at {fmt_price(price)} < lot buy {fmt_price(lot_buy_price)}. "
+                f"Strategy A never sells at loss."
+            )
+            return None
+
+    if amount > bot.state.holdings + 1e-10:
+        logger.warning(
+            f"Insufficient holdings for SELL {bot.symbol}: "
+            f"need {amount:.6f}, have {bot.state.holdings:.6f}. Skipping pct sell."
+        )
+        bot.skipped_sells.append({
+            "symbol": bot.symbol,
+            "level_price": price,
+            "amount_needed": amount,
+            "holdings": bot.state.holdings,
+        })
+        return None
+
+    # Round to valid step size and validate against exchange filters
+    if bot._exchange_filters:
+        from utils.exchange_filters import round_to_step, validate_order
+        amount = round_to_step(amount, bot._exchange_filters["lot_step_size"])
+        if handle_step_size_dust(bot, amount, price):
+            return None
+        valid, reason_reject = validate_order(bot.symbol, amount, price, bot._exchange_filters)
+        if not valid:
+            if handle_economic_dust(bot, price, reason_reject):
+                return None
+            logger.warning(f"[{bot.symbol}] SELL order rejected: {reason_reject}")
+            return None
+
+    revenue = amount * price
+    fee = revenue * bot.FEE_RATE
+    holdings_value_before = bot.state.holdings * price
+    # 53a: walk the FIFO queue and sum (lot.amount × lot.price) over the
+    # lots actually consumed by this sell. Last-lot logic can ask for an
+    # `amount` that crosses lot boundaries (holdings > first lot size with
+    # >=2 lots open); the previous code computed cost_basis only on the
+    # first lot and then `pop(0)`-ed exactly once, leaving the remainder
+    # of consumed lots as ghosts in the queue and biasing future cost
+    # bases upward. Walk + consume here keeps both the per-trade pnl and
+    # the queue state correct across any consume span.
+    cost_basis = 0.0
+    remaining = amount
+    consumed_idx = 0
+    while remaining > 1e-9 and consumed_idx < len(bot._pct_open_positions):
+        lot = bot._pct_open_positions[consumed_idx]
+        if lot["amount"] <= remaining + 1e-9:
+            cost_basis += lot["amount"] * lot["price"]
+            remaining -= lot["amount"]
+            consumed_idx += 1
+        else:
+            cost_basis += remaining * lot["price"]
+            remaining = 0
+    buy_fee = cost_basis * bot.FEE_RATE
+    # 52a: paper-mode realized_pnl excludes fees (see _execute_sell comment).
+    realized_pnl = revenue - cost_basis
+
+    # 57a: forensic audit trail. One row per percentage-mode sell with
+    # the FIFO numbers as they were at decision time. ~20 sells/day
+    # cluster-wide; cheap. If a future report disagrees with the
+    # broker, we can replay these events to find which trade
+    # introduced drift. Best-effort — log_event swallows DB errors.
+    #
+    # TODO 62a (Phase 2): this audit is written before log_trade. If
+    # log_trade fails (60c double-call → DB safety trigger), the audit
+    # becomes orphaned. Move audit AFTER log_trade success in Phase 2.
+    try:
+        log_event(
+            severity="info",
+            category="trade_audit",
+            event="sell_fifo_detail",
+            symbol=bot.symbol,
+            message=(
+                f"Sell lot: buy@{lot_buy_price}, "
+                f"amount={amount}, pnl=${realized_pnl:.4f}"
+            ),
+            details={
+                "lot_buy_price": float(lot_buy_price),
+                "sell_price": float(price),
+                "amount": float(amount),
+                "cost_basis": float(cost_basis),
+                "revenue": float(revenue),
+                "realized_pnl": float(realized_pnl),
+                "queue_depth": len(bot._pct_open_positions),
+                "managed_by": getattr(bot, "managed_by", "manual"),
+            },
+        )
+    except Exception:
+        pass
+
+    # Now consume the queue to match what we just sold.
+    # TODO 62a (Phase 2): these state mutations happen BEFORE log_trade.
+    # If log_trade fails (60c), state is desynced from DB. Make atomic.
+    remaining = amount
+    while remaining > 1e-9 and bot._pct_open_positions:
+        lot = bot._pct_open_positions[0]
+        if lot["amount"] <= remaining + 1e-9:
+            remaining -= lot["amount"]
+            bot._pct_open_positions.pop(0)
+        else:
+            lot["amount"] -= remaining
+            remaining = 0
+    bot.state.total_received += revenue
+    bot.state.total_fees += fee + buy_fee
+    bot.state.holdings -= amount
+    bot.state.realized_pnl += realized_pnl
+    bot.state.daily_realized_pnl += realized_pnl
+
+    # 39b: a profitable sell releases the stop-buy gate (event-based
+    # hysteresis). A rebound in price alone does NOT re-enable buys —
+    # we wait for a real profit event to confirm the cycle is digested.
+    if bot._stop_buy_active and realized_pnl > 0:
+        bot._stop_buy_active = False
+        logger.info(
+            f"[{bot.symbol}] STOP-BUY RESET: profitable sell ${realized_pnl:.2f} "
+            f"cleared the block. Buys re-enabled."
+        )
+        log_event(
+            severity="info",
+            category="safety",
+            event="stop_buy_cleared",
+            symbol=bot.symbol,
+            message=f"Manual stop-buy reset after profitable sell ${realized_pnl:.2f}",
+            details={"realized_pnl": realized_pnl},
+        )
+
+    if bot.state.holdings <= 0:
+        bot.state.holdings = 0
+        bot.state.avg_buy_price = 0
+
+    # After selling all lots, reset buy reference to sell price so next
+    # buy triggers correctly (buy_pct% drop from here, not from old buy price)
+    if not bot._pct_open_positions:
+        bot._pct_last_buy_price = price
+        logger.info(
+            f"[{bot.symbol}] All lots sold. Buy reference reset to {fmt_price(price)}"
+        )
+
+    bot._daily_trade_count += 1
+    bot._last_trade_time = datetime.utcnow()
+    bot._self_heal_attempted = False  # real trade happened, allow self-heal again if needed
+
+    trade_pnl_pct = (realized_pnl / cost_basis * 100) if cost_basis > 0 else 0
+
+    # 39a/39c/45f/45g: tag the reason so the trade log + Haiku commentary
+    # can distinguish forced exits from normal pct sells.
+    if bot._stop_loss_triggered:
+        reason = (
+            f"STOP-LOSS: price {fmt_price(price)} forces liquidation "
+            f"(lot buy {fmt_price(lot_buy_price)}, threshold {bot.tf_stop_loss_pct:.0f}% of open value)"
+        )
+    elif bot._trailing_stop_triggered:
+        reason = (
+            f"TRAILING-STOP: price {fmt_price(price)} dropped {bot.tf_trailing_stop_pct:.1f}% from "
+            f"peak {fmt_price(bot._trailing_peak_price)} (lot buy {fmt_price(lot_buy_price)})"
+        )
+    elif bot._take_profit_triggered:
+        reason = (
+            f"TAKE-PROFIT: price {fmt_price(price)} crystallizes gains "
+            f"(lot buy {fmt_price(lot_buy_price)}, threshold {bot.tf_take_profit_pct:.0f}% of open value)"
+        )
+    elif bot._profit_lock_triggered:
+        reason = (
+            f"PROFIT-LOCK: price {fmt_price(price)} locks net gain "
+            f"(lot buy {fmt_price(lot_buy_price)}, threshold {bot.tf_profit_lock_pct:.1f}% of alloc on net PnL)"
+        )
+    elif bot._gain_saturation_triggered:
+        reason = (
+            f"GAIN-SATURATION: N positive sells reached, exit at {fmt_price(price)} "
+            f"(lot buy {fmt_price(lot_buy_price)})"
+        )
+    elif bot.pending_liquidation and bot.managed_by == "trend_follower":
+        reason = (
+            f"BEARISH EXIT: TF rotation, sell at {fmt_price(price)} "
+            f"(lot buy {fmt_price(lot_buy_price)})"
+        )
+    elif bot.pending_liquidation and bot.managed_by == "tf_grid":
+        reason = (
+            f"MANUAL EXIT (tf_grid): sell at {fmt_price(price)} "
+            f"(lot buy {fmt_price(lot_buy_price)})"
+        )
+    else:
+        # 42a: for TF bots, the sell threshold was the greed-decay TP;
+        # include tier info in the reason so it shows up in logs and
+        # Telegram. Manual bots keep the legacy sell_pct wording.
+        tp_pct, age_min, tier = get_effective_tp(bot)
+        if bot.managed_by in ("trend_follower", "tf_grid") and age_min is not None:
+            reason = (
+                f"Greed decay sell: price {fmt_price(price)} >= lot buy "
+                f"{fmt_price(lot_buy_price)} * (1 + {tp_pct}%) "
+                f"(age {age_min:.0f}min, tier {tp_pct}%)"
+            )
+        else:
+            reason = (
+                f"Pct sell: price {fmt_price(price)} is {bot.sell_pct}% "
+                f"above lot buy {fmt_price(lot_buy_price)}"
+            )
+
+    trade_data = {
+        "symbol": bot.symbol,
+        "side": "sell",
+        "amount": amount,
+        "price": price,
+        "cost": revenue,
+        "fee": fee,
+        "strategy": bot.strategy,
+        "brain": "grid",
+        "reason": reason,
+        "mode": bot.mode,
+        "realized_pnl": realized_pnl,
+        "trade_pnl_pct": trade_pnl_pct,  # for Telegram only, filtered before DB log
+        "capital_allocated": bot.capital,
+        "holdings_value_before": holdings_value_before,
+        "managed_by": getattr(bot, "managed_by", "manual"),
+    }
+
+    # 42a: expose greed-decay tier info for Telegram alert. Skip when the
+    # sell was forced (stop-loss / take-profit / profit-lock / gain-
+    # saturation / bearish) — those have their own reason tags that
+    # already dominate the message.
+    if (bot.managed_by in ("trend_follower", "tf_grid")
+            and not bot._stop_loss_triggered
+            and not bot._trailing_stop_triggered
+            and not bot._take_profit_triggered
+            and not bot._profit_lock_triggered
+            and not bot._gain_saturation_triggered
+            and not bot.pending_liquidation):
+        tp_pct, age_min, _ = get_effective_tp(bot)
+        if age_min is not None:
+            trade_data["greed_tier_age_min"] = age_min
+            trade_data["greed_tier_tp_pct"] = tp_pct
+
+    _LOG_TRADE_KEYS = {
+        "symbol", "side", "amount", "price", "fee", "strategy", "brain", "reason",
+        "mode", "exchange_order_id", "realized_pnl", "buy_trade_id", "cost",
+        "config_version", "cash_before", "capital_allocated", "holdings_value_before",
+        "managed_by",
+    }
+    trade_db_row = {}
+    try:
+        trade_db_row = bot.trade_logger.log_trade(
+            **{k: v for k, v in trade_data.items() if k in _LOG_TRADE_KEYS}
+        )
+    except Exception as e:
+        logger.error(f"Failed to log trade: {e}")
+
+    # Profit skimming: set aside skim_pct% of positive profit into reserve
+    if bot.skim_pct > 0 and realized_pnl > 0 and bot.reserve_ledger:
+        skim_amount = realized_pnl * (bot.skim_pct / 100)
+        try:
+            trade_id = trade_db_row.get("id")
+            bot.reserve_ledger.log_skim(bot.symbol, skim_amount, trade_id=trade_id,
+                                          managed_by=bot.managed_by)
+            reserve_total = bot.reserve_ledger.get_reserve_total(
+                bot.symbol, force_refresh=True
+            )
+            trade_data["skim_amount"] = skim_amount
+            trade_data["reserve_total"] = reserve_total
+            logger.info(
+                f"SKIM ${skim_amount:.4f} → reserve total ${reserve_total:.2f} [{bot.symbol}]"
+            )
+        except Exception as e:
+            logger.warning(f"Failed to log skim for {bot.symbol}: {e}")
+
+    logger.info(
+        f"SELL {amount:.6f} {bot.symbol} @ {fmt_price(price)} "
+        f"(revenue: ${revenue:.2f}, fee: ${fee:.4f}, pnl: ${realized_pnl:.4f}) [pct mode]"
+    )
+    return trade_data

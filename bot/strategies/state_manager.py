@@ -1,0 +1,176 @@
+"""
+BagHolderAI - State manager (Phase 1 split from grid_bot.py).
+
+Boot-time state restoration from DB:
+- restore_state_from_db: fixed-mode legacy path (v1).
+- init_percentage_state_from_db: percentage-mode FIFO replay (v3).
+
+Both functions mutate `bot.state` and `bot._pct_open_positions` /
+`bot._pct_last_buy_price` in place. They preserve identical behaviour to
+the original methods on GridBot.
+"""
+
+import logging
+from datetime import datetime, timezone
+from utils.formatting import fmt_price
+
+logger = logging.getLogger("bagholderai.grid")
+
+
+def restore_state_from_db(bot):
+    """
+    Restore holdings, avg_buy_price, and P&L from historical trades in DB.
+    Call after setup_grid() on startup to recover v1 positions.
+    """
+    if not bot.trade_logger or not bot.state:
+        return
+
+    pos = bot.trade_logger.get_open_position(bot.symbol)
+    if pos["holdings"] <= 0:
+        logger.info(f"No open position found in DB for {bot.symbol}.")
+        return
+
+    bot.state.holdings = pos["holdings"]
+    bot.state.avg_buy_price = pos["avg_buy_price"]
+    bot.state.realized_pnl = pos["realized_pnl"]
+    bot.state.total_fees = pos["total_fees"]
+    bot.state.total_invested = pos["total_invested"]
+    bot.state.total_received = pos["total_received"]
+
+    # Distribute recovered holdings across sell levels
+    sell_levels = [l for l in bot.state.levels if l.side == "sell"]
+    if sell_levels:
+        amount_per_level = bot.state.holdings / len(sell_levels)
+        for sl in sell_levels:
+            sl.order_amount = round(amount_per_level, 8)
+
+    logger.info(
+        f"Restored from DB: {pos['holdings']:.6f} {bot.symbol} "
+        f"@ avg {fmt_price(pos['avg_buy_price'])} | "
+        f"Realized P&L: ${pos['realized_pnl']:.4f}"
+    )
+
+
+def init_percentage_state_from_db(bot):
+    """
+    Restore percentage mode state from DB on startup.
+    Reconstructs the FIFO open-positions queue, last buy price,
+    and cash accounting (total_invested / total_received) by replaying
+    all v3 trades for this symbol chronologically.
+    """
+    if not bot.trade_logger:
+        return
+    try:
+        result = (
+            bot.trade_logger.client.table("trades")
+            .select("side,amount,price,cost,created_at")
+            .eq("symbol", bot.symbol)
+            .eq("config_version", "v3")
+            .order("created_at", desc=False)
+            .execute()
+        )
+        trades = result.data or []
+    except Exception as e:
+        logger.warning(f"[{bot.symbol}] Could not load pct state from DB: {e}")
+        return
+
+    open_positions = []
+    last_buy_price = 0.0
+    total_invested = 0.0
+    total_received = 0.0
+
+    for t in trades:
+        side = t.get("side")
+        amount = float(t.get("amount", 0))
+        price = float(t.get("price", 0))
+        cost = float(t.get("cost") or (amount * price))
+        if side == "buy":
+            total_invested += cost
+            open_positions.append({"amount": amount, "price": price})
+            last_buy_price = price
+        elif side == "sell":
+            revenue = amount * price
+            total_received += revenue
+            if open_positions:
+                # FIFO: consume oldest lot(s) to match sell amount
+                remaining = amount
+                while remaining > 1e-12 and open_positions:
+                    oldest = open_positions[0]
+                    if oldest["amount"] <= remaining + 1e-12:
+                        remaining -= oldest["amount"]
+                        open_positions.pop(0)
+                    else:
+                        oldest["amount"] -= remaining
+                        remaining = 0
+
+    bot._pct_open_positions = open_positions
+    bot._pct_last_buy_price = last_buy_price
+
+    # Restore last trade time so idle re-entry countdown is correct.
+    # Convert to UTC-naive so comparison with datetime.utcnow() is always correct
+    # regardless of the timezone offset stored in the DB timestamp.
+    if trades:
+        try:
+            dt_str = trades[-1].get("created_at", "")
+            if dt_str:
+                dt = datetime.fromisoformat(dt_str.replace("Z", "+00:00"))
+                if dt.tzinfo is not None:
+                    dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
+                # Only overwrite if DB value is newer than in-memory value.
+                # The idle-recalibrate path sets _last_trade_time = utcnow() without
+                # writing to DB; the self-heal re-init must not clobber that.
+                if bot._last_trade_time is None or dt > bot._last_trade_time:
+                    bot._last_trade_time = dt
+                    bot._idle_logged_hour = -1  # reset so first eval logs immediately
+                    logger.info(f"[{bot.symbol}] Restored _last_trade_time = {dt:%Y-%m-%d %H:%M:%S} UTC")
+                else:
+                    logger.info(
+                        f"[{bot.symbol}] DB _last_trade_time ({dt:%Y-%m-%d %H:%M:%S}) "
+                        f"older than in-memory ({bot._last_trade_time:%Y-%m-%d %H:%M:%S}), keeping in-memory"
+                    )
+        except Exception:
+            pass
+    else:
+        logger.info(f"[{bot.symbol}] No v3 trades found — _last_trade_time stays None")
+
+    # Reconstruct cash accounting + holdings so sell logic fires correctly
+    if bot.state:
+        bot.state.total_invested = total_invested
+        bot.state.total_received = total_received
+
+        # Rebuild state.holdings and state.avg_buy_price from open lots.
+        # Without this, _check_percentage_and_execute() sees holdings=0
+        # and never triggers sells even when _pct_open_positions is populated.
+        if open_positions:
+            total_amount = sum(lot["amount"] for lot in open_positions)
+            weighted_cost = sum(lot["amount"] * lot["price"] for lot in open_positions)
+            bot.state.holdings = total_amount
+            bot.state.avg_buy_price = weighted_cost / total_amount if total_amount > 0 else 0.0
+        else:
+            bot.state.holdings = 0.0
+            bot.state.avg_buy_price = 0.0
+
+    available = bot.capital - total_invested + total_received
+    reserve_str = ""
+    if bot.reserve_ledger:
+        try:
+            reserve = bot.reserve_ledger.get_reserve_total(bot.symbol)
+            if reserve > 0:
+                available -= reserve
+                reserve_str = f" - ${reserve:.2f} reserve"
+        except Exception as e:
+            logger.warning(f"[{bot.symbol}] Could not fetch reserve total for cash log: {e}")
+
+    logger.info(
+        f"[{bot.symbol}] Pct mode restored: {len(open_positions)} open lots, "
+        f"holdings={bot.state.holdings:.6f}, "
+        f"avg_buy={fmt_price(bot.state.avg_buy_price)}, "
+        f"last buy {fmt_price(last_buy_price)}"
+    )
+    logger.info(
+        f"[{bot.symbol}] Cash restored: ${bot.capital:.2f} allocated"
+        f" - ${total_invested:.2f} invested"
+        f" + ${total_received:.2f} sold"
+        f"{reserve_str}"
+        f" = ${available:.2f} available"
+    )
