@@ -695,39 +695,51 @@ const RECENT_TRADES_LIMIT = 6;
     );
 
     /* FIFO replay per symbol within each group → annotate sells with
-       the avg buy price of the lots they consumed. */
-    function annotateBuyAvg(group: AllTrade[]): Map<AllTrade, number> {
+       the avg buy price of the lots they consumed AND the FIFO-correct
+       per-trade P&L. trades.realized_pnl is biased post-restart
+       2026-05-06 22:23 UTC (see project_60c_fifo_init_bug). */
+    type Annot = {
+      buyAvg: Map<AllTrade, number>;
+      pnl:    Map<AllTrade, number>;
+    };
+    function annotateBuyAvg(group: AllTrade[]): Annot {
       const bySym: Record<string, AllTrade[]> = {};
       for (const t of group) (bySym[t.symbol] ||= []).push(t);
-      const out = new Map<AllTrade, number>();
+      const buyAvg = new Map<AllTrade, number>();
+      const pnl    = new Map<AllTrade, number>();
       for (const sym of Object.keys(bySym)) {
-        const queue: { amount: number; price: number }[] = [];
+        const queue: { amount: number; price: number; cost: number }[] = [];
         for (const t of bySym[sym]) {
           const amt   = Number(t.amount || 0);
           const price = Number(t.price  || 0);
           if (t.side === "buy") {
-            queue.push({ amount: amt, price });
+            queue.push({ amount: amt, price, cost: Number(t.cost || 0) });
           } else {
-            let rem = amt, cost = 0, consumed = 0;
+            let rem = amt, basis = 0, priceCost = 0, consumed = 0;
             while (rem > 1e-6 && queue.length > 0) {
               const lot = queue[0];
               if (lot.amount <= rem + 1e-6) {
-                cost     += lot.amount * lot.price;
-                consumed += lot.amount;
-                rem      -= lot.amount;
+                priceCost += lot.amount * lot.price;
+                basis     += lot.cost;
+                consumed  += lot.amount;
+                rem       -= lot.amount;
                 queue.shift();
               } else {
-                cost     += rem * lot.price;
-                consumed += rem;
+                const p = rem / lot.amount;
+                priceCost += rem * lot.price;
+                basis     += lot.cost * p;
+                consumed  += rem;
+                lot.cost  -= lot.cost * p;
                 lot.amount -= rem;
                 rem = 0;
               }
             }
-            if (consumed > 0) out.set(t, cost / consumed);
+            if (consumed > 0) buyAvg.set(t, priceCost / consumed);
+            pnl.set(t, Number(t.cost || 0) - basis);
           }
         }
       }
-      return out;
+      return { buyAvg, pnl };
     }
 
     const gridAnnotated = annotateBuyAvg(gridTrades);
@@ -748,7 +760,7 @@ const RECENT_TRADES_LIMIT = 6;
        which TF trades were managed by Grid. */
     function renderRows(
       group: AllTrade[],
-      annotated: Map<AllTrade, number>,
+      annotated: Annot,
       showPromotedTag: boolean,
     ): string {
       const recent = group.slice(-RECENT_TRADES_LIMIT).reverse();
@@ -759,8 +771,8 @@ const RECENT_TRADES_LIMIT = 6;
       }
       return recent.map(t => {
         const isSell  = t.side === "sell";
-        const pnl     = Number(t.realized_pnl || 0);
-        const buyAt   = annotated.get(t);
+        const pnl     = annotated.pnl.get(t) ?? 0;
+        const buyAt   = annotated.buyAvg.get(t);
         const pnlClass = isSell
           ? (pnl >= 0 ? "text-pos" : "text-neg")
           : "text-text-muted";
