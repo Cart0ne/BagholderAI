@@ -36,3 +36,7 @@ web_proto/
 
 # Old pre-Astro site (replaced by web_astro/, kept locally as backup)
 web/
+
+# Audit reports (privati, solo locale)
+audits/*
+!audits/.gitkeep
