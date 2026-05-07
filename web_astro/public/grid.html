@@ -456,6 +456,10 @@
     var skimReserveTotal = 0;
     var skimBySymbol = {};  // symbol -> total skim amount
     var livePrices = {};  // symbol -> price
+    // Promoted to module scope so analyzeCoin() and the trades table can read
+    // the FIFO-correct per-coin and per-trade P&L. trades.realized_pnl is
+    // biased post-restart 2026-05-06 22:23 UTC (see project_60c_fifo_init_bug).
+    var realFifoBySymbol = {};
 
     async function fetchLivePrices() {
       try {
@@ -477,7 +481,7 @@
       // + tf_grid) live in /tf.html.
       var settled = await Promise.allSettled([
         sbGet('bot_config', 'managed_by=not.in.(trend_follower,tf_grid)&order=symbol'),
-        sbGet('trades', 'select=symbol,side,amount,price,cost,fee,realized_pnl,created_at&config_version=eq.v3&managed_by=not.in.(trend_follower,tf_grid)&order=created_at.desc'),
+        sbGet('trades', 'select=id,symbol,side,amount,price,cost,fee,realized_pnl,created_at&config_version=eq.v3&managed_by=not.in.(trend_follower,tf_grid)&order=created_at.desc'),
         sbGet('daily_pnl', 'order=date.desc&limit=10'),
         sbGet('reserve_ledger', 'select=symbol,amount&config_version=eq.v3'),
         fetchLivePrices()
@@ -510,13 +514,14 @@
       // FIFO realized recalc per symbol — DB realized_pnl uses avg_buy_price
       // basis which overstates per-trade profit on high-volatility coins.
       // Strict FIFO restores the Realized + Unrealized = Total P&L identity.
-      var _realFifo = {};
+      // pnlByTradeId lets the trades table show FIFO-correct per-row P&L.
+      realFifoBySymbol = {};
       tradesData.slice().sort(function(a, b) {
         return new Date(a.created_at) - new Date(b.created_at);
       }).forEach(function(t) {
         var sym = t.symbol;
-        if (!_realFifo[sym]) _realFifo[sym] = { queue: [], realized: 0 };
-        var s = _realFifo[sym];
+        if (!realFifoBySymbol[sym]) realFifoBySymbol[sym] = { queue: [], realized: 0, pnlByTradeId: {} };
+        var s = realFifoBySymbol[sym];
         var amt = Number(t.amount || 0);
         var price = Number(t.price || 0);
         if (t.side === 'buy') {
@@ -540,9 +545,10 @@
             }
           }
           s.realized += (rev - basis);
+          s.pnlByTradeId[t.id] = (rev - basis);
         }
       });
-      totalRealizedAll = Object.values(_realFifo).reduce(function(s, x) {
+      totalRealizedAll = Object.values(realFifoBySymbol).reduce(function(s, x) {
         return s + x.realized;
       }, 0);
       render();
@@ -596,7 +602,7 @@
       var coinTrades = tradesData.filter(function(t) { return t.symbol === symbol; });
       var totalBought = coinTrades.filter(function(t) { return t.side === 'buy'; }).reduce(function(s, t) { return s + Number(t.cost); }, 0);
       var totalSold = coinTrades.filter(function(t) { return t.side === 'sell'; }).reduce(function(s, t) { return s + Number(t.cost); }, 0);
-      var realizedPnl = coinTrades.reduce(function(s, t) { return s + Number(t.realized_pnl || 0); }, 0);
+      var realizedPnl = (realFifoBySymbol[symbol] || {}).realized || 0;
       var netHoldings = coinTrades.reduce(function(s, t) {
         return s + (t.side === 'buy' ? Number(t.amount) : -Number(t.amount));
       }, 0);
@@ -1066,7 +1072,8 @@
         var pnlCell = '<td style="color:var(--text-dim);">—</td>';
         if (t.side === 'sell') {
           buyAtCell = '<td>' + (t._buyPriceAvg > 0 ? fmtPrice(t._buyPriceAvg) : '—') + '</td>';
-          var pnl = Number(t.realized_pnl || 0);
+          var symFifo = realFifoBySymbol[t.symbol];
+          var pnl = (symFifo && symFifo.pnlByTradeId[t.id] !== undefined) ? symFifo.pnlByTradeId[t.id] : 0;
           var pnlColor = pnl >= 0 ? 'var(--green)' : 'var(--red)';
           var pnlSign = pnl >= 0 ? '+' : '';
           pnlCell = '<td style="color:' + pnlColor + ';">' + pnlSign + fmtUsd(pnl) + '</td>';
