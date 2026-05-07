@@ -5,7 +5,22 @@
 **Date:** May 6, 2026
 **Priority:** MEDIUM — quality of life + pre-mainnet hygiene
 **Scope:** `bot/strategies/grid_bot.py` (`_execute_percentage_sell`), unit tests
-**Status:** proposal awaiting CEO approval. No code changes yet.
+**Status:** ARCHIVED 2026-05-07 — superseded by 62b §3.1.
+
+---
+
+> **ARCHIVED 2026-05-07 — ABSORBED INTO BRIEF 62b §3.1**
+>
+> Il brief CEO 62b ha adottato un approccio diverso (più semplice) per
+> la prevenzione dust: "arrotonda la sell per svuotare la posizione quando
+> il residuo sarebbe < min_order_size". Vedi
+> `config/brief_62b_grid_refactor_phase2.md` §3.1 ("Prevenzione —
+> Arrotondamento sell per svuotare posizione").
+>
+> L'approccio 60a (fold dust into next lot) NON è quello che 62b implementa,
+> ma risolve lo stesso problema alla fonte. Conservato qui per traccia
+> forense. NON implementare 60a separatamente — Phase 2 chiude la storia
+> della dust prevention.
 
 ---
 

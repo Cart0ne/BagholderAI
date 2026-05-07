@@ -23,6 +23,9 @@ scripts/office/
 # Local machine instructions
 .instructions.md
 
+# Claude Code config (user-specific: skill flags, transcript prefs, hooks)
+.claude/
+
 # X stats scan reports (local-only, synced manually on demand)
 post_x/
 

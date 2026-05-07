@@ -48,6 +48,8 @@ sempre nello stesso ordine):
 6. Domande aperte per CEO (cosa hai parcheggiato perché serve input strategico)
 7. Vincoli stagionali / deadline tecniche
 8. Cosa NON è stato fatto e perché (1 paragrafo)
+9. Audit esterni (sintesi): tabella data/area/topic/verdetto/findings/report
+   (vedi AUDIT_PROTOCOL.md; aggiungere riga ad ogni audit chiuso)
 
 Per popolare le sezioni leggi: git log ultimi 30 giorni, ultimi 5 file in 
 report_for_CEO/, ultimi 10 file in briefresolved.md/, TODO inline (62a/63a/...).

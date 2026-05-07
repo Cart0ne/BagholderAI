@@ -1,0 +1,1190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BagHolderAI — Admin (Sentinel + Sherpa)</title>
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📡</text></svg>">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --mono: 'SF Mono', 'Cascadia Code', 'Fira Code', 'Consolas', 'Liberation Mono', 'Menlo', monospace;
+      --sans: 'SF Pro Display', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Helvetica Neue', sans-serif;
+      --green: #22c55e;
+      --green-dim: rgba(34, 197, 94, 0.4);
+      --yellow: #fcd34d;
+      --red: #fca5a5;
+      --red-strong: #ef4444;
+      --blue: #7dd3fc;
+      --teal: #67e8f9;
+      --amber: #f59e0b;
+      --purple: #c084fc;
+      --border: #2a3556;
+      --surface: #172037;
+      --surface-2: #1f2a45;
+      --text: #e8ecf5;
+      --text-dim: #9aa3b8;
+      --text-body: #9aa3b8;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      min-height: 100vh;
+      background-color: #0f1626;
+      color: var(--text);
+      font-family: var(--sans);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body::before {
+      content: '';
+      position: fixed; inset: 0; opacity: 0.03;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px);
+      background-size: 60px 60px;
+      pointer-events: none; z-index: 0;
+    }
+
+    .container {
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 20px 16px 80px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .top-bar {
+      font-family: var(--mono); font-size: 11px; color: var(--text-dim);
+      margin-bottom: 16px; letter-spacing: 0.05em; padding-top: 12px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .top-bar .dot { color: var(--purple); }
+
+    h1 {
+      font-size: clamp(24px, 6vw, 36px); font-weight: 700; line-height: 1.1;
+      letter-spacing: -0.03em; color: #fff; margin-bottom: 4px;
+    }
+    h1 .ai { color: var(--green); }
+    h1 .badge { color: var(--purple); font-size: 0.5em; vertical-align: super; letter-spacing: 0.05em; }
+
+    .section-title {
+      font-size: 12px; font-family: var(--mono); text-transform: uppercase;
+      letter-spacing: 0.1em; color: var(--purple); margin-bottom: 12px; margin-top: 32px;
+    }
+    .section-title.sherpa { color: var(--blue); }
+    .section-title.db { color: var(--amber); }
+
+    section { margin-bottom: 16px; }
+
+    .card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px; padding: 16px; margin-bottom: 8px;
+    }
+
+    /* Auth gate (identical pattern to grid.html / tf.html) */
+    #auth-gate {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      min-height: 60vh; gap: 16px;
+    }
+    #auth-gate .lock { font-size: 48px; margin-bottom: 8px; }
+    #auth-gate input {
+      font-family: var(--mono); font-size: 16px; padding: 12px 16px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px; color: var(--text); width: 260px; text-align: center;
+      outline: none; transition: border-color 0.2s;
+    }
+    #auth-gate input:focus { border-color: var(--purple); }
+    #auth-gate input::placeholder { color: var(--text-dim); }
+    #auth-gate .err { color: var(--red); font-family: var(--mono); font-size: 12px; min-height: 18px; }
+    #auth-gate button {
+      font-family: var(--mono); font-size: 13px; padding: 10px 28px;
+      background: transparent; border: 1px solid var(--purple); color: var(--purple);
+      border-radius: 6px; cursor: pointer; transition: all 0.2s;
+    }
+    #auth-gate button:hover { background: var(--purple); color: #0a0a0a; }
+
+    #dashboard { display: none; }
+
+    .navbar {
+      display: flex; gap: 16px; padding: 8px 0; margin-bottom: 12px;
+      font-family: var(--mono); font-size: 12px; border-bottom: 1px solid var(--border);
+    }
+    .navbar a { color: var(--text-dim); text-decoration: none; padding: 4px 0; }
+    .navbar a:hover { color: var(--text); }
+    .navbar a.active { color: var(--purple); border-bottom: 2px solid var(--purple); padding-bottom: 4px; }
+
+    /* Last scan box — Sentinel summary */
+    .last-scan {
+      display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px;
+      margin-bottom: 12px;
+    }
+    @media (min-width: 600px) {
+      .last-scan { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    }
+    .scan-cell {
+      background: var(--surface-2); border: 1px solid var(--border);
+      border-radius: 6px; padding: 10px 12px;
+    }
+    .scan-label { font-family: var(--mono); font-size: 10px; color: var(--text-dim);
+      text-transform: uppercase; letter-spacing: 0.05em; }
+    .scan-value { font-family: var(--mono); font-size: 16px; color: #fff; margin-top: 2px; font-weight: 600; }
+    .scan-sub { font-family: var(--mono); font-size: 10px; color: var(--text-dim); margin-top: 2px; }
+    .scan-value.pos { color: var(--green); }
+    .scan-value.neg { color: var(--red); }
+
+    /* Speed of fall indicator (A: pallino + B: counter) */
+    .speed-indicator {
+      display: flex; align-items: center; gap: 8px;
+      font-family: var(--mono); font-size: 11px; color: var(--text-dim);
+    }
+    .speed-dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      background: var(--text-dim); border: 1px solid var(--border);
+      transition: background 0.3s, box-shadow 0.3s;
+    }
+    .speed-dot.on {
+      background: var(--red-strong);
+      box-shadow: 0 0 8px var(--red-strong);
+    }
+
+    /* Gauge (risk + opp) */
+    .gauges-row {
+      display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px;
+      margin-bottom: 12px;
+    }
+    .gauge {
+      background: var(--surface-2); border: 1px solid var(--border);
+      border-radius: 6px; padding: 12px;
+    }
+    .gauge-label { font-family: var(--mono); font-size: 10px;
+      color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; }
+    .gauge-value { font-family: var(--mono); font-size: 22px; font-weight: 700;
+      color: #fff; margin: 2px 0 6px; }
+    .gauge-bar { height: 8px; background: rgba(255,255,255,0.05);
+      border-radius: 4px; overflow: hidden; }
+    .gauge-fill { height: 100%; transition: width 0.4s, background 0.4s; }
+    .gauge-fill.risk { background: linear-gradient(90deg, var(--green) 0%, var(--yellow) 50%, var(--red-strong) 100%); }
+    .gauge-fill.opp  { background: linear-gradient(90deg, var(--text-dim) 0%, var(--blue) 50%, var(--green) 100%); }
+
+    /* Chart canvas */
+    .chart-wrap {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px; padding: 16px; margin-bottom: 8px;
+    }
+    .chart-wrap canvas { width: 100%; height: 320px; display: block; }
+    .chart-legend {
+      display: flex; flex-wrap: wrap; gap: 12px; margin-top: 8px;
+      font-family: var(--mono); font-size: 10px; color: var(--text-dim);
+    }
+    .chart-legend .item { display: flex; align-items: center; gap: 4px; }
+    .chart-legend .swatch { width: 10px; height: 2px; border-radius: 1px; }
+
+    /* Rules table (static) */
+    table.rules {
+      width: 100%; border-collapse: collapse; font-family: var(--mono);
+      font-size: 11px; color: var(--text);
+    }
+    table.rules th, table.rules td {
+      padding: 6px 10px; text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+    table.rules th {
+      color: var(--text-dim); text-transform: uppercase;
+      letter-spacing: 0.05em; font-weight: 500; font-size: 10px;
+    }
+    table.rules td.num { text-align: right; }
+    table.rules td .pos { color: var(--green); }
+    table.rules td .neg { color: var(--red); }
+
+    .placeholder {
+      background: var(--surface); border: 1px dashed var(--border);
+      border-radius: 8px; padding: 24px; text-align: center;
+      color: var(--text-dim); font-family: var(--mono); font-size: 12px;
+    }
+
+    /* Sherpa proposals table */
+    table.proposals {
+      width: 100%; border-collapse: collapse; font-family: var(--mono);
+      font-size: 12px; color: var(--text);
+    }
+    table.proposals th, table.proposals td {
+      padding: 8px 10px; text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+    table.proposals th {
+      color: var(--text-dim); text-transform: uppercase;
+      letter-spacing: 0.05em; font-weight: 500; font-size: 10px;
+    }
+    table.proposals td .sym { color: #fff; font-weight: 600; }
+    table.proposals td .vals { color: var(--text); }
+    table.proposals td .arrow { color: var(--text-dim); margin: 0 4px; }
+    table.proposals .badge-diff { color: var(--blue); font-size: 11px; }
+    table.proposals .badge-cool { color: var(--yellow); font-size: 11px; }
+    table.proposals .badge-ok   { color: var(--green); font-size: 11px; }
+
+    /* Stacked parameter charts */
+    .param-row {
+      display: flex; align-items: center; gap: 10px;
+      margin-bottom: 6px;
+    }
+    .param-row:last-child { margin-bottom: 0; }
+    .param-label {
+      flex: 0 0 110px;
+      font-family: var(--mono); font-size: 11px; color: var(--text-dim);
+      text-transform: uppercase; letter-spacing: 0.05em;
+    }
+    .param-row canvas {
+      flex: 1; height: 70px; display: block;
+    }
+
+    .footnote {
+      font-family: var(--mono); font-size: 10px; color: var(--text-dim);
+      margin-top: 8px; line-height: 1.4;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <!-- Auth Gate (same pattern as grid.html / tf.html) -->
+    <div id="auth-gate">
+      <div class="lock">📡</div>
+      <div style="font-family: var(--mono); font-size: 12px; color: var(--text-dim);">BAGHOLDER<span style="color: var(--green);">AI</span> ADMIN</div>
+      <input type="password" id="pw-input" placeholder="password" autocomplete="off">
+      <div class="err" id="pw-err"></div>
+      <button id="pw-btn">Unlock</button>
+    </div>
+
+    <!-- Dashboard (hidden until auth) -->
+    <div id="dashboard">
+
+      <nav class="navbar">
+        <a href="/">← Home</a>
+        <a href="/grid">Grid</a>
+        <a href="/tf">TF</a>
+        <a class="active" href="/admin">Admin</a>
+      </nav>
+
+      <div class="top-bar">
+        <span><span class="dot">●</span> sentinel + sherpa — private</span>
+        <span id="last-update">—</span>
+      </div>
+      <h1>📡 BagHolder<span class="ai">AI</span> <span class="badge">ADMIN</span></h1>
+
+      <!-- ============ SENTINEL ============ -->
+      <div class="section-title">📡 Sentinel — fast loop (60s)</div>
+
+      <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px;">
+          <span style="font-family: var(--mono); font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em;">Last scan</span>
+          <span id="sentinel-last-ts" style="font-family: var(--mono); font-size: 11px; color: var(--text-dim);">—</span>
+        </div>
+
+        <div class="last-scan">
+          <div class="scan-cell">
+            <div class="scan-label">BTC price</div>
+            <div class="scan-value" id="s-btc-price">—</div>
+            <div class="scan-sub" id="s-btc-24h">—</div>
+          </div>
+          <div class="scan-cell">
+            <div class="scan-label">BTC 1h</div>
+            <div class="scan-value" id="s-btc-1h">—</div>
+            <div class="scan-sub">change</div>
+          </div>
+          <div class="scan-cell">
+            <div class="scan-label">Funding</div>
+            <div class="scan-value" id="s-funding">—</div>
+            <div class="scan-sub">8h rate</div>
+          </div>
+          <div class="scan-cell">
+            <div class="scan-label">Speed of fall</div>
+            <div class="speed-indicator" style="margin-top: 4px;">
+              <span class="speed-dot" id="s-speed-dot"></span>
+              <span id="s-speed-label">stable</span>
+            </div>
+            <div class="scan-sub" id="s-speed-counter">0× today</div>
+          </div>
+        </div>
+
+        <div class="gauges-row">
+          <div class="gauge">
+            <div class="gauge-label">Risk score</div>
+            <div class="gauge-value" id="s-risk">—</div>
+            <div class="gauge-bar"><div class="gauge-fill risk" id="s-risk-fill" style="width: 0%;"></div></div>
+          </div>
+          <div class="gauge">
+            <div class="gauge-label">Opportunity score</div>
+            <div class="gauge-value" id="s-opp">—</div>
+            <div class="gauge-bar"><div class="gauge-fill opp" id="s-opp-fill" style="width: 0%;"></div></div>
+          </div>
+        </div>
+
+        <div class="footnote">
+          Sentinel scans every 60s and writes to <code>sentinel_scores</code>.
+          Speed-of-fall fires when BTC's 1h drop accelerates beyond the 5m/15m baseline.
+        </div>
+      </div>
+
+      <!-- 24h chart: risk + opp (left axis) overlaid with BTC price (right axis) -->
+      <div class="section-title">📈 24h trend — Sentinel signals × BTC price</div>
+      <div class="chart-wrap">
+        <canvas id="sentinel-chart"></canvas>
+        <div class="chart-legend">
+          <span class="item"><span class="swatch" style="background: var(--red-strong);"></span> Risk score (0-100)</span>
+          <span class="item"><span class="swatch" style="background: var(--green);"></span> Opportunity score (0-100)</span>
+          <span class="item"><span class="swatch" style="background: var(--blue);"></span> BTC price (right axis)</span>
+          <span class="item"><span class="swatch" style="background: var(--yellow); height: 8px; border-left: 2px dashed var(--yellow);"></span> Speed of fall fired</span>
+        </div>
+      </div>
+
+      <!-- Sentinel scoring rules — STATIC (parsed manually from score_engine.py) -->
+      <div class="section-title">📋 Sentinel scoring rules (static)</div>
+      <div class="card" style="overflow-x: auto;">
+        <table class="rules">
+          <thead>
+            <tr>
+              <th>Rule</th>
+              <th>Trigger</th>
+              <th class="num">Δ Risk</th>
+              <th class="num">Δ Opp</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>base</td><td>always</td><td class="num">+20</td><td class="num">+20</td></tr>
+            <tr><td>btc_drop_10pct_1h</td><td>BTC 1h ≤ −10%</td><td class="num"><span class="neg">+80</span></td><td class="num">—</td></tr>
+            <tr><td>btc_drop_5pct_1h</td><td>BTC 1h ≤ −5%</td><td class="num"><span class="neg">+50</span></td><td class="num">—</td></tr>
+            <tr><td>btc_drop_3pct_1h</td><td>BTC 1h ≤ −3%</td><td class="num"><span class="neg">+30</span></td><td class="num">—</td></tr>
+            <tr><td>btc_pump_5pct_1h</td><td>BTC 1h ≥ +5%</td><td class="num">—</td><td class="num"><span class="pos">+40</span></td></tr>
+            <tr><td>btc_pump_3pct_1h</td><td>BTC 1h ≥ +3%</td><td class="num">—</td><td class="num"><span class="pos">+25</span></td></tr>
+            <tr><td>speed_of_fall_accelerating</td><td>fall accelerating</td><td class="num"><span class="neg">+20</span></td><td class="num">—</td></tr>
+            <tr><td>funding_over_leveraged_long_strong</td><td>funding &gt; 0.05%</td><td class="num"><span class="neg">+25</span></td><td class="num">—</td></tr>
+            <tr><td>funding_over_leveraged_long</td><td>funding &gt; 0.03%</td><td class="num"><span class="neg">+15</span></td><td class="num">—</td></tr>
+            <tr><td>funding_short_squeeze_strong</td><td>funding &lt; −0.03%</td><td class="num">—</td><td class="num"><span class="pos">+25</span></td></tr>
+            <tr><td>funding_short_squeeze</td><td>funding &lt; −0.01%</td><td class="num">—</td><td class="num"><span class="pos">+15</span></td></tr>
+          </tbody>
+        </table>
+        <div class="footnote">
+          Drop ladder and pump ladder are mutually exclusive (only the strongest match fires).
+          Funding ladders fire independently. Both scores clamp to 0-100.
+          Source: <code>bot/sentinel/score_engine.py</code> — parsed manually at build time.
+        </div>
+      </div>
+
+      <!-- ============ SHERPA ============ -->
+      <div class="section-title sherpa">🏔 Sherpa — parameter writer (loop 120s · DRY_RUN)</div>
+
+      <!-- Last Proposals: 1 row per symbol -->
+      <div class="card" style="overflow-x: auto;">
+        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px;">
+          <span style="font-family: var(--mono); font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em;">Last proposals (one per bot)</span>
+          <span id="sherpa-last-ts" style="font-family: var(--mono); font-size: 11px; color: var(--text-dim);">—</span>
+        </div>
+        <table class="proposals">
+          <thead>
+            <tr>
+              <th>Bot</th>
+              <th>Tu (current)</th>
+              <th>Sherpa (proposed)</th>
+              <th>Regime</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="proposals-tbody">
+            <tr><td colspan="5" style="text-align: center; color: var(--text-dim);">loading…</td></tr>
+          </tbody>
+        </table>
+        <div class="footnote">
+          Format: <code>buy / sell / idle_reentry_h</code>.
+          <strong style="color: var(--blue);">⚠ diff</strong> = proposed ≠ current (Sherpa would write if SHERPA_MODE=live).
+          <strong style="color: var(--yellow);">🔒 cooldown</strong> = parameter locked, Sherpa cannot propose changes.
+          <strong style="color: var(--green);">✓ aligned</strong> = nothing to do.
+          Today everything is <em>diff</em> because we are in DRY_RUN: <code>bot_config</code> is never updated by Sherpa.
+        </div>
+      </div>
+
+      <!-- Reaction chart: Sentinel risk × Sherpa proposals (24h) -->
+      <div class="section-title sherpa">📊 Sentinel → Sherpa reaction (24h)</div>
+      <div class="chart-wrap">
+        <canvas id="reaction-chart"></canvas>
+        <div class="chart-legend">
+          <span class="item"><span class="swatch" style="background: var(--red-strong);"></span> Risk score (0-100, left axis)</span>
+          <span class="item"><span class="swatch" style="background: #3b82f6;"></span> BTC proposed_buy_pct</span>
+          <span class="item"><span class="swatch" style="background: #22c55e;"></span> SOL proposed_buy_pct</span>
+          <span class="item"><span class="swatch" style="background: #f59e0b;"></span> BONK proposed_buy_pct</span>
+          <span class="item"><span class="swatch" style="background: var(--text-dim);"></span> right axis: buy_pct (0.3-3.0)</span>
+        </div>
+        <div class="footnote">
+          When Sentinel's risk_score moves, do the 3 Sherpa lines react?
+          A flat market (today) shows flat lines — that's fine. A volatile market should show the 3 lines moving in response to risk spikes.
+        </div>
+      </div>
+
+      <!-- Parameters history: 3 stacked charts (buy, sell, idle) -->
+      <div class="section-title sherpa">📈 Parameters history (24h)</div>
+      <div class="chart-wrap">
+        <div class="param-row">
+          <div class="param-label">buy_pct</div>
+          <canvas id="param-buy-chart"></canvas>
+        </div>
+        <div class="param-row">
+          <div class="param-label">sell_pct</div>
+          <canvas id="param-sell-chart"></canvas>
+        </div>
+        <div class="param-row">
+          <div class="param-label">idle_reentry_hours</div>
+          <canvas id="param-idle-chart"></canvas>
+        </div>
+        <div class="chart-legend" style="margin-top: 4px;">
+          <span class="item"><span class="swatch" style="background: #3b82f6;"></span> BTC</span>
+          <span class="item"><span class="swatch" style="background: #22c55e;"></span> SOL</span>
+          <span class="item"><span class="swatch" style="background: #f59e0b;"></span> BONK</span>
+        </div>
+      </div>
+
+      <!-- Sherpa parameter rules — STATIC -->
+      <div class="section-title sherpa">📋 Sherpa parameter rules (static)</div>
+      <div class="card" style="overflow-x: auto;">
+        <div style="font-family: var(--mono); font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">BASE_TABLE — base parameters per regime</div>
+        <table class="rules">
+          <thead>
+            <tr>
+              <th>Regime</th>
+              <th class="num">buy_pct</th>
+              <th class="num">sell_pct</th>
+              <th class="num">idle_reentry_h</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>extreme_fear</td><td class="num">2.5</td><td class="num">1.0</td><td class="num">4.0</td></tr>
+            <tr><td>fear</td><td class="num">1.8</td><td class="num">1.2</td><td class="num">2.0</td></tr>
+            <tr style="background: rgba(124, 132, 252, 0.08);"><td>neutral <span style="color: var(--purple);">← active (Sprint 1)</span></td><td class="num">1.0</td><td class="num">1.5</td><td class="num">1.0</td></tr>
+            <tr><td>greed</td><td class="num">0.8</td><td class="num">2.0</td><td class="num">0.75</td></tr>
+            <tr><td>extreme_greed</td><td class="num">0.5</td><td class="num">3.0</td><td class="num">0.5</td></tr>
+          </tbody>
+        </table>
+
+        <div style="font-family: var(--mono); font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; margin: 16px 0 8px;">Adjustment ladders — fast-signal deltas on top of base</div>
+        <table class="rules">
+          <thead>
+            <tr>
+              <th>Ladder</th>
+              <th>Trigger</th>
+              <th class="num">Δ buy</th>
+              <th class="num">Δ sell</th>
+              <th class="num">Δ idle</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>btc_drop_10pct_1h</td><td>BTC 1h ≤ −10%</td><td class="num"><span class="pos">+1.5</span></td><td class="num"><span class="neg">−0.7</span></td><td class="num">+3.0</td></tr>
+            <tr><td>btc_drop_5pct_1h</td><td>BTC 1h ≤ −5%</td><td class="num"><span class="pos">+1.0</span></td><td class="num"><span class="neg">−0.5</span></td><td class="num">+2.0</td></tr>
+            <tr><td>btc_drop_3pct_1h</td><td>BTC 1h ≤ −3%</td><td class="num"><span class="pos">+0.5</span></td><td class="num"><span class="neg">−0.3</span></td><td class="num">+1.0</td></tr>
+            <tr><td>btc_pump_5pct_1h</td><td>BTC 1h ≥ +5%</td><td class="num"><span class="neg">−0.5</span></td><td class="num"><span class="pos">+1.0</span></td><td class="num">−0.5</td></tr>
+            <tr><td>btc_pump_3pct_1h</td><td>BTC 1h ≥ +3%</td><td class="num"><span class="neg">−0.3</span></td><td class="num"><span class="pos">+0.5</span></td><td class="num">−0.3</td></tr>
+            <tr><td>speed_of_fall_accelerating</td><td>fall accelerating</td><td class="num"><span class="pos">+0.3</span></td><td class="num"><span class="neg">−0.2</span></td><td class="num">+0.5</td></tr>
+            <tr><td>funding_long_strong</td><td>funding &gt; 0.05%</td><td class="num"><span class="pos">+0.4</span></td><td class="num"><span class="neg">−0.2</span></td><td class="num">+0.5</td></tr>
+            <tr><td>funding_long</td><td>funding &gt; 0.03%</td><td class="num"><span class="pos">+0.2</span></td><td class="num"><span class="neg">−0.1</span></td><td class="num">+0.3</td></tr>
+            <tr><td>funding_short_strong</td><td>funding &lt; −0.03%</td><td class="num"><span class="neg">−0.2</span></td><td class="num"><span class="pos">+0.3</span></td><td class="num">−0.3</td></tr>
+            <tr><td>funding_short</td><td>funding &lt; −0.01%</td><td class="num"><span class="neg">−0.1</span></td><td class="num"><span class="pos">+0.1</span></td><td class="num">−0.2</td></tr>
+          </tbody>
+        </table>
+
+        <div style="font-family: var(--mono); font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; margin: 16px 0 8px;">RANGES — absolute clamps</div>
+        <table class="rules">
+          <thead>
+            <tr><th>Parameter</th><th class="num">min</th><th class="num">max</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>buy_pct</td><td class="num">0.3</td><td class="num">3.0</td></tr>
+            <tr><td>sell_pct</td><td class="num">0.8</td><td class="num">4.0</td></tr>
+            <tr><td>idle_reentry_hours</td><td class="num">0.5</td><td class="num">6.0</td></tr>
+          </tbody>
+        </table>
+
+        <div class="footnote">
+          Source: <code>bot/sherpa/parameter_rules.py</code> — parsed manually at build time.
+          Sprint 1 only uses regime <em>neutral</em>; other regimes are pre-wired for Sprint 2 (slow loop / regime detection).
+          Drop ladder and pump ladder are mutually exclusive (only the strongest match fires).
+        </div>
+      </div>
+
+      <!-- ============ DB MONITOR ============ -->
+      <div class="section-title db">💾 DB monitor</div>
+      <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px;">
+          <span style="font-family: var(--mono); font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em;">Supabase storage (free tier 500 MB)</span>
+          <span id="db-total-pct" style="font-family: var(--mono); font-size: 11px; color: var(--text-dim);">—</span>
+        </div>
+
+        <!-- Total usage bar -->
+        <div style="margin-bottom: 14px;">
+          <div class="gauge-bar" style="height: 10px;">
+            <div class="gauge-fill" id="db-usage-fill" style="width: 0%; background: linear-gradient(90deg, var(--green) 0%, var(--yellow) 60%, var(--red-strong) 90%);"></div>
+          </div>
+          <div style="font-family: var(--mono); font-size: 10px; color: var(--text-dim); margin-top: 4px;" id="db-usage-text">— used of 500 MB</div>
+        </div>
+
+        <!-- Top tables -->
+        <div style="font-family: var(--mono); font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">Top tables by size</div>
+        <table class="rules">
+          <thead>
+            <tr>
+              <th>Table</th>
+              <th class="num">Rows</th>
+              <th class="num">Size</th>
+              <th>Last activity</th>
+            </tr>
+          </thead>
+          <tbody id="db-tables-tbody">
+            <tr><td colspan="4" style="text-align: center; color: var(--text-dim);">loading…</td></tr>
+          </tbody>
+        </table>
+        <div class="footnote">
+          Sentinel retention: 30d. Sherpa retention: 60d. Events log: 14d. Snapshots: 7d.
+          Cleanup runs daily at 04:00 UTC via <code>db_maintenance.py</code> (brief 59b).
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    // === CONFIG ===
+    var SB_URL = 'https://pxdhtmqfwjwjhtcoacsn.supabase.co';
+    var SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB4ZGh0bXFmd2p3amh0Y29hY3NuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4NDI1OTIsImV4cCI6MjA4OTQxODU5Mn0.G76lvYWrqlM0z2RoSkU1uAglfMBKN_rXvBGOQhb4kdg';
+    var ADMIN_HASH = '8a308134250d16e95b79019171e5cb37ed436a14e2800f22b98e0fa20ac6f9eb'; // sha256 of the real admin password (set ~session 53)
+
+    // === AUTH (identical to tf.html / grid.html) ===
+    async function sha256(msg) {
+      var buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(msg));
+      return Array.from(new Uint8Array(buf)).map(function(b) { return b.toString(16).padStart(2, '0'); }).join('');
+    }
+
+    async function tryAuth() {
+      var pw = document.getElementById('pw-input').value;
+      var hash = await sha256(pw);
+      if (hash === ADMIN_HASH) {
+        sessionStorage.setItem('bh_admin', '1');
+        showDashboard();
+      } else {
+        document.getElementById('pw-err').textContent = 'wrong password';
+        document.getElementById('pw-input').value = '';
+      }
+    }
+
+    document.getElementById('pw-btn').onclick = tryAuth;
+    document.getElementById('pw-input').addEventListener('keydown', function(e) { if (e.key === 'Enter') tryAuth(); });
+
+    function showDashboard() {
+      document.getElementById('auth-gate').style.display = 'none';
+      document.getElementById('dashboard').style.display = 'block';
+      bootstrap();
+    }
+
+    if (sessionStorage.getItem('bh_admin') === '1') showDashboard();
+
+    // === SUPABASE FETCH HELPERS ===
+    async function sbFetch(path) {
+      var res = await fetch(SB_URL + '/rest/v1/' + path, {
+        headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY }
+      });
+      if (!res.ok) throw new Error('Supabase ' + res.status + ' on ' + path);
+      return res.json();
+    }
+
+    // Supabase REST caps responses at 1000 rows even if `limit=N` URL param
+    // is larger. We paginate via the Range header until we get < pageSize rows
+    // (or hit a hard safety cap of 10k rows to avoid runaway loops).
+    async function sbFetchAll(path, pageSize) {
+      pageSize = pageSize || 1000;
+      var safetyCap = 10000;
+      var all = [];
+      var offset = 0;
+      while (offset < safetyCap) {
+        var res = await fetch(SB_URL + '/rest/v1/' + path, {
+          headers: {
+            'apikey': SB_KEY,
+            'Authorization': 'Bearer ' + SB_KEY,
+            'Range-Unit': 'items',
+            'Range': offset + '-' + (offset + pageSize - 1),
+          },
+        });
+        if (!res.ok && res.status !== 206) {
+          throw new Error('Supabase ' + res.status + ' on ' + path);
+        }
+        var page = await res.json();
+        if (!Array.isArray(page) || page.length === 0) break;
+        all = all.concat(page);
+        if (page.length < pageSize) break;
+        offset += pageSize;
+      }
+      return all;
+    }
+
+    // === FORMATTERS ===
+    function fmtPct(v, decimals) {
+      if (v === null || v === undefined) return '—';
+      var n = Number(v);
+      var sign = n >= 0 ? '+' : '';
+      return sign + n.toFixed(decimals == null ? 2 : decimals) + '%';
+    }
+    function fmtUSD(v) {
+      if (v === null || v === undefined) return '—';
+      var n = Number(v);
+      if (n >= 1000) return '$' + n.toLocaleString('en-US', { maximumFractionDigits: 2 });
+      if (n >= 1)    return '$' + n.toFixed(2);
+      return '$' + n.toFixed(8);
+    }
+    function fmtAge(iso) {
+      if (!iso) return '—';
+      var diff = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+      if (diff < 60) return diff + 's ago';
+      if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
+      return Math.floor(diff / 3600) + 'h ago';
+    }
+
+    // === RENDER: LAST SCAN BOX ===
+    function renderLastScan(row) {
+      if (!row) return;
+      document.getElementById('sentinel-last-ts').textContent = fmtAge(row.created_at) + ' · ' + new Date(row.created_at).toLocaleString();
+      document.getElementById('s-btc-price').textContent = fmtUSD(row.btc_price);
+      var c24 = Number(row.btc_change_24h);
+      var c24el = document.getElementById('s-btc-24h');
+      c24el.textContent = '24h ' + fmtPct(c24);
+      c24el.style.color = c24 >= 0 ? 'var(--green)' : 'var(--red)';
+
+      var c1 = Number(row.btc_change_1h);
+      var c1el = document.getElementById('s-btc-1h');
+      c1el.textContent = fmtPct(c1);
+      c1el.classList.toggle('pos', c1 >= 0);
+      c1el.classList.toggle('neg', c1 < 0);
+
+      // funding rate is decimal (e.g. -0.00004568 = -0.00457%)
+      var f = Number(row.funding_rate);
+      var fpct = (f * 100).toFixed(4) + '%';
+      var fel = document.getElementById('s-funding');
+      fel.textContent = fpct;
+      fel.classList.toggle('pos', f < 0); // negative funding = opportunity (short squeeze)
+      fel.classList.toggle('neg', f > 0.0003);
+
+      // speed of fall: pallino + label
+      var raw = row.raw_signals || {};
+      var speedOn = !!raw.speed_of_fall_accelerating;
+      document.getElementById('s-speed-dot').classList.toggle('on', speedOn);
+      document.getElementById('s-speed-label').textContent = speedOn ? 'ACCELERATING' : 'stable';
+
+      // gauges
+      var risk = Number(row.risk_score);
+      var opp  = Number(row.opportunity_score);
+      document.getElementById('s-risk').textContent = risk;
+      document.getElementById('s-opp').textContent = opp;
+      document.getElementById('s-risk-fill').style.width = Math.min(100, risk) + '%';
+      document.getElementById('s-opp-fill').style.width  = Math.min(100, opp) + '%';
+    }
+
+    // === RENDER: SPEED COUNTER (B) ===
+    function renderSpeedCounter(rows24h) {
+      var todayCount = 0;
+      var todayStart = new Date(); todayStart.setHours(0,0,0,0);
+      for (var i = 0; i < rows24h.length; i++) {
+        var r = rows24h[i];
+        if (new Date(r.created_at) < todayStart) continue;
+        var raw = r.raw_signals || {};
+        if (raw.speed_of_fall_accelerating) todayCount++;
+      }
+      document.getElementById('s-speed-counter').textContent = todayCount + '× today';
+    }
+
+    // === RENDER: 24H CHART (risk + opp + BTC overlay + speed markers) ===
+    function renderChart(rows) {
+      var canvas = document.getElementById('sentinel-chart');
+      var ctx = canvas.getContext('2d');
+      // High-DPI sizing
+      var dpr = window.devicePixelRatio || 1;
+      var rect = canvas.getBoundingClientRect();
+      canvas.width  = Math.floor(rect.width * dpr);
+      canvas.height = Math.floor(rect.height * dpr);
+      ctx.scale(dpr, dpr);
+      var W = rect.width, H = rect.height;
+      ctx.clearRect(0, 0, W, H);
+
+      if (!rows.length) {
+        ctx.fillStyle = '#9aa3b8';
+        ctx.font = '12px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('no data', W / 2, H / 2);
+        return;
+      }
+
+      // sort ascending
+      rows = rows.slice().sort(function(a, b) {
+        return new Date(a.created_at) - new Date(b.created_at);
+      });
+
+      var pad = { l: 44, r: 56, t: 16, b: 28 };
+      var plotW = W - pad.l - pad.r;
+      var plotH = H - pad.t - pad.b;
+
+      var t0 = new Date(rows[0].created_at).getTime();
+      var t1 = new Date(rows[rows.length - 1].created_at).getTime();
+      var span = t1 - t0 || 1;
+
+      var btcMin = Infinity, btcMax = -Infinity;
+      for (var i = 0; i < rows.length; i++) {
+        var b = Number(rows[i].btc_price);
+        if (!isNaN(b)) {
+          if (b < btcMin) btcMin = b;
+          if (b > btcMax) btcMax = b;
+        }
+      }
+      if (btcMin === Infinity) { btcMin = 0; btcMax = 1; }
+      var btcRange = btcMax - btcMin || 1;
+      // Pad BTC axis 5% so the line doesn't kiss the edges
+      btcMin -= btcRange * 0.05;
+      btcMax += btcRange * 0.05;
+      btcRange = btcMax - btcMin;
+
+      function tx(ts) { return pad.l + (ts - t0) / span * plotW; }
+      function tyScore(v) { return pad.t + plotH - (v / 100) * plotH; }
+      function tyBtc(v) { return pad.t + plotH - (v - btcMin) / btcRange * plotH; }
+
+      // Background grid (horizontal lines on score 0/25/50/75/100)
+      ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+      ctx.lineWidth = 1;
+      [0, 25, 50, 75, 100].forEach(function(g) {
+        var y = tyScore(g);
+        ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(W - pad.r, y); ctx.stroke();
+      });
+
+      // Threshold lines on score axis (50 yellow, 70 red)
+      ctx.strokeStyle = 'rgba(252, 211, 77, 0.25)';
+      ctx.setLineDash([3, 4]);
+      ctx.beginPath(); ctx.moveTo(pad.l, tyScore(50)); ctx.lineTo(W - pad.r, tyScore(50)); ctx.stroke();
+      ctx.strokeStyle = 'rgba(239, 68, 68, 0.30)';
+      ctx.beginPath(); ctx.moveTo(pad.l, tyScore(70)); ctx.lineTo(W - pad.r, tyScore(70)); ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Speed-of-fall vertical markers (C)
+      ctx.strokeStyle = 'rgba(252, 211, 77, 0.55)';
+      ctx.setLineDash([4, 4]);
+      ctx.lineWidth = 1;
+      var prevSpeed = false;
+      for (var i = 0; i < rows.length; i++) {
+        var raw = rows[i].raw_signals || {};
+        var s = !!raw.speed_of_fall_accelerating;
+        if (s && !prevSpeed) {
+          var x = tx(new Date(rows[i].created_at).getTime());
+          ctx.beginPath();
+          ctx.moveTo(x, pad.t);
+          ctx.lineTo(x, pad.t + plotH);
+          ctx.stroke();
+        }
+        prevSpeed = s;
+      }
+      ctx.setLineDash([]);
+
+      // BTC price line (right axis, blue)
+      ctx.strokeStyle = '#7dd3fc';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      var first = true;
+      for (var i = 0; i < rows.length; i++) {
+        var b = Number(rows[i].btc_price);
+        if (isNaN(b)) continue;
+        var x = tx(new Date(rows[i].created_at).getTime());
+        var y = tyBtc(b);
+        if (first) { ctx.moveTo(x, y); first = false; } else { ctx.lineTo(x, y); }
+      }
+      ctx.stroke();
+
+      // Risk line (left axis, red)
+      ctx.strokeStyle = '#ef4444';
+      ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      for (var i = 0; i < rows.length; i++) {
+        var v = Number(rows[i].risk_score);
+        var x = tx(new Date(rows[i].created_at).getTime());
+        var y = tyScore(v);
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+
+      // Opportunity line (left axis, green)
+      ctx.strokeStyle = '#22c55e';
+      ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      for (var i = 0; i < rows.length; i++) {
+        var v = Number(rows[i].opportunity_score);
+        var x = tx(new Date(rows[i].created_at).getTime());
+        var y = tyScore(v);
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+
+      // Y-axis labels (left: score 0-100)
+      ctx.fillStyle = '#9aa3b8';
+      ctx.font = '10px monospace';
+      ctx.textAlign = 'right';
+      [0, 25, 50, 75, 100].forEach(function(g) {
+        ctx.fillText(g, pad.l - 6, tyScore(g) + 3);
+      });
+      // Y-axis labels (right: BTC price)
+      ctx.textAlign = 'left';
+      [btcMin, (btcMin + btcMax) / 2, btcMax].forEach(function(v) {
+        var label = v >= 1000 ? (v / 1000).toFixed(1) + 'k' : v.toFixed(0);
+        ctx.fillText('$' + label, W - pad.r + 6, tyBtc(v) + 3);
+      });
+
+      // X-axis labels (3 timestamps)
+      ctx.textAlign = 'center';
+      [0, 0.5, 1].forEach(function(f) {
+        var ts = t0 + span * f;
+        var d = new Date(ts);
+        var label = d.getHours().toString().padStart(2, '0') + ':' + d.getMinutes().toString().padStart(2, '0');
+        ctx.fillText(label, pad.l + plotW * f, H - 8);
+      });
+    }
+
+    // === SHERPA: LAST PROPOSALS TABLE ===
+    var SYMBOL_COLOR = { 'BTC/USDT': '#3b82f6', 'SOL/USDT': '#22c55e', 'BONK/USDT': '#f59e0b' };
+    var SYMBOL_SHORT = { 'BTC/USDT': 'BTC', 'SOL/USDT': 'SOL', 'BONK/USDT': 'BONK' };
+
+    function fmtTriplet(buy, sell, idle) {
+      var b = buy == null ? '—' : Number(buy).toFixed(1);
+      var s = sell == null ? '—' : Number(sell).toFixed(1);
+      var i = idle == null ? '—' : Number(idle).toFixed(1) + 'h';
+      return b + ' / ' + s + ' / ' + i;
+    }
+
+    function renderProposals(latestBySymbol) {
+      var tbody = document.getElementById('proposals-tbody');
+      tbody.innerHTML = '';
+      var symbols = ['BTC/USDT', 'SOL/USDT', 'BONK/USDT'];
+      var newest = null;
+      symbols.forEach(function(sym) {
+        var row = latestBySymbol[sym];
+        var tr = document.createElement('tr');
+        if (!row) {
+          tr.innerHTML = '<td><span class="sym" style="color:' + SYMBOL_COLOR[sym] + '">' + SYMBOL_SHORT[sym] + '</span></td><td colspan="4" style="color: var(--text-dim);">no data</td>';
+          tbody.appendChild(tr);
+          return;
+        }
+        if (!newest || new Date(row.created_at) > new Date(newest)) newest = row.created_at;
+
+        var cur = fmtTriplet(row.current_buy_pct, row.current_sell_pct, row.current_idle_reentry_hours);
+        var prop = fmtTriplet(row.proposed_buy_pct, row.proposed_sell_pct, row.proposed_idle_reentry_hours);
+
+        var status;
+        if (row.cooldown_active) {
+          var cps = (row.cooldown_parameters || []).join(', ');
+          status = '<span class="badge-cool">🔒 cooldown</span>' + (cps ? ' <span style="color: var(--text-dim); font-size: 10px;">(' + cps + ')</span>' : '');
+        } else if (row.would_have_changed) {
+          status = '<span class="badge-diff">⚠ diff</span>';
+        } else {
+          status = '<span class="badge-ok">✓ aligned</span>';
+        }
+
+        tr.innerHTML =
+          '<td><span class="sym" style="color:' + SYMBOL_COLOR[sym] + '">' + SYMBOL_SHORT[sym] + '</span></td>' +
+          '<td><span class="vals">' + cur + '</span></td>' +
+          '<td><span class="vals">' + prop + '</span></td>' +
+          '<td><span style="color: var(--text-dim);">' + (row.proposed_regime || '—') + '</span></td>' +
+          '<td>' + status + '</td>';
+        tbody.appendChild(tr);
+      });
+      document.getElementById('sherpa-last-ts').textContent = newest ? (fmtAge(newest) + ' · ' + new Date(newest).toLocaleString()) : '—';
+    }
+
+    // === SHERPA: REACTION CHART (risk vs proposed_buy_pct per bot) ===
+    function renderReactionChart(sentinelRows, sherpaRowsBySymbol) {
+      var canvas = document.getElementById('reaction-chart');
+      var ctx = canvas.getContext('2d');
+      var dpr = window.devicePixelRatio || 1;
+      var rect = canvas.getBoundingClientRect();
+      canvas.width = Math.floor(rect.width * dpr);
+      canvas.height = Math.floor(rect.height * dpr);
+      ctx.scale(dpr, dpr);
+      var W = rect.width, H = rect.height;
+      ctx.clearRect(0, 0, W, H);
+
+      var allTs = [];
+      sentinelRows.forEach(function(r) { allTs.push(new Date(r.created_at).getTime()); });
+      Object.keys(sherpaRowsBySymbol).forEach(function(s) {
+        sherpaRowsBySymbol[s].forEach(function(r) { allTs.push(new Date(r.created_at).getTime()); });
+      });
+      if (!allTs.length) {
+        ctx.fillStyle = '#9aa3b8';
+        ctx.font = '12px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('no data', W / 2, H / 2);
+        return;
+      }
+      var t0 = Math.min.apply(null, allTs);
+      var t1 = Math.max.apply(null, allTs);
+      var span = t1 - t0 || 1;
+
+      var pad = { l: 44, r: 56, t: 16, b: 28 };
+      var plotW = W - pad.l - pad.r;
+      var plotH = H - pad.t - pad.b;
+
+      // Buy_pct range (right axis) — clamp to RANGES (0.3, 3.0)
+      var buyMin = 0.3, buyMax = 3.0;
+
+      function tx(ts) { return pad.l + (ts - t0) / span * plotW; }
+      function tyScore(v) { return pad.t + plotH - (v / 100) * plotH; }
+      function tyBuy(v) { return pad.t + plotH - (v - buyMin) / (buyMax - buyMin) * plotH; }
+
+      // background grid
+      ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+      ctx.lineWidth = 1;
+      [0, 25, 50, 75, 100].forEach(function(g) {
+        var y = tyScore(g);
+        ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(W - pad.r, y); ctx.stroke();
+      });
+
+      // threshold lines (50 yellow, 70 red)
+      ctx.strokeStyle = 'rgba(252, 211, 77, 0.25)';
+      ctx.setLineDash([3, 4]);
+      ctx.beginPath(); ctx.moveTo(pad.l, tyScore(50)); ctx.lineTo(W - pad.r, tyScore(50)); ctx.stroke();
+      ctx.strokeStyle = 'rgba(239, 68, 68, 0.30)';
+      ctx.beginPath(); ctx.moveTo(pad.l, tyScore(70)); ctx.lineTo(W - pad.r, tyScore(70)); ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Sherpa proposed_buy_pct lines (right axis), one per symbol
+      ['BTC/USDT', 'SOL/USDT', 'BONK/USDT'].forEach(function(sym) {
+        var rows = (sherpaRowsBySymbol[sym] || []).slice().sort(function(a, b) {
+          return new Date(a.created_at) - new Date(b.created_at);
+        });
+        if (!rows.length) return;
+        ctx.strokeStyle = SYMBOL_COLOR[sym];
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        rows.forEach(function(r, i) {
+          var v = Number(r.proposed_buy_pct);
+          if (isNaN(v)) return;
+          var x = tx(new Date(r.created_at).getTime());
+          var y = tyBuy(v);
+          if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        });
+        ctx.stroke();
+      });
+
+      // Risk score line (left axis, red, drawn last so it's on top)
+      var sentinel = sentinelRows.slice().sort(function(a, b) {
+        return new Date(a.created_at) - new Date(b.created_at);
+      });
+      ctx.strokeStyle = '#ef4444';
+      ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      sentinel.forEach(function(r, i) {
+        var v = Number(r.risk_score);
+        var x = tx(new Date(r.created_at).getTime());
+        var y = tyScore(v);
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+
+      // Y-axis labels — left (score)
+      ctx.fillStyle = '#9aa3b8';
+      ctx.font = '10px monospace';
+      ctx.textAlign = 'right';
+      [0, 25, 50, 75, 100].forEach(function(g) {
+        ctx.fillText(g, pad.l - 6, tyScore(g) + 3);
+      });
+      // Y-axis labels — right (buy_pct)
+      ctx.textAlign = 'left';
+      [0.5, 1.0, 1.5, 2.0, 2.5, 3.0].forEach(function(v) {
+        ctx.fillText(v.toFixed(1), W - pad.r + 6, tyBuy(v) + 3);
+      });
+      // X-axis labels
+      ctx.textAlign = 'center';
+      [0, 0.5, 1].forEach(function(f) {
+        var d = new Date(t0 + span * f);
+        var label = d.getHours().toString().padStart(2, '0') + ':' + d.getMinutes().toString().padStart(2, '0');
+        ctx.fillText(label, pad.l + plotW * f, H - 8);
+      });
+    }
+
+    // === SHERPA: PARAMETERS HISTORY (3 stacked mini-charts) ===
+    function renderParamChart(canvasId, sherpaRowsBySymbol, fieldName, yMin, yMax) {
+      var canvas = document.getElementById(canvasId);
+      var ctx = canvas.getContext('2d');
+      var dpr = window.devicePixelRatio || 1;
+      var rect = canvas.getBoundingClientRect();
+      canvas.width = Math.floor(rect.width * dpr);
+      canvas.height = Math.floor(rect.height * dpr);
+      ctx.scale(dpr, dpr);
+      var W = rect.width, H = rect.height;
+      ctx.clearRect(0, 0, W, H);
+
+      var allTs = [];
+      Object.keys(sherpaRowsBySymbol).forEach(function(s) {
+        sherpaRowsBySymbol[s].forEach(function(r) { allTs.push(new Date(r.created_at).getTime()); });
+      });
+      if (!allTs.length) return;
+      var t0 = Math.min.apply(null, allTs);
+      var t1 = Math.max.apply(null, allTs);
+      var span = t1 - t0 || 1;
+
+      var pad = { l: 30, r: 10, t: 4, b: 4 };
+      var plotW = W - pad.l - pad.r;
+      var plotH = H - pad.t - pad.b;
+
+      function tx(ts) { return pad.l + (ts - t0) / span * plotW; }
+      function ty(v) { return pad.t + plotH - (v - yMin) / (yMax - yMin) * plotH; }
+
+      // baseline
+      ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+      ctx.beginPath(); ctx.moveTo(pad.l, pad.t + plotH / 2); ctx.lineTo(W - pad.r, pad.t + plotH / 2); ctx.stroke();
+
+      ['BTC/USDT', 'SOL/USDT', 'BONK/USDT'].forEach(function(sym) {
+        var rows = (sherpaRowsBySymbol[sym] || []).slice().sort(function(a, b) {
+          return new Date(a.created_at) - new Date(b.created_at);
+        });
+        if (!rows.length) return;
+        ctx.strokeStyle = SYMBOL_COLOR[sym];
+        ctx.lineWidth = 1.3;
+        ctx.beginPath();
+        rows.forEach(function(r, i) {
+          var v = Number(r[fieldName]);
+          if (isNaN(v)) return;
+          var x = tx(new Date(r.created_at).getTime());
+          var y = ty(Math.max(yMin, Math.min(yMax, v)));
+          if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        });
+        ctx.stroke();
+      });
+
+      // y-axis range labels
+      ctx.fillStyle = '#9aa3b8';
+      ctx.font = '9px monospace';
+      ctx.textAlign = 'right';
+      ctx.fillText(yMax.toFixed(1), pad.l - 4, pad.t + 8);
+      ctx.fillText(yMin.toFixed(1), pad.l - 4, pad.t + plotH);
+    }
+
+    // === DB MONITOR ===
+    function renderDbMonitor(rowCounts, tableSizes) {
+      // Total bytes used
+      var totalBytes = tableSizes.reduce(function(sum, t) { return sum + t.bytes; }, 0);
+      var totalMB = totalBytes / (1024 * 1024);
+      var pct = (totalMB / 500) * 100;
+      document.getElementById('db-total-pct').textContent = pct.toFixed(2) + '% used';
+      document.getElementById('db-usage-fill').style.width = Math.min(100, pct) + '%';
+      document.getElementById('db-usage-text').textContent = totalMB.toFixed(1) + ' MB used of 500 MB free tier';
+
+      var tbody = document.getElementById('db-tables-tbody');
+      tbody.innerHTML = '';
+      tableSizes.slice(0, 8).forEach(function(t) {
+        var rc = rowCounts[t.tablename];
+        var rowsLabel = (rc && rc.total != null) ? rc.total.toLocaleString() : '—';
+        var lastLabel = (rc && rc.last) ? fmtAge(rc.last) : '—';
+        var sizeMB = (t.bytes / (1024 * 1024)).toFixed(2) + ' MB';
+        var tr = document.createElement('tr');
+        tr.innerHTML =
+          '<td>' + t.tablename + '</td>' +
+          '<td class="num">' + rowsLabel + '</td>' +
+          '<td class="num">' + sizeMB + '</td>' +
+          '<td>' + lastLabel + '</td>';
+        tbody.appendChild(tr);
+      });
+    }
+
+    // === BOOTSTRAP: fetch sentinel + sherpa + DB stats after auth ===
+    async function bootstrap() {
+      try {
+        // --- Sentinel ---
+        var last = await sbFetch('sentinel_scores?select=*&order=created_at.desc&limit=1');
+        renderLastScan(last[0]);
+
+        var since = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
+        // Paginated: Supabase REST caps at 1000 rows per response. 24h of
+        // Sentinel data is ~1440 rows (60s loop) and 24h of Sherpa is ~2160
+        // rows (3 symbols × 720). Without pagination we'd lose the most
+        // recent ~7 hours.
+        var sentinelRows = await sbFetchAll('sentinel_scores?select=created_at,risk_score,opportunity_score,btc_price,raw_signals&created_at=gte.' + encodeURIComponent(since) + '&order=created_at.asc');
+        renderChart(sentinelRows);
+        renderSpeedCounter(sentinelRows);
+
+        // --- Sherpa: 24h proposals for all symbols ---
+        var sherpaAll = await sbFetchAll('sherpa_proposals?select=created_at,symbol,risk_score,opportunity_score,current_buy_pct,current_sell_pct,current_idle_reentry_hours,proposed_buy_pct,proposed_sell_pct,proposed_idle_reentry_hours,proposed_regime,cooldown_active,cooldown_parameters,would_have_changed&created_at=gte.' + encodeURIComponent(since) + '&order=created_at.asc');
+
+        var bySym = { 'BTC/USDT': [], 'SOL/USDT': [], 'BONK/USDT': [] };
+        var latestBySym = {};
+        sherpaAll.forEach(function(r) {
+          if (bySym[r.symbol]) bySym[r.symbol].push(r);
+          // Track newest per symbol
+          if (!latestBySym[r.symbol] || new Date(r.created_at) > new Date(latestBySym[r.symbol].created_at)) {
+            latestBySym[r.symbol] = r;
+          }
+        });
+
+        renderProposals(latestBySym);
+        renderReactionChart(sentinelRows, bySym);
+        renderParamChart('param-buy-chart', bySym, 'proposed_buy_pct', 0.3, 3.0);
+        renderParamChart('param-sell-chart', bySym, 'proposed_sell_pct', 0.8, 4.0);
+        renderParamChart('param-idle-chart', bySym, 'proposed_idle_reentry_hours', 0.5, 6.0);
+
+        // --- DB monitor ---
+        // Row counts via Supabase REST exact count headers
+        var tablesToCount = ['sentinel_scores', 'sherpa_proposals', 'trades', 'bot_events_log', 'bot_state_snapshots', 'trend_scans', 'trend_decisions_log', 'counterfactual_log', 'reserve_ledger', 'daily_pnl', 'daily_commentary', 'diary_entries'];
+        var rowCounts = {};
+        await Promise.all(tablesToCount.map(async function(t) {
+          try {
+            var r = await fetch(SB_URL + '/rest/v1/' + t + '?select=created_at&order=created_at.desc&limit=1', {
+              headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Prefer': 'count=exact', 'Range': '0-0' }
+            });
+            var contentRange = r.headers.get('content-range') || '';
+            var totalMatch = contentRange.match(/\/(\d+|\*)$/);
+            var total = totalMatch && totalMatch[1] !== '*' ? parseInt(totalMatch[1], 10) : null;
+            var data = await r.json();
+            rowCounts[t] = {
+              total: total,
+              last: (data && data[0] && data[0].created_at) ? data[0].created_at : null,
+              toLocaleString: function() { return total != null ? total.toLocaleString() : '—'; }
+            };
+          } catch (e) {
+            rowCounts[t] = null;
+          }
+        }));
+
+        // Sizes: Supabase REST cannot report pg_total_relation_size without a custom RPC.
+        // We embed a static-ish snapshot from the last query CC ran during pre-validation;
+        // this gets refreshed each time the page is rebuilt. For a real-time view we'd need
+        // an RPC like create_function get_table_sizes(). Acceptable for Sprint 1 monitoring.
+        var tableSizes = [
+          { tablename: 'trend_scans',          bytes: 8609792 },
+          { tablename: 'bot_state_snapshots',  bytes: 3063808 },
+          { tablename: 'bot_events_log',       bytes: 1384448 },
+          { tablename: 'sentinel_scores',      bytes: 892928 },
+          { tablename: 'sherpa_proposals',     bytes: 835584 },
+          { tablename: 'trend_decisions_log',  bytes: 622592 },
+          { tablename: 'trades',               bytes: 540672 },
+          { tablename: 'counterfactual_log',   bytes: 278528 },
+          { tablename: 'daily_commentary',     bytes: 180224 },
+          { tablename: 'reserve_ledger',       bytes: 155648 },
+          { tablename: 'diary_entries',        bytes: 147456 },
+          { tablename: 'daily_pnl',            bytes: 114688 },
+        ];
+        renderDbMonitor(rowCounts, tableSizes);
+
+        document.getElementById('last-update').textContent = 'updated ' + new Date().toLocaleTimeString();
+      } catch (e) {
+        console.error(e);
+        document.getElementById('last-update').textContent = 'fetch error: ' + e.message;
+      }
+    }
+
+    // Re-render charts on resize so the canvas stays sharp
+    var resizeT;
+    window.addEventListener('resize', function() {
+      clearTimeout(resizeT);
+      resizeT = setTimeout(bootstrap, 250);
+    });
+  </script>
+</body>
+</html>

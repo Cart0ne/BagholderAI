@@ -1,8 +1,8 @@
 # BUSINESS_STATE.md
 
-**Last updated:** 2026-05-07 — Session 63 (init)
-**Updated by:** CEO (Claude, Projects)
-**Basato su:** PROJECT_STATE.md committato 2026-05-07 (fine S63 init)
+**Last updated:** 2026-05-07 — Session 63 (chiusura: dashboard /admin live + 5 bug calibrazione + ricalibrazione Sentinel come decisione strategica)
+**Updated by:** CC (caccia bug guidata Max) + CEO (commit precedenti del giorno)
+**Basato su:** PROJECT_STATE.md aggiornato 2026-05-07 (S63 chiusura)
 
 ---
 
@@ -56,6 +56,10 @@ Preview rimosse da entrambi i volumi.
 
 | Data | Decisione | Perché |
 |---|---|---|
+| 2026-05-07 (S63 chiusura) | Dashboard `/admin` Sentinel+Sherpa+DB GO LIVE in 1 sessione (read-only, password-gated) | Sblocca osservabilità del sistema senza toccare i bot. Caccia bug guidata Max ha rilevato 5 anomalie in 30 min |
+| 2026-05-07 (S63) | 5 bug rilevati grazie alla dashboard: `speed_of_fall` miscalibrato + risk binario + opp morta + Grid polling 60s + Supabase 1000-cap home latente | Tutti documentati in PROJECT_STATE §5. 3 di calibrazione Sentinel rendono il replay counterfactual probabilmente cieco — vedi §6 |
+| 2026-05-07 (S63) | WebSocket Binance parcheggiato a "post €100 quando guadagneremo milioni" | Polling REST 60s perde wick BTC ~1.2%. Refactor 470 righe non giustificato a paper trading. Mitigazione pre-mainnet: ridurre check_interval BTC 60s→20s |
+| 2026-05-07 (S63) | Strategia long-term Supabase 1000-cap su `trades`: paginazione, NON checkpoint table | Paginazione = 30 min, zero migration. Checkpoint prematuro pre-50k trade (fossilizza FIFO ancora in scoperta bug). VIEW server-side scartata (rompe FIFO unique source) |
 | 2026-05-07 | Audit protocol introdotto: `PROJECT_STATE.md` + `BUSINESS_STATE.md` + cartella gitignored `audits/` | Continuità multi-sessione/multi-macchina. Primo canale formale per audit esterni (commits `57aff52`, `e20704c`) |
 | 2026-05-07 | Grid Phase 1 completata: split monolite 2200 righe → 6 moduli, zero cambi di comportamento | Prerequisito per Phase 2 (fix 60c + dust). API pubblica `GridBot` invariata (commit `be45fca`) |
 | 2026-05-07 | Dashboard admin Sentinel+Sherpa: design approvato, implementazione bloccata | ~9h frontend, ma toccare costanti Grid durante DRY_RUN invalida il counterfactual. Sbloccato post replay (~13 maggio) |
@@ -86,6 +90,28 @@ Preview rimosse da entrambi i volumi.
 6. **Tradermonty full-repo scan** — parcheggiato. Solo 5 skill su 15+ valutate. Riprendere per Sentinel Phase 3 / TF improvements (brief `evaluate_trading_skills.md`).
 
 7. **Esposizione pubblica Validation System** — il documento è milestone viva su /roadmap ma il contenuto è interno. Quanto esporre pubblicamente? Da decidere quando si apre una pagina pubblica dedicata.
+
+8. **Sherpa Sprint 2** — slow loop (Fear & Greed + CMC dominance + regime detection). Pre-requisito: replay counterfactual Sprint 1 fatto. Schedulato post-2026-05-13.
+
+9. **Sherpa Sprint 3** — news feed (CryptoPanic) + LLM Haiku classification. Idea Apple Note CC 2026-05-06, non ancora analizzata. Da brief-are post-Sprint 2.
+
+10. **Fix flicker Sherpa (A/B/C)** — decisione pending dopo 7gg di dati reali. Apple Note CC 2026-05-06.
+
+11. **Calibrare BASE_TABLE Sherpa** — se troppo distante dai parametri Board. Apple Note CC 2026-05-06. Da valutare dopo replay.
+
+12. **Investigare recalibrate-on-restart** — a ogni restart orchestrator scatta recalibrate su tutti i Grid. Sospetto trigger condition troppo aggressiva. Apple Note CEO 2026-05-07. Da indagare quando si torna sul codice Grid.
+
+13. **TF distance filter 12% fisso** — paralizza TF in mercato rialzista (0 swap da giorni, candidati 20-47% sopra EMA20). Valutare soglia dinamica/regime-aware. Apple Note CEO 2026-05-07. Cross-tema con Sentinel/Sherpa.
+
+14. **Rework comm Telegram post-dashboard /admin** — solo errori critici + buy/sell real-time in Telegram; tutto il resto (scan TF, skip, block, drift, health check) solo DB. Report serale aggregato. Apple Note CEO 2026-05-07. Da brief-are dopo /admin live → **`/admin` ora è live**, prossimo step naturale da schedulare.
+
+15. **[S63] Brief 60e — paginazione home/dashboard pubblica** (NEW imminente, deadline ~2026-05-17): TF passerà 1000 trade prima di quella data, oltre la quale la home mostrerà numeri silenziosamente sbagliati. Soluzione concordata: `sbqAll()` con Range header (pattern già implementato in `admin.html` stasera). Stima ~1h.
+
+16. **[S63] Sostituire emoji con `<BotMascot>` zainetti su /grid /tf /admin** (sessione futura): coerenza visiva + possibile apertura futura a pagine pubbliche read-only. Approccio: convertire `public/*.html` → `src/pages/*.astro`. Stima ~1.5h. Decisione narrativa pendente: in `/admin` mostrare Sentinel/Sherpa "accesi" o tenerli "LOCKED" finché non passano a `live`?
+
+17. **[S63] Sezione "Growth & Retention" in DB Monitor `/admin`** (sessione futura, ~30 min): tasso scrittura, estrapolazione capacità, salute retention con marker `⚠ over`/`⚠ under`. Documentato in `docs/admin-dashboard-guide.md` come TODO.
+
+18. **[S63] Documento architetturale "trades-checkpoint long-term"** (futuro, quando saremo a 30k+ trade): formalizzare la struttura tabella aggregati + trigger Postgres + protocollo di ricalcolo da zero in caso di bug FIFO retroattivi. Per ora paginazione basta.
 
 ---
 
@@ -118,7 +144,16 @@ Dal report CC 2026-05-05 e punto 6.1 di PROJECT_STATE.md: *"Equity P&L Binance (
 - **Diary:** FIFO realized come numero operativo; citare il gap equity come nota di onestà quando rilevante. Delta del 9%, non un ordine di grandezza.
 - **Go-live gating:** il gap numerico non è gating di per sé. **Quello che è gating è la proposta 2 di CC** (allineare la sell-decision a FIFO globale). Senza, il bot su mainnet vende lotti in perdita FIFO pensando di essere in profitto. Da posizionare in Phase 2 o subito dopo.
 
-**DRY_RUN Sherpa:** raccolta dati ~7 giorni (start ~6 maggio, deadline implicita ~13 maggio). Durante questa finestra: NON modificare costanti Grid. Admin dashboard Sentinel+Sherpa read-only fino a post-replay. Decisione `SHERPA_MODE=live` = 1–2 settimane + Board approval. Percorso indipendente dal go-live €100.
+**DRY_RUN Sherpa:** raccolta dati ~7 giorni (start ~6 maggio, deadline implicita ~13 maggio). Durante questa finestra: NON modificare costanti Grid/Sentinel. Admin dashboard Sentinel+Sherpa read-only **già live (S63)**. Decisione `SHERPA_MODE=live` = 1–2 settimane + Board approval. Percorso indipendente dal go-live €100.
+
+**⚠️ DECISIONE STRATEGICA PENDENTE — Ricalibrazione Sentinel pre-replay vs post-replay (S63):**
+
+I 3 bug calibrazione Sentinel rilevati 2026-05-07 grazie alla dashboard `/admin` (`speed_of_fall_accelerating` miscalibrato + risk score binario + opportunity score morta — vedi PROJECT_STATE §5) **rendono il replay counterfactual del 13 maggio probabilmente cieco**: Sherpa avrebbe proposto cambi guidati da segnali sbagliati, e il replay dimostrerebbe poco. Due opzioni:
+
+- **(a) Ricalibrare ora** `score_engine.py` / `price_monitor.py`: invalida i 7gg di dati raccolti finora, ma evita un replay inutile. Counter riparte da zero.
+- **(b) Lasciare correre** fino al 13 maggio: arriviamo al replay, scopriamo che è cieco, ricalibriamo poi e ripartiamo da zero. Stessi +7gg ma sprecati.
+
+**Raccomandazione CEO (da decidere):** opzione (a) sembra più razionale, ma richiede di accettare che SHERPA_MODE → live slitti di 1-2 settimane oltre il 13-14 maggio originale. Decisione strategica del Board.
 
 **Piattaforma pubblicazione:** Payhip (free plan, 5% fee, Stripe + PayPal). LemonSqueezy rifiutato (crypto risk flag). Nessuna urgenza di cambiare.
 

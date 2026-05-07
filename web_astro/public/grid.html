@@ -305,7 +305,8 @@
       <nav class="navbar">
         <a href="/">← Home</a>
         <a class="active" href="/grid">Grid</a>
-        <a href="/tf">TF Control</a>
+        <a href="/tf">TF</a>
+        <a href="/admin">Admin</a>
       </nav>
 
       <!-- Header -->
@@ -350,7 +351,7 @@
     // === CONFIG ===
     var SB_URL = 'https://pxdhtmqfwjwjhtcoacsn.supabase.co';
     var SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB4ZGh0bXFmd2p3amh0Y29hY3NuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4NDI1OTIsImV4cCI6MjA4OTQxODU5Mn0.G76lvYWrqlM0z2RoSkU1uAglfMBKN_rXvBGOQhb4kdg';
-    var ADMIN_HASH = '8a308134250d16e95b79019171e5cb37ed436a14e2800f22b98e0fa20ac6f9eb'; // sha256 of 'password' — CHANGE THIS
+    var ADMIN_HASH = '8a308134250d16e95b79019171e5cb37ed436a14e2800f22b98e0fa20ac6f9eb'; // sha256 of the real admin password (set ~session 53)
     var COLORS = { 'BTC/USDT': '#378ADD', 'SOL/USDT': '#5DCAA5', 'BONK/USDT': '#EF9F27' };
     var SHORT = { 'BTC/USDT': 'BTC', 'SOL/USDT': 'SOL', 'BONK/USDT': 'BONK' };
     // Decimal precision per coin to surface sub-step dust without rounding it away
