@@ -102,4 +102,4 @@ In Phase 1 di brief 62a (split `grid_bot.py`) NON è stato toccato il comportame
 
 | Data | Area | Topic | Verdetto | Findings chiave | Report |
 |------|------|-------|----------|-----------------|--------|
-| _(nessun audit ancora completato — primo previsto: 2026-05-07 V1 Calibration su Sentinel↔Sherpa↔Grid post-Phase 1)_ | | | | | |
+| 2026-05-07 | 1 | Phase 1 split grid_bot.py | APPROVED | 0 regressioni, 0 risk gates aperti | locale (audits/) |
