@@ -33,3 +33,6 @@ scripts/output/backtest_trades.csv
 
 # Web prototypes (local-only, not deployed to Vercel)
 web_proto/
+
+# Old pre-Astro site (replaced by web_astro/, kept locally as backup)
+web/
