@@ -1,8 +1,8 @@
 # BUSINESS_STATE.md
 
-**Last updated:** 2026-05-08 — Session 65 chiusura (Opzione 3 dashboard + brief 60b respec avg-cost + testnet path identificato)
-**Updated by:** CEO + CC (decision_s65_gap_reconciled.md + business_state_update_s65.md)
-**Basato su:** PROJECT_STATE.md aggiornato 2026-05-08 (S65 chiusura)
+**Last updated:** 2026-05-08 — Session 66 chiusura (Operation Clean Slate: stop + liquidazione + audit + fix avg-cost canonico)
+**Updated by:** CEO + CC (brief_66a + audit Step 0d formula_verification_s66.md)
+**Basato su:** PROJECT_STATE.md aggiornato 2026-05-08 (S66 chiusura)
 
 ---
 
@@ -46,7 +46,7 @@ Preview rimosse da entrambi i volumi.
 
 **Volume 3** — prossimo target di pubblicazione. Coprirà sessions 53+. Nessuna struttura definita ancora. La session 63 è appena iniziata; il volume si chiuderà naturalmente quando un arco narrativo sarà completo (stima grezza: sessioni 70–80).
 
-**Sessione corrente:** 65 BUILDING. Session 64 COMPLETE. Volume 3 outline: Sentinel + Sherpa + l'incidente "P&L gap riconciliato" + scoperta testnet come capitoli forti.
+**Sessione corrente:** 66 BUILDING. Session 65 COMPLETE. Volume 3 outline: "Operation Clean Slate" — audit 1,158 trade, scoperta $27 phantom P&L, fix avg-cost, rebuild from zero — è il climax dell'arco contabilità.
 
 **Check di congruenza diary↔DB:** nessun check automatico attivo. **Reconciliation gate (nightly script)** proposto come task Validation System: verifica ogni notte che `Realized_avg_cost + Unrealized = Total P&L` chiuda al centesimo, alert se gap > $0.01. Da implementare insieme a brief 60b respec.
 
@@ -56,6 +56,10 @@ Preview rimosse da entrambi i volumi.
 
 | Data | Decisione | Perché |
 |---|---|---|
+| 2026-05-08 (S66) | **Operation Clean Slate: stop bot, liquidazione totale, audit, fix, restart da zero** | Max: "vendere tutto, verificare le formule, ripartire". L'eredità di 458 sell fossili con bias rendeva ogni fix un rattoppo. Liquidazione SQL bypass, snapshot, verifica formule su dataset chiuso |
+| 2026-05-08 (S66) | **Fix avg-cost canonico shippato (1 riga in 2 funzioni)** | Il buy_pipeline aveva già la formula corretta. Il sell_pipeline la ignorava e faceva walk-and-sum della queue (codice 53a). Fix chirurgico, test 5/5 verdi, identità chiude al centesimo su 50 ops random |
+| 2026-05-08 (S66) | **Strict-FIFO queue non più usata per realized_pnl** | La queue resta viva solo per la logica decisionale (Strategy A "no sell at loss"). La contabilità usa solo avg_cost + holdings |
+| 2026-05-08 (S66) | **Maintenance page + post X "self-roast" pubblicato** | 🤖 AI + 👤 CO-FOUNDER. "An AI that can trade but can't read its own report card" |
 | 2026-05-08 (S65 fine) | **Sito offline / pagina maintenance** finché numeri non sono verificati su testnet | Max: "i numeri stanno mentendo al pubblico". Total P&L è matematicamente coerente con Net Worth, ma finché non verifichiamo che la convenzione contabile coincide con Binance non possiamo affermare "≡ Binance live". Sito torna su con numeri certificati post brief 65c testnet |
 | 2026-05-08 (S65) | **Brief 60b RISPECIFICATO: avg-cost pulito, NON strict-FIFO** | Max ha intuito durante la sessione che Binance usa avg-cost, non FIFO. Il bot già usa avg-cost ma implementato male (bias +28% Grid perché l'identità contabile non chiude). Fix = stessa formula fatta bene, allineata a Binance. Strict-FIFO era un overlay nostro arbitrario, abbandonato |
 | 2026-05-08 (S65) | **Brief 65c NUOVO: migrazione paper → Binance testnet** PRIMA di brief 60b | `config/settings.py:21` ha già `TESTNET=true` ma il bot bypass-a in `exchange.py:8-11` (commento legacy). Riattivare path testnet (1-2h) → ordini eseguiti contro Binance vero (soldi finti) → Binance scrive il SUO realized_pnl → confronto diretto con il nostro DB → risposta definitiva sulla convenzione. Sblocca il brief 60b informato invece di a tentoni |
@@ -87,7 +91,7 @@ Preview rimosse da entrambi i volumi.
 
 1. **Equity P&L nella home** — proposta 1 del report CC 05/05: secondo numero "Equity P&L" affiancato al FIFO realized. Stima CC: 1–2 ore. Aspetta decisione CEO (§6).
 
-2. ~~**Allineamento sell-decision a FIFO globale**~~ — **SUPERATA in S65**. Binance usa avg-cost (da verificare in testnet), il bot pure. Il fix è fare avg-cost correttamente nel brief 60b respec, non cambiare metodo. Strict-FIFO abbandonato come metodo contabile di riferimento.
+2. ~~**Allineamento sell-decision a FIFO globale**~~ — **SUPERATA in S65, FIXATA in S66**. Il sell_pipeline ora usa avg_cost canonico. La queue resta solo per logica decisionale (Strategy A "no sell at loss"). Identità contabile chiude al centesimo (test 5/5 verdi).
 
 3. **Log file size monitor + log rotation** — §8 del Validation System. Stima CC: 2–4 ore. Brief separato, bassa priorità finché Phase 2 Grid è in corso.
 
@@ -129,6 +133,8 @@ Preview rimosse da entrambi i volumi.
 
 22. **[S65 NEW] Reconciliation gate (nightly script)** — proposto come task Validation System: script su Mac Mini che ogni notte verifica `Realized_avg_cost + Unrealized = Total P&L` al centesimo, alert Telegram se gap > $0.01. Stima ~2h. Da implementare insieme/post brief 60b, gating soft per future regressioni.
 
+23. **[S66 NEW] Aggiornare `tests/test_pct_sell_fifo.py`** — assertion sul realized_pnl cambiate dopo pivot avg-cost. Non gating, non in CI. Manutenzione.
+
 ---
 
 ## 6. Vincoli / Deadline Non-Tecnici
@@ -139,12 +145,13 @@ Preview rimosse da entrambi i volumi.
 1. ✅ Opzione A (DB-based dashboards) — shipped commit `f143634`
 2. ✅ Opzione 3 (dashboards mostrano solo Total P&L, Realized in /admin) — shipped commit `6100caf`
 3. ✅ Schema drift skim fixato — DB UPDATE one-shot S65
-4. ⬜ **Brief 65c** (migrazione paper → Binance testnet) — gating, sblocca tutto il resto
-5. ⬜ **Brief 60b respec** (bot scrive realized_pnl avg-cost coerente, identità chiude al centesimo) — gating, dipende dall'output di 65c
-6. ⬜ Phase 2 Grid (brief 62b: fix 60c + dust) — gating
-7. ⬜ Reconciliation gate nightly script — gating soft (può slittare post-go-live)
-8. ⬜ Sito di nuovo online con numeri certificati
-9. ⬜ Board approval finale (Max)
+4. ✅ **Brief 66a Step 1** (fix avg-cost nel bot, test 5/5 verdi) — shipped 2026-05-08 (S66)
+5. ⬜ **Brief 66a Step 2** (dust prevention sell pipeline) — S67
+6. ⬜ **Brief 66a Step 3** (testnet path reactivation, paper → testnet.binance.vision) — S67
+7. ⬜ **Brief 66a Step 4** (reset DB + restart con $100 testnet fresh) — S67
+8. ⬜ **Brief 66a Step 5** (reconciliation gate nightly script) — S67/S68
+9. ⬜ Sito di nuovo online con numeri certificati su testnet
+10. ⬜ Board approval finale (Max)
 
 **Removed/downgraded prerequisites (decision CEO 2026-05-08):**
 - ~~7 giorni clean FIFO drift post-Phase 2~~ → cancellato, calibriamo sul campo con €100 reali
@@ -201,7 +208,8 @@ I 3 bug calibrazione Sentinel rilevati 2026-05-07 grazie alla dashboard `/admin`
 | **Nessun go-live €100** | Pre-live gates non superate. Phase 2 Grid ancora da fare. Architettura completa (TF + Sentinel maturo + orchestrator superiore) richiede mesi, non settimane |
 | **Nessuna partnership esterna** | Il progetto non ha traction. Prematuro cercare partner senza prodotto finito e traffico organico |
 | **Strict-FIFO come metodo contabile** | Abbandonato in S65. Binance usa avg-cost (da verificare in testnet brief 65c), il bot pure. Il fix è fare avg-cost correttamente (brief 60b respec), non cambiare metodo. Strict-FIFO resta solo come riga di confronto in /admin Reconciliation |
-| **Sito pubblico online** | OFFLINE da 2026-05-08 sera (S65 chiusura). Maintenance page in vetrina finché brief 65c (testnet) + 60b (avg-cost fix) non chiariscono i numeri. Decisione CEO: meglio onestà che vetrina con numeri ambigui |
+| **Sito pubblico online** | OFFLINE da 2026-05-08 sera (S65 chiusura). Maintenance page in vetrina finché brief 66a Step 2-4 (dust + testnet + reset) non chiariscono i numeri. Decisione CEO: meglio onestà che vetrina con numeri ambigui |
+| **Bot non in funzione** | Operation Clean Slate: fermato per audit + fix. Restart previsto in S67 su Binance testnet |
 | **Nessun cambio prezzo volumi** | €4.99 è il prezzo di lancio. Nessun dato di vendita su cui ragionare |
 | **BTC in portafoglio live** | Costi di conversione USDT→BTC troppo alti per budget €100. Decisione differita |
 | **Audit esterni** | Protocollo appena introdotto (S63). Primo audit previsto: V1 Calibration su Sentinel↔Sherpa↔Grid post-Phase 1. Nessuno completato ancora |
