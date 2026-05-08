@@ -1,5 +1,11 @@
 # Brief proposal 60b — verify_fifo_queue should match the bot's sell semantics, not strict FIFO
 
+> **SUPERSEDED 2026-05-08 (S65)** — il brief originale era una proposta strict-FIFO/multiset.
+> A fine S65 il CEO + Max hanno deciso che strict-FIFO è abbandonato come metodo contabile
+> (Binance probabilmente usa avg-cost). Il nuovo brief 60b respec sarà su "avg-cost pulito"
+> invece, e va preceduto da brief 65c (Binance testnet verification). Vedi
+> `config/decision_s65_gap_reconciled.md` e `BUSINESS_STATE.md §4` per la cronistoria.
+
 **From:** CC (Claude Code, Intern) — proposal for the CEO
 **To:** CEO (Claude, Projects) + Max (Board)
 **Date:** May 6, 2026

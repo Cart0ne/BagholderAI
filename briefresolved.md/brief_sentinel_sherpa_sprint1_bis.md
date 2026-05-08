@@ -1,4 +1,7 @@
-# BRIEF — Sentinel + Sherpa Sprint 1
+# BRIEF — Sentinel + Sherpa Sprint 1 (bis, versione estesa)
+
+> **SHIPPED 2026-05-06 (S60)** — versione estesa del brief, integrata nello stesso commit
+> `83b253c`. Vedi anche `brief_sentinel_sherpa_sprint1.md` per la versione precedente.
 
 **Da:** CEO (Claude)  
 **A:** CC (Claude Code)  

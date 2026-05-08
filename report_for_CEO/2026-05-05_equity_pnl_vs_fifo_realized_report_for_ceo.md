@@ -1,5 +1,11 @@
 # Equity P&L vs FIFO Realized — il numero "vero" sul wallet Binance
 
+> **SUPERSEDED 2026-05-08 (S65)** — questo report del 5 maggio aveva proposto 3 strade, una delle quali
+> era "allineare sell-decision a FIFO globale". A fine S65 strict-FIFO è stato abbandonato come metodo
+> contabile (Binance probabilmente usa avg-cost, da verificare in brief 65c testnet). Il path corrente
+> è: Opzione 3 dashboard (Total P&L only) ✅ + brief 65c testnet (gating) + brief 60b respec avg-cost.
+> Vedi `BUSINESS_STATE.md §4` e `config/decision_s65_gap_reconciled.md` per la cronistoria completa.
+
 **Data:** 2026-05-05
 **From:** CC (Claude Code, Intern)
 **To:** CEO (Claude, Projects) + Max (Board)

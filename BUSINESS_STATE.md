@@ -1,7 +1,7 @@
 # BUSINESS_STATE.md
 
-**Last updated:** 2026-05-08 — Session 65 chiusura (Opzione 3 dashboard + bias avg_buy_price gating LIVE + schema drift skim fixato)
-**Updated by:** CC + CEO (decision_s65_gap_reconciled.md)
+**Last updated:** 2026-05-08 — Session 65 chiusura (Opzione 3 dashboard + brief 60b respec avg-cost + testnet path identificato)
+**Updated by:** CEO + CC (decision_s65_gap_reconciled.md + business_state_update_s65.md)
 **Basato su:** PROJECT_STATE.md aggiornato 2026-05-08 (S65 chiusura)
 
 ---
@@ -46,9 +46,9 @@ Preview rimosse da entrambi i volumi.
 
 **Volume 3** — prossimo target di pubblicazione. Coprirà sessions 53+. Nessuna struttura definita ancora. La session 63 è appena iniziata; il volume si chiuderà naturalmente quando un arco narrativo sarà completo (stima grezza: sessioni 70–80).
 
-**Sessione corrente:** 63 (init). Session 62 diary .docx prodotto; entry in `diary_entries` da chiudere a COMPLETE.
+**Sessione corrente:** 65 BUILDING. Session 64 COMPLETE. Volume 3 outline: Sentinel + Sherpa + l'incidente "P&L gap riconciliato" + scoperta testnet come capitoli forti.
 
-**Check di congruenza diary↔DB:** nessun check automatico attivo. È un TODO nel Validation System §3 ("Diary entry in Supabase = diary .docx"). Da automatizzare.
+**Check di congruenza diary↔DB:** nessun check automatico attivo. **Reconciliation gate (nightly script)** proposto come task Validation System: verifica ogni notte che `Realized_avg_cost + Unrealized = Total P&L` chiuda al centesimo, alert se gap > $0.01. Da implementare insieme a brief 60b respec.
 
 ---
 
@@ -56,9 +56,13 @@ Preview rimosse da entrambi i volumi.
 
 | Data | Decisione | Perché |
 |---|---|---|
-| 2026-05-08 (S65) | **Opzione 3 P&L: dashboard pubbliche/private mostrano SOLO Total P&L** (Net Worth − budget). Realized DB rimosso, vive solo in `/admin` Reconciliation come audit interno con identity check. | Le 4 dashboard mostravano 3 numeri diversi (gap fino a $26 home vs grid+tf); root cause = bias `avg_buy_price` del bot che gonfia `trades.realized_pnl` del 28%. Total P&L è l'unico numero matematicamente coerente e identico a Binance live mainnet. |
-| 2026-05-08 (S65) | **Brief 60b promosso a GATING per go-live €100**. Il bot deve scrivere `realized_pnl` strict-FIFO. Pre-requisiti go-live aggiornati a 6 punti, target 16-20 maggio (slittato di 4-8 gg). | Senza, dashboard ↔ Binance divergerebbero del 28%. Il gate "gap ≤ 5%" del CEO non è verificabile con bot biased. |
-| 2026-05-08 (S65) | **Schema drift `reserve_ledger.managed_by` fixato in DB** via JOIN su `trade_id` (181 righe migrate). Rename `manual → grid` su tutto il sistema **parcheggiato** post-go-live. | Coerenza interna ledger ↔ trades. Rinomina su 4 tabelle è troppo invasiva durante DRY_RUN Sherpa (contamina counterfactual). Da fare post-Phase 2 stabile. |
+| 2026-05-08 (S65 fine) | **Sito offline / pagina maintenance** finché numeri non sono verificati su testnet | Max: "i numeri stanno mentendo al pubblico". Total P&L è matematicamente coerente con Net Worth, ma finché non verifichiamo che la convenzione contabile coincide con Binance non possiamo affermare "≡ Binance live". Sito torna su con numeri certificati post brief 65c testnet |
+| 2026-05-08 (S65) | **Brief 60b RISPECIFICATO: avg-cost pulito, NON strict-FIFO** | Max ha intuito durante la sessione che Binance usa avg-cost, non FIFO. Il bot già usa avg-cost ma implementato male (bias +28% Grid perché l'identità contabile non chiude). Fix = stessa formula fatta bene, allineata a Binance. Strict-FIFO era un overlay nostro arbitrario, abbandonato |
+| 2026-05-08 (S65) | **Brief 65c NUOVO: migrazione paper → Binance testnet** PRIMA di brief 60b | `config/settings.py:21` ha già `TESTNET=true` ma il bot bypass-a in `exchange.py:8-11` (commento legacy). Riattivare path testnet (1-2h) → ordini eseguiti contro Binance vero (soldi finti) → Binance scrive il SUO realized_pnl → confronto diretto con il nostro DB → risposta definitiva sulla convenzione. Sblocca il brief 60b informato invece di a tentoni |
+| 2026-05-08 (S65) | **Opzione 3 approvata: dashboard mostrano SOLO Total P&L** (Net Worth − budget). Realized DB spostato in /admin Reconciliation come audit interno | Le 4 dashboard mostravano 3 numeri diversi (gap fino a $26); Total P&L è l'unico immune al bias avg_buy_price e matematicamente verificato. Il sito ora è offline ma il codice è pronto per quando torna su |
+| 2026-05-08 (S65) | **Mascotte Sentinel (blu) e Sherpa (rosso) approvate** | SVG prodotti con Claude Design. Brief 65b per integrazione CC, da fare post-numeri-fixati |
+| 2026-05-08 (S65) | **Schema drift `reserve_ledger.managed_by` fixato in DB** via JOIN su trade_id (181 righe migrate). Rename `manual → grid` su tutto il sistema **parcheggiato** post-go-live | Coerenza interna ledger ↔ trades. Rinomina su 4 tabelle è troppo invasiva durante DRY_RUN Sherpa |
+| 2026-05-08 (S65) | **Strict-FIFO replay rimosso da dashboard pubbliche** | Era la causa di tutti i gap P&L delle ultime 5 sessioni. Mantenuto solo in /admin Reconciliation come audit, ma con framing aggiornato: "due convenzioni a confronto" non "FIFO è il vero numero" |
 | 2026-05-08 (S65 prep) | Workflow "CEO scrive diary da mega-brief CC" validato | Prima sessione operativa senza CEO. CC produce report strutturato, CEO produce diary. La review Board ha intercettato un leak di credenziali nel draft — il ciclo funziona solo con review umana |
 | 2026-05-07 (S63 chiusura) | Dashboard `/admin` Sentinel+Sherpa+DB GO LIVE in 1 sessione (read-only, password-gated) | Sblocca osservabilità del sistema senza toccare i bot. Caccia bug guidata Max ha rilevato 5 anomalie in 30 min |
 | 2026-05-07 (S63) | 5 bug rilevati grazie alla dashboard: `speed_of_fall` miscalibrato + risk binario + opp morta + Grid polling 60s + Supabase 1000-cap home latente | Tutti documentati in PROJECT_STATE §5. 3 di calibrazione Sentinel rendono il replay counterfactual probabilmente cieco — vedi §6 |
@@ -83,7 +87,7 @@ Preview rimosse da entrambi i volumi.
 
 1. **Equity P&L nella home** — proposta 1 del report CC 05/05: secondo numero "Equity P&L" affiancato al FIFO realized. Stima CC: 1–2 ore. Aspetta decisione CEO (§6).
 
-2. **Allineamento sell-decision a FIFO globale** — proposta 2 del report CC 05/05: il bot vende basandosi su `avg_buy_price` (media mobile) che diverge dal costo FIFO del lotto in uscita. Su mainnet = vendere lotti in perdita FIFO credendoli in profitto. Stima CC: 1 giorno. **Vero gating tecnico per mainnet**, da posizionare nella timeline post-Phase 2.
+2. ~~**Allineamento sell-decision a FIFO globale**~~ — **SUPERATA in S65**. Binance usa avg-cost (da verificare in testnet), il bot pure. Il fix è fare avg-cost correttamente nel brief 60b respec, non cambiare metodo. Strict-FIFO abbandonato come metodo contabile di riferimento.
 
 3. **Log file size monitor + log rotation** — §8 del Validation System. Stima CC: 2–4 ore. Brief separato, bassa priorità finché Phase 2 Grid è in corso.
 
@@ -117,34 +121,47 @@ Preview rimosse da entrambi i volumi.
 
 18. **[S63] Documento architetturale "trades-checkpoint long-term"** (futuro, quando saremo a 30k+ trade): formalizzare la struttura tabella aggregati + trigger Postgres + protocollo di ricalcolo da zero in caso di bug FIFO retroattivi. Per ora paginazione basta.
 
-19. **[S65 NEW] Rename `manual` → `grid` su tutto il sistema** (parcheggiato post-go-live): standardizzare nomenclatura `bot_config.managed_by`, `trades.managed_by`, `reserve_ledger.managed_by`, `daily_pnl.managed_by` da `manual` (legacy v3) a `grid`. Tocca 4 tabelle DB, codice bot Python, frontend dashboards. Stima ~3-4h. **NON farlo durante DRY_RUN Sherpa** (rinomina = restart = contaminazione counterfactual). Finestra utile: post-Phase 2 stabile + post-go-live €100. Coerenza interna del ledger già fixata in S65 via JOIN su `trade_id`.
+19. **[S65 NEW] Rename `manual` → `grid` su tutto il sistema** (parcheggiato post-go-live): standardizzare nomenclatura `bot_config.managed_by`, `trades.managed_by`, `reserve_ledger.managed_by`, `daily_pnl.managed_by` da `manual` (legacy v3) a `grid`. Tocca 4 tabelle DB, codice bot Python, frontend dashboards. Stima ~2-4h. **NON farlo durante DRY_RUN Sherpa** (rinomina = restart = contaminazione counterfactual). Finestra utile: post-Phase 2 stabile + post-go-live €100. Coerenza interna del ledger già fixata in S65 via JOIN su `trade_id`.
+
+20. **[S65 NEW] Brief 65c — migrazione paper → Binance testnet** (PRIMA di brief 60b): il path testnet è già configurato in `config/settings.py:21` (`TESTNET=true`) ma bypassato in `exchange.py:8-11`. Riattivarlo significa: chiavi API testnet, rimuovere il bypass, redirigere ordini buy/sell verso `testnet.binance.vision`. Stima ~1-2h. Una volta live: Binance scriverà il suo realized_pnl per ogni nostra sell, e confronteremo con quello che il bot scrive in DB. Risposta definitiva alla domanda "convenzione contabile Binance" senza speculazioni. Sblocca brief 60b informato. **Bonus**: testnet dà fill realistici (slippage, partial fill, rate limit, latenza) che paper non simula — è la cosa più vicina al mainnet senza soldi a rischio.
+
+21. **[S65 NEW] Brief 60b respec — avg-cost pulito nel bot**: il bot scrive `realized_pnl` con `avg_buy_price` ma non chiude l'identità contabile (bias +28% Grid). Fix: ricalcolare il cost basis in modo coerente così che `Realized_avg_cost + Unrealized_avg_cost = Total P&L` chiuda al centesimo. **NON strict-FIFO**. File: `bot/strategies/sell_pipeline.py`, `grid_bot.py`. Stima ~3-4h. Gating per go-live €100 ma da fare DOPO brief 65c (che ci dice se la formula attuale è già giusta o no).
+
+22. **[S65 NEW] Reconciliation gate (nightly script)** — proposto come task Validation System: script su Mac Mini che ogni notte verifica `Realized_avg_cost + Unrealized = Total P&L` al centesimo, alert Telegram se gap > $0.01. Stima ~2h. Da implementare insieme/post brief 60b, gating soft per future regressioni.
 
 ---
 
 ## 6. Vincoli / Deadline Non-Tecnici
 
-**Go-live €100 — target aggiornato 16-20 maggio 2026** (decision CEO 2026-05-08, slittato di 4-8 giorni per brief 60b promosso a gating).
+**Go-live €100 — target aggiornato 16-20 maggio 2026** (decision CEO 2026-05-08). Sito **OFFLINE / maintenance** durante questo periodo finché brief 65c testnet non chiarisce la convenzione Binance.
 
-**Pre-requisiti go-live (decision_s65_gap_reconciled.md):**
+**Pre-requisiti go-live (versione S65 chiusura):**
 1. ✅ Opzione A (DB-based dashboards) — shipped commit `f143634`
-2. ✅ Opzione 3 (dashboards mostrano Total P&L, Realized in /admin) — shipped S65
+2. ✅ Opzione 3 (dashboards mostrano solo Total P&L, Realized in /admin) — shipped commit `6100caf`
 3. ✅ Schema drift skim fixato — DB UPDATE one-shot S65
-4. ⬜ **Brief 60b** (bot scrive realized_pnl strict-FIFO, fix bias avg_buy_price +28%) — gating
-5. ⬜ Phase 2 Grid (brief 62b: fix 60c + dust) — gating
-6. ⬜ Board approval finale (Max)
+4. ⬜ **Brief 65c** (migrazione paper → Binance testnet) — gating, sblocca tutto il resto
+5. ⬜ **Brief 60b respec** (bot scrive realized_pnl avg-cost coerente, identità chiude al centesimo) — gating, dipende dall'output di 65c
+6. ⬜ Phase 2 Grid (brief 62b: fix 60c + dust) — gating
+7. ⬜ Reconciliation gate nightly script — gating soft (può slittare post-go-live)
+8. ⬜ Sito di nuovo online con numeri certificati
+9. ⬜ Board approval finale (Max)
 
 **Removed/downgraded prerequisites (decision CEO 2026-05-08):**
 - ~~7 giorni clean FIFO drift post-Phase 2~~ → cancellato, calibriamo sul campo con €100 reali
 - ~~7 giorni clean health check~~ → cancellato, idem
-- ~~Sell-decision alignment a FIFO globale (proposta 2 CC del 5 maggio)~~ → da verificare sul campo, non gating pre-live
+- ~~Sell-decision alignment a FIFO globale (proposta 2 CC del 5 maggio)~~ → superata, abbandonato strict-FIFO
 
 **Pre-live gates (Validation System §6):**
 - FIFO integrity: ✅
 - DB retention stabile: ✅
-- Bias avg_buy_price `realized_pnl`: 🔲 (brief 60b, gating)
+- Convenzione contabile bot ≡ Binance: 🔲 (brief 65c testnet verifica + 60b respec)
+- Identità contabile chiude al centesimo: 🔲 (brief 60b respec)
+- Reconciliation gate live: 🔲 (post 60b)
 - Board approval (Max): 🔲
 
-**Obiettivo go-live**: dimostrare che gap dashboard ↔ Binance ≤ 5%. Con bot biased (no brief 60b) il gap sarebbe ~28%, fuori soglia.
+**Obiettivo go-live**: dimostrare che gap dashboard ↔ Binance ≤ 5%. Con bot biased (no brief 60b) il gap sarebbe ~28%, fuori soglia. Con brief 65c testnet, sapremo davvero se il bot oggi è già allineato a Binance o quanto deve migrare.
+
+**Sito offline durante il fix:** decisione CEO 2026-05-08 sera. Sostituire home con maintenance page "numbers under audit" finché 65c+60b non sono shippati e i numeri certificati. Bot continua a tradere su paper (raccolta dati). Telegram canale pubblico: pausare report giornalieri pubblici finché numeri non sono fixati. /admin resta su (privato, accessibile a Max).
 
 **⚠️ DECISIONE PENDENTE — Equity P&L vs FIFO realized:**
 
@@ -183,7 +200,8 @@ I 3 bug calibrazione Sentinel rilevati 2026-05-07 grazie alla dashboard `/admin`
 | **Nessun Sentinel slow loop (F&G + CMC)** | Sprint 2. Sprint 1 (fast loop BTC + funding) deve raccogliere dati e fare replay counterfactual prima |
 | **Nessun go-live €100** | Pre-live gates non superate. Phase 2 Grid ancora da fare. Architettura completa (TF + Sentinel maturo + orchestrator superiore) richiede mesi, non settimane |
 | **Nessuna partnership esterna** | Il progetto non ha traction. Prematuro cercare partner senza prodotto finito e traffico organico |
-| **Admin dashboard Sentinel+Sherpa non implementata** | Design pronto (~9h frontend). Bloccata: toccare costanti Grid durante DRY_RUN invalida il counterfactual |
+| **Strict-FIFO come metodo contabile** | Abbandonato in S65. Binance usa avg-cost (da verificare in testnet brief 65c), il bot pure. Il fix è fare avg-cost correttamente (brief 60b respec), non cambiare metodo. Strict-FIFO resta solo come riga di confronto in /admin Reconciliation |
+| **Sito pubblico online** | OFFLINE da 2026-05-08 sera (S65 chiusura). Maintenance page in vetrina finché brief 65c (testnet) + 60b (avg-cost fix) non chiariscono i numeri. Decisione CEO: meglio onestà che vetrina con numeri ambigui |
 | **Nessun cambio prezzo volumi** | €4.99 è il prezzo di lancio. Nessun dato di vendita su cui ragionare |
 | **BTC in portafoglio live** | Costi di conversione USDT→BTC troppo alti per budget €100. Decisione differita |
 | **Audit esterni** | Protocollo appena introdotto (S63). Primo audit previsto: V1 Calibration su Sentinel↔Sherpa↔Grid post-Phase 1. Nessuno completato ancora |

@@ -1,5 +1,10 @@
 # Brief 65a — Site Fixes (public + private dashboards)
 
+> **SHIPPED 2026-05-08 commit `4a00875` (S65)** — 5 task: navbar admin, sezione Diary in homepage,
+> rimossa riga TF capital, paginazione `sb-paginated.ts`, indagine FIFO mismatch (root cause
+> identificata: NON cap 1000 ma strict-FIFO ≠ FIFO-among-triggered, da cui poi è emersa la
+> riconciliazione completa di S65).
+
 **Da:** CEO (Claude)  
 **Per:** CC (Claude Code)  
 **Basato su:** PROJECT_STATE.md aggiornato 2026-05-07 (S63 chiusura)  

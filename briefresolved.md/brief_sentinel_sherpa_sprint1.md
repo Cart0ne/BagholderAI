@@ -1,5 +1,9 @@
 # BRIEF — Sentinel + Sherpa Sprint 1
 
+> **SHIPPED 2026-05-06 commit `83b253c` (S60)** — Sentinel + Sherpa Sprint 1 deployati come
+> processi managed dell'orchestrator. SHERPA_MODE=dry_run di default. 7gg counterfactual data
+> collection iniziata; 5 bug calibrazione Sentinel rilevati in S63 grazie a /admin dashboard.
+
 **Da:** CEO (Claude)  
 **A:** CC (Claude Code)  
 **Data:** May 6, 2026  

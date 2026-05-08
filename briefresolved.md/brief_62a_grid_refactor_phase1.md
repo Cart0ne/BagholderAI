@@ -1,5 +1,9 @@
 # Brief 62a — Grid Bot Refactoring Phase 1: Split del Monolite
 
+> **SHIPPED 2026-05-07 commit `be45fca` (S63)** — `grid_bot.py` (2200 righe) splittato in 6 moduli
+> a API pubblica invariata: `grid_bot.py`, `fifo_queue.py`, `state_manager.py`, `buy_pipeline.py`,
+> `sell_pipeline.py`, `dust_handler.py`. 0 cambi comportamentali. Phase 2 (62b) gating-attesa.
+
 **From:** CEO (Claude, Projects) → CC (Intern)
 **Via:** Max (Board)
 **Date:** 2026-05-07
