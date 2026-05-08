@@ -32,6 +32,7 @@ from typing import Optional
 from datetime import datetime, timezone
 from utils.formatting import fmt_price
 from db.event_logger import log_event
+from config.settings import TradingMode
 
 # These imports are inside functions where used (kept identical to original).
 
@@ -500,6 +501,32 @@ def execute_percentage_sell(bot, price: float) -> Optional[dict]:
 
     # Round to valid step size and validate against exchange filters
     if bot._exchange_filters:
+        # 66a Step 2 — dust prevention at the source.
+        # If selling `amount` would leave a residual below the exchange's
+        # min sellable size, sell-all instead. Prevents dust creation
+        # upstream — no more silent queue desync via the pop paths in
+        # dust_handler.py (which were one of the 4 sources of the +29%
+        # bias certified in formula_verification_s66.md). The dust
+        # handlers below remain as a safety net for legacy/multi-lot
+        # dust still in the queue at restart.
+        step_size = float(bot._exchange_filters.get("lot_step_size") or 0)
+        min_qty = float(bot._exchange_filters.get("min_qty") or 0)
+        min_notional = float(bot._exchange_filters.get("min_notional") or 0)
+        min_sellable = max(
+            step_size,
+            min_qty,
+            min_notional / price if price > 0 else 0,
+        )
+        if min_sellable > 0:
+            residual = bot.state.holdings - amount
+            if 0 < residual < min_sellable * 1.5:
+                logger.info(
+                    f"[{bot.symbol}] DUST PREVENTION: residual {residual:.8f} < "
+                    f"1.5x min_sellable ({min_sellable * 1.5:.8f}). "
+                    f"Selling all {bot.state.holdings:.8f} instead of {amount:.8f}."
+                )
+                amount = bot.state.holdings
+
         from utils.exchange_filters import round_to_step, validate_order
         amount = round_to_step(amount, bot._exchange_filters["lot_step_size"])
         if handle_step_size_dust(bot, amount, price):
@@ -511,8 +538,26 @@ def execute_percentage_sell(bot, price: float) -> Optional[dict]:
             logger.warning(f"[{bot.symbol}] SELL order rejected: {reason_reject}")
             return None
 
-    revenue = amount * price
-    fee = revenue * bot.FEE_RATE
+    # 66a Step 3: live mode (testnet or mainnet) sends a real market SELL
+    # to Binance. Fill price, revenue, and fee come from the exchange
+    # response. Paper mode keeps the legacy simulated path unchanged.
+    exchange_order_id = None
+    fee_currency = "USDT"
+    if TradingMode.is_live() and bot.exchange is not None:
+        from bot.exchange_orders import place_market_sell
+        res = place_market_sell(bot.exchange, bot.symbol, amount)
+        if res is None:
+            # Order failed or did not fill — no state change. Retry on next tick.
+            return None
+        amount = res["filled_amount"]
+        price = res["avg_price"]
+        revenue = res["cost"]
+        fee = res["fee_cost"]
+        fee_currency = res["fee_currency"] or "USDT"
+        exchange_order_id = res["order_id"]
+    else:
+        revenue = amount * price
+        fee = revenue * bot.FEE_RATE
     holdings_value_before = bot.state.holdings * price
 
     # 66a (Operation Clean Slate): canonical avg-cost.
@@ -690,6 +735,11 @@ def execute_percentage_sell(bot, price: float) -> Optional[dict]:
         "holdings_value_before": holdings_value_before,
         "managed_by": getattr(bot, "managed_by", "manual"),
     }
+    # 67a: fee_asset only written for real exchange fills (defensive against
+    # pre-migration deploys — see buy_pipeline.py for rationale).
+    if exchange_order_id:
+        trade_data["exchange_order_id"] = exchange_order_id
+        trade_data["fee_asset"] = fee_currency
 
     # 42a: expose greed-decay tier info for Telegram alert. Skip when the
     # sell was forced (stop-loss / take-profit / profit-lock / gain-
@@ -708,10 +758,10 @@ def execute_percentage_sell(bot, price: float) -> Optional[dict]:
             trade_data["greed_tier_tp_pct"] = tp_pct
 
     _LOG_TRADE_KEYS = {
-        "symbol", "side", "amount", "price", "fee", "strategy", "brain", "reason",
-        "mode", "exchange_order_id", "realized_pnl", "buy_trade_id", "cost",
-        "config_version", "cash_before", "capital_allocated", "holdings_value_before",
-        "managed_by",
+        "symbol", "side", "amount", "price", "fee", "fee_asset", "strategy",
+        "brain", "reason", "mode", "exchange_order_id", "realized_pnl",
+        "buy_trade_id", "cost", "config_version", "cash_before",
+        "capital_allocated", "holdings_value_before", "managed_by",
     }
     trade_db_row = {}
     try:

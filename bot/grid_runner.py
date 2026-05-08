@@ -480,14 +480,29 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
     logger.info(f"Buy cooldown: {cfg.buy_cooldown_seconds}s")
     logger.info("=" * 50)
 
-    # Safety check
+    # Safety checks for live mode (testnet OR mainnet).
+    # 66a Step 3: live trading path is now implemented via
+    # bot/exchange_orders.py (market orders only).
     if TradingMode.is_live():
-        logger.error("LIVE TRADING NOT IMPLEMENTED YET. Use paper mode.")
-        return
-
-    if not ExchangeConfig.API_KEY:
-        logger.error("No API key configured. Set up config/.env first.")
-        return
+        if not ExchangeConfig.API_KEY or not ExchangeConfig.SECRET:
+            logger.error(
+                "Live mode requires BINANCE_API_KEY and BINANCE_SECRET in config/.env. Aborting."
+            )
+            return
+        if ExchangeConfig.TESTNET:
+            logger.warning(
+                "LIVE MODE: TESTNET — orders route to testnet.binance.vision (fake money, real fills)"
+            )
+        else:
+            # Mainnet authorization gate. Will be lifted in a future brief
+            # once testnet shake-down + reconciliation gate (Step 5) are
+            # green. Until then mainnet is hard-blocked from this entry point.
+            logger.error(
+                "LIVE MODE: MAINNET — not authorized in S67. "
+                "Set BINANCE_TESTNET=true in config/.env to use testnet, "
+                "or wait for the mainnet go-live brief. Aborting."
+            )
+            return
 
     # Initialize components
     exchange = create_exchange()
@@ -592,7 +607,12 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
         capital=cfg.capital,
         num_levels=cfg.num_levels,
         range_percent=cfg.grid_range_pct,
-        mode="paper",
+        # 67a: read the trading mode dynamically. Hardcoding "paper" caused
+        # all live testnet trades to be tagged as paper in the DB, breaking
+        # downstream filters (dashboards, reconciliation, audit). The CHECK
+        # constraint on trades.mode accepts only 'paper' | 'live', so any
+        # live mode (testnet OR mainnet) maps to 'live' here.
+        mode=TradingMode.MODE,
         buy_cooldown_seconds=cfg.buy_cooldown_seconds,
         min_profit_pct=cfg.min_profit_pct,
         grid_mode=cfg.grid_mode,

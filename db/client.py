@@ -44,6 +44,7 @@ class TradeLogger:
         capital_allocated: Optional[float] = None,
         holdings_value_before: Optional[float] = None,
         managed_by: Optional[str] = None,
+        fee_asset: Optional[str] = None,
     ) -> dict:
         """Log a trade to the database."""
         data = {
@@ -64,7 +65,12 @@ class TradeLogger:
         }
         if managed_by is not None:
             data["managed_by"] = managed_by
-        
+        # 67a: fee_asset only written when known (live trades from
+        # exchange_orders.py). Paper trades omit it — column has default
+        # 'USDT' on the DB side after the brief 67a migration.
+        if fee_asset is not None:
+            data["fee_asset"] = fee_asset
+
         result = self.client.table("trades").insert(data).execute()
         return result.data[0] if result.data else {}
     

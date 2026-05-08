@@ -14,7 +14,7 @@ import logging
 from typing import Optional
 from datetime import datetime
 from utils.formatting import fmt_price
-from config.settings import HardcodedRules
+from config.settings import HardcodedRules, TradingMode
 
 logger = logging.getLogger("bagholderai.grid")
 
@@ -228,19 +228,39 @@ def execute_percentage_buy(bot, price: float) -> Optional[dict]:
         })
         return None
 
-    amount = cost / price
-
-    # Round to valid step size and validate against exchange filters
-    if bot._exchange_filters:
-        from utils.exchange_filters import round_to_step, validate_order
-        amount = round_to_step(amount, bot._exchange_filters["lot_step_size"])
-        valid, reason_reject = validate_order(bot.symbol, amount, price, bot._exchange_filters)
-        if not valid:
-            logger.warning(f"[{bot.symbol}] BUY order rejected: {reason_reject}")
+    # 66a Step 3: live mode (testnet or mainnet) sends a real market BUY
+    # to Binance. The fill price, cost, and fee come from the exchange
+    # response — NOT from the local FEE_RATE constant. Paper mode keeps
+    # the legacy simulated path unchanged.
+    exchange_order_id = None
+    fee_currency = "USDT"
+    if TradingMode.is_live() and bot.exchange is not None:
+        from bot.exchange_orders import place_market_buy
+        res = place_market_buy(bot.exchange, bot.symbol, cost)
+        if res is None:
+            # Order failed or did not fill — no state change. Retry on next tick.
             return None
-        cost = amount * price  # recalculate cost after rounding
+        amount = res["filled_amount"]
+        price = res["avg_price"]
+        cost = res["cost"]
+        fee = res["fee_cost"]
+        fee_currency = res["fee_currency"] or "USDT"
+        exchange_order_id = res["order_id"]
+    else:
+        # Paper path: simulated fill at the requested price.
+        amount = cost / price
 
-    fee = cost * bot.FEE_RATE
+        # Round to valid step size and validate against exchange filters
+        if bot._exchange_filters:
+            from utils.exchange_filters import round_to_step, validate_order
+            amount = round_to_step(amount, bot._exchange_filters["lot_step_size"])
+            valid, reason_reject = validate_order(bot.symbol, amount, price, bot._exchange_filters)
+            if not valid:
+                logger.warning(f"[{bot.symbol}] BUY order rejected: {reason_reject}")
+                return None
+            cost = amount * price  # recalculate cost after rounding
+
+        fee = cost * bot.FEE_RATE
 
     old_last_buy = bot._pct_last_buy_price
     old_holdings = bot.state.holdings
@@ -296,6 +316,12 @@ def execute_percentage_buy(bot, price: float) -> Optional[dict]:
         "capital_allocated": bot.capital,
         "managed_by": getattr(bot, "managed_by", "manual"),
     }
+    # 67a: fee_asset only written for real exchange fills. Paper trades
+    # omit the field to avoid INSERT failures on schemas that haven't
+    # received the brief 67a migration yet (defensive against partial deploys).
+    if exchange_order_id:
+        trade_data["exchange_order_id"] = exchange_order_id
+        trade_data["fee_asset"] = fee_currency
 
     try:
         bot.trade_logger.log_trade(**trade_data)
@@ -304,6 +330,7 @@ def execute_percentage_buy(bot, price: float) -> Optional[dict]:
 
     logger.info(
         f"BUY {amount:.6f} {bot.symbol} @ {fmt_price(price)} "
-        f"(cost: ${cost:.2f}, fee: ${fee:.4f}) [pct mode]"
+        f"(cost: ${cost:.2f}, fee: ${fee:.4f} {fee_currency}) [pct mode]"
+        + (f" id={exchange_order_id}" if exchange_order_id else "")
     )
     return trade_data

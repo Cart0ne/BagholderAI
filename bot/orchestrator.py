@@ -13,6 +13,7 @@ Usage:
     python3.13 -m bot.orchestrator
 """
 
+import os
 import subprocess
 import time
 import signal
@@ -32,6 +33,14 @@ logger = logging.getLogger("bagholderai.orchestrator")
 POLL_INTERVAL = 30          # seconds between bot_config reconciliations
 MAX_RESTART_ATTEMPTS = 5    # consecutive crash restarts before giving up on a symbol
 HEALTH_CHECK_INTERVAL = 24 * 60 * 60  # 57a: daily FIFO/holdings/cash integrity check
+
+# 66a Step 3 (S67): per-brain enable flags. Default True (legacy behaviour).
+# Setting any to "false" in the env disables the corresponding spawn — Grid
+# bots always run. Used to bring up Grid-only on testnet without spinning
+# Sentinel/Sherpa on a freshly TRUNCATE-d dataset.
+ENABLE_TF = os.getenv("ENABLE_TF", "true").lower() == "true"
+ENABLE_SENTINEL = os.getenv("ENABLE_SENTINEL", "true").lower() == "true"
+ENABLE_SHERPA = os.getenv("ENABLE_SHERPA", "true").lower() == "true"
 # 44a: cap Telegram spam from the main-loop exception handler. Network
 # blackouts (httpx ConnectTimeout, etc.) can raise the same exception
 # every POLL_INTERVAL for tens of minutes; without a cooldown that
@@ -316,6 +325,9 @@ def run_orchestrator():
 
     logger.info("=" * 50)
     logger.info("BagHolderAI Orchestrator starting...")
+    logger.info(
+        f"Brain flags: TF={ENABLE_TF}  SENTINEL={ENABLE_SENTINEL}  SHERPA={ENABLE_SHERPA}"
+    )
     logger.info("=" * 50)
 
     # 45: orphan-lot reconciler. Run once at boot to recover any TF bot
@@ -448,7 +460,11 @@ def run_orchestrator():
                 # the scan-report Telegram sent by the Trend Follower itself.
 
             # 5. Reconcile Trend Follower
-            if tf_enabled:
+            # 66a Step 3 (S67): ENABLE_TF env flag overrides DB flag. When
+            # ENABLE_TF=false the orchestrator will not spawn TF even if
+            # trend_config.trend_follower_enabled is true.
+            tf_should_run = tf_enabled and ENABLE_TF
+            if tf_should_run:
                 if tf_process is None:
                     tf_process = _spawn_trend_follower()
                     logger.info(f"Trend Follower spawned (pid={tf_process.pid})")
@@ -473,12 +489,18 @@ def run_orchestrator():
 
             # 5b. Reconcile Sentinel + Sherpa (Sprint 1, always-on managed
             # processes). Same restart-with-backoff contract as grid bots:
-            # bounded retries, then give up and alert. There is no enable
-            # flag yet — they're either alive or being relaunched. Either
-            # process can crash without affecting Grid: Sherpa just keeps
-            # using the last sentinel_scores row, Grid keeps using the
-            # parameters bot_config currently holds.
-            if sentinel_process is None:
+            # bounded retries, then give up and alert. 66a Step 3 (S67)
+            # adds ENABLE_SENTINEL / ENABLE_SHERPA env flags — if false,
+            # the orchestrator stops the corresponding process and skips
+            # respawn. Either process can crash without affecting Grid:
+            # Sherpa keeps using the last sentinel_scores row, Grid keeps
+            # using the parameters bot_config currently holds.
+            if not ENABLE_SENTINEL:
+                if sentinel_process is not None and sentinel_process.poll() is None:
+                    logger.info("Sentinel disabled (ENABLE_SENTINEL=false) — stopping")
+                    sentinel_process.terminate()
+                    sentinel_process = None
+            elif sentinel_process is None:
                 sentinel_process = _spawn_sentinel()
                 logger.info(f"Sentinel spawned (pid={sentinel_process.pid})")
             elif sentinel_process.poll() is not None and not sentinel_gave_up:
@@ -509,7 +531,12 @@ def run_orchestrator():
                         pass
                     sentinel_process = _spawn_sentinel()
 
-            if sherpa_process is None:
+            if not ENABLE_SHERPA:
+                if sherpa_process is not None and sherpa_process.poll() is None:
+                    logger.info("Sherpa disabled (ENABLE_SHERPA=false) — stopping")
+                    sherpa_process.terminate()
+                    sherpa_process = None
+            elif sherpa_process is None:
                 sherpa_process = _spawn_sherpa()
                 logger.info(f"Sherpa spawned (pid={sherpa_process.pid})")
             elif sherpa_process.poll() is not None and not sherpa_gave_up:

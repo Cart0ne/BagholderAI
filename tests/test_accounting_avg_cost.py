@@ -299,6 +299,102 @@ def test_e_random_sequence_identity():
               f"${revenue_total - invested_total:.4f} ✓")
 
 
+def test_f_dust_prevention_residual_below_min_sellable():
+    """66a Step 2: when a sell would leave a residual below 1.5x min_sellable,
+    sell-all instead. Prevents the silent dust-pop queue desync (source #4a
+    of the +29% bias certified in formula_verification_s66.md).
+
+    Identity must still close: realized + unrealized = revenue − invested.
+    """
+    print("=" * 70)
+    print("TEST F: 66a Step 2 — dust prevention sell-all when residual is dust")
+    print("=" * 70)
+    bot = make_bot()
+    # Mock filters: step 0.001, min_qty=0, min_notional=$5
+    bot._exchange_filters = {
+        "lot_step_size": 0.001,
+        "min_qty": 0.0,
+        "min_notional": 5.0,
+    }
+    # Two lots simulating a state with a small residual lot:
+    # lot1 = 10 @ $5, lot2 = 0.4 @ $9, holdings = 10.4
+    bot._pct_open_positions = [
+        {"amount": 10.0, "price": 5.0},
+        {"amount": 0.4, "price": 9.0},
+    ]
+    bot.state.holdings = 10.4
+    bot.state.avg_buy_price = (10.0 * 5.0 + 0.4 * 9.0) / 10.4
+    bot.state.total_invested = 10.0 * 5.0 + 0.4 * 9.0  # 53.6
+
+    # Sell at $10. Without dust prevention: amount=lot1.amount=10, residual=0.4.
+    # min_sellable = max(0.001, 0, 5/10=0.5) = 0.5. residual=0.4 < 0.75 → trigger.
+    # New amount = 10.4 (sell all). cost = 10.4 * avg ≈ 53.6, rev = 104, pnl ≈ +50.4.
+    avg_before = bot.state.avg_buy_price
+    trade = bot._execute_percentage_sell(price=10.0)
+    assert trade is not None, "sell must execute"
+    assert_close(trade["amount"], 10.4, label="amount sold = all holdings")
+    assert len(bot._pct_open_positions) == 0, "queue must be empty post sell-all"
+    assert_close(bot.state.holdings, 0.0, label="holdings empty")
+    assert_close(bot.state.avg_buy_price, 0.0, label="avg resets to 0")
+
+    expected_pnl = (10.0 - avg_before) * 10.4
+    assert_close(trade["realized_pnl"], expected_pnl, tol=1e-6, label="realized_pnl")
+    print(f"  amount = {trade['amount']:.4f} (expected 10.4) ✓")
+    print(f"  queue empty, holdings=0, avg=0 ✓")
+    print(f"  realized = ${trade['realized_pnl']:+.4f} (expected ${expected_pnl:+.4f}) ✓")
+
+    # Identity check: revenue − invested = realized (fully closed)
+    assert_close(
+        bot.state.total_received - bot.state.total_invested,
+        bot.state.realized_pnl,
+        tol=1e-6,
+        label="closed identity",
+    )
+    print(f"  closed identity holds: rev − inv = realized ✓")
+
+
+def test_g_dust_prevention_no_trigger_when_residual_healthy():
+    """66a Step 2: if residual is well above 1.5x min_sellable, normal pct-sell
+    runs unchanged (single-lot consumption). Guards against over-aggressive
+    sell-all in healthy states."""
+    print("=" * 70)
+    print("TEST G: 66a Step 2 — no trigger when residual is healthy")
+    print("=" * 70)
+    bot = make_bot()
+    bot._exchange_filters = {
+        "lot_step_size": 0.001,
+        "min_qty": 0.0,
+        "min_notional": 5.0,
+    }
+    # Two lots: 10 @ $5, 5 @ $9. Holdings = 15. Residual after lot1 sell = 5 (healthy).
+    bot._pct_open_positions = [
+        {"amount": 10.0, "price": 5.0},
+        {"amount": 5.0, "price": 9.0},
+    ]
+    bot.state.holdings = 15.0
+    bot.state.avg_buy_price = (10.0 * 5.0 + 5.0 * 9.0) / 15.0
+    bot.state.total_invested = 10.0 * 5.0 + 5.0 * 9.0  # 95.0
+
+    # Sell at $10. amount = lot1.amount = 10. residual = 5 > 0.75 → no trigger.
+    # cost_basis = 10 * avg ≈ 63.33. revenue = 100. pnl ≈ +36.67.
+    avg_before = bot.state.avg_buy_price
+    trade = bot._execute_percentage_sell(price=10.0)
+    assert trade is not None, "sell must execute"
+    assert_close(trade["amount"], 10.0, label="amount sold = lot1 only (no dust trigger)")
+    assert len(bot._pct_open_positions) == 1, "lot2 must remain in queue"
+    assert_close(bot._pct_open_positions[0]["amount"], 5.0, label="lot2 amount untouched")
+    assert_close(bot.state.holdings, 5.0, label="holdings = 5 after partial sell")
+    # avg unchanged on partial sell (canonical avg-cost)
+    assert_close(bot.state.avg_buy_price, avg_before, label="avg unchanged on partial sell")
+
+    expected_pnl = (10.0 - avg_before) * 10.0
+    assert_close(trade["realized_pnl"], expected_pnl, tol=1e-6, label="realized_pnl")
+    print(f"  amount = {trade['amount']:.4f} (expected 10.0) ✓")
+    print(f"  lot2 untouched ({bot._pct_open_positions[0]['amount']}), holdings={bot.state.holdings} ✓")
+    print(f"  avg unchanged = ${bot.state.avg_buy_price:.4f} ✓")
+    print(f"  realized = ${trade['realized_pnl']:+.4f} (expected ${expected_pnl:+.4f}) ✓")
+
+
 # ----------------------------------------------------------------------
 # Runner
 # ----------------------------------------------------------------------
@@ -310,6 +406,8 @@ def main():
         test_c_full_sell_then_buy_resets_avg,
         test_d_alternating_buy_sell_sequence,
         test_e_random_sequence_identity,
+        test_f_dust_prevention_residual_below_min_sellable,
+        test_g_dust_prevention_no_trigger_when_residual_healthy,
     ]
     passed = 0
     failed = []

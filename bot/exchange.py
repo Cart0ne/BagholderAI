@@ -2,13 +2,19 @@
 BagHolderAI - Exchange Connection
 Handles connection to Binance via ccxt.
 
-Paper trading: connects to LIVE Binance (read-only) for real prices.
-Live trading: connects to LIVE Binance (read + trade).
+Modes:
+- Paper trading: connects to LIVE Binance (read-only) for real prices.
+  Fills are simulated internally. No API keys needed.
+- Live + TESTNET: connects to testnet.binance.vision with testnet API keys.
+  Real fills, fake money, realistic slippage/latency. The "no soldi a
+  rischio" path used for accounting verification before mainnet.
+- Live + MAINNET: connects to api.binance.com with mainnet API keys.
+  Real money, real fills.
 
-We don't use Binance testnet because:
-- Testnet requires separate API keys
-- Testnet prices are fake and don't reflect real market
-- Our paper trading simulates fills internally, it just needs real prices
+66a Step 3 (Operation Clean Slate): testnet path reactivated. Pre-S67
+the bot bypassed testnet because the v3 paper era simulated everything
+internally. Now we want Binance to write its own realized_pnl on each
+sell so we can compare it to ours and certify the accounting convention.
 """
 
 import ccxt
@@ -18,25 +24,33 @@ from config.settings import ExchangeConfig, TradingMode
 def create_exchange() -> ccxt.binance:
     """
     Create and return a configured Binance exchange instance.
-    Paper mode: no API keys needed, just reads public price data.
-    Live mode: requires API keys for trading.
+
+    - Paper mode: live API, no auth, sandbox=False (read-only prices).
+    - Live + TESTNET=true: testnet API + testnet keys, sandbox=True.
+    - Live + TESTNET=false: live API + mainnet keys, sandbox=False.
     """
+    use_testnet = TradingMode.is_live() and ExchangeConfig.TESTNET
     config = {
-        "sandbox": False,  # Always use live API for real prices
         "enableRateLimit": True,
         "options": {
             "defaultType": "spot",
             "adjustForTimeDifference": True,
         },
     }
-    
-    # Only include API keys in live mode
+
+    # Only include API keys in live mode (mainnet OR testnet)
     if TradingMode.is_live():
         config["apiKey"] = ExchangeConfig.API_KEY
         config["secret"] = ExchangeConfig.SECRET
-    
+
     exchange = ccxt.binance(config)
-    
+
+    # ccxt v3+: sandbox is set via the dedicated method, NOT via the
+    # config dict (the "sandbox" config key is silently ignored for
+    # Binance and the URLs stay on api.binance.com).
+    if use_testnet:
+        exchange.set_sandbox_mode(True)
+
     return exchange
 
 
@@ -44,23 +58,30 @@ def test_connection(exchange: ccxt.binance) -> dict:
     """
     Test the exchange connection. Returns account info or error.
     Paper mode: just fetches a price (no auth needed).
-    Live mode: also checks balance (needs auth).
+    Live mode (testnet or mainnet): also checks balance (needs auth).
     """
     try:
         # Fetch a real price — proves connection works
         ticker = exchange.fetch_ticker("BTC/USDT")
-        
+
+        if TradingMode.is_paper():
+            mode_label = "PAPER (live prices)"
+        elif ExchangeConfig.TESTNET:
+            mode_label = "LIVE TESTNET"
+        else:
+            mode_label = "LIVE MAINNET"
+
         result = {
             "status": "connected",
-            "mode": "PAPER (live prices)" if TradingMode.is_paper() else "LIVE",
+            "mode": mode_label,
             "btc_price": ticker["last"],
         }
-        
-        # In live mode, also check balance
+
+        # In live mode (testnet or mainnet), also check balance
         if TradingMode.is_live():
             balance = exchange.fetch_balance()
             result["total_usdt"] = balance.get("USDT", {}).get("total", 0)
-        
+
         return result
         
     except ccxt.AuthenticationError:
