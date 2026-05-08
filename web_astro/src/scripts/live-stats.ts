@@ -4,6 +4,8 @@
    read-only access). All updates are best-effort: if a query fails,
    the markup keeps its server-rendered fallback value. */
 
+import { sbFetchAll } from "./sb-paginated";
+
 const SB_URL =
   "https://pxdhtmqfwjwjhtcoacsn.supabase.co";
 const SB_KEY =
@@ -79,27 +81,18 @@ const todayStartUtcIso = new Date(
   ),
 ).toISOString();
 
-/* Two parallel fetches (Grid manual + TF trend_follower/tf_grid).
-   Reason: Supabase enforces a hard 1000-row cap on the anon role,
-   regardless of `limit=` or `Range:` headers. We crossed it on
-   2026-05-04 (1003 v3 trades total). Splitting by managed_by keeps
-   each fetch under the cap (Grid: 395, TF: 608 today). The FIFO
-   replay below works correctly because each symbol is owned by a
-   single bot (BTC=manual, DOGE=trend_follower, TRX=tf_grid, etc.)
-   so per-symbol queues never mix across bots. */
-Promise.all([
-  sbq<Trade[]>(
-    "trades",
-    "select=symbol,side,amount,cost,created_at" +
-    "&config_version=eq.v3&managed_by=eq.manual&order=created_at.asc",
-  ),
-  sbq<Trade[]>(
-    "trades",
-    "select=symbol,side,amount,cost,created_at" +
-    "&config_version=eq.v3&managed_by=in.(trend_follower,tf_grid)&order=created_at.asc",
-  ),
-]).then(([gridRows, tfRows]) => {
-  const rows = [...gridRows, ...tfRows].sort(
+/* Single paginated fetch via Range header (brief 60e). Replaces the
+   prior split-by-managed_by workaround which was due to fail when the
+   TF bucket alone crossed 1000 rows (~2026-05-17 at +30/day). Pagination
+   scales to ~50k trades and removes the FIFO mismatch root cause: the
+   prior workaround sorted globally only after both buckets returned, so
+   when either bucket truncated at 1000 the older trades from that bucket
+   were silently dropped from the per-symbol queues. */
+sbFetchAll<Trade>(
+  "trades?select=symbol,side,amount,cost,created_at" +
+  "&config_version=eq.v3&order=created_at.asc",
+).then((rowsRaw) => {
+  const rows = (rowsRaw ?? []).slice().sort(
     (a, b) => a.created_at.localeCompare(b.created_at),
   );
   const bySym: Record<string, Trade[]> = {};
@@ -183,10 +176,9 @@ sbq<{ created_at: string }[]>(
 type SellRow = { side: "buy" | "sell"; realized_pnl: number | null };
 
 const fetchBotStats = async (managedBy: string) => {
-  const rows = await sbq<SellRow[]>(
-    "trades",
-    `select=side,realized_pnl&config_version=eq.v3&managed_by=eq.${managedBy}` +
-    "&side=eq.sell",
+  const rows = await sbFetchAll<SellRow>(
+    `trades?select=side,realized_pnl&config_version=eq.v3` +
+    `&managed_by=eq.${managedBy}&side=eq.sell`,
   );
   let wins = 0, losses = 0;
   for (const r of rows ?? []) {
@@ -217,12 +209,41 @@ Promise.all([fetchBotStats("manual"), fetchBotStats("trend_follower")])
   })
   .catch(() => {});
 
-/* ---------- 5. current session number (max session in diary_entries) ---------- */
-sbq<{ session: number }[]>(
+/* ---------- 5. current session + recent diary entries ----------
+   One query covers two needs: the hero "stat-session" badge (max
+   session) and the new "Development diary" homepage section (last 3
+   entries). Both BUILDING and COMPLETE rows are included. */
+type DiaryRow = {
+  session: number;
+  title: string;
+  date: string;
+  status: string;
+};
+
+sbq<DiaryRow[]>(
   "diary_entries",
-  "select=session&order=session.desc&limit=1",
+  "select=session,title,date,status&order=session.desc&limit=3",
 ).then(rows => {
   if (!rows || !rows.length) return;
-  const el = document.getElementById("stat-session");
-  if (el) el.textContent = String(rows[0].session);
+  const sessionEl = document.getElementById("stat-session");
+  if (sessionEl) sessionEl.textContent = String(rows[0].session);
+
+  const list = document.getElementById("home-diary-list");
+  if (!list) return;
+  rows.forEach((row, i) => {
+    const slot = list.querySelector(`[data-slot="${i}"]`) as HTMLElement | null;
+    if (!slot) return;
+    const sEl = slot.querySelector('[data-field="session"]');
+    const tEl = slot.querySelector('[data-field="title"]');
+    const dEl = slot.querySelector('[data-field="date"]');
+    if (sEl) sEl.textContent = `Session ${row.session}`;
+    if (tEl) tEl.textContent = row.title;
+    if (dEl) dEl.textContent = row.date;
+  });
+  /* If fewer than 3 entries exist (unlikely), hide remaining slots
+     so we don't show empty placeholders. */
+  for (let i = rows.length; i < 3; i++) {
+    const slot = list.querySelector(`[data-slot="${i}"]`) as HTMLElement | null;
+    if (slot) slot.style.display = "none";
+  }
 }).catch(() => {});

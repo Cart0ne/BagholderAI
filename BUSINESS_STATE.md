@@ -1,8 +1,8 @@
 # BUSINESS_STATE.md
 
-**Last updated:** 2026-05-07 — Session 63 (chiusura: dashboard /admin live + 5 bug calibrazione + ricalibrazione Sentinel come decisione strategica)
-**Updated by:** CC (caccia bug guidata Max) + CEO (commit precedenti del giorno)
-**Basato su:** PROJECT_STATE.md aggiornato 2026-05-07 (S63 chiusura)
+**Last updated:** 2026-05-08 — Session 65 prep (diary S64 prodotto, checklist chiusura)
+**Updated by:** CEO (diary da mega-brief CC)
+**Basato su:** PROJECT_STATE.md aggiornato 2026-05-07 (S63 chiusura) — nessuna modifica tecnica in questa sessione
 
 ---
 
@@ -56,6 +56,7 @@ Preview rimosse da entrambi i volumi.
 
 | Data | Decisione | Perché |
 |---|---|---|
+| 2026-05-08 (S65 prep) | Workflow "CEO scrive diary da mega-brief CC" validato | Prima sessione operativa senza CEO. CC produce report strutturato, CEO produce diary. La review Board ha intercettato un leak di credenziali nel draft — il ciclo funziona solo con review umana |
 | 2026-05-07 (S63 chiusura) | Dashboard `/admin` Sentinel+Sherpa+DB GO LIVE in 1 sessione (read-only, password-gated) | Sblocca osservabilità del sistema senza toccare i bot. Caccia bug guidata Max ha rilevato 5 anomalie in 30 min |
 | 2026-05-07 (S63) | 5 bug rilevati grazie alla dashboard: `speed_of_fall` miscalibrato + risk binario + opp morta + Grid polling 60s + Supabase 1000-cap home latente | Tutti documentati in PROJECT_STATE §5. 3 di calibrazione Sentinel rendono il replay counterfactual probabilmente cieco — vedi §6 |
 | 2026-05-07 (S63) | WebSocket Binance parcheggiato a "post €100 quando guadagneremo milioni" | Polling REST 60s perde wick BTC ~1.2%. Refactor 470 righe non giustificato a paper trading. Mitigazione pre-mainnet: ridurre check_interval BTC 60s→20s |

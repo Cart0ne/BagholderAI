@@ -3,7 +3,16 @@
 
    Same anon-key pattern as live-stats.ts (anon is public, RLS enforces
    read-only). All updates are best-effort: if a query fails we leave
-   the server-rendered mock fallback in place. */
+   the server-rendered mock fallback in place.
+
+   Note on per-row P&L (S65 finding): the FIFO replays here are
+   strict-FIFO, while the bot vends FIFO-among-triggered (Strategy A).
+   For sells where the oldest lot is below the profit threshold, the
+   strict-FIFO replay picks a different lot than the bot actually sold,
+   so per-row P&L can disagree with DB. Aggregates still reconcile.
+   Real fix lives in brief 60b (verify_fifo multiset). */
+
+import { sbFetchAll } from "./sb-paginated";
 
 const SB_URL = "https://pxdhtmqfwjwjhtcoacsn.supabase.co";
 const SB_KEY =
@@ -22,22 +31,19 @@ const sbq = async <T>(table: string, params: string): Promise<T> => {
   return r.json() as Promise<T>;
 };
 
-/* fetchAllTrades — splits the trades fetch by managed_by to bypass
-   Supabase's hard 1000-row cap on the anon role. We crossed it on
-   2026-05-04 (1003 v3 trades total). Splitting by bot section keeps
-   each fetch under the cap (Grid: 395, TF: 608 today). The caller
-   gets a single unified array sorted ascending by created_at, ready
-   for FIFO replay (per-symbol queues never mix across bots since
-   each symbol is owned by a single managed_by value). */
+/* fetchAllTrades — single paginated fetch via Range header (brief 60e).
+   Replaces the prior split-by-managed_by workaround. Pagination scales
+   beyond the anon-role 1000-row cap (~50k trades safe). The caller gets
+   a unified array sorted ASC by created_at, ready for FIFO replay
+   (per-symbol queues never mix across bots since each symbol is owned
+   by a single managed_by value). */
 async function fetchAllTrades<T extends { created_at: string }>(
   selectFields: string,
 ): Promise<T[]> {
-  const baseQuery = `select=${selectFields}&config_version=eq.v3&order=created_at.asc`;
-  const [grid, tf] = await Promise.all([
-    sbq<T[]>("trades", `${baseQuery}&managed_by=eq.manual`),
-    sbq<T[]>("trades", `${baseQuery}&managed_by=in.(trend_follower,tf_grid)`),
-  ]);
-  return [...(grid ?? []), ...(tf ?? [])].sort(
+  const rows = await sbFetchAll<T>(
+    `trades?select=${selectFields}&config_version=eq.v3&order=created_at.asc`,
+  );
+  return (rows ?? []).slice().sort(
     (a, b) => a.created_at.localeCompare(b.created_at),
   );
 }
@@ -679,8 +685,8 @@ const RECENT_TRADES_LIMIT = 6;
   try {
     /* Need full history (not just the recent rows) because
        annotateBuyAvg replays FIFO from the first buy to compute the
-       consumed lot's avg buy price. fetchAllTrades splits by bot
-       to bypass the 1000-row cap. */
+       consumed lot's avg buy price. fetchAllTrades paginates via
+       Range header to bypass the anon-role 1000-row cap. */
     const trades = await fetchAllTrades<AllTrade>(
       "symbol,side,amount,price,cost,realized_pnl,created_at,managed_by",
     );

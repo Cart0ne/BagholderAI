@@ -111,12 +111,18 @@
     #dashboard { display: none; }
 
     .navbar {
-      display: flex; gap: 16px; padding: 8px 0; margin-bottom: 12px;
-      font-family: var(--mono); font-size: 12px; border-bottom: 1px solid var(--border);
+      display: flex; gap: 16px; justify-content: flex-end;
+      font-family: var(--mono); font-size: 11px;
+      padding: 10px 0 12px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 12px;
     }
-    .navbar a { color: var(--text-dim); text-decoration: none; padding: 4px 0; }
-    .navbar a:hover { color: var(--text); }
-    .navbar a.active { color: var(--purple); border-bottom: 2px solid var(--purple); padding-bottom: 4px; }
+    .navbar a {
+      color: var(--text-dim); text-decoration: none; letter-spacing: 0.05em;
+      text-transform: uppercase; transition: color 0.2s;
+    }
+    .navbar a:hover { color: var(--purple); }
+    .navbar a.active { color: var(--purple); }
 
     /* Last scan box — Sentinel summary */
     .last-scan {

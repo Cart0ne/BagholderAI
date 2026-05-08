@@ -375,7 +375,6 @@
       <div id="overview-row1" class="stats-row"></div>
       <div id="overview-row2" class="stats-row"></div>
       <div id="overview-row3" class="stats-row"></div>
-      <div id="tf-budget-line" style="font-family: var(--mono); font-size: 11px; color: var(--text-dim); margin-top: 12px; padding: 8px 12px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 6px;"></div>
 
       <!-- Per-Coin Status -->
       <div class="section-title">Grid status per coin</div>
@@ -1521,29 +1520,6 @@
       el.innerHTML = activeHtml;
       var prevEl = document.getElementById('previous-coins');
       if (prevEl) prevEl.innerHTML = inactiveHtml;
-
-      // TF capital budget breakdown — same formula as the Telegram scan
-      // report (floating.py): base + floating = effective. Helps the reader
-      // reconcile the Net Worth ($94) with the allocator's "spendable"
-      // budget ($base + floating). Sanity cap from trend_config (default
-      // $300) is a soft upper bound, not a floor — floating can go strongly
-      // negative without limit.
-      var budgetLineEl = document.getElementById('tf-budget-line');
-      if (budgetLineEl) {
-        var budgetBase = TF_BUDGET;
-        var effective = budgetBase + floatingReturned;
-        var floatSign = floatingReturned >= 0 ? '+' : '−';
-        var floatAbs = Math.abs(floatingReturned).toFixed(2);
-        var fcolor = floatingReturned >= 0 ? 'var(--green)' : 'var(--red)';
-        budgetLineEl.innerHTML =
-          '<span style="opacity:0.6;">TF capital:</span> ' +
-          '<span style="color:#fff;">$' + budgetBase.toFixed(2) + '</span> base ' +
-          '<span style="opacity:0.6;">+</span> ' +
-          '<span style="color:' + fcolor + ';">' + floatSign + '$' + floatAbs + '</span> ' +
-          '<span style="opacity:0.6;">floating =</span> ' +
-          '<span style="color:#fff; font-weight:600;">$' + effective.toFixed(2) + '</span> ' +
-          '<span style="opacity:0.6;">effective (allocator budget for new ALLOCATEs)</span>';
-      }
 
       // Mark original values and attach change listeners (active coins only —
       // inactive cards don't render the parameter inputs)
