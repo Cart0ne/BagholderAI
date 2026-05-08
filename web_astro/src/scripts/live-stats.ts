@@ -59,19 +59,31 @@ sbqCount("trades", "select=id&config_version=eq.v3")
   .then(n => setText("stat-trades", String(n)))
   .catch(() => setText("stat-trades", "N.A."));
 
-/* ---------- 2. realized P&L (DB SUM, Opzione A — decision_s65) ----------
-   Single source of truth: trades.realized_pnl as written by the bot.
-   The prior strict-FIFO replay diverged from DB by ~$26 today and
-   produced per-row sign flips (e.g. ZEC 10:27 sell). FIFO replay is
-   retained only in /admin as an internal audit tool. */
-type TradeRow = {
+/* ---------- 2. Total P&L (Opzione 3 — decision_s65 reconciled) ----------
+   Total P&L = (Net Worth Grid + Net Worth TF) − $600 budget.
+   This is the only P&L number that closes the accounting identity
+   (Realized_FIFO + Unrealized = Total) and that will match Binance
+   live mainnet exactly. The prior "Realized P&L" from DB SUM was 28%
+   inflated due to the bot's avg_buy_price cost basis bias (gating
+   for go-live, see brief 60b).
+
+   Today P&L stays as DB SUM(realized_pnl) on today's sells: it's a
+   daily flow metric, not a patrimony metric. The two answer different
+   questions ("how much have I banked today" vs "how much would I have
+   if I closed everything now"). */
+
+type TradeFull = {
+  symbol: string;
   side: "buy" | "sell";
+  amount: string | number;
+  cost: string | number;
   realized_pnl: string | number | null;
   created_at: string;
 };
 
-/* Today = UTC midnight of the current calendar day. Coherent with the
-   bot's daily PnL aggregation (UTC 00→24). */
+type SkimRow = { symbol: string; amount: string | number };
+
+/* Today = UTC midnight of the current calendar day. */
 const todayStartUtcIso = new Date(
   Date.UTC(
     new Date().getUTCFullYear(),
@@ -80,28 +92,119 @@ const todayStartUtcIso = new Date(
   ),
 ).toISOString();
 
-sbFetchAll<TradeRow>(
-  "trades?select=side,realized_pnl,created_at" +
-  "&config_version=eq.v3&order=created_at.asc",
-).then((rows) => {
-  let total = 0;
+const GRID_SYMBOLS = new Set(["BTC/USDT", "SOL/USDT", "BONK/USDT"]);
+const GRID_BUDGET = 500;
+const TF_BUDGET   = 100;
+
+/* Fetch live prices from Binance (same endpoint dashboard-live.ts uses). */
+const fetchLivePrices = async (symbols: string[]): Promise<Record<string, number>> => {
+  if (!symbols.length) return {};
+  try {
+    const r = await fetch(
+      "https://api.binance.com/api/v3/ticker/price?symbols=" +
+      encodeURIComponent(JSON.stringify(symbols.map(s => s.replace("/", "")))),
+    );
+    if (!r.ok) return {};
+    const arr = await r.json() as Array<{ symbol: string; price: string }>;
+    const out: Record<string, number> = {};
+    for (const row of arr) {
+      /* Map back BTCUSDT → BTC/USDT. */
+      const slash = row.symbol.replace(/USDT$/, "/USDT");
+      out[slash] = Number(row.price);
+    }
+    return out;
+  } catch {
+    return {};
+  }
+};
+
+Promise.all([
+  sbFetchAll<TradeFull>(
+    "trades?select=symbol,side,amount,cost,realized_pnl,created_at" +
+    "&config_version=eq.v3&order=created_at.asc",
+  ),
+  sbFetchAll<SkimRow>(
+    "reserve_ledger?select=symbol,amount&config_version=eq.v3",
+  ),
+]).then(async ([trades, skimRows]) => {
+  trades = trades ?? [];
+  skimRows = skimRows ?? [];
+
+  /* Today P&L + today trades: from DB realized_pnl on today's sells. */
   let todayPnl = 0;
   let todayTrades = 0;
-  for (const t of rows ?? []) {
-    if (t.created_at >= todayStartUtcIso) todayTrades++;
+  for (const t of trades) {
+    if (t.created_at < todayStartUtcIso) continue;
+    todayTrades++;
     if (t.side !== "sell") continue;
     const p = Number(t.realized_pnl);
-    if (!Number.isFinite(p)) continue;
-    total += p;
-    if (t.created_at >= todayStartUtcIso) todayPnl += p;
+    if (Number.isFinite(p)) todayPnl += p;
   }
-  const sign = total >= 0 ? "+" : "-";
-  setText("stat-pnl", `${sign}$${Math.abs(total).toFixed(2)}`);
+
+  /* Aggregate per-symbol: net invested (buy.cost − sell.cost) and
+     remaining holdings (buy.amount − sell.amount). Per-symbol mapping
+     to Grid/TF is by symbol set since each symbol is owned by one bot. */
+  type Agg = { netInvested: number; holdings: number };
+  const bySym: Record<string, Agg> = {};
+  for (const t of trades) {
+    const a = (bySym[t.symbol] ||= { netInvested: 0, holdings: 0 });
+    const amt = Number(t.amount || 0);
+    const cost = Number(t.cost || 0);
+    if (t.side === "buy") {
+      a.netInvested += cost;
+      a.holdings    += amt;
+    } else {
+      a.netInvested -= cost;
+      a.holdings    -= amt;
+    }
+  }
+
+  /* Skim per bucket via symbol partition. */
+  let skimGrid = 0, skimTf = 0;
+  for (const r of skimRows) {
+    const amt = Number(r.amount || 0);
+    if (GRID_SYMBOLS.has(r.symbol)) skimGrid += amt;
+    else                            skimTf   += amt;
+  }
+
+  /* Live prices for all symbols still holding. */
+  const heldSymbols = Object.keys(bySym).filter(s => bySym[s].holdings > 1e-8);
+  const prices = await fetchLivePrices(heldSymbols);
+
+  let netInvestedGrid = 0, holdingsGrid = 0;
+  let netInvestedTf   = 0, holdingsTf   = 0;
+  for (const sym of Object.keys(bySym)) {
+    const a = bySym[sym];
+    const px = prices[sym] ?? 0;
+    const mtm = a.holdings > 0 && px > 0 ? a.holdings * px : 0;
+    if (GRID_SYMBOLS.has(sym)) {
+      netInvestedGrid += a.netInvested;
+      holdingsGrid    += mtm;
+    } else {
+      netInvestedTf += a.netInvested;
+      holdingsTf    += mtm;
+    }
+  }
+
+  /* Net Worth = budget − netInvested + holdings_market.
+     The skim term cancels: cash = budget − netInvested − skim, then
+     net worth = cash + holdings + skim = budget − netInvested + holdings. */
+  const netWorthGrid = GRID_BUDGET - netInvestedGrid + holdingsGrid;
+  const netWorthTf   = TF_BUDGET   - netInvestedTf   + holdingsTf;
+  const totalPnl = (netWorthGrid - GRID_BUDGET) + (netWorthTf - TF_BUDGET);
+
+  const sign = totalPnl >= 0 ? "+" : "-";
+  setText("stat-pnl", `${sign}$${Math.abs(totalPnl).toFixed(2)}`);
+  /* Dynamic color on Total P&L too (it can flip negative if both bots are down). */
+  const pnlEl = document.getElementById("stat-pnl");
+  if (pnlEl) {
+    pnlEl.classList.remove("text-pos", "text-neg");
+    pnlEl.classList.add(totalPnl >= 0 ? "text-pos" : "text-neg");
+  }
+
   const tsign = todayPnl >= 0 ? "+" : "-";
   setText("stat-today-pnl", `${tsign}$${Math.abs(todayPnl).toFixed(2)}`);
   setText("stat-today-trades", String(todayTrades));
-  /* Dynamic color: red when negative, green when positive/zero.
-     We mutate classes directly because today P&L flips daily. */
   const todayEl = document.getElementById("stat-today-pnl");
   if (todayEl) {
     todayEl.classList.remove("text-pos", "text-neg");

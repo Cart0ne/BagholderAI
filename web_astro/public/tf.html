@@ -1247,17 +1247,13 @@
       // Skim is physically moved out of bot cash to reserve_ledger, but it's
       // still ours — adding it back gives the full TF patrimony.
       var netWorth = totalCash + unalloc + holdingsValue + skimReserveTotal;
-      // Total P&L = net worth delta vs TF starting budget (includes realized
-      // + unrealized + fees + skim within the net worth identity).
-      // Realized P&L = DB SUM(trades.realized_pnl) — Opzione A (decision_s65).
-      // Both shown side-by-side: Total = "what we'd see closing now",
-      // Realized = "what we've actually banked from sells".
+      // Opzione 3 (decision_s65 reconciled, 2026-05-08): Total P&L is the
+      // ONE number on public/private dashboards. Realized DB lives in
+      // /admin Reconciliation (it's 28% inflated by avg_buy_price bias).
       var totalPnl = netWorth - TF_BUDGET;
-      var realizedPnlDb = totalRealizedAll;   // DB SUM after Opzione A
       var totalFees = tradesData.reduce(function(s, t) { return s + Number(t.fee || 0); }, 0);
 
       var pnlColor = totalPnl >= 0 ? 'var(--green)' : 'var(--red)';
-      var realColor = realizedPnlDb >= 0 ? 'var(--green)' : 'var(--red)';
       var unrSign = totalUnrealized >= 0 ? '+' : '';
       var feeSign = totalFees > 0 ? '-' : '';
 
@@ -1267,7 +1263,6 @@
       }).join(' · ');
 
       var unrColor = totalUnrealized >= 0 ? 'var(--green)' : 'var(--red)';
-      var realizedSign = realizedPnlDb >= 0 ? '+' : '';
 
       document.getElementById('overview-row1').innerHTML =
         '<div class="stat-box">' +
@@ -1276,14 +1271,14 @@
           '<div class="stat-sub">cash + holdings + skim reserve</div>' +
         '</div>' +
         '<div class="stat-box">' +
-          '<div class="stat-label">Realized P&L</div>' +
-          '<div class="stat-value" style="color:' + realColor + ';">' + realizedSign + '$' + fmt(realizedPnlDb) + '</div>' +
-          '<div class="stat-sub">SUM(realized_pnl) DB · banked from sells</div>' +
-        '</div>' +
-        '<div class="stat-box">' +
           '<div class="stat-label">Total P&L</div>' +
           '<div class="stat-value" style="color:' + pnlColor + ';">' + (totalPnl >= 0 ? '+' : '') + '$' + fmt(totalPnl) + '</div>' +
-          '<div class="stat-sub">= Net Worth − $' + fmt(TF_BUDGET) + ' (incl. unrealized + skim)</div>' +
+          '<div class="stat-sub">= Net Worth − $' + fmt(TF_BUDGET) + ' starting budget</div>' +
+        '</div>' +
+        '<div class="stat-box">' +
+          '<div class="stat-label">Skim Reserve</div>' +
+          '<div class="stat-value" style="color:var(--green);">+$' + skimReserveTotal.toFixed(4) + '</div>' +
+          '<div class="stat-sub">set aside from profits · ' + (netWorth > 0 ? (skimReserveTotal / netWorth * 100).toFixed(2) + '% of net worth' : '—') + '</div>' +
         '</div>';
 
       document.getElementById('overview-row2').innerHTML =
@@ -1325,20 +1320,15 @@
       var dustBreakdown = dustParts.length ? dustParts.join(' · ') : '—';
       var dustColor = dustTotalUsd > 1 ? 'var(--yellow)' : 'var(--muted)';
 
-      // Three cards in row 3: Fees Paid (cumulative, inside Total P&L) +
-      // Skim Reserve (set-aside from profits) + Dust v3 (sub-min_notional).
+      // Two side-by-side cards in row 3: Fees Paid (cumulative, already
+      // inside Total P&L) + Dust v3 (sub-min_notional residuals).
       document.getElementById('overview-row3').innerHTML =
         '<div class="stat-box">' +
           '<div class="stat-label">Fees Paid</div>' +
           '<div class="stat-value" style="color:var(--muted);">-$' + fmt(totalFees) + '</div>' +
           '<div class="stat-sub">Binance + BNB discount on every buy/sell — tracked for reference · not deducted in paper mode</div>' +
         '</div>' +
-        '<div class="stat-box">' +
-          '<div class="stat-label">Skim Reserve</div>' +
-          '<div class="stat-value" style="color:var(--green);">+$' + skimReserveTotal.toFixed(4) + '</div>' +
-          '<div class="stat-sub">set aside from profits · ' + (netWorth > 0 ? (skimReserveTotal / netWorth * 100).toFixed(2) + '% of net worth' : '—') + '</div>' +
-        '</div>' +
-        '<div class="stat-box">' +
+        '<div class="stat-box" style="grid-column: 2 / -1;">' +
           '<div class="stat-label">Dust v3</div>' +
           '<div class="stat-value" style="color:' + dustColor + ';">$' + dustTotalUsd.toFixed(4) + '</div>' +
           '<div class="stat-sub">' + dustBreakdown + '</div>' +

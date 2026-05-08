@@ -591,7 +591,6 @@ function analyzeCoin(trades: AllTrade[]): {
       tfPnlEl.classList.add(tfPnl >= 0 ? "text-pos" : "text-neg");
       tfPnlEl.textContent = `${fmtSigned(tfPnl)} (${fmtPct(tfPct)})`;
     }
-    applyMetric("tf-realized",   tf.realized);
     applyMetric("tf-unrealized", tf.unrealized);
     applyFees("tf-fees", tf.fees);
     applySkim("tf-skim", tf.skim);
@@ -611,7 +610,6 @@ function analyzeCoin(trades: AllTrade[]): {
       gridPnlEl.classList.add(gridPnl >= 0 ? "text-pos" : "text-neg");
       gridPnlEl.textContent = `${fmtSigned(gridPnl)} (${fmtPct(gridPct)})`;
     }
-    applyMetric("grid-realized",   grid.realized);
     applyMetric("grid-unrealized", grid.unrealized);
     applyFees("grid-fees", grid.fees);
     applySkim("grid-skim", grid.skim);

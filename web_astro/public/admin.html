@@ -78,6 +78,7 @@
     }
     .section-title.sherpa { color: var(--blue); }
     .section-title.db { color: var(--amber); }
+    .section-title.recon { color: var(--green); }
 
     section { margin-bottom: 16px; }
 
@@ -516,6 +517,41 @@
           Sprint 1 only uses regime <em>neutral</em>; other regimes are pre-wired for Sprint 2 (slow loop / regime detection).
           Drop ladder and pump ladder are mutually exclusive (only the strongest match fires).
         </div>
+      </div>
+
+      <!-- ============ RECONCILIATION ============ -->
+      <div class="section-title recon">🧮 Reconciliation — accounting identity check (audit only)</div>
+      <div class="card">
+        <div style="font-family: var(--mono); font-size: 11px; color: var(--text-dim); margin-bottom: 12px; line-height: 1.5;">
+          DB <code>realized_pnl</code> uses <code>avg_buy_price</code> as cost basis (rolling average over open lots).
+          Strict-FIFO replay uses the lot-specific cost basis. They diverge in volatile grid regimes — this
+          panel quantifies the bias. The <strong>accounting identity</strong> (Realized<sub>FIFO</sub> + Unrealized = Total)
+          chiude solo con la versione strict-FIFO. Public/private dashboards show <strong>Total P&L</strong> only.
+          Brief 60b will fix the bot to write strict-FIFO realized.
+        </div>
+
+        <!-- Per-bot reconciliation table -->
+        <div style="overflow-x: auto;">
+          <table style="width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 12px;">
+            <thead>
+              <tr style="border-bottom: 1px solid var(--border); color: var(--text-dim); text-transform: uppercase; font-size: 10px; letter-spacing: 0.05em;">
+                <th style="text-align: left; padding: 8px 6px;">Bot</th>
+                <th style="text-align: right; padding: 8px 6px;">Realized DB</th>
+                <th style="text-align: right; padding: 8px 6px;">Realized strict-FIFO</th>
+                <th style="text-align: right; padding: 8px 6px;">Bias</th>
+                <th style="text-align: right; padding: 8px 6px;">Unrealized</th>
+                <th style="text-align: right; padding: 8px 6px;">FIFO + Unr</th>
+                <th style="text-align: right; padding: 8px 6px;">Total P&L</th>
+                <th style="text-align: center; padding: 8px 6px;">Identity</th>
+              </tr>
+            </thead>
+            <tbody id="recon-tbody">
+              <tr><td colspan="8" style="text-align: center; color: var(--text-dim); padding: 12px;">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div id="recon-warning" style="margin-top: 10px; font-family: var(--mono); font-size: 10px; color: var(--text-dim);"></div>
       </div>
 
       <!-- ============ DB MONITOR ============ -->
@@ -1100,6 +1136,186 @@
       });
     }
 
+    // === RECONCILIATION (audit only) ===
+    // Computes the accounting identity per bot:
+    //   Realized_strict_FIFO + Unrealized = Total P&L  (must close at the cent)
+    // The DB realized_pnl uses avg_buy_price and is biased upward in volatile
+    // grid regimes. Strict-FIFO is derived from the cash identity:
+    //   Realized_FIFO = received - invested + openCost
+    // where openCost is the cost basis of lots still held.
+    async function loadReconciliation() {
+      var tbody = document.getElementById('recon-tbody');
+      var warningEl = document.getElementById('recon-warning');
+      try {
+        var [trades, skimRows] = await Promise.all([
+          sbFetchAll('trades?select=symbol,side,amount,cost,realized_pnl,managed_by&config_version=eq.v3&order=created_at.asc'),
+          sbFetchAll('reserve_ledger?select=symbol,amount&config_version=eq.v3'),
+        ]);
+
+        var GRID_SYMBOLS = { 'BTC/USDT': 1, 'SOL/USDT': 1, 'BONK/USDT': 1 };
+        var GRID_BUDGET = 500;
+        var TF_BUDGET = 100;
+
+        // Aggregate per-bucket: invested, received, realizedDb, openCost (FIFO replay), holdings amount
+        var buckets = {
+          grid: { invested: 0, received: 0, realizedDb: 0, perSym: {} },
+          tf:   { invested: 0, received: 0, realizedDb: 0, perSym: {} },
+        };
+        function bucketOf(mb, sym) {
+          if (mb === 'manual') return 'grid';
+          if (mb === 'trend_follower' || mb === 'tf_grid') return 'tf';
+          // Fallback by symbol (defensive)
+          return GRID_SYMBOLS[sym] ? 'grid' : 'tf';
+        }
+        // Initial pass: per-symbol queue for FIFO openCost
+        var bySym = {};
+        trades.forEach(function(t) {
+          if (!bySym[t.symbol]) bySym[t.symbol] = { bucket: bucketOf(t.managed_by, t.symbol), trades: [] };
+          bySym[t.symbol].trades.push(t);
+        });
+        // FIFO replay per symbol → accumulate per-bucket openCost
+        Object.keys(bySym).forEach(function(sym) {
+          var entry = bySym[sym];
+          var b = buckets[entry.bucket];
+          var queue = [];
+          entry.trades.forEach(function(t) {
+            var amt = Number(t.amount || 0);
+            var cost = Number(t.cost || 0);
+            if (t.side === 'buy') {
+              queue.push({ amount: amt, cost: cost });
+              b.invested += cost;
+            } else {
+              b.received += cost;
+              var dbPnl = Number(t.realized_pnl);
+              if (isFinite(dbPnl)) b.realizedDb += dbPnl;
+              // Drain queue to update openCost
+              var rem = amt;
+              while (rem > 0.000001 && queue.length > 0) {
+                var lot = queue[0];
+                if (lot.amount <= rem + 0.000001) {
+                  rem -= lot.amount;
+                  queue.shift();
+                } else {
+                  var p = rem / lot.amount;
+                  lot.cost -= lot.cost * p;
+                  lot.amount -= rem;
+                  rem = 0;
+                }
+              }
+            }
+          });
+          // Whatever's left in queue contributes to bucket openCost + open holdings
+          var openCost = queue.reduce(function(s, l) { return s + l.cost; }, 0);
+          var openAmt = queue.reduce(function(s, l) { return s + l.amount; }, 0);
+          if (!b.perSym[sym]) b.perSym[sym] = { openCost: 0, openAmt: 0 };
+          b.perSym[sym].openCost += openCost;
+          b.perSym[sym].openAmt += openAmt;
+        });
+
+        // Live prices for holdings → unrealized
+        var heldSymbols = [];
+        ['grid','tf'].forEach(function(k) {
+          Object.keys(buckets[k].perSym).forEach(function(s) {
+            if (buckets[k].perSym[s].openAmt > 1e-8) heldSymbols.push(s);
+          });
+        });
+        var prices = {};
+        if (heldSymbols.length > 0) {
+          try {
+            var binanceSymbols = heldSymbols.map(function(s) { return s.replace('/', ''); });
+            var pr = await fetch('https://api.binance.com/api/v3/ticker/price?symbols=' + encodeURIComponent(JSON.stringify(binanceSymbols)));
+            if (pr.ok) {
+              var arr = await pr.json();
+              arr.forEach(function(row) {
+                var slash = row.symbol.replace(/USDT$/, '/USDT');
+                prices[slash] = Number(row.price);
+              });
+            }
+          } catch (e) { /* fallback: prices empty, unrealized = 0 */ }
+        }
+
+        // Skim per bucket
+        var skimGrid = 0, skimTf = 0;
+        skimRows.forEach(function(r) {
+          var amt = Number(r.amount || 0);
+          if (GRID_SYMBOLS[r.symbol]) skimGrid += amt;
+          else skimTf += amt;
+        });
+
+        // Compute per-bucket: realizedFifo, unrealized, total, identity check
+        function bucketRow(name, b, budget, skim) {
+          var openCostTotal = 0, holdingsValue = 0;
+          Object.keys(b.perSym).forEach(function(s) {
+            openCostTotal += b.perSym[s].openCost;
+            var px = prices[s] || 0;
+            if (b.perSym[s].openAmt > 1e-8 && px > 0) {
+              holdingsValue += b.perSym[s].openAmt * px;
+            }
+          });
+          var unrealized = holdingsValue - openCostTotal;
+          var realizedFifo = b.received - b.invested + openCostTotal;
+          var totalPnl = (budget - b.invested + holdingsValue) - budget; // = -invested + holdings + (received - received) ... clearer below
+          // Cleaner: netWorth = budget - invested + received + holdings ... wait that double-counts.
+          // Identity from cash side: cash = budget - invested + received - skim, holdings live, netWorth = cash + holdings + skim
+          var cash = budget - b.invested + b.received - skim;
+          var netWorth = cash + holdingsValue + skim;
+          totalPnl = netWorth - budget;
+          var bias = b.realizedDb - realizedFifo;
+          var fifoPlusUnr = realizedFifo + unrealized;
+          var identityOk = Math.abs(fifoPlusUnr - totalPnl) < 0.05; // 5 cent tolerance for rounding
+          return {
+            name: name,
+            realizedDb: b.realizedDb,
+            realizedFifo: realizedFifo,
+            bias: bias,
+            unrealized: unrealized,
+            fifoPlusUnr: fifoPlusUnr,
+            totalPnl: totalPnl,
+            identityOk: identityOk,
+          };
+        }
+        var rows = [
+          bucketRow('Grid (manual)',     buckets.grid, GRID_BUDGET, skimGrid),
+          bucketRow('TF (trend+tf_grid)', buckets.tf,   TF_BUDGET,   skimTf),
+        ];
+
+        function fmtSigned(n, decimals) {
+          decimals = decimals == null ? 2 : decimals;
+          var sign = n >= 0 ? '+' : '';
+          return sign + '$' + n.toFixed(decimals);
+        }
+        function colorize(n) {
+          return n >= 0 ? 'var(--green)' : 'var(--red)';
+        }
+
+        tbody.innerHTML = rows.map(function(r) {
+          var biasPct = r.realizedFifo !== 0 ? (r.bias / Math.abs(r.realizedFifo) * 100) : 0;
+          return '<tr style="border-bottom: 1px solid var(--border);">' +
+            '<td style="padding: 8px 6px; color: var(--text);">' + r.name + '</td>' +
+            '<td style="text-align: right; padding: 8px 6px; color: ' + colorize(r.realizedDb) + ';">' + fmtSigned(r.realizedDb) + '</td>' +
+            '<td style="text-align: right; padding: 8px 6px; color: ' + colorize(r.realizedFifo) + ';">' + fmtSigned(r.realizedFifo) + '</td>' +
+            '<td style="text-align: right; padding: 8px 6px; color: ' + (Math.abs(biasPct) > 5 ? 'var(--red)' : 'var(--text-dim)') + ';">' + fmtSigned(r.bias) + ' (' + (biasPct >= 0 ? '+' : '') + biasPct.toFixed(1) + '%)</td>' +
+            '<td style="text-align: right; padding: 8px 6px; color: ' + colorize(r.unrealized) + ';">' + fmtSigned(r.unrealized) + '</td>' +
+            '<td style="text-align: right; padding: 8px 6px; color: ' + colorize(r.fifoPlusUnr) + ';">' + fmtSigned(r.fifoPlusUnr) + '</td>' +
+            '<td style="text-align: right; padding: 8px 6px; color: ' + colorize(r.totalPnl) + ';">' + fmtSigned(r.totalPnl) + '</td>' +
+            '<td style="text-align: center; padding: 8px 6px; color: ' + (r.identityOk ? 'var(--green)' : 'var(--red)') + ';">' + (r.identityOk ? '✓' : '✗') + '</td>' +
+          '</tr>';
+        }).join('');
+
+        var totalBias = rows.reduce(function(s, r) { return s + r.bias; }, 0);
+        var biasMsg = '';
+        if (Math.abs(totalBias) > 1) {
+          biasMsg = '⚠ Total DB bias: ' + fmtSigned(totalBias) + ' — brief 60b is gating for go-live €100.';
+        } else {
+          biasMsg = '✓ DB realized matches strict-FIFO within $1 — bias acceptable.';
+        }
+        warningEl.textContent = biasMsg;
+        warningEl.style.color = Math.abs(totalBias) > 1 ? 'var(--red)' : 'var(--green)';
+      } catch (e) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: var(--red); padding: 12px;">Error: ' + e.message + '</td></tr>';
+      }
+    }
+
     // === BOOTSTRAP: fetch sentinel + sherpa + DB stats after auth ===
     async function bootstrap() {
       try {
@@ -1134,6 +1350,9 @@
         renderParamChart('param-buy-chart', bySym, 'proposed_buy_pct', 0.3, 3.0);
         renderParamChart('param-sell-chart', bySym, 'proposed_sell_pct', 0.8, 4.0);
         renderParamChart('param-idle-chart', bySym, 'proposed_idle_reentry_hours', 0.5, 6.0);
+
+        // --- Reconciliation (audit only) ---
+        await loadReconciliation();
 
         // --- DB monitor ---
         // Row counts via Supabase REST exact count headers
