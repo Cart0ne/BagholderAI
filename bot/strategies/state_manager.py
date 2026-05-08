@@ -74,10 +74,21 @@ def init_percentage_state_from_db(bot):
         logger.warning(f"[{bot.symbol}] Could not load pct state from DB: {e}")
         return
 
+    # 66a (Operation Clean Slate): two parallel replay tracks.
+    #   1. FIFO queue       → drives Strategy A trigger (lot_buy_price)
+    #   2. Canonical avg    → drives state.avg_buy_price + state.realized_pnl
+    # Both must be aligned with what the bot would have at runtime if it
+    # had never restarted. Pre-66a code derived avg from the FIFO residual
+    # queue, which after multi-lot sells produced a different avg from the
+    # one the bot mantained at runtime — feeding the +29% bias documented
+    # in audits/2026-05-08_pre-clean-slate/formula_verification_s66.md.
     open_positions = []
     last_buy_price = 0.0
     total_invested = 0.0
     total_received = 0.0
+    avg_canonical = 0.0
+    qty_canonical = 0.0
+    realized_pnl_replay = 0.0
 
     for t in trades:
         side = t.get("side")
@@ -88,11 +99,26 @@ def init_percentage_state_from_db(bot):
             total_invested += cost
             open_positions.append({"amount": amount, "price": price})
             last_buy_price = price
+            # Canonical avg update on buy (weighted average).
+            new_qty = qty_canonical + amount
+            if new_qty > 0:
+                avg_canonical = (
+                    (avg_canonical * qty_canonical + price * amount) / new_qty
+                )
+            qty_canonical = new_qty
         elif side == "sell":
             revenue = amount * price
             total_received += revenue
+            # Canonical realized: (sell_price - avg) × sell_qty.
+            # avg does NOT change on sell.
+            if qty_canonical > 1e-12:
+                realized_pnl_replay += (price - avg_canonical) * amount
+                qty_canonical -= amount
+                if qty_canonical <= 1e-9:
+                    qty_canonical = 0.0
+                    avg_canonical = 0.0  # reset on full sell-out
+            # FIFO queue consume (oldest first) — for Strategy A trigger.
             if open_positions:
-                # FIFO: consume oldest lot(s) to match sell amount
                 remaining = amount
                 while remaining > 1e-12 and open_positions:
                     oldest = open_positions[0]
@@ -138,17 +164,22 @@ def init_percentage_state_from_db(bot):
         bot.state.total_invested = total_invested
         bot.state.total_received = total_received
 
-        # Rebuild state.holdings and state.avg_buy_price from open lots.
-        # Without this, _check_percentage_and_execute() sees holdings=0
-        # and never triggers sells even when _pct_open_positions is populated.
+        # 66a: holdings + avg_buy_price come from canonical replay (not
+        # from the FIFO residual queue). Sanity-check the two should
+        # match within tolerance — if not, log a warning (data drift).
+        bot.state.holdings = qty_canonical
+        bot.state.avg_buy_price = avg_canonical
+        bot.state.realized_pnl = realized_pnl_replay
+
         if open_positions:
-            total_amount = sum(lot["amount"] for lot in open_positions)
-            weighted_cost = sum(lot["amount"] * lot["price"] for lot in open_positions)
-            bot.state.holdings = total_amount
-            bot.state.avg_buy_price = weighted_cost / total_amount if total_amount > 0 else 0.0
-        else:
-            bot.state.holdings = 0.0
-            bot.state.avg_buy_price = 0.0
+            queue_total = sum(lot["amount"] for lot in open_positions)
+            if abs(queue_total - qty_canonical) > 1e-6:
+                logger.warning(
+                    f"[{bot.symbol}] FIFO queue / canonical qty desync: "
+                    f"queue_total={queue_total:.8f} vs canonical={qty_canonical:.8f} "
+                    f"(diff={queue_total - qty_canonical:+.8f}). "
+                    f"Trusting canonical for state.holdings."
+                )
 
     available = bot.capital - total_invested + total_received
     reserve_str = ""

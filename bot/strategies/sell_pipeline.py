@@ -331,13 +331,16 @@ def execute_sell(bot, level, price: float) -> Optional[dict]:
     # 52a: in paper mode fees are informational only — they are computed
     # for the `fee` column and `state.total_fees`, but never deducted
     # from cash (total_invested/total_received don't include them).
-    # Subtracting them here was creating phantom losses (~$7 cumulative
-    # on Grid manual). Live mode decision deferred until go-live.
-    # 57a: cost_basis derives from the FIFO lot's buy price, not from
-    # the rolling avg_buy_price. Avg drifts toward market on multi-lot
-    # positions and quietly biases realized_pnl. lot_buy_price was
-    # already resolved above for the Strategy A guard; reuse it here.
-    cost_basis = amount * lot_buy_price
+    # 66a (Operation Clean Slate): canonical avg-cost.
+    #   cost_basis = avg_buy_price × sell_qty
+    #   avg_buy_price does NOT change on sell.
+    # The accounting identity (Realized + Unrealized = Total P&L) closes
+    # by construction with avg-cost. Replaces 57a/53a (lot/queue-derived
+    # cost_basis) which produced +29% cumulative bias on the v3 dataset
+    # via 4 queue-desync sources (dust pop without log, 60c double-call,
+    # 53a fossil, Strategy A skip-then-walk). See
+    # audits/2026-05-08_pre-clean-slate/formula_verification_s66.md.
+    cost_basis = amount * bot.state.avg_buy_price
     buy_fee = cost_basis * bot.FEE_RATE
     realized_pnl = revenue - cost_basis
 
@@ -511,27 +514,21 @@ def execute_percentage_sell(bot, price: float) -> Optional[dict]:
     revenue = amount * price
     fee = revenue * bot.FEE_RATE
     holdings_value_before = bot.state.holdings * price
-    # 53a: walk the FIFO queue and sum (lot.amount × lot.price) over the
-    # lots actually consumed by this sell. Last-lot logic can ask for an
-    # `amount` that crosses lot boundaries (holdings > first lot size with
-    # >=2 lots open); the previous code computed cost_basis only on the
-    # first lot and then `pop(0)`-ed exactly once, leaving the remainder
-    # of consumed lots as ghosts in the queue and biasing future cost
-    # bases upward. Walk + consume here keeps both the per-trade pnl and
-    # the queue state correct across any consume span.
-    cost_basis = 0.0
-    remaining = amount
-    consumed_idx = 0
-    while remaining > 1e-9 and consumed_idx < len(bot._pct_open_positions):
-        lot = bot._pct_open_positions[consumed_idx]
-        if lot["amount"] <= remaining + 1e-9:
-            cost_basis += lot["amount"] * lot["price"]
-            remaining -= lot["amount"]
-            consumed_idx += 1
-        else:
-            cost_basis += remaining * lot["price"]
-            remaining = 0
-    buy_fee = cost_basis * bot.FEE_RATE
+
+    # 66a (Operation Clean Slate): canonical avg-cost.
+    #   cost_basis = avg_buy_price × sell_qty
+    #   avg_buy_price does NOT change on sell.
+    # The accounting identity (Realized + Unrealized = Total P&L) closes
+    # by construction. Replaces 53a (queue walk-and-sum) which produced
+    # +29% cumulative bias on the v3 dataset because the in-RAM
+    # _pct_open_positions queue silently desynced from the DB-rebuildable
+    # FIFO replay (dust pop without log, 60c double-call, 53a fossil,
+    # Strategy A skip-then-walk). Avg-cost is robust to all four sources
+    # because it depends only on (avg_buy_price, holdings) — two scalars
+    # the bot already maintains correctly on every buy. See
+    # audits/2026-05-08_pre-clean-slate/formula_verification_s66.md.
+    cost_basis = amount * bot.state.avg_buy_price
+    buy_fee = cost_basis * bot.FEE_RATE  # backward-compat for state.total_fees
     # 52a: paper-mode realized_pnl excludes fees (see _execute_sell comment).
     realized_pnl = revenue - cost_basis
 
