@@ -665,12 +665,11 @@
         if (r.symbol) skimBySymbol[r.symbol] = (skimBySymbol[r.symbol] || 0) + Number(r.amount || 0);
       });
 
-      // FIFO realized recalc per symbol. The DB realized_pnl uses
-      // avg_buy_price as cost basis on each sell — for high-volatility
-      // coins this overstates per-trade profit when the bot sells an
-      // old cheap lot with newer expensive lots still open. Recalc from
-      // scratch with strict FIFO so Realized + Unrealized = Total P&L.
-      // pnlByTradeId lets the trades table show FIFO-correct per-row P&L.
+      // Opzione A (decision_s65, 2026-05-08): realized P&L = trades.realized_pnl
+      // (DB SUM, what the bot actually wrote). Strict-FIFO replay was
+      // diverging from DB and producing per-row sign flips. FIFO consumption
+      // is retained only to keep the open-lot queue coherent (used elsewhere
+      // for unrealized + cash math).
       tfRealFifoBySymbol = {};
       tradesData.slice().sort(function(a, b) {
         return new Date(a.created_at) - new Date(b.created_at);
@@ -683,25 +682,25 @@
         if (t.side === 'buy') {
           s.queue.push({ amount: amt, price: price, cost: Number(t.cost) });
         } else {
-          var rev = Number(t.cost || 0);
-          var basis = 0;
+          var dbPnl = Number(t.realized_pnl);
+          if (isFinite(dbPnl)) {
+            s.realized += dbPnl;
+            s.pnlByTradeId[t.id] = dbPnl;
+          }
+          // Drain the queue to track which lots are gone, basis discarded.
           var rem = amt;
           while (rem > 0.000001 && s.queue.length > 0) {
             var lot = s.queue[0];
             if (lot.amount <= rem + 0.000001) {
-              basis += lot.cost;
               rem -= lot.amount;
               s.queue.shift();
             } else {
               var p = rem / lot.amount;
-              basis += lot.cost * p;
               lot.cost -= lot.cost * p;
               lot.amount -= rem;
               rem = 0;
             }
           }
-          s.realized += (rev - basis);
-          s.pnlByTradeId[t.id] = (rev - basis);
         }
       });
       totalRealizedAll = Object.values(tfRealFifoBySymbol).reduce(function(s, x) {
@@ -1248,14 +1247,17 @@
       // Skim is physically moved out of bot cash to reserve_ledger, but it's
       // still ours — adding it back gives the full TF patrimony.
       var netWorth = totalCash + unalloc + holdingsValue + skimReserveTotal;
-      // Authoritative Total P&L = actual net worth delta vs TF starting budget.
-      // Using (realized + unrealized) alone would ignore trade fees and
-      // overstate P&L by the cumulative fee total (matches admin.html).
+      // Total P&L = net worth delta vs TF starting budget (includes realized
+      // + unrealized + fees + skim within the net worth identity).
+      // Realized P&L = DB SUM(trades.realized_pnl) — Opzione A (decision_s65).
+      // Both shown side-by-side: Total = "what we'd see closing now",
+      // Realized = "what we've actually banked from sells".
       var totalPnl = netWorth - TF_BUDGET;
+      var realizedPnlDb = totalRealizedAll;   // DB SUM after Opzione A
       var totalFees = tradesData.reduce(function(s, t) { return s + Number(t.fee || 0); }, 0);
 
       var pnlColor = totalPnl >= 0 ? 'var(--green)' : 'var(--red)';
-      var realSign = totalRealizedAll >= 0 ? '+' : '';
+      var realColor = realizedPnlDb >= 0 ? 'var(--green)' : 'var(--red)';
       var unrSign = totalUnrealized >= 0 ? '+' : '';
       var feeSign = totalFees > 0 ? '-' : '';
 
@@ -1265,6 +1267,7 @@
       }).join(' · ');
 
       var unrColor = totalUnrealized >= 0 ? 'var(--green)' : 'var(--red)';
+      var realizedSign = realizedPnlDb >= 0 ? '+' : '';
 
       document.getElementById('overview-row1').innerHTML =
         '<div class="stat-box">' +
@@ -1273,14 +1276,14 @@
           '<div class="stat-sub">cash + holdings + skim reserve</div>' +
         '</div>' +
         '<div class="stat-box">' +
-          '<div class="stat-label">Total P&L</div>' +
-          '<div class="stat-value" style="color:' + pnlColor + ';">' + (totalPnl >= 0 ? '+' : '') + '$' + fmt(totalPnl) + '</div>' +
-          '<div class="stat-sub">= Net Worth − $' + fmt(TF_BUDGET) + ' starting budget</div>' +
+          '<div class="stat-label">Realized P&L</div>' +
+          '<div class="stat-value" style="color:' + realColor + ';">' + realizedSign + '$' + fmt(realizedPnlDb) + '</div>' +
+          '<div class="stat-sub">SUM(realized_pnl) DB · banked from sells</div>' +
         '</div>' +
         '<div class="stat-box">' +
-          '<div class="stat-label">Skim Reserve</div>' +
-          '<div class="stat-value" style="color:var(--green);">+$' + skimReserveTotal.toFixed(4) + '</div>' +
-          '<div class="stat-sub">set aside from profits · ' + (netWorth > 0 ? (skimReserveTotal / netWorth * 100).toFixed(2) + '% of net worth' : '—') + '</div>' +
+          '<div class="stat-label">Total P&L</div>' +
+          '<div class="stat-value" style="color:' + pnlColor + ';">' + (totalPnl >= 0 ? '+' : '') + '$' + fmt(totalPnl) + '</div>' +
+          '<div class="stat-sub">= Net Worth − $' + fmt(TF_BUDGET) + ' (incl. unrealized + skim)</div>' +
         '</div>';
 
       document.getElementById('overview-row2').innerHTML =
@@ -1322,15 +1325,20 @@
       var dustBreakdown = dustParts.length ? dustParts.join(' · ') : '—';
       var dustColor = dustTotalUsd > 1 ? 'var(--yellow)' : 'var(--muted)';
 
-      // Two side-by-side cards in row 3: Fees Paid (cumulative, already
-      // inside Total P&L) + Dust v3 (sub-min_notional residuals).
+      // Three cards in row 3: Fees Paid (cumulative, inside Total P&L) +
+      // Skim Reserve (set-aside from profits) + Dust v3 (sub-min_notional).
       document.getElementById('overview-row3').innerHTML =
         '<div class="stat-box">' +
           '<div class="stat-label">Fees Paid</div>' +
           '<div class="stat-value" style="color:var(--muted);">-$' + fmt(totalFees) + '</div>' +
           '<div class="stat-sub">Binance + BNB discount on every buy/sell — tracked for reference · not deducted in paper mode</div>' +
         '</div>' +
-        '<div class="stat-box" style="grid-column: 2 / -1;">' +
+        '<div class="stat-box">' +
+          '<div class="stat-label">Skim Reserve</div>' +
+          '<div class="stat-value" style="color:var(--green);">+$' + skimReserveTotal.toFixed(4) + '</div>' +
+          '<div class="stat-sub">set aside from profits · ' + (netWorth > 0 ? (skimReserveTotal / netWorth * 100).toFixed(2) + '% of net worth' : '—') + '</div>' +
+        '</div>' +
+        '<div class="stat-box">' +
           '<div class="stat-label">Dust v3</div>' +
           '<div class="stat-value" style="color:' + dustColor + ';">$' + dustTotalUsd.toFixed(4) + '</div>' +
           '<div class="stat-sub">' + dustBreakdown + '</div>' +

@@ -5,12 +5,12 @@
    read-only). All updates are best-effort: if a query fails we leave
    the server-rendered mock fallback in place.
 
-   Note on per-row P&L (S65 finding): the FIFO replays here are
-   strict-FIFO, while the bot vends FIFO-among-triggered (Strategy A).
-   For sells where the oldest lot is below the profit threshold, the
-   strict-FIFO replay picks a different lot than the bot actually sold,
-   so per-row P&L can disagree with DB. Aggregates still reconcile.
-   Real fix lives in brief 60b (verify_fifo multiset). */
+   Opzione A (decision_s65, 2026-05-08): Realized P&L everywhere comes
+   from trades.realized_pnl (DB SUM, what the bot actually wrote).
+   Strict-FIFO replay was diverging by ~$26 today and producing per-row
+   sign flips. FIFO consumption is retained only for openCost/openAmount
+   (unrealized + cash math) and buyAvg display. FIFO audit replay still
+   lives in /admin for internal verification. */
 
 import { sbFetchAll } from "./sb-paginated";
 
@@ -83,9 +83,10 @@ const TF_LAUNCH_ISO = "2026-04-15T00:00:00Z";   /* first TF trade — matches le
 })();
 
 /* ====================================================================
-   1. TODAY snapshot row — fotografia del giorno (Grid + TF aggregato).
-   Reuses the FIFO logic already in live-stats.ts pattern. The "today"
-   window is UTC midnight → now (matches the bot's daily PnL aggregation).
+   1. TODAY snapshot row — Grid + TF aggregato (Opzione A — decision_s65).
+   Today P&L = SUM(realized_pnl) on sells with created_at >= UTC midnight.
+   Strict-FIFO replay removed: one source of truth = DB. Today's window
+   matches the bot's daily PnL aggregation (UTC 00→24).
    ==================================================================== */
 
 type Trade = {
@@ -93,6 +94,7 @@ type Trade = {
   side: "buy" | "sell";
   amount: string | number;
   cost: string | number;
+  realized_pnl?: string | number | null;
   created_at: string;
 };
 
@@ -105,15 +107,15 @@ const todayStartUtcIso = new Date(
 ).toISOString();
 
 fetchAllTrades<Trade>(
-  "symbol,side,amount,cost,created_at",
+  "symbol,side,amount,cost,realized_pnl,created_at",
 ).then(rows => {
   if (!rows) return;
 
-  /* Counts of today's trades, by side. Independent of FIFO. */
   let todayTrades = 0;
   let todayBuys = 0;
   let todaySells = 0;
   let todayAllocated = 0;
+  let todayPnl = 0;
   for (const t of rows) {
     if (t.created_at < todayStartUtcIso) continue;
     todayTrades++;
@@ -122,56 +124,17 @@ fetchAllTrades<Trade>(
       todayAllocated += Number(t.cost || 0);
     } else {
       todaySells++;
+      const p = Number(t.realized_pnl);
+      if (Number.isFinite(p)) todayPnl += p;
     }
   }
 
-  /* Today P&L via strict FIFO per symbol. Same algorithm as live-stats.ts:
-     replay all v3 trades in order, build a per-symbol buy queue, and on
-     each sell consume from the head of the queue to compute basis. The
-     P&L of a sell counts toward today only if its `created_at` is in the
-     today window. */
-  const bySym: Record<string, Trade[]> = {};
-  for (const t of rows) (bySym[t.symbol] ||= []).push(t);
-
-  let todayPnl = 0;
-  for (const sym of Object.keys(bySym)) {
-    const queue: { amount: number; cost: number }[] = [];
-    for (const t of bySym[sym]) {
-      const amt = Number(t.amount);
-      if (t.side === "buy") {
-        queue.push({ amount: amt, cost: Number(t.cost) });
-      } else {
-        const revenue = Number(t.cost || 0);
-        let basis = 0;
-        let rem = amt;
-        while (rem > 1e-6 && queue.length > 0) {
-          const lot = queue[0];
-          if (lot.amount <= rem + 1e-6) {
-            basis += lot.cost;
-            rem   -= lot.amount;
-            queue.shift();
-          } else {
-            const portion = rem / lot.amount;
-            basis      += lot.cost * portion;
-            lot.cost   -= lot.cost * portion;
-            lot.amount -= rem;
-            rem = 0;
-          }
-        }
-        const pnl = revenue - basis;
-        if (t.created_at >= todayStartUtcIso) todayPnl += pnl;
-      }
-    }
-  }
-
-  /* Write into the dashboard's today snapshot row. */
   setText("today-pnl", fmtSigned(todayPnl));
   setText("today-trades", String(todayTrades));
   setText("today-buys", String(todayBuys));
   setText("today-sells", String(todaySells));
   setText("today-allocated", fmtUsd(todayAllocated));
 
-  /* Color flip on P&L cell. */
   const pnlEl = document.getElementById("today-pnl");
   if (pnlEl) {
     pnlEl.classList.remove("text-pos", "text-neg");
@@ -409,15 +372,16 @@ const COIN_COLORS: Record<string, string> = {
 const colorFor = (sym: string) => COIN_COLORS[sym] ?? "#9aa3b8";
 const shortFor = (sym: string) => sym.replace("/USDT", "");
 
-/* Per-coin breakdown helper — runs FIFO replay (chronologically) to
-   compute realized P&L (FIFO-correct), plus the cost basis of the
-   still-open lots (openCost) and the open holdings amount.
-   Matches the legacy /web/dashboard.html algorithm so numbers align. */
+/* Per-coin breakdown helper.
+   Opzione A (decision_s65): realized P&L comes directly from
+   trades.realized_pnl (DB SUM). FIFO replay is retained ONLY to
+   compute open lots (openCost, openAmount) which feed unrealized P&L
+   and cash math — those are not affected by the strict-FIFO bias.
+   Fees come from trades.fee directly. */
 function analyzeCoin(trades: AllTrade[]): {
   realized: number; openCost: number; openAmount: number;
   netInvested: number; fees: number;
 } {
-  /* Sort defensively in case the caller didn't. */
   const sorted = [...trades].sort(
     (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
   );
@@ -431,30 +395,27 @@ function analyzeCoin(trades: AllTrade[]): {
       queue.push({ amount: amt, cost });
       netInvested += cost;
     } else {
-      let basis = 0;
-      let rem   = amt;
+      /* Realized P&L: read what the bot actually wrote, not strict-FIFO. */
+      const dbPnl = Number(t.realized_pnl);
+      if (Number.isFinite(dbPnl)) realized += dbPnl;
+      /* FIFO consumption is still needed to keep openCost/openAmount
+         consistent with what's left in the queue after this sell. */
+      let rem = amt;
       while (rem > 1e-6 && queue.length > 0) {
         const lot = queue[0];
         if (lot.amount <= rem + 1e-6) {
-          basis += lot.cost;
-          rem   -= lot.amount;
+          rem -= lot.amount;
           queue.shift();
         } else {
           const portion = rem / lot.amount;
-          basis      += lot.cost * portion;
           lot.cost   -= lot.cost * portion;
           lot.amount -= rem;
           rem = 0;
         }
       }
-      realized    += cost - basis;
       netInvested -= cost;
     }
   }
-  /* Open lots = what's left in the queue after FIFO consumption.
-     openCost is the TRUE cost basis for the still-held position,
-     NOT raw sum(buy.cost) - sum(sell.cost) which mixes realized P&L
-     into net cash flow and breaks the unrealized calculation. */
   const openAmount = queue.reduce((s, l) => s + l.amount, 0);
   const openCost   = queue.reduce((s, l) => s + l.cost,   0);
   return { realized, openCost, openAmount, netInvested, fees };
@@ -700,10 +661,11 @@ const RECENT_TRADES_LIMIT = 6;
       t.managed_by === "trend_follower" || t.managed_by === "tf_grid",
     );
 
-    /* FIFO replay per symbol within each group → annotate sells with
-       the avg buy price of the lots they consumed AND the FIFO-correct
-       per-trade P&L. trades.realized_pnl is biased post-restart
-       2026-05-06 22:23 UTC (see project_60c_fifo_init_bug). */
+    /* Per-row P&L = trades.realized_pnl (DB, what the bot actually
+       wrote). Opzione A — decision_s65. buyAvg (avg buy price of
+       consumed lots) is informational only and still uses FIFO
+       consumption since strict-FIFO and bot-FIFO disagree only on the
+       choice of lot, not on the consumed amount. */
     type Annot = {
       buyAvg: Map<AllTrade, number>;
       pnl:    Map<AllTrade, number>;
@@ -714,34 +676,31 @@ const RECENT_TRADES_LIMIT = 6;
       const buyAvg = new Map<AllTrade, number>();
       const pnl    = new Map<AllTrade, number>();
       for (const sym of Object.keys(bySym)) {
-        const queue: { amount: number; price: number; cost: number }[] = [];
+        const queue: { amount: number; price: number }[] = [];
         for (const t of bySym[sym]) {
           const amt   = Number(t.amount || 0);
           const price = Number(t.price  || 0);
           if (t.side === "buy") {
-            queue.push({ amount: amt, price, cost: Number(t.cost || 0) });
+            queue.push({ amount: amt, price });
           } else {
-            let rem = amt, basis = 0, priceCost = 0, consumed = 0;
+            const dbPnl = Number(t.realized_pnl);
+            if (Number.isFinite(dbPnl)) pnl.set(t, dbPnl);
+            let rem = amt, priceCost = 0, consumed = 0;
             while (rem > 1e-6 && queue.length > 0) {
               const lot = queue[0];
               if (lot.amount <= rem + 1e-6) {
                 priceCost += lot.amount * lot.price;
-                basis     += lot.cost;
                 consumed  += lot.amount;
                 rem       -= lot.amount;
                 queue.shift();
               } else {
-                const p = rem / lot.amount;
                 priceCost += rem * lot.price;
-                basis     += lot.cost * p;
                 consumed  += rem;
-                lot.cost  -= lot.cost * p;
                 lot.amount -= rem;
                 rem = 0;
               }
             }
             if (consumed > 0) buyAvg.set(t, priceCost / consumed);
-            pnl.set(t, Number(t.cost || 0) - basis);
           }
         }
       }
@@ -1029,48 +988,23 @@ type DailyPnlRow = {
     t.managed_by === "trend_follower" || t.managed_by === "tf_grid",
   );
 
-  /* ----- FIFO daily realized aggregation per coin (matches legacy
-     dailyFifoBySymbol). Returns { 'YYYY-MM-DD': realizedSum }. ----- */
-  function dailyFifoBySymbol(trades: AllTrade[]): Record<string, number> {
-    const bySym: Record<string, AllTrade[]> = {};
-    for (const t of trades) (bySym[t.symbol] ||= []).push(t);
+  /* ----- Daily realized aggregation from DB (Opzione A — decision_s65).
+     SUM(realized_pnl) per day, on sells only. Returns
+     { 'YYYY-MM-DD': realizedSum }. ----- */
+  function dailyRealizedFromDb(trades: AllTrade[]): Record<string, number> {
     const out: Record<string, number> = {};
-    for (const sym of Object.keys(bySym)) {
-      const sorted = [...bySym[sym]].sort(
-        (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
-      );
-      const queue: { amount: number; cost: number }[] = [];
-      for (const t of sorted) {
-        const day = (t.created_at || "").slice(0, 10);
-        const amt = Number(t.amount || 0);
-        if (t.side === "buy") {
-          queue.push({ amount: amt, cost: Number(t.cost || 0) });
-        } else {
-          const revenue = Number(t.cost || 0);
-          let basis = 0, rem = amt;
-          while (rem > 1e-6 && queue.length > 0) {
-            const lot = queue[0];
-            if (lot.amount <= rem + 1e-6) {
-              basis += lot.cost;
-              rem   -= lot.amount;
-              queue.shift();
-            } else {
-              const portion = rem / lot.amount;
-              basis      += lot.cost * portion;
-              lot.cost   -= lot.cost * portion;
-              lot.amount -= rem;
-              rem = 0;
-            }
-          }
-          out[day] = (out[day] || 0) + (revenue - basis);
-        }
-      }
+    for (const t of trades) {
+      if (t.side !== "sell") continue;
+      const p = Number(t.realized_pnl);
+      if (!Number.isFinite(p)) continue;
+      const day = (t.created_at || "").slice(0, 10);
+      out[day] = (out[day] || 0) + p;
     }
     return out;
   }
 
-  const gridDailyRealized = dailyFifoBySymbol(gridTrades);
-  const tfDailyRealized   = dailyFifoBySymbol(tfTrades);
+  const gridDailyRealized = dailyRealizedFromDb(gridTrades);
+  const tfDailyRealized   = dailyRealizedFromDb(tfTrades);
 
   /* ----- TF MTM reconstruction per day (~5% margin, see legacy comment).
      Returns the TF total_value at the end of `dateStr`. Approximation:

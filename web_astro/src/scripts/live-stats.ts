@@ -59,15 +59,14 @@ sbqCount("trades", "select=id&config_version=eq.v3")
   .then(n => setText("stat-trades", String(n)))
   .catch(() => setText("stat-trades", "N.A."));
 
-/* ---------- 2. realized P&L (strict FIFO per symbol) ----------
-   The bot writes trades.realized_pnl using avg_buy_price as cost basis,
-   which over-credits sells on volatile coins. We recompute with a FIFO
-   queue per symbol so this matches /dashboard, /grid, /tf. */
-type Trade = {
-  symbol: string;
+/* ---------- 2. realized P&L (DB SUM, Opzione A — decision_s65) ----------
+   Single source of truth: trades.realized_pnl as written by the bot.
+   The prior strict-FIFO replay diverged from DB by ~$26 today and
+   produced per-row sign flips (e.g. ZEC 10:27 sell). FIFO replay is
+   retained only in /admin as an internal audit tool. */
+type TradeRow = {
   side: "buy" | "sell";
-  amount: string | number;
-  cost: string | number;
+  realized_pnl: string | number | null;
   created_at: string;
 };
 
@@ -81,61 +80,20 @@ const todayStartUtcIso = new Date(
   ),
 ).toISOString();
 
-/* Single paginated fetch via Range header (brief 60e). Replaces the
-   prior split-by-managed_by workaround which was due to fail when the
-   TF bucket alone crossed 1000 rows (~2026-05-17 at +30/day). Pagination
-   scales to ~50k trades and removes the FIFO mismatch root cause: the
-   prior workaround sorted globally only after both buckets returned, so
-   when either bucket truncated at 1000 the older trades from that bucket
-   were silently dropped from the per-symbol queues. */
-sbFetchAll<Trade>(
-  "trades?select=symbol,side,amount,cost,created_at" +
+sbFetchAll<TradeRow>(
+  "trades?select=side,realized_pnl,created_at" +
   "&config_version=eq.v3&order=created_at.asc",
-).then((rowsRaw) => {
-  const rows = (rowsRaw ?? []).slice().sort(
-    (a, b) => a.created_at.localeCompare(b.created_at),
-  );
-  const bySym: Record<string, Trade[]> = {};
-  for (const t of rows ?? []) {
-    (bySym[t.symbol] ||= []).push(t);
-  }
+).then((rows) => {
   let total = 0;
   let todayPnl = 0;
   let todayTrades = 0;
-  /* Count today's trades (any side) before the FIFO loop — independent
-     of the per-symbol queues. */
   for (const t of rows ?? []) {
     if (t.created_at >= todayStartUtcIso) todayTrades++;
-  }
-  for (const sym of Object.keys(bySym)) {
-    const queue: { amount: number; cost: number }[] = [];
-    for (const t of bySym[sym]) {
-      const amt = Number(t.amount);
-      if (t.side === "buy") {
-        queue.push({ amount: amt, cost: Number(t.cost) });
-      } else {
-        const revenue = Number(t.cost || 0);
-        let basis = 0;
-        let rem = amt;
-        while (rem > 1e-6 && queue.length > 0) {
-          const lot = queue[0];
-          if (lot.amount <= rem + 1e-6) {
-            basis += lot.cost;
-            rem   -= lot.amount;
-            queue.shift();
-          } else {
-            const portion = rem / lot.amount;
-            basis      += lot.cost * portion;
-            lot.cost   -= lot.cost * portion;
-            lot.amount -= rem;
-            rem = 0;
-          }
-        }
-        const pnl = revenue - basis;
-        total += pnl;
-        if (t.created_at >= todayStartUtcIso) todayPnl += pnl;
-      }
-    }
+    if (t.side !== "sell") continue;
+    const p = Number(t.realized_pnl);
+    if (!Number.isFinite(p)) continue;
+    total += p;
+    if (t.created_at >= todayStartUtcIso) todayPnl += p;
   }
   const sign = total >= 0 ? "+" : "-";
   setText("stat-pnl", `${sign}$${Math.abs(total).toFixed(2)}`);
