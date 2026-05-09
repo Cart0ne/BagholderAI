@@ -436,10 +436,11 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
         sb_cfg = config_reader.get_config(symbol)
         if sb_cfg:
             # Override local config with Supabase values
+            # S69: rimosso sync di grid_mode/grid_levels/grid_lower/grid_upper —
+            # fixed mode è codice morto (tutti i bot_config hanno grid_mode='percentage').
+            # Refactor completo + DROP COLUMN DB rinviato a BLOCCO 3 (TRUNCATE+restart).
             if sb_cfg.get("capital_allocation") is not None:
                 cfg.capital = float(sb_cfg["capital_allocation"])
-            if sb_cfg.get("grid_levels") is not None:
-                cfg.num_levels = int(sb_cfg["grid_levels"])
             if sb_cfg.get("capital_per_trade") is not None:
                 cfg.capital_per_trade = float(sb_cfg["capital_per_trade"])
             if sb_cfg.get("buy_pct") is not None:
@@ -448,15 +449,6 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
                 cfg.sell_pct = float(sb_cfg["sell_pct"])
             if sb_cfg.get("profit_target_pct") is not None:
                 cfg.min_profit_pct = float(sb_cfg["profit_target_pct"])
-            if sb_cfg.get("grid_mode") is not None:
-                cfg.grid_mode = sb_cfg["grid_mode"]
-            gl = sb_cfg.get("grid_lower")
-            gu = sb_cfg.get("grid_upper")
-            if gl is not None and gu is not None:
-                gl, gu = float(gl), float(gu)
-                if gu > gl > 0:
-                    center = (gl + gu) / 2
-                    cfg.grid_range_pct = (gu - gl) / center
     except Exception as e:
         logger.warning(f"Could not load Supabase config, using local defaults: {e}")
 
