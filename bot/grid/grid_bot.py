@@ -871,18 +871,56 @@ class GridBot:
                         trades.append(trade)
                 else:
                     # --- Path B: holdings > 0 → recalibrate buy reference ---
-                    logger.info(
-                        f"[{self.symbol}] Idle recalibrate after {elapsed:.1f}h: "
-                        f"resetting buy reference from {fmt_price(self._pct_last_buy_price)} "
-                        f"to {fmt_price(current_price)} (holdings={self.state.holdings:.6f})"
-                    )
-                    self.idle_reentry_alerts.append({
-                        "symbol": self.symbol,
-                        "elapsed_hours": elapsed,
-                        "reference_price": current_price,
-                        "recalibrate": True,
-                    })
-                    self._pct_last_buy_price = current_price
+                    # Brief s70 FASE 2 (CEO + Max 2026-05-09): skip recalibrate
+                    # if current_price > avg_buy_price. Prevents the
+                    # Scenario 4 loop (lateral-up market) where the bot would
+                    # mediate up — buying progressively above avg, gonfiando
+                    # il cost basis. Coerente con Strategy A "no sell at loss":
+                    # specularmente "no buy reference reset above avg".
+                    avg = self.state.avg_buy_price
+                    if avg > 0 and current_price > avg:
+                        logger.info(
+                            f"[{self.symbol}] Idle recalibrate skipped after {elapsed:.1f}h: "
+                            f"price {fmt_price(current_price)} > avg cost {fmt_price(avg)}. "
+                            f"Reference unchanged at {fmt_price(self._pct_last_buy_price)}."
+                        )
+                        self.idle_reentry_alerts.append({
+                            "symbol": self.symbol,
+                            "elapsed_hours": elapsed,
+                            "reference_price": self._pct_last_buy_price,
+                            "recalibrate": False,
+                            "skipped_above_avg": True,
+                        })
+                        log_event(
+                            severity="info",
+                            category="trade_audit",
+                            event="idle_recalibrate_skipped",
+                            symbol=self.symbol,
+                            message=(
+                                f"Skipped recalibrate: price {current_price} > avg {avg}"
+                            ),
+                            details={
+                                "current_price": float(current_price),
+                                "avg_buy_price": float(avg),
+                                "elapsed_hours": float(elapsed),
+                                "last_buy_ref": float(self._pct_last_buy_price),
+                            },
+                        )
+                    else:
+                        logger.info(
+                            f"[{self.symbol}] Idle recalibrate after {elapsed:.1f}h: "
+                            f"resetting buy reference from {fmt_price(self._pct_last_buy_price)} "
+                            f"to {fmt_price(current_price)} (holdings={self.state.holdings:.6f})"
+                        )
+                        self.idle_reentry_alerts.append({
+                            "symbol": self.symbol,
+                            "elapsed_hours": elapsed,
+                            "reference_price": current_price,
+                            "recalibrate": True,
+                        })
+                        self._pct_last_buy_price = current_price
+                    # Always advance _last_trade_time so the next idle check
+                    # fires after another window (avoids per-cycle log spam).
                     self._last_trade_time = datetime.utcnow()
                     self._idle_logged_hour = -1
 

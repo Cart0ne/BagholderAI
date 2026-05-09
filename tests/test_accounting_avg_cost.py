@@ -505,6 +505,66 @@ def test_i_sell_trigger_uses_avg_buy_price():
     print(f"  realized identity uses avg (not lot price): ✓")
 
 
+def test_j_idle_recalibrate_skipped_above_avg():
+    """Brief s70 FASE 2 (CEO + Max 2026-05-09): in IDLE RECALIBRATE path B
+    (holdings > 0), skip the reset of _pct_last_buy_price if current_price
+    is strictly above state.avg_buy_price. Prevents the Scenario 4 loop
+    where the bot mediates up in lateral-up markets, gonfiando il cost
+    basis e amplificando drawdown post-peak.
+
+    Specular test: when current_price <= avg, recalibrate fires as before.
+    """
+    from datetime import datetime, timedelta
+    print("=" * 70)
+    print("TEST J: IDLE recalibrate skipped when current > avg")
+    print("=" * 70)
+    bot = make_bot()
+    bot.is_active = True
+    bot.idle_reentry_hours = 4.0
+    bot.buy_pct = 99.0   # disable buy path
+    bot.sell_pct = 99.0  # disable sell path
+
+    # Establish a state with holdings, avg, and a stale buy reference.
+    bot._execute_percentage_buy(price=100.0)  # avg=$100, holdings=0.5 ($50/$100)
+    initial_ref = bot._pct_last_buy_price
+    initial_avg = bot.state.avg_buy_price
+    assert_close(initial_avg, 100.0, label="avg after first buy")
+    print(f"  initial: ref=${initial_ref:.2f}, avg=${initial_avg:.2f}")
+
+    # Set _last_trade_time to 5h ago → elapsed > idle_reentry_hours (4h)
+    bot._last_trade_time = datetime.utcnow() - timedelta(hours=5)
+
+    # --- CASE 1: current > avg ($105 vs avg $100) → recalibrate must SKIP
+    bot.check_price_and_execute(current_price=105.0)
+    assert bot._pct_last_buy_price == initial_ref, (
+        f"recalibrate should be skipped (price > avg): "
+        f"ref was {initial_ref}, now {bot._pct_last_buy_price}"
+    )
+    # Verify the skipped alert was recorded
+    skipped_alerts = [
+        a for a in bot.idle_reentry_alerts if a.get("skipped_above_avg")
+    ]
+    assert len(skipped_alerts) == 1, (
+        f"expected 1 skipped alert, got {len(skipped_alerts)}: {bot.idle_reentry_alerts}"
+    )
+    print(f"  $105 (above avg $100): recalibrate SKIPPED ✓ ref unchanged @ ${bot._pct_last_buy_price:.2f}")
+
+    # --- CASE 2: current <= avg ($95 vs avg $100) → recalibrate FIRES
+    # Reset _last_trade_time to 5h ago again (advanced by previous skip path)
+    bot._last_trade_time = datetime.utcnow() - timedelta(hours=5)
+    bot.idle_reentry_alerts.clear()
+    ref_before = bot._pct_last_buy_price
+    bot.check_price_and_execute(current_price=95.0)
+    assert_close(bot._pct_last_buy_price, 95.0, label="ref recalibrated to current")
+    fired_alerts = [
+        a for a in bot.idle_reentry_alerts if a.get("recalibrate") is True
+    ]
+    assert len(fired_alerts) == 1, (
+        f"expected 1 recalibrate alert, got {len(fired_alerts)}: {bot.idle_reentry_alerts}"
+    )
+    print(f"  $95 (below avg $100): recalibrate FIRED ✓ ref={ref_before:.2f} → ${bot._pct_last_buy_price:.2f}")
+
+
 # ----------------------------------------------------------------------
 # Runner
 # ----------------------------------------------------------------------
@@ -520,6 +580,7 @@ def main():
         test_g_dust_prevention_no_trigger_when_residual_healthy,
         test_h_guard_blocks_sell_below_avg_even_above_lot_buy,
         test_i_sell_trigger_uses_avg_buy_price,
+        test_j_idle_recalibrate_skipped_above_avg,
     ]
     passed = 0
     failed = []

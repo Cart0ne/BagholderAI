@@ -8,7 +8,7 @@ orchestrator at boot + every 30 minutes, and standalone via
 Checks:
   1. Negative holdings guard — no symbol may have sold more than bought
   2. Cash accounting — capital_allocation - bought + sold ≈ dashboard cash
-  3. Orphan lots — sells without buy_trade_id that aren't FORCED_LIQUIDATION
+  3. (removed S70 FASE 2 — orphan_lots check obsoleto post-avg-cost)
 
 Removed in S69:
   - FIFO P&L reconciliation (Check 1 originale): bot post-S66 scrive
@@ -170,44 +170,11 @@ def check_cash_accounting(client, symbols: list[str]) -> list[dict]:
     return results
 
 
-def check_orphan_lots(client) -> list[dict]:
-    """Check 5 — sells with buy_trade_id IS NULL that aren't FORCED_LIQUIDATION.
-
-    A populated buy_trade_id is the audit trail: this sell consumed THIS buy.
-    NULLs are expected only on FORCED_LIQUIDATION (the bot couldn't match
-    a single buy because it was draining mixed lots). NULLs on other
-    sells indicate the FIFO matching at write-time failed silently.
-    """
-    try:
-        res = (
-            client.table("trades")
-            .select("symbol,reason,created_at")
-            .eq("config_version", "v3")
-            .eq("side", "sell")
-            .is_("buy_trade_id", "null")
-            .execute()
-        )
-        rows = res.data or []
-    except Exception as e:
-        return [_err("orphan_lots", None, f"DB query failed: {e}")]
-
-    suspicious = [
-        r for r in rows
-        if "FORCED_LIQUIDATION" not in (r.get("reason") or "").upper()
-    ]
-    if not suspicious:
-        return [_ok("orphan_lots", None,
-                    f"{len(rows)} sells with NULL buy_trade_id, all FORCED_LIQUIDATION")]
-
-    # Group by symbol for the alert
-    by_sym: dict[str, int] = {}
-    for r in suspicious:
-        s = r.get("symbol") or "?"
-        by_sym[s] = by_sym.get(s, 0) + 1
-    return [
-        _fail("orphan_lots", s, f"{n} unmatched sells without buy_trade_id")
-        for s, n in by_sym.items()
-    ]
+# Brief s70 FASE 2: check_orphan_lots removed. Post-S70 avg-cost trading
+# every sell has buy_trade_id NULL by design (no per-lot match), so this
+# check would fail forever. Pre-S70 fossili (2 BONK trades 2026-05-08)
+# remain in DB as historical record. Equivalent of S69 removal of FIFO
+# Check 1+2 from this same module.
 
 
 # ---------------------------------------------------------------------- #
@@ -244,7 +211,6 @@ def run_health_check(client=None,
     checks: list[dict] = []
     checks.extend(check_negative_holdings(client))
     checks.extend(check_cash_accounting(client, symbols))
-    checks.extend(check_orphan_lots(client))
 
     fails = [c for c in checks if c["status"] == "FAIL"]
     errors = [c for c in checks if c["status"] == "ERROR"]
