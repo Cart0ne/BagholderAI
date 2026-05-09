@@ -150,6 +150,8 @@ Preview rimosse da entrambi i volumi.
 
 27. **[S67 NEW] Reason bugiardo su trade con slippage** — quando un market order ha fill_price diverso dal check_price (book sottile, slippage testnet), il `reason` del trade riporta "dropped X% below last buy" usando il **fill_price** invece del check_price. Esempio BONK 2026-05-08 19:49 UTC: `"price $0.00000735 dropped 1.5% below last buy $0.00000731"` — falso, $0.00000735 è SOPRA $0.00000731 (slippage +2.4% testnet). L'execution è economicamente corretta, è solo la stringa di motivazione che mente. Fix: includere check_price + slippage % nel reason. Cosmetico, non gating.
 
+28. **[S68 NEW] Phase 2 split di `bot/grid_runner.py`** — il file ha raggiunto 1627 righe, di cui 833 in una singola funzione `run_grid_bot()` (main loop). Stesso pattern del monolite pre-Phase 1 di `grid_bot.py` (2200 righe → 6 moduli S60-S62). Split proposto: `runner.py` (solo main loop ~250 righe) + `runner_config_sync.py` (config + initial lots, 280 righe) + `runner_force_liquidate.py` (180) + `runner_cycle_summary.py` (138) + `runner_telegram.py` (notifications) + `runner_status.py` (helpers). Stima ~3-4h con audit di non-regressione. **Da fare DOPO go-live €100 mainnet** (aggiungerlo dentro S68 aumenta rischio senza beneficio immediato). Parcheggiato come "Phase 2 grid_runner split".
+
 ---
 
 ## 6. Vincoli / Deadline Non-Tecnici
