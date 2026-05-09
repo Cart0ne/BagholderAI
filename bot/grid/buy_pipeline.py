@@ -191,6 +191,44 @@ def execute_percentage_buy(bot, price: float) -> Optional[dict]:
         )
         return None
 
+    # Brief s70 FASE 2 (CEO + Max 2026-05-09): Strategy A symmetric buy guard.
+    # As we never sell below avg (S68a guard in sell_pipeline), we never buy
+    # above avg when we already have holdings (DCA only in basso). Prevents
+    # the "media in salita" loop in lateral-up markets. First entry
+    # (holdings=0) is always permitted because there is no avg to respect.
+    # Applied only to manual bots (managed_by="grid"); TF rotator buys are
+    # driven by external signals and bypass the guard. Strategy A only.
+    if (bot.strategy == "A"
+            and bot.managed_by == "grid"
+            and bot.state.holdings > 0
+            and bot.state.avg_buy_price > 0
+            and price > bot.state.avg_buy_price):
+        logger.info(
+            f"[{bot.symbol}] BUY BLOCKED: price {fmt_price(price)} > avg cost "
+            f"{fmt_price(bot.state.avg_buy_price)}. Strategy A never buys above avg "
+            f"(holdings={bot.state.holdings:.6f})."
+        )
+        from db.event_logger import log_event
+        try:
+            log_event(
+                severity="info",
+                category="trade_audit",
+                event="buy_blocked_above_avg",
+                symbol=bot.symbol,
+                message=(
+                    f"Buy blocked: price {price} > avg {bot.state.avg_buy_price} "
+                    f"(holdings={bot.state.holdings})"
+                ),
+                details={
+                    "price": float(price),
+                    "avg_buy_price": float(bot.state.avg_buy_price),
+                    "holdings": float(bot.state.holdings),
+                },
+            )
+        except Exception:
+            pass
+        return None
+
     standard_cost = bot.capital_per_trade
     cash_before = bot._available_cash()
 

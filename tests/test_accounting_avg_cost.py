@@ -72,6 +72,12 @@ def make_bot(capital=1000.0, capital_per_trade=50.0):
         strategy="A",
     )
     bot._exchange_filters = None
+    # Brief s70 FASE 2 buy guard: managed_by="tf" bypassa il guard
+    # "no buy above avg" (TF rotator buys are signal-driven). Test_k
+    # esplicitamente usa managed_by="grid" per verificare il guard.
+    bot.managed_by = "tf"
+    # Disable TF gain-saturation eval (would query DB via mock client).
+    bot.tf_exit_after_n_enabled = False
     bot.setup_grid(current_price=10.0)
     bot.state.holdings = 0.0
     bot.state.avg_buy_price = 0.0
@@ -505,6 +511,53 @@ def test_i_sell_trigger_uses_avg_buy_price():
     print(f"  realized identity uses avg (not lot price): ✓")
 
 
+def test_k_buy_guard_above_avg_when_holdings():
+    """Brief s70 FASE 2 (CEO + Max 2026-05-09): Strategy A symmetric guard.
+    Buy above avg is BLOCKED when holdings > 0; first entry (holdings=0)
+    is always permitted regardless of price.
+    """
+    print("=" * 70)
+    print("TEST K: Strategy A buy guard above avg (holdings>0)")
+    print("=" * 70)
+    bot = make_bot()
+    bot.managed_by = "grid"  # manual bot path
+
+    # First buy: holdings=0 → guard does NOT apply, buy allowed at any price
+    trade1 = bot._execute_percentage_buy(price=100.0)
+    assert trade1 is not None, "first buy must execute (holdings=0, avg=0)"
+    assert_close(bot.state.avg_buy_price, 100.0, label="avg = first buy price")
+    print(f"  first buy at $100 (holdings=0 entry): executed ✓ avg=${bot.state.avg_buy_price:.2f}")
+
+    # Now holdings>0, avg=$100. Buy at $105 (above avg) → must BLOCK
+    holdings_before = bot.state.holdings
+    avg_before = bot.state.avg_buy_price
+    trades_before = len(bot.trade_logger.trades)
+
+    blocked = bot._execute_percentage_buy(price=105.0)
+    assert blocked is None, "guard must BLOCK buy above avg"
+    assert_close(bot.state.holdings, holdings_before, label="holdings unchanged")
+    assert_close(bot.state.avg_buy_price, avg_before, label="avg unchanged")
+    assert len(bot.trade_logger.trades) == trades_before, "no new trade logged"
+    print(f"  buy at $105 (above avg $100, holdings>0): BLOCKED ✓ no state mutation")
+
+    # Buy at $95 (below avg) → must EXECUTE, mediating in basso
+    trade2 = bot._execute_percentage_buy(price=95.0)
+    assert trade2 is not None, "buy below avg must execute"
+    # New avg < old avg (mediating down)
+    assert bot.state.avg_buy_price < 100.0, (
+        f"avg should drop after buy at $95, got {bot.state.avg_buy_price}"
+    )
+    print(f"  buy at $95 (below avg): executed ✓ new avg=${bot.state.avg_buy_price:.4f}")
+
+    # Edge: TF managed_by override (managed_by='tf') → guard NOT applied
+    bot2 = make_bot()
+    bot2.managed_by = "tf"
+    bot2._execute_percentage_buy(price=100.0)  # first entry
+    trade_tf = bot2._execute_percentage_buy(price=110.0)  # above avg
+    assert trade_tf is not None, "TF bot can buy above avg (signal-driven)"
+    print(f"  TF bot (managed_by='tf'): buy above avg allowed ✓ (signal-driven path)")
+
+
 def test_j_idle_recalibrate_skipped_above_avg():
     """Brief s70 FASE 2 (CEO + Max 2026-05-09): in IDLE RECALIBRATE path B
     (holdings > 0), skip the reset of _pct_last_buy_price if current_price
@@ -581,6 +634,7 @@ def main():
         test_h_guard_blocks_sell_below_avg_even_above_lot_buy,
         test_i_sell_trigger_uses_avg_buy_price,
         test_j_idle_recalibrate_skipped_above_avg,
+        test_k_buy_guard_above_avg_when_holdings,
     ]
     passed = 0
     failed = []
