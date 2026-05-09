@@ -578,10 +578,11 @@
     var skimReserveTotal = 0;
     var skimBySymbol = {};  // symbol -> total skim amount
     var livePrices = {};  // symbol -> price
-    // Promoted to module scope so analyzeCoin() and the trades table can read
-    // FIFO-correct per-coin and per-trade P&L. trades.realized_pnl is biased
-    // post-restart 2026-05-06 22:23 UTC (see project_60c_fifo_init_bug).
-    var tfRealFifoBySymbol = {};
+    // S69: avg-cost replay (running weighted average), canonical post-S66 e
+    // come Binance scrive realized_pnl. Sostituisce il vecchio FIFO replay.
+    // avg_buy_price si aggiorna SOLO sui buy; resta invariato sui sell e si
+    // azzera quando holdings va a zero (specchio bot/grid/sell_pipeline.py).
+    var tfAvgCostBySymbol = {};
 
     async function fetchLivePrices(symbols) {
       if (!symbols || symbols.length === 0) return;
@@ -665,45 +666,49 @@
         if (r.symbol) skimBySymbol[r.symbol] = (skimBySymbol[r.symbol] || 0) + Number(r.amount || 0);
       });
 
-      // Opzione A (decision_s65, 2026-05-08): realized P&L = trades.realized_pnl
-      // (DB SUM, what the bot actually wrote). Strict-FIFO replay was
-      // diverging from DB and producing per-row sign flips. FIFO consumption
-      // is retained only to keep the open-lot queue coherent (used elsewhere
-      // for unrealized + cash math).
-      tfRealFifoBySymbol = {};
+      // S69: avg-cost replay. realized = trades.realized_pnl (DB SUM, già
+      // avg-cost canonico post-Operation Clean Slate S66). avg_buy_price
+      // ricostruito iterando i buy in ordine cronologico con weighted average
+      // (la stessa formula del bot in bot/grid/buy_pipeline.py:117).
+      tfAvgCostBySymbol = {};
       tradesData.slice().sort(function(a, b) {
         return new Date(a.created_at) - new Date(b.created_at);
       }).forEach(function(t) {
         var sym = t.symbol;
-        if (!tfRealFifoBySymbol[sym]) tfRealFifoBySymbol[sym] = { queue: [], realized: 0, pnlByTradeId: {} };
-        var s = tfRealFifoBySymbol[sym];
+        if (!tfAvgCostBySymbol[sym]) tfAvgCostBySymbol[sym] = {
+          holdings: 0, avg_buy_price: 0,
+          total_invested: 0, total_received: 0,
+          realized: 0, realized_by_trade: {}, avg_buy_at_sell_by_trade: {}
+        };
+        var s = tfAvgCostBySymbol[sym];
         var amt = Number(t.amount || 0);
         var price = Number(t.price || 0);
+        var cost = Number(t.cost || 0);
         if (t.side === 'buy') {
-          s.queue.push({ amount: amt, price: price, cost: Number(t.cost) });
+          var newHoldings = s.holdings + amt;
+          if (newHoldings > 0) {
+            s.avg_buy_price = (s.avg_buy_price * s.holdings + price * amt) / newHoldings;
+          }
+          s.holdings = newHoldings;
+          s.total_invested += cost;
         } else {
+          // Snapshot avg-cost al momento del sell (per "Buy at" colonna trades)
+          s.avg_buy_at_sell_by_trade[t.id] = s.avg_buy_price;
+          s.holdings -= amt;
+          s.total_received += cost;
           var dbPnl = Number(t.realized_pnl);
           if (isFinite(dbPnl)) {
             s.realized += dbPnl;
-            s.pnlByTradeId[t.id] = dbPnl;
+            s.realized_by_trade[t.id] = dbPnl;
           }
-          // Drain the queue to track which lots are gone, basis discarded.
-          var rem = amt;
-          while (rem > 0.000001 && s.queue.length > 0) {
-            var lot = s.queue[0];
-            if (lot.amount <= rem + 0.000001) {
-              rem -= lot.amount;
-              s.queue.shift();
-            } else {
-              var p = rem / lot.amount;
-              lot.cost -= lot.cost * p;
-              lot.amount -= rem;
-              rem = 0;
-            }
+          // Reset avg quando si chiude del tutto (S66 sell_pipeline.py:374)
+          if (s.holdings <= 0.000001) {
+            s.holdings = 0;
+            s.avg_buy_price = 0;
           }
         }
       });
-      totalRealizedAll = Object.values(tfRealFifoBySymbol).reduce(function(s, x) {
+      totalRealizedAll = Object.values(tfAvgCostBySymbol).reduce(function(s, x) {
         return s + x.realized;
       }, 0);
 
@@ -1084,90 +1089,45 @@
       var alloc = Number(cfg.capital_allocation);
       var costPerTrade = Number(cfg.capital_per_trade);
       var coinTrades = tradesData.filter(function(t) { return t.symbol === symbol; });
-      var totalBought = coinTrades.filter(function(t) { return t.side === 'buy'; }).reduce(function(s, t) { return s + Number(t.cost); }, 0);
-      var totalSold = coinTrades.filter(function(t) { return t.side === 'sell'; }).reduce(function(s, t) { return s + Number(t.cost); }, 0);
-      var realizedPnl = (tfRealFifoBySymbol[symbol] || {}).realized || 0;
-      var netHoldings = coinTrades.reduce(function(s, t) {
-        return s + (t.side === 'buy' ? Number(t.amount) : -Number(t.amount));
-      }, 0);
+      var s = tfAvgCostBySymbol[symbol] || {
+        holdings: 0, avg_buy_price: 0,
+        total_invested: 0, total_received: 0, realized: 0
+      };
       var buyCount = coinTrades.filter(function(t) { return t.side === 'buy'; }).length;
       var sellCount = coinTrades.filter(function(t) { return t.side === 'sell'; }).length;
-      var netSpent = totalBought - totalSold;
-      var positionClosed = netHoldings <= 0.000001; // fully sold out
+      var netSpent = s.total_invested - s.total_received;
+      var skimForCoin = skimBySymbol[symbol] || 0;
 
-      // Deallocated coins: their capital went back to the TF pool, so the
-      // per-coin cash/capacity metrics should reflect that. Keep historical
-      // trade counts and realized P&L — those are still true.
-      //
-      // cashLeft=0 is what we show on the card (matches reality: nothing is
-      // allocated to this coin anymore). cashReturned tracks what actually
-      // flowed back to the TF pool when the coin was deallocated.
-      // 52a: USDT flow (totalSold − totalBought − skim) instead of
-      // realized_pnl, which carried phantom fees from paper-mode accounting.
-      // The overview adds cashReturned to the global totalCash so Net Worth
-      // stays consistent with the operational pool.
+      // Deallocated coins: capital tornato al TF pool. Manteniamo realized e
+      // trade counts (storia vera). cashReturned = USDT netti rifluiti al pool.
       if (!isActive) {
-        var skimForCoin = skimBySymbol[symbol] || 0;
         return {
           alloc: 0, costPerTrade: costPerTrade,
-          totalBought: totalBought, totalSold: totalSold,
-          realizedPnl: realizedPnl, netHoldings: netHoldings,
+          realizedPnl: s.realized, netHoldings: s.holdings,
+          avgBuyPrice: s.avg_buy_price,
           buyCount: buyCount, sellCount: sellCount,
-          netSpent: 0, openCost: 0, openLots: 0,
-          cashLeft: 0, cashReturned: (totalSold - totalBought) - skimForCoin,
+          netSpent: 0, openCost: 0,
+          cashLeft: 0, cashReturned: (s.total_received - s.total_invested) - skimForCoin,
           buysLeft: 0, capacityPct: 0,
           maxCapacity: 0,
           lastTrade: coinTrades.length > 0 ? coinTrades[0] : null
         };
       }
 
-      // FIFO reconstruction: open lots = cost basis + count of slots actually filled
-      var sortedTrades = coinTrades.slice().sort(function(a, b) {
-        return new Date(a.created_at) - new Date(b.created_at);
-      });
-      var buyQueue = [];
-      sortedTrades.forEach(function(t) {
-        if (t.side === 'buy') {
-          buyQueue.push({ amount: Number(t.amount), price: Number(t.price || 0), cost: Number(t.cost) });
-        } else {
-          var remaining = Number(t.amount);
-          while (remaining > 0.000001 && buyQueue.length > 0) {
-            var lot = buyQueue[0];
-            if (lot.amount <= remaining + 0.000001) {
-              remaining -= lot.amount;
-              buyQueue.shift();
-            } else {
-              lot.cost -= remaining * lot.price;
-              lot.amount -= remaining;
-              remaining = 0;
-            }
-          }
-        }
-      });
-      var openLots = buyQueue.length;
-      var openCost = buyQueue.reduce(function(s, l) { return s + l.cost; }, 0);
-
-      var skimForCoin = skimBySymbol[symbol] || 0;
-      // 52a: unified USDT-flow formula for both open AND closed positions.
-      // Mirrors bot._available_cash(): alloc − invested + received − reserve.
-      // netSpent = invested − received; skim is physically moved to
-      // reserve_ledger on every profitable sell and must be subtracted here
-      // to match the bot's real operational cash. Closed positions: netSpent
-      // is typically negative (sold > bought) → cashLeft > alloc.
+      // S69: cost basis posizione aperta = avg_buy × holdings (avg-cost canonico).
+      var openCost = s.avg_buy_price * s.holdings;
       var cashLeft = alloc - netSpent - skimForCoin;
       var buysLeft = costPerTrade > 0 ? Math.floor(cashLeft / costPerTrade) : 0;
-      // Capacity bar reflects how much of the allocation is committed to open lots,
-      // not total volume traded.
       var capacityPct = alloc > 0 ? (openCost / alloc) * 100 : 0;
       var maxCapacity = costPerTrade > 0 ? Math.floor(alloc / costPerTrade) : 0;
       var lastTrade = coinTrades.length > 0 ? coinTrades[0] : null;
 
       return {
         alloc: alloc, costPerTrade: costPerTrade,
-        totalBought: totalBought, totalSold: totalSold,
-        realizedPnl: realizedPnl, netHoldings: netHoldings,
+        realizedPnl: s.realized, netHoldings: s.holdings,
+        avgBuyPrice: s.avg_buy_price,
         buyCount: buyCount, sellCount: sellCount,
-        netSpent: netSpent, openCost: openCost, openLots: openLots,
+        netSpent: netSpent, openCost: openCost,
         cashLeft: cashLeft,
         buysLeft: buysLeft, capacityPct: Math.min(capacityPct, 100),
         maxCapacity: maxCapacity, lastTrade: lastTrade
@@ -1198,7 +1158,7 @@
         if (a.netHoldings > 0.000001) totalDeployed += a.openCost;
       });
 
-      // Unrealized P&L — computed live from holdings × live prices
+      // S69: Unrealized P&L da avg-cost (niente più FIFO replay).
       var totalUnrealized = 0;
       var unrealizedBySymbol = [];
       var holdingsValue = 0;
@@ -1207,37 +1167,8 @@
         if (a.netHoldings <= 0.000001) return;
         var livePrice = livePrices[cfg.symbol];
         if (!livePrice) return;
-        // Reconstruct FIFO queue to get avg buy of remaining open lots
-        var coinTrades = tradesData
-          .filter(function(t) { return t.symbol === cfg.symbol; })
-          .slice()
-          .sort(function(a, b) { return new Date(a.created_at) - new Date(b.created_at); });
-        var buyQueue = [];
-        coinTrades.forEach(function(t) {
-          if (t.side === 'buy') {
-            buyQueue.push({ amount: Number(t.amount), price: Number(t.price || 0), cost: Number(t.cost) });
-          } else {
-            var remaining = Number(t.amount);
-            while (remaining > 0.000001 && buyQueue.length > 0) {
-              var lot = buyQueue[0];
-              if (lot.amount <= remaining + 0.000001) {
-                remaining -= lot.amount;
-                buyQueue.shift();
-              } else {
-                lot.cost -= remaining * lot.price;
-                lot.amount -= remaining;
-                remaining = 0;
-              }
-            }
-          }
-        });
-        var openAmt = buyQueue.reduce(function(s, l) { return s + l.amount; }, 0);
-        var openCost = buyQueue.reduce(function(s, l) { return s + l.cost; }, 0);
-        var netHoldings = openAmt;
-        if (netHoldings <= 0) return;
-        var avgBuyOpen = openAmt > 0 ? openCost / openAmt : 0;
-        var val = netHoldings * livePrice;
-        var unr = avgBuyOpen > 0 ? (livePrice - avgBuyOpen) * netHoldings : 0;
+        var val = a.netHoldings * livePrice;
+        var unr = a.avgBuyPrice > 0 ? (livePrice - a.avgBuyPrice) * a.netHoldings : 0;
         holdingsValue += val;
         totalUnrealized += unr;
         unrealizedBySymbol.push({ sym: cfg.symbol.split('/')[0], val: unr });
@@ -1420,7 +1351,7 @@
             '<div class="coin-stat"><div class="cs-label">Open cost basis</div><div class="cs-value">' + fmtUsd(a.openCost) + '</div></div>' +
             '<div class="coin-stat"><div class="cs-label">Realized</div><div class="cs-value" style="color:' + (a.realizedPnl >= 0 ? 'var(--green)' : 'var(--red)') + ';">' + (a.realizedPnl >= 0 ? '+' : '') + fmtUsd(a.realizedPnl) + '</div></div>' +
             '<div class="coin-stat"><div class="cs-label">Trades</div><div class="cs-value">' + a.buyCount + 'B / ' + a.sellCount + 'S</div></div>' +
-            '<div class="coin-stat"><div class="cs-label">Open lots</div><div class="cs-value">' + (positionClosed ? 'Position closed' : a.openLots + ' / ' + a.maxCapacity + ' filled') + '</div></div>' +
+            '<div class="coin-stat"><div class="cs-label">Avg buy</div><div class="cs-value">' + (positionClosed ? '—' : fmtPrice(a.avgBuyPrice)) + '</div></div>' +
             '<div class="coin-stat"><div class="cs-label">Last trade</div><div class="cs-value">' + (a.lastTrade ? timeAgo(a.lastTrade.created_at) : '—') + '</div></div>' +
           '</div>' +
           '<div class="cap-bar-wrap">' +
@@ -1676,44 +1607,9 @@
 
     function renderTrades() {
       var body = document.getElementById('trades-body');
-
-      // FIFO match: for each sell, compute weighted-avg buy price of consumed lots.
-      // Annotates each sell row with _buyPriceAvg. Processed per-symbol, chronologically.
-      var bySym = {};
-      tradesData.forEach(function(t) {
-        (bySym[t.symbol] = bySym[t.symbol] || []).push(t);
-      });
-      Object.keys(bySym).forEach(function(sym) {
-        var sorted = bySym[sym].slice().sort(function(a, b) {
-          return new Date(a.created_at) - new Date(b.created_at);
-        });
-        var queue = [];
-        sorted.forEach(function(t) {
-          if (t.side === 'buy') {
-            queue.push({ amount: Number(t.amount), price: Number(t.price || 0) });
-          } else {
-            var remaining = Number(t.amount);
-            var consumedCost = 0;
-            var consumedAmt = 0;
-            while (remaining > 0.000001 && queue.length > 0) {
-              var lot = queue[0];
-              if (lot.amount <= remaining + 0.000001) {
-                consumedCost += lot.amount * lot.price;
-                consumedAmt += lot.amount;
-                remaining -= lot.amount;
-                queue.shift();
-              } else {
-                consumedCost += remaining * lot.price;
-                consumedAmt += remaining;
-                lot.amount -= remaining;
-                remaining = 0;
-              }
-            }
-            t._buyPriceAvg = consumedAmt > 0 ? consumedCost / consumedAmt : 0;
-          }
-        });
-      });
-
+      // S69: avg-cost. Per ogni sell, "Buy at" = avg_buy_price snapshot al
+      // momento del sell (calcolato in loadAll, scritto in avg_buy_at_sell_by_trade).
+      // P&L per-trade = trades.realized_pnl letto direttamente dal DB (post-S66 è avg-cost canonico).
       var recent = tradesData.slice(0, 20);
       if (!recent.length) {
         body.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-dim);padding:12px;">No TF trades yet.</td></tr>';
@@ -1726,9 +1622,11 @@
         var buyAtCell = '<td style="color:var(--text-dim);">—</td>';
         var pnlCell = '<td style="color:var(--text-dim);">—</td>';
         if (t.side === 'sell') {
-          buyAtCell = '<td>' + (t._buyPriceAvg > 0 ? fmtPrice(t._buyPriceAvg) : '—') + '</td>';
-          var symFifo = tfRealFifoBySymbol[t.symbol];
-          var pnl = (symFifo && symFifo.pnlByTradeId[t.id] !== undefined) ? symFifo.pnlByTradeId[t.id] : 0;
+          var symState = tfAvgCostBySymbol[t.symbol] || {};
+          var avgAtSell = (symState.avg_buy_at_sell_by_trade || {})[t.id];
+          buyAtCell = '<td>' + (avgAtSell > 0 ? fmtPrice(avgAtSell) : '—') + '</td>';
+          var pnl = (symState.realized_by_trade || {})[t.id];
+          if (pnl === undefined) pnl = 0;
           var pnlColor = pnl >= 0 ? 'var(--green)' : 'var(--red)';
           var pnlSign = pnl >= 0 ? '+' : '';
           pnlCell = '<td style="color:' + pnlColor + ';">' + pnlSign + fmtUsd(pnl) + '</td>';

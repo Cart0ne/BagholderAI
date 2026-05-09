@@ -128,7 +128,7 @@
     /* Coin cards */
     .coin-card {
       background: var(--surface); border: 1px solid var(--border);
-      border-radius: 8px; padding: 16px; margin-bottom: 10px;
+      border-radius: 8px; padding: 16px 12px; margin-bottom: 10px;
     }
     .coin-header {
       display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;
@@ -143,10 +143,15 @@
     .status-ok { background: rgba(34,197,94,0.15); color: var(--green); }
 
     .coin-grid {
-      display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 12px;
+      display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 16px;
     }
-    .coin-stat .cs-label { font-family: var(--mono); font-size: 10px; color: var(--text-dim); }
-    .coin-stat .cs-value { font-size: 14px; font-weight: 600; color: var(--text); }
+    .coin-stat .cs-label {
+      font-family: var(--mono); font-size: 10px; color: var(--text-dim);
+      text-transform: uppercase; letter-spacing: 0.05em;
+    }
+    .coin-stat .cs-value {
+      font-size: 18px; font-weight: 700; color: #fff; margin-top: 2px;
+    }
 
     /* Capacity bar */
     .cap-bar-wrap { margin-bottom: 4px; }
@@ -251,8 +256,6 @@
     .param-group-label.safety-label { color: var(--yellow); }
 
     /* Fixed grid fields: dim when pct mode is active */
-    .fixed-grid-fields { transition: opacity 0.3s; }
-    .fixed-grid-fields.dimmed { opacity: 0.3; pointer-events: none; }
 
     /* Responsive */
     @media (max-width: 480px) {
@@ -334,7 +337,7 @@
       <div class="card" style="overflow-x: auto;">
         <table class="trades-table" id="trades-table">
           <thead>
-            <tr><th>Side</th><th>Coin</th><th>Price</th><th>Cost</th><th>Buy @</th><th>P&amp;L</th><th>Time</th></tr>
+            <tr><th>Side</th><th>Coin</th><th>Price</th><th>Cost</th><th>Fee</th><th>Buy @</th><th>P&amp;L</th><th>Time</th></tr>
           </thead>
           <tbody id="trades-body"></tbody>
         </table>
@@ -457,10 +460,11 @@
     var skimReserveTotal = 0;
     var skimBySymbol = {};  // symbol -> total skim amount
     var livePrices = {};  // symbol -> price
-    // Promoted to module scope so analyzeCoin() and the trades table can read
-    // the FIFO-correct per-coin and per-trade P&L. trades.realized_pnl is
-    // biased post-restart 2026-05-06 22:23 UTC (see project_60c_fifo_init_bug).
-    var realFifoBySymbol = {};
+    // S69: avg-cost replay (running weighted average), canonical post-S66 e
+    // come Binance scrive realized_pnl. Sostituisce il vecchio FIFO replay.
+    // avg_buy_price si aggiorna SOLO sui buy; resta invariato sui sell e si
+    // azzera quando holdings va a zero (specchio bot/grid/sell_pipeline.py).
+    var avgCostBySymbol = {};
 
     async function fetchLivePrices() {
       try {
@@ -512,46 +516,49 @@
       adminSkim.forEach(function(r) {
         if (r.symbol) skimBySymbol[r.symbol] = (skimBySymbol[r.symbol] || 0) + Number(r.amount || 0);
       });
-      // Opzione A (decision_s65, 2026-05-08): realized P&L = trades.realized_pnl
-      // (DB SUM, what the bot actually wrote). Strict-FIFO replay was diverging
-      // by ~$26 today and producing per-row sign flips (ZEC/BONK case).
-      // FIFO consumption is retained only to keep the open-lot queue coherent
-      // (used by analyzeCoin for unrealized + cash math).
-      realFifoBySymbol = {};
+      // S69: avg-cost replay. realized = trades.realized_pnl (DB SUM, già
+      // avg-cost canonico post-Operation Clean Slate S66). avg_buy_price
+      // ricostruito iterando i buy in ordine cronologico con weighted average
+      // (la stessa formula del bot in bot/grid/buy_pipeline.py:117).
+      avgCostBySymbol = {};
       tradesData.slice().sort(function(a, b) {
         return new Date(a.created_at) - new Date(b.created_at);
       }).forEach(function(t) {
         var sym = t.symbol;
-        if (!realFifoBySymbol[sym]) realFifoBySymbol[sym] = { queue: [], realized: 0, pnlByTradeId: {} };
-        var s = realFifoBySymbol[sym];
+        if (!avgCostBySymbol[sym]) avgCostBySymbol[sym] = {
+          holdings: 0, avg_buy_price: 0,
+          total_invested: 0, total_received: 0,
+          realized: 0, realized_by_trade: {}, avg_buy_at_sell_by_trade: {}
+        };
+        var s = avgCostBySymbol[sym];
         var amt = Number(t.amount || 0);
         var price = Number(t.price || 0);
+        var cost = Number(t.cost || 0);
         if (t.side === 'buy') {
-          s.queue.push({ amount: amt, price: price, cost: Number(t.cost) });
+          var newHoldings = s.holdings + amt;
+          if (newHoldings > 0) {
+            s.avg_buy_price = (s.avg_buy_price * s.holdings + price * amt) / newHoldings;
+          }
+          s.holdings = newHoldings;
+          s.total_invested += cost;
         } else {
+          // Snapshot avg-cost al momento del sell (per "Buy at" colonna trades)
+          s.avg_buy_at_sell_by_trade[t.id] = s.avg_buy_price;
+          s.holdings -= amt;
+          s.total_received += cost;
           var dbPnl = Number(t.realized_pnl);
           if (isFinite(dbPnl)) {
             s.realized += dbPnl;
-            s.pnlByTradeId[t.id] = dbPnl;
+            s.realized_by_trade[t.id] = dbPnl;
           }
-          // Drain the FIFO queue to track which lots are gone, but discard
-          // the strict-FIFO basis (we no longer use it for P&L).
-          var rem = amt;
-          while (rem > 0.000001 && s.queue.length > 0) {
-            var lot = s.queue[0];
-            if (lot.amount <= rem + 0.000001) {
-              rem -= lot.amount;
-              s.queue.shift();
-            } else {
-              var p = rem / lot.amount;
-              lot.cost -= lot.cost * p;
-              lot.amount -= rem;
-              rem = 0;
-            }
+          // Reset avg quando si chiude del tutto (S66 sell_pipeline.py:374)
+          if (s.holdings <= 0.000001) {
+            s.holdings = 0;
+            s.avg_buy_price = 0;
           }
         }
       });
-      totalRealizedAll = Object.values(realFifoBySymbol).reduce(function(s, x) {
+      totalRealizedAll = Object.values(avgCostBySymbol).reduce(function(s, x) {
         return s + x.realized;
       }, 0);
       render();
@@ -603,64 +610,32 @@
       var alloc = Number(cfg.capital_allocation);
       var costPerTrade = Number(cfg.capital_per_trade);
       var coinTrades = tradesData.filter(function(t) { return t.symbol === symbol; });
-      var totalBought = coinTrades.filter(function(t) { return t.side === 'buy'; }).reduce(function(s, t) { return s + Number(t.cost); }, 0);
-      var totalSold = coinTrades.filter(function(t) { return t.side === 'sell'; }).reduce(function(s, t) { return s + Number(t.cost); }, 0);
-      var realizedPnl = (realFifoBySymbol[symbol] || {}).realized || 0;
-      var netHoldings = coinTrades.reduce(function(s, t) {
-        return s + (t.side === 'buy' ? Number(t.amount) : -Number(t.amount));
-      }, 0);
-      var buyCount = coinTrades.filter(function(t) { return t.side === 'buy'; }).length;
-      var sellCount = coinTrades.filter(function(t) { return t.side === 'sell'; }).length;
-      var netSpent = totalBought - totalSold;
-      var positionClosed = netHoldings <= 0.000001; // fully sold out
-
-      // FIFO reconstruction: open lots = cost basis + count of slots actually filled
-      var sortedTrades = coinTrades.slice().sort(function(a, b) {
-        return new Date(a.created_at) - new Date(b.created_at);
-      });
-      var buyQueue = [];
-      sortedTrades.forEach(function(t) {
-        if (t.side === 'buy') {
-          buyQueue.push({ amount: Number(t.amount), price: Number(t.price || 0), cost: Number(t.cost) });
-        } else {
-          var remaining = Number(t.amount);
-          while (remaining > 0.000001 && buyQueue.length > 0) {
-            var lot = buyQueue[0];
-            if (lot.amount <= remaining + 0.000001) {
-              remaining -= lot.amount;
-              buyQueue.shift();
-            } else {
-              lot.cost -= remaining * lot.price;
-              lot.amount -= remaining;
-              remaining = 0;
-            }
-          }
-        }
-      });
-      var openLots = buyQueue.length;
-      var openCost = buyQueue.reduce(function(s, l) { return s + l.cost; }, 0);
-
+      var s = avgCostBySymbol[symbol] || {
+        holdings: 0, avg_buy_price: 0,
+        total_invested: 0, total_received: 0, realized: 0
+      };
+      // S69: cost basis posizione aperta = avg_buy × holdings (avg-cost canonico).
+      // Nessuna queue di lots: c'è una sola "posizione media" per coin.
+      var openCost = s.avg_buy_price * s.holdings;
+      var netSpent = s.total_invested - s.total_received;
       var skimForCoin = skimBySymbol[symbol] || 0;
       // 52a: unified USDT-flow formula for both open AND closed positions.
-      // Mirrors bot._available_cash(): alloc − invested + received − reserve.
-      // netSpent = invested − received; skim is physically moved to
-      // reserve_ledger on every profitable sell and must be subtracted here
-      // to match the bot's real operational cash. Closed positions: netSpent
-      // is typically negative (sold > bought) → cashLeft > alloc.
+      // alloc − invested + received − reserve = cash operativo del bot per coin.
       var cashLeft = alloc - netSpent - skimForCoin;
       var buysLeft = costPerTrade > 0 ? Math.floor(cashLeft / costPerTrade) : 0;
-      // Capacity bar reflects how much of the allocation is committed to open lots,
-      // not total volume traded.
+      // Capacity bar = % del budget allocation impegnato in posizione aperta.
       var capacityPct = alloc > 0 ? (openCost / alloc) * 100 : 0;
       var maxCapacity = costPerTrade > 0 ? Math.floor(alloc / costPerTrade) : 0;
       var lastTrade = coinTrades.length > 0 ? coinTrades[0] : null;
 
       return {
         alloc: alloc, costPerTrade: costPerTrade,
-        totalBought: totalBought, totalSold: totalSold,
-        realizedPnl: realizedPnl, netHoldings: netHoldings,
-        buyCount: buyCount, sellCount: sellCount,
-        netSpent: netSpent, openCost: openCost, openLots: openLots,
+        realizedPnl: s.realized,
+        netHoldings: s.holdings,
+        avgBuyPrice: s.avg_buy_price,
+        buyCount: coinTrades.filter(function(t) { return t.side === 'buy'; }).length,
+        sellCount: coinTrades.filter(function(t) { return t.side === 'sell'; }).length,
+        netSpent: netSpent, openCost: openCost,
         cashLeft: cashLeft,
         buysLeft: buysLeft, capacityPct: Math.min(capacityPct, 100),
         maxCapacity: maxCapacity, lastTrade: lastTrade
@@ -668,126 +643,86 @@
     }
 
     function renderOverview() {
+      var INITIAL_CAPITAL = 500;
       var totalAlloc = configData.reduce(function(s, c) { return s + Number(c.capital_allocation); }, 0);
-      var unalloc = 500 - totalAlloc;
+      var unalloc = INITIAL_CAPITAL - totalAlloc;
 
+      // S69: tutto avg-cost. Niente più FIFO replay client-side.
       var totalCash = 0;
-      var totalDeployed = 0;
+      var holdingsValue = 0;       // mark-to-market live
+      var totalDeployedCost = 0;   // cost basis (avg × holdings)
+      var totalUnrealized = 0;
+      var unrealizedBySymbol = [];
+
       configData.forEach(function(cfg) {
         var a = analyzeCoin(cfg.symbol, cfg);
         totalCash += a.cashLeft;
-        if (a.netHoldings > 0.000001) totalDeployed += a.openCost;
-      });
-
-      // Unrealized P&L — computed live from holdings × live prices
-      var totalUnrealized = 0;
-      var unrealizedBySymbol = [];
-      var holdingsValue = 0;
-      configData.forEach(function(cfg) {
-        var a = analyzeCoin(cfg.symbol, cfg);
         if (a.netHoldings <= 0.000001) return;
         var livePrice = livePrices[cfg.symbol];
         if (!livePrice) return;
-        // Reconstruct FIFO queue to get avg buy of remaining open lots
-        var coinTrades = tradesData
-          .filter(function(t) { return t.symbol === cfg.symbol; })
-          .slice()
-          .sort(function(a, b) { return new Date(a.created_at) - new Date(b.created_at); });
-        var buyQueue = [];
-        coinTrades.forEach(function(t) {
-          if (t.side === 'buy') {
-            buyQueue.push({ amount: Number(t.amount), price: Number(t.price || 0), cost: Number(t.cost) });
-          } else {
-            var remaining = Number(t.amount);
-            while (remaining > 0.000001 && buyQueue.length > 0) {
-              var lot = buyQueue[0];
-              if (lot.amount <= remaining + 0.000001) {
-                remaining -= lot.amount;
-                buyQueue.shift();
-              } else {
-                lot.cost -= remaining * lot.price;
-                lot.amount -= remaining;
-                remaining = 0;
-              }
-            }
-          }
-        });
-        var openAmt = buyQueue.reduce(function(s, l) { return s + l.amount; }, 0);
-        var openCost = buyQueue.reduce(function(s, l) { return s + l.cost; }, 0);
-        var netHoldings = openAmt;
-        if (netHoldings <= 0) return;
-        var avgBuyOpen = openAmt > 0 ? openCost / openAmt : 0;
-        var val = netHoldings * livePrice;
-        var unr = avgBuyOpen > 0 ? (livePrice - avgBuyOpen) * netHoldings : 0;
-        holdingsValue += val;
+        var mtm = a.netHoldings * livePrice;
+        var unr = (livePrice - a.avgBuyPrice) * a.netHoldings;
+        holdingsValue += mtm;
+        totalDeployedCost += a.openCost;
         totalUnrealized += unr;
         unrealizedBySymbol.push({ sym: cfg.symbol.split('/')[0], val: unr });
       });
 
-      // Net Worth = cash (after skim) + unalloc + holdings + skim reserve.
-      // Skim is physically moved out of bot cash to reserve_ledger, but it's
-      // still ours — adding it back gives the full patrimony.
-      var netWorth = totalCash + unalloc + holdingsValue + skimReserveTotal;
-      // Opzione 3 (decision_s65 reconciled, 2026-05-08): Total P&L is the
-      // ONE number on public/private dashboards. It's matematically coherent
-      // (closes the Realized_FIFO + Unrealized = Total identity) and equals
-      // exactly what Binance will show on mainnet. The DB realized_pnl is
-      // 28% inflated due to the bot's avg_buy_price bias (gating bug for
-      // go-live, brief 60b). Realized lives in /admin Reconciliation.
-      var INITIAL_CAPITAL = 500;
-      var totalPnl = netWorth - INITIAL_CAPITAL;
       var totalFees = tradesData.reduce(function(s, t) { return s + Number(t.fee || 0); }, 0);
 
+      // S69: "Stato attuale" = patrimonio netto fees (sostituisce Net Worth).
+      // (totalCash + unalloc) liquidità totale; + holdingsValue (MTM); +
+      // skimReserveTotal (riserva fisicamente spostata, ma sempre nostra);
+      // − totalFees (commissioni reali pagate, prese da Binance).
+      var statoAttuale = (totalCash + unalloc) + holdingsValue + skimReserveTotal - totalFees;
+      var totalPnl = statoAttuale - INITIAL_CAPITAL;
+
       var pnlColor = totalPnl >= 0 ? 'var(--green)' : 'var(--red)';
+      var unrColor = totalUnrealized >= 0 ? 'var(--green)' : 'var(--red)';
       var unrSign = totalUnrealized >= 0 ? '+' : '';
-      var feeSign = totalFees > 0 ? '-' : '';
 
       var unrBreakdown = unrealizedBySymbol.map(function(x) {
         var s = x.val >= 0 ? '+$' : '-$';
         return x.sym + ': ' + s + Math.abs(x.val).toFixed(2);
       }).join(' · ');
 
-      var unrColor = totalUnrealized >= 0 ? 'var(--green)' : 'var(--red)';
-
+      // ROW 1 — fondamentali: Budget · Stato attuale · Total P&L
       document.getElementById('overview-row1').innerHTML =
         '<div class="stat-box">' +
-          '<div class="stat-label">Net Worth</div>' +
-          '<div class="stat-value">$' + fmt(netWorth) + '</div>' +
-          '<div class="stat-sub">cash + holdings + skim reserve</div>' +
+          '<div class="stat-label">Budget progetto</div>' +
+          '<div class="stat-value">$' + fmt(INITIAL_CAPITAL) + '</div>' +
+          '<div class="stat-sub">starting capital (convenzione interna)</div>' +
+        '</div>' +
+        '<div class="stat-box">' +
+          '<div class="stat-label">Stato attuale</div>' +
+          '<div class="stat-value">$' + fmt(statoAttuale) + '</div>' +
+          '<div class="stat-sub">= cash + holdings + skim − fees</div>' +
         '</div>' +
         '<div class="stat-box">' +
           '<div class="stat-label">Total P&L</div>' +
           '<div class="stat-value" style="color:' + pnlColor + ';">' + (totalPnl >= 0 ? '+' : '') + '$' + fmt(totalPnl) + '</div>' +
-          '<div class="stat-sub">= Net Worth − $' + fmt(INITIAL_CAPITAL) + ' starting capital</div>' +
-        '</div>' +
-        '<div class="stat-box">' +
-          '<div class="stat-label">Skim Reserve</div>' +
-          '<div class="stat-value" style="color:var(--green);">+$' + skimReserveTotal.toFixed(4) + '</div>' +
-          '<div class="stat-sub">set aside from profits · ' + (netWorth > 0 ? (skimReserveTotal / netWorth * 100).toFixed(2) + '% of net worth' : '—') + '</div>' +
+          '<div class="stat-sub">= Stato attuale − Budget</div>' +
         '</div>';
 
+      // ROW 2 — cash flow: Cash to reinvest · Deployed · Skim
       document.getElementById('overview-row2').innerHTML =
         '<div class="stat-box">' +
           '<div class="stat-label">Cash to reinvest</div>' +
           '<div class="stat-value">$' + fmt(totalCash + unalloc) + '</div>' +
-          '<div class="stat-sub">operational, ready for trading</div>' +
+          '<div class="stat-sub">= cash bot + unallocated</div>' +
         '</div>' +
         '<div class="stat-box">' +
           '<div class="stat-label">Deployed</div>' +
           '<div class="stat-value">$' + fmt(holdingsValue) + '</div>' +
-          '<div class="stat-sub">market value · cost $' + fmt(totalDeployed) + ' ' + (totalUnrealized >= 0 ? '+' : '') + '$' + fmt(totalUnrealized) + ' unrealized</div>' +
+          '<div class="stat-sub">= holdings × prezzo live · cost basis $' + fmt(totalDeployedCost) + '</div>' +
         '</div>' +
         '<div class="stat-box">' +
-          '<div class="stat-label">Unrealized P&L</div>' +
-          '<div class="stat-value" style="color:' + unrColor + ';">' + unrSign + '$' + fmt(totalUnrealized) + '</div>' +
-          '<div class="stat-sub">' + (unrBreakdown || '—') + '</div>' +
+          '<div class="stat-label">Skim</div>' +
+          '<div class="stat-value" style="color:var(--green);">+$' + skimReserveTotal.toFixed(4) + '</div>' +
+          '<div class="stat-sub">= Σ skim_pct % del realized accantonato</div>' +
         '</div>';
 
-      // Dust v3 monitor: net residual per symbol that is NOT sellable on
-      // Binance (holdings × price < MIN_NOTIONAL). Active positions above
-      // the floor are real holdings, not dust — they're already shown in
-      // the Deployed card. This filter prevents manual bots' live
-      // holdings from inflating the dust figure.
+      // ROW 3 — performance breakdown: Unrealized · Fees · Dust
       var DUST_MIN_NOTIONAL_USD = 5.0;
       var dustTotalUsd = 0;
       var dustParts = [];
@@ -796,27 +731,30 @@
         if (a.netHoldings <= 0) return;
         var livePrice = livePrices[cfg.symbol] || 0;
         var usd = a.netHoldings * livePrice;
-        if (usd >= DUST_MIN_NOTIONAL_USD) return;  // real position, not dust
+        if (usd >= DUST_MIN_NOTIONAL_USD) return;
         dustTotalUsd += usd;
         var decimals = DUST_DECIMALS[cfg.symbol] || 6;
         var short = SHORT[cfg.symbol] || cfg.symbol;
         dustParts.push(short + ': ' + a.netHoldings.toFixed(decimals));
       });
       var dustBreakdown = dustParts.length ? dustParts.join(' · ') : '—';
-      var dustColor = dustTotalUsd > 1 ? 'var(--yellow)' : 'var(--muted)';
+      var dustColor = dustTotalUsd > 1 ? 'var(--yellow)' : 'var(--text-dim)';
 
-      // Two side-by-side cards in row 3: Fees Paid (cumulative, already
-      // inside Total P&L) + Dust v3 (sub-min_notional residuals).
       document.getElementById('overview-row3').innerHTML =
         '<div class="stat-box">' +
-          '<div class="stat-label">Fees Paid</div>' +
-          '<div class="stat-value" style="color:var(--muted);">-$' + fmt(totalFees) + '</div>' +
-          '<div class="stat-sub">Binance + BNB discount on every buy/sell — tracked for reference · not deducted in paper mode</div>' +
+          '<div class="stat-label">Unrealized</div>' +
+          '<div class="stat-value" style="color:' + unrColor + ';">' + unrSign + '$' + fmt(totalUnrealized) + '</div>' +
+          '<div class="stat-sub">= (prezzo live − avg buy) × holdings · ' + (unrBreakdown || '—') + '</div>' +
         '</div>' +
-        '<div class="stat-box" style="grid-column: 2 / -1;">' +
-          '<div class="stat-label">Dust v3</div>' +
+        '<div class="stat-box">' +
+          '<div class="stat-label">Fees</div>' +
+          '<div class="stat-value" style="color:var(--text-dim);">−$' + fmt(totalFees) + '</div>' +
+          '<div class="stat-sub">= Σ trades.fee · già scontate da Stato attuale</div>' +
+        '</div>' +
+        '<div class="stat-box">' +
+          '<div class="stat-label">Dust</div>' +
           '<div class="stat-value" style="color:' + dustColor + ';">$' + dustTotalUsd.toFixed(4) + '</div>' +
-          '<div class="stat-sub">' + dustBreakdown + '</div>' +
+          '<div class="stat-sub">residui sotto $5 min_notional · ' + dustBreakdown + '</div>' +
         '</div>';
     }
 
@@ -834,17 +772,29 @@
 
         var barColor = a.buysLeft === 0 ? 'var(--red)' : a.buysLeft <= 1 ? 'var(--yellow)' : color;
 
+        // S69: prezzo live e diff% vs avg buy (solo se posizione aperta + prezzo disponibile)
+        var livePrice = livePrices[sym];
+        var hasLive = !positionClosed && livePrice > 0 && a.avgBuyPrice > 0;
+        var diffPct = hasLive ? ((livePrice - a.avgBuyPrice) / a.avgBuyPrice * 100) : null;
+        var diffColor = !hasLive ? 'var(--text-dim)' : (diffPct >= 0 ? 'var(--green)' : 'var(--red)');
+        var diffStr = !hasLive ? '—' : (diffPct >= 0 ? '+' : '') + diffPct.toFixed(2) + '%';
+
         return '<div class="coin-card" id="card-' + short + '">' +
           '<div class="coin-header">' +
             '<span class="coin-name" style="color:' + color + ';">' + short + '</span>' +
             '<span class="coin-status ' + statusClass + '">' + statusText + '</span>' +
           '</div>' +
           '<div class="coin-grid">' +
+            // Riga 1 — prezzo: avg buy · current price · diff %
+            '<div class="coin-stat"><div class="cs-label">Avg buy</div><div class="cs-value">' + (positionClosed ? '—' : fmtPrice(a.avgBuyPrice)) + '</div></div>' +
+            '<div class="coin-stat"><div class="cs-label">Current price</div><div class="cs-value">' + ((positionClosed || !livePrice) ? '—' : fmtPrice(livePrice)) + '</div></div>' +
+            '<div class="coin-stat"><div class="cs-label">Diff %</div><div class="cs-value" style="color:' + diffColor + ';">' + diffStr + '</div></div>' +
+            // Riga 2 — cash flow: cash · open cost basis · realized
             '<div class="coin-stat"><div class="cs-label">Cash</div><div class="cs-value">' + fmtUsd(a.cashLeft) + '</div></div>' +
             '<div class="coin-stat"><div class="cs-label">Open cost basis</div><div class="cs-value">' + fmtUsd(a.openCost) + '</div></div>' +
             '<div class="coin-stat"><div class="cs-label">Realized</div><div class="cs-value" style="color:' + (a.realizedPnl >= 0 ? 'var(--green)' : 'var(--red)') + ';">' + (a.realizedPnl >= 0 ? '+' : '') + fmtUsd(a.realizedPnl) + '</div></div>' +
+            // Riga 3 — attività: trades · last trade
             '<div class="coin-stat"><div class="cs-label">Trades</div><div class="cs-value">' + a.buyCount + 'B / ' + a.sellCount + 'S</div></div>' +
-            '<div class="coin-stat"><div class="cs-label">Open lots</div><div class="cs-value">' + (positionClosed ? 'Position closed' : a.openLots + ' / ' + a.maxCapacity + ' filled') + '</div></div>' +
             '<div class="coin-stat"><div class="cs-label">Last trade</div><div class="cs-value">' + (a.lastTrade ? timeAgo(a.lastTrade.created_at) : '—') + '</div></div>' +
           '</div>' +
           '<div class="cap-bar-wrap">' +
@@ -859,9 +809,8 @@
               configField(short, 'capital_per_trade', '$/Trade', cfg.capital_per_trade) +
               configField(short, 'skim_pct', 'Skim % (profit reserve)', cfg.skim_pct) +
             '</div>' +
-            '<div class="param-group-label pct-label">Percentage Grid</div>' +
+            '<div class="param-group-label pct-label">Grid Parameters</div>' +
             '<div class="config-grid">' +
-              configFieldSelect(short, 'grid_mode', 'Grid mode', cfg.grid_mode, ['fixed', 'percentage']) +
               configField(short, 'buy_pct', 'Buy %', cfg.buy_pct) +
               configField(short, 'sell_pct', 'Sell %', cfg.sell_pct) +
               configField(short, 'profit_target_pct', 'Min Profit %', cfg.profit_target_pct) +
@@ -870,15 +819,6 @@
             '<div class="param-group-label safety-label">⚠️ Safety</div>' +
             '<div class="config-grid">' +
               configField(short, 'stop_buy_drawdown_pct', 'Stop-buy drawdown %', cfg.stop_buy_drawdown_pct) +
-            '</div>' +
-            '<div class="param-group-label" id="fixed-label-' + short + '">Fixed Grid</div>' +
-            '<div class="fixed-grid-fields' + (cfg.grid_mode === 'percentage' ? ' dimmed' : '') + '" id="fixed-fields-' + short + '">' +
-              '<div class="config-grid">' +
-                configField(short, 'grid_levels', 'Grid levels', cfg.grid_levels) +
-                configField(short, 'grid_lower', 'Grid lower', cfg.grid_lower) +
-                configField(short, 'grid_upper', 'Grid upper', cfg.grid_upper) +
-                configField(short, 'reserve_floor_pct', 'Reserve %', cfg.reserve_floor_pct) +
-              '</div>' +
             '</div>' +
             '<div class="save-row">' +
               '<button class="btn-save" id="save-' + short + '" onclick="saveConfig(\'' + sym + '\', \'' + short + '\')" disabled>Save changes</button>' +
@@ -891,25 +831,26 @@
       // Mark original values and attach change listeners
       configData.forEach(function(cfg) {
         var short = SHORT[cfg.symbol];
-        var allFields = ['grid_mode', 'buy_pct', 'sell_pct', 'profit_target_pct', 'skim_pct',
-          'capital_allocation', 'grid_levels', 'grid_lower', 'grid_upper',
-          'capital_per_trade', 'reserve_floor_pct', 'idle_reentry_hours',
-        'stop_buy_drawdown_pct'];
-        allFields.forEach(function(field) {
+        GRID_CONFIG_FIELDS.forEach(function(field) {
           var input = document.getElementById('cfg-' + short + '-' + field);
           if (input) {
             input.dataset.original = input.value;
-            var eventName = input.tagName === 'SELECT' ? 'change' : 'input';
-            input.addEventListener(eventName, function() {
+            input.addEventListener('input', function() {
               var changed = this.value !== this.dataset.original;
               this.classList.toggle('changed', changed);
               checkChanges(short);
-              if (field === 'grid_mode') updateFixedGridDimming(short, this.value);
             });
           }
         });
       });
     }
+
+    // S69: lista canonica dei field config editabili (post rimozione fixed mode + grid_mode select)
+    var GRID_CONFIG_FIELDS = [
+      'capital_allocation', 'capital_per_trade', 'skim_pct',
+      'buy_pct', 'sell_pct', 'profit_target_pct', 'idle_reentry_hours',
+      'stop_buy_drawdown_pct'
+    ];
 
     var SUBLABELS = {
       'sell_pct': 'Per-lot trigger: sells when price rises this % above that lot\'s buy price',
@@ -937,17 +878,8 @@
       '</div>';
     }
 
-    function updateFixedGridDimming(short, mode) {
-      var el = document.getElementById('fixed-fields-' + short);
-      if (el) el.classList.toggle('dimmed', mode === 'percentage');
-    }
-
     function checkChanges(short) {
-      var fields = ['grid_mode', 'buy_pct', 'sell_pct', 'profit_target_pct', 'skim_pct',
-        'capital_allocation', 'grid_levels', 'grid_lower', 'grid_upper',
-        'capital_per_trade', 'reserve_floor_pct', 'idle_reentry_hours',
-        'stop_buy_drawdown_pct'];
-      var hasChanges = fields.some(function(f) {
+      var hasChanges = GRID_CONFIG_FIELDS.some(function(f) {
         var input = document.getElementById('cfg-' + short + '-' + f);
         return input && input.value !== input.dataset.original;
       });
@@ -962,31 +894,18 @@
       status.textContent = 'Saving...';
       status.style.color = 'var(--yellow)';
 
-      var allFields = ['grid_mode', 'buy_pct', 'sell_pct', 'profit_target_pct', 'skim_pct',
-        'capital_allocation', 'grid_levels', 'grid_lower', 'grid_upper',
-        'capital_per_trade', 'reserve_floor_pct', 'idle_reentry_hours',
-        'stop_buy_drawdown_pct'];
-
       var data = {};
       var changes = [];
       var invalidField = null;
-      allFields.forEach(function(f) {
+      GRID_CONFIG_FIELDS.forEach(function(f) {
         if (invalidField) return;
         var input = document.getElementById('cfg-' + short + '-' + f);
         if (!input) return;
         // Normalize comma to dot for decimal fields (iOS Italian locale fix)
         var rawVal = input.value;
         var normVal = typeof rawVal === 'string' ? rawVal.replace(',', '.') : rawVal;
-        var newVal;
-        if (f === 'grid_mode') {
-          newVal = normVal;
-        } else if (f === 'grid_levels') {
-          newVal = parseInt(normVal);
-          if (isNaN(newVal)) { invalidField = f; return; }
-        } else {
-          newVal = parseFloat(normVal);
-          if (isNaN(newVal)) { invalidField = f; return; }
-        }
+        var newVal = parseFloat(normVal);
+        if (isNaN(newVal)) { invalidField = f; return; }
         data[f] = newVal;
         if (input.value !== input.dataset.original) {
           changes.push({ symbol: symbol, parameter: f, old_value: input.dataset.original, new_value: normVal, changed_by: 'manual-ceo' });
@@ -1030,44 +949,9 @@
 
     function renderTrades() {
       var body = document.getElementById('trades-body');
-
-      // FIFO match: for each sell, compute weighted-avg buy price of consumed lots.
-      // Annotates each sell row with _buyPriceAvg. Processed per-symbol, chronologically.
-      var bySym = {};
-      tradesData.forEach(function(t) {
-        (bySym[t.symbol] = bySym[t.symbol] || []).push(t);
-      });
-      Object.keys(bySym).forEach(function(sym) {
-        var sorted = bySym[sym].slice().sort(function(a, b) {
-          return new Date(a.created_at) - new Date(b.created_at);
-        });
-        var queue = [];
-        sorted.forEach(function(t) {
-          if (t.side === 'buy') {
-            queue.push({ amount: Number(t.amount), price: Number(t.price || 0) });
-          } else {
-            var remaining = Number(t.amount);
-            var consumedCost = 0;
-            var consumedAmt = 0;
-            while (remaining > 0.000001 && queue.length > 0) {
-              var lot = queue[0];
-              if (lot.amount <= remaining + 0.000001) {
-                consumedCost += lot.amount * lot.price;
-                consumedAmt += lot.amount;
-                remaining -= lot.amount;
-                queue.shift();
-              } else {
-                consumedCost += remaining * lot.price;
-                consumedAmt += remaining;
-                lot.amount -= remaining;
-                remaining = 0;
-              }
-            }
-            t._buyPriceAvg = consumedAmt > 0 ? consumedCost / consumedAmt : 0;
-          }
-        });
-      });
-
+      // S69: avg-cost. Per ogni sell, "Buy at" = avg_buy_price snapshot al
+      // momento del sell (calcolato in loadAll, scritto in avg_buy_at_sell_by_trade).
+      // P&L per-trade = trades.realized_pnl letto direttamente dal DB (post-S66 è avg-cost canonico).
       var recent = tradesData.slice(0, 20);
       body.innerHTML = recent.map(function(t) {
         var cls = t.side === 'buy' ? 'buy-row' : 'sell-row';
@@ -1076,18 +960,23 @@
         var buyAtCell = '<td style="color:var(--text-dim);">—</td>';
         var pnlCell = '<td style="color:var(--text-dim);">—</td>';
         if (t.side === 'sell') {
-          buyAtCell = '<td>' + (t._buyPriceAvg > 0 ? fmtPrice(t._buyPriceAvg) : '—') + '</td>';
-          var symFifo = realFifoBySymbol[t.symbol];
-          var pnl = (symFifo && symFifo.pnlByTradeId[t.id] !== undefined) ? symFifo.pnlByTradeId[t.id] : 0;
+          var symState = avgCostBySymbol[t.symbol] || {};
+          var avgAtSell = (symState.avg_buy_at_sell_by_trade || {})[t.id];
+          buyAtCell = '<td>' + (avgAtSell > 0 ? fmtPrice(avgAtSell) : '—') + '</td>';
+          var pnl = (symState.realized_by_trade || {})[t.id];
+          if (pnl === undefined) pnl = 0;
           var pnlColor = pnl >= 0 ? 'var(--green)' : 'var(--red)';
           var pnlSign = pnl >= 0 ? '+' : '';
           pnlCell = '<td style="color:' + pnlColor + ';">' + pnlSign + fmtUsd(pnl) + '</td>';
         }
+        var feeVal = Number(t.fee || 0);
+        var feeCell = '<td style="color:var(--text-dim);">−$' + feeVal.toFixed(4) + '</td>';
         return '<tr class="' + cls + '">' +
           '<td>' + t.side.toUpperCase() + '</td>' +
           '<td>' + (SHORT[t.symbol] || t.symbol) + '</td>' +
           '<td>' + fmtPrice(t.price) + '</td>' +
           '<td>' + fmtUsd(t.cost) + '</td>' +
+          feeCell +
           buyAtCell +
           pnlCell +
           '<td>' + timeStr + '</td>' +
