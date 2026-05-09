@@ -87,6 +87,7 @@ Comm Sentinel↔Sherpa↔Grid via Supabase only. **Mac Mini gira su commit `a8e9
 
 ## 6. Domande aperte per CEO
 
+- **🆕 [S69] Reconciliation Binance (DB ↔ `fetch_my_trades`)**: brief separato post go-live €100 mainnet. Sostituisce il pannello "Reconciliation FIFO vs DB" rimosso da `/admin` in S69 (era audit S65 ormai obsoleto post-pivot avg-cost S66). Verifica periodica che il nostro DB (`trades` v3) coincida con la verità Binance (order ID/fill price/fee/timestamp). Stima: ~3-4h. Trigger: TRUNCATE+restart bot pulito (BLOCCO 3.2).
 - **Apply 68b sul Mac Mini**: ora (riavvio bot) o post nuova chat?
 - **Budget testnet $10K vs $500**: Board valuta. Se $10K, scaling `capital_per_trade` $200/$100/$100 + `MAX_CAPITAL`.
 - **Reset mensile testnet Binance**: vale verifica formale?

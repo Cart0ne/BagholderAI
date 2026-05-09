@@ -59,13 +59,11 @@ sbqCount("trades", "select=id&config_version=eq.v3")
   .then(n => setText("stat-trades", String(n)))
   .catch(() => setText("stat-trades", "N.A."));
 
-/* ---------- 2. Total P&L (Opzione 3 — decision_s65 reconciled) ----------
+/* ---------- 2. Total P&L (Opzione 3 — decision_s65, S69 avg-cost) ----------
    Total P&L = (Net Worth Grid + Net Worth TF) − $600 budget.
-   This is the only P&L number that closes the accounting identity
-   (Realized_FIFO + Unrealized = Total) and that will match Binance
-   live mainnet exactly. The prior "Realized P&L" from DB SUM was 28%
-   inflated due to the bot's avg_buy_price cost basis bias (gating
-   for go-live, see brief 60b).
+   Avg-cost canonico (post-S66 Operation Clean Slate) — chiude l'identità
+   contabile Realized + Unrealized = Total e coincide con la formula
+   Binance per realized_pnl.
 
    Today P&L stays as DB SUM(realized_pnl) on today's sells: it's a
    daily flow metric, not a patrimony metric. The two answer different

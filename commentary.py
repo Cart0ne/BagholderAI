@@ -109,59 +109,51 @@ def fetch_binance_prices(symbols):
         return {}
 
 
-def _analyze_coin_fifo(coin_trades):
+def _analyze_coin_avg_cost(coin_trades):
     """
-    FIFO replay over a single coin's trades — exact Python port of the
-    dashboard's analyzeCoin (web_astro/src/scripts/dashboard-live.ts:396).
-
-    The bot's trades.realized_pnl column is biased on pre-53a sells (it used
-    avg_buy_price as cost basis). We never read that column for aggregates;
-    we recompute realized from scratch via strict FIFO so backend numbers
-    match the dashboard byte-for-byte.
+    S69: avg-cost replay (running weighted average), specchio della logica
+    bot in bot/grid/buy_pipeline.py:117 e di tutte le dashboard. Sostituisce
+    il vecchio _analyze_coin_avg_cost (Operation Clean Slate S66 ha pivotato il
+    bot ad avg-cost canonico — DB realized_pnl ora è già avg-cost).
 
     Returns dict with: realized, open_cost, open_amount, net_invested, fees.
-      - realized   : Σ over sells of (sell_cost − fifo_cost_basis)
-      - open_cost  : cost basis of lots still open (after FIFO consumption)
-      - open_amount: amount of base asset still held
+      - realized   : Σ trades.realized_pnl (DB SUM, scritto dal bot avg-cost)
+      - open_cost  : avg_buy_price × holdings (mark-to-cost posizione aperta)
+      - open_amount: amount di base ancora in pancia
       - net_invested: Σ buy.cost − Σ sell.cost (USDT cash flow)
       - fees       : Σ fee across all trades
     """
     sorted_trades = sorted(coin_trades, key=lambda t: t.get("created_at") or "")
-    queue = []  # list of {amount, cost} — open BUY lots in FIFO order
+    holdings = 0.0
+    avg_buy_price = 0.0
+    total_invested = 0.0
+    total_received = 0.0
     realized = 0.0
     fees = 0.0
-    net_invested = 0.0
     for t in sorted_trades:
         amt = float(t.get("amount") or 0)
         cost = float(t.get("cost") or 0)
+        price = float(t.get("price") or 0)
         fees += float(t.get("fee") or 0)
         if t.get("side") == "buy":
-            queue.append({"amount": amt, "cost": cost})
-            net_invested += cost
+            new_holdings = holdings + amt
+            if new_holdings > 0:
+                avg_buy_price = (avg_buy_price * holdings + price * amt) / new_holdings
+            holdings = new_holdings
+            total_invested += cost
         else:
-            basis = 0.0
-            rem = amt
-            while rem > 1e-6 and queue:
-                lot = queue[0]
-                if lot["amount"] <= rem + 1e-6:
-                    basis += lot["cost"]
-                    rem -= lot["amount"]
-                    queue.pop(0)
-                else:
-                    portion = rem / lot["amount"]
-                    basis += lot["cost"] * portion
-                    lot["cost"] -= lot["cost"] * portion
-                    lot["amount"] -= rem
-                    rem = 0
-            realized += cost - basis
-            net_invested -= cost
-    open_amount = sum(l["amount"] for l in queue)
-    open_cost = sum(l["cost"] for l in queue)
+            holdings -= amt
+            total_received += cost
+            realized += float(t.get("realized_pnl") or 0)
+            # Reset avg quando si chiude del tutto (specchio sell_pipeline.py:374)
+            if holdings <= 1e-6:
+                holdings = 0.0
+                avg_buy_price = 0.0
     return {
         "realized": realized,
-        "open_cost": open_cost,
-        "open_amount": open_amount,
-        "net_invested": net_invested,
+        "open_cost": avg_buy_price * holdings,
+        "open_amount": holdings,
+        "net_invested": total_invested - total_received,
         "fees": fees,
     }
 
@@ -257,11 +249,9 @@ def get_tf_state(supabase_client):
         live_prices = fetch_binance_prices(sorted(active_set))
 
         # === DASHBOARD-IDENTICAL FORMULA (web_astro/dashboard-live.ts) ===
-        # netWorth = budget + realized_FIFO + unrealized
+        # netWorth = budget + realized + unrealized
         # cash     = netWorth − holdings − skim
-        # Realized comes from FIFO replay (NOT from trades.realized_pnl, which
-        # is biased on pre-53a sells). One source of truth: identical to what
-        # the user sees on the dashboard.
+        # S69: realized = trades.realized_pnl (avg-cost canonico post-S66).
         active_positions = []
         holdings_value = 0.0
         total_unrealized = 0.0
@@ -269,15 +259,15 @@ def get_tf_state(supabase_client):
         fees_total = 0.0
         today_str = str(date.today())
 
-        # Group trades by symbol for FIFO. Includes trades from deallocated
-        # coins, so their historical realized stays counted.
+        # Group trades by symbol. Includes trades from deallocated coins,
+        # so their historical realized stays counted.
         trades_by_sym = {}
         for t in tf_trades:
             trades_by_sym.setdefault(t["symbol"], []).append(t)
 
         # Realized + fees aggregated across ALL TF coins (active or deallocated).
         for sym, coin_trades in trades_by_sym.items():
-            a = _analyze_coin_fifo(coin_trades)
+            a = _analyze_coin_avg_cost(coin_trades)
             realized_total += a["realized"]
             fees_total += a["fees"]
 
@@ -293,14 +283,12 @@ def get_tf_state(supabase_client):
                 continue
             coin_trades = trades_by_sym.get(sym, [])
 
-            a = _analyze_coin_fifo(coin_trades)
+            a = _analyze_coin_avg_cost(coin_trades)
             open_amt = a["open_amount"]
             open_cost = a["open_cost"]
             realized_coin = a["realized"]
 
-            # Today's per-coin activity (still uses DB realized_pnl since it's
-            # an intra-day delta, not a cumulative FIFO sum — bias is post-53a
-            # so today's number is correct).
+            # Today's per-coin activity (DB realized_pnl, intra-day delta).
             coin_today_trades = [
                 t for t in coin_trades if (t.get("created_at") or "").startswith(today_str)
             ]
@@ -430,7 +418,7 @@ def get_grid_state(supabase_client):
         if grid_budget <= 0:
             grid_budget = 500.0  # fallback if config is empty
 
-        # 2. trades: all Grid trades, ascending order for FIFO.
+        # 2. trades: all Grid trades, ascending order.
         tr = (
             supabase_client.table("trades")
             .select("symbol, side, amount, price, cost, fee, realized_pnl, created_at")
@@ -465,8 +453,8 @@ def get_grid_state(supabase_client):
         live_prices = fetch_binance_prices(active_syms)
 
         # === DASHBOARD-IDENTICAL FORMULA ===
-        # Same identity as get_tf_state and dashboard-live.ts:
-        #   netWorth = budget + realized_FIFO + unrealized
+        # Same identity as get_tf_state and dashboard-live.ts (S69 avg-cost):
+        #   netWorth = budget + realized + unrealized
         #   cash     = netWorth − holdings − skim
         positions = []
         holdings_value = 0.0
@@ -481,7 +469,7 @@ def get_grid_state(supabase_client):
 
         # Aggregate realized + fees across all Grid coins.
         for sym, coin_trades in trades_by_sym.items():
-            a = _analyze_coin_fifo(coin_trades)
+            a = _analyze_coin_avg_cost(coin_trades)
             realized_total += a["realized"]
             fees_total += a["fees"]
 
@@ -489,7 +477,7 @@ def get_grid_state(supabase_client):
         for cfg_row in grid_config:
             sym = cfg_row["symbol"]
             coin_trades = trades_by_sym.get(sym, [])
-            a = _analyze_coin_fifo(coin_trades)
+            a = _analyze_coin_avg_cost(coin_trades)
             open_amt = a["open_amount"]
             open_cost = a["open_cost"]
             realized_coin = a["realized"]

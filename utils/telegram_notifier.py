@@ -407,7 +407,7 @@ class TelegramNotifier:
                 text += "  No active TF positions.\n"
 
         # Reserve summary (Grid only — TF skim is shown above in TF section)
-        # Prefer skim_by_sym from get_grid_state (always present, FIFO-safe).
+        # Prefer skim_by_sym from get_grid_state (always present).
         # Fall back to the legacy reserves dict for callers that don't pass it.
         reserves = data.get("skim_by_sym") or data.get("reserves") or {}
         if reserves and any(v > 0 for v in reserves.values()):

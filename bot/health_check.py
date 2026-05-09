@@ -1,17 +1,20 @@
 """
-BagHolderAI - 57a Health Check (Brief 57a, Fix 3)
+BagHolderAI - Health Check (originally 57a Fix 3, S69 cleanup)
 
-Five integrity checks that compare DB-derived FIFO truth against the
-data the bot has been writing to DB. Designed to be called by the
+Three integrity checks on DB state. Designed to be called by the
 orchestrator at boot + every 30 minutes, and standalone via
 `python -m bot.health_check` for manual dry-runs.
 
 Checks:
-  1. FIFO P&L reconciliation — DB realized_pnl sum vs FIFO replay
-  2. Holdings consistency — net amount per symbol from trade replay
-  3. Negative holdings guard — no symbol may have sold more than bought
-  4. Cash accounting — capital_allocation - bought + sold ≈ dashboard cash
-  5. Orphan lots — sells without buy_trade_id that aren't FORCED_LIQUIDATION
+  1. Negative holdings guard — no symbol may have sold more than bought
+  2. Cash accounting — capital_allocation - bought + sold ≈ dashboard cash
+  3. Orphan lots — sells without buy_trade_id that aren't FORCED_LIQUIDATION
+
+Removed in S69:
+  - FIFO P&L reconciliation (Check 1 originale): bot post-S66 scrive
+    avg-cost canonico, il confronto FIFO non aveva più valore.
+  - Holdings consistency via FIFO replay (Check 2 originale): tautologico
+    (net == net), già coperto dal negative-holdings guard.
 
 Output: structured dict + Telegram alert if any check fails.
 
@@ -30,9 +33,7 @@ from db.event_logger import log_event
 
 logger = logging.getLogger("bagholderai.health")
 
-# Tolerances. Tighter than the brief's defaults where the data allows it.
-PNL_TOLERANCE_USD = 0.05      # delta DB vs FIFO realized per symbol
-HOLDINGS_TOLERANCE = 1e-6     # base-currency dust tolerance
+# Tolerances.
 CASH_TOLERANCE_USD = 0.10     # dashboard cash vs ledger
 NEGATIVE_DUST = 1e-6          # treat negative holdings below this as float noise
 
@@ -40,44 +41,6 @@ NEGATIVE_DUST = 1e-6          # treat negative holdings below this as float nois
 # ---------------------------------------------------------------------- #
 # Helpers
 # ---------------------------------------------------------------------- #
-
-def _replay_fifo_pnl(trades: list[dict]) -> tuple[float, float]:
-    """Replay buys + sells in chronological order with a strict FIFO queue.
-
-    Returns (total_realized_pnl, holdings) for the symbol.
-    """
-    queue: list[dict] = []
-    realized = 0.0
-    holdings = 0.0
-
-    for t in trades:
-        side = t.get("side")
-        amount = float(t.get("amount") or 0)
-        price = float(t.get("price") or 0)
-        if side == "buy":
-            queue.append({"amount": amount, "price": price})
-            holdings += amount
-        elif side == "sell":
-            cost = float(t.get("cost") or (amount * price))
-            revenue = cost  # sell.cost is the proceeds in this codebase
-            basis = 0.0
-            remaining = amount
-            while remaining > 1e-12 and queue:
-                lot = queue[0]
-                if lot["amount"] <= remaining + 1e-12:
-                    basis += lot["amount"] * lot["price"]
-                    remaining -= lot["amount"]
-                    queue.pop(0)
-                else:
-                    portion = remaining / lot["amount"]
-                    basis += lot["amount"] * lot["price"] * portion
-                    lot["amount"] -= remaining
-                    remaining = 0
-            realized += revenue - basis
-            holdings -= amount
-
-    return realized, holdings
-
 
 def _ok(name: str, symbol: Optional[str] = None,
         detail: str = "") -> dict:
@@ -97,82 +60,6 @@ def _err(name: str, symbol: Optional[str] = None,
 # ---------------------------------------------------------------------- #
 # Individual checks
 # ---------------------------------------------------------------------- #
-
-def check_fifo_pnl(client, symbols: list[str]) -> list[dict]:
-    """Check 1 — DB realized_pnl sum vs FIFO replay. Per-symbol."""
-    results: list[dict] = []
-    for sym in symbols:
-        try:
-            res = (
-                client.table("trades")
-                .select("side,amount,price,cost,realized_pnl,created_at")
-                .eq("symbol", sym)
-                .eq("config_version", "v3")
-                .order("created_at", desc=False)
-                .execute()
-            )
-            rows = res.data or []
-        except Exception as e:
-            results.append(_err("fifo_pnl", sym, f"DB query failed: {e}"))
-            continue
-
-        db_pnl = sum(
-            float(r.get("realized_pnl") or 0)
-            for r in rows if r.get("side") == "sell"
-        )
-        fifo_pnl, _ = _replay_fifo_pnl(rows)
-        delta = db_pnl - fifo_pnl
-
-        if abs(delta) <= PNL_TOLERANCE_USD:
-            results.append(_ok(
-                "fifo_pnl", sym,
-                f"DB=${db_pnl:+.2f}, FIFO=${fifo_pnl:+.2f}, Δ=${delta:+.4f}"
-            ))
-        else:
-            results.append(_fail(
-                "fifo_pnl", sym,
-                f"DB=${db_pnl:+.2f}, FIFO=${fifo_pnl:+.2f}, Δ=${delta:+.4f}"
-            ))
-    return results
-
-
-def check_holdings(client, symbols: list[str]) -> list[dict]:
-    """Check 2 — Σ buys − Σ sells = FIFO open holdings, no surprise."""
-    results: list[dict] = []
-    for sym in symbols:
-        try:
-            res = (
-                client.table("trades")
-                .select("side,amount,price,cost,created_at")
-                .eq("symbol", sym)
-                .eq("config_version", "v3")
-                .order("created_at", desc=False)
-                .execute()
-            )
-            rows = res.data or []
-        except Exception as e:
-            results.append(_err("holdings", sym, f"DB query failed: {e}"))
-            continue
-
-        net = sum(float(r.get("amount") or 0)
-                  for r in rows if r.get("side") == "buy") \
-            - sum(float(r.get("amount") or 0)
-                  for r in rows if r.get("side") == "sell")
-        _, fifo_holdings = _replay_fifo_pnl(rows)
-
-        if abs(net - fifo_holdings) <= HOLDINGS_TOLERANCE:
-            results.append(_ok(
-                "holdings", sym,
-                f"net={net:.8f}, fifo={fifo_holdings:.8f}"
-            ))
-        else:
-            results.append(_fail(
-                "holdings", sym,
-                f"net={net:.8f}, fifo={fifo_holdings:.8f}, "
-                f"Δ={(net - fifo_holdings):.8f}"
-            ))
-    return results
-
 
 def check_negative_holdings(client) -> list[dict]:
     """Check 3 — no symbol may have sold more than it bought (data corruption)."""
@@ -354,18 +241,7 @@ def run_health_check(client=None,
             logger.warning(f"Could not derive active symbols, using empty list: {e}")
             symbols = []
 
-    # Always include any symbol that ever traded in v3, for completeness
-    # of orphan/holdings checks.
-    try:
-        all_traded = client.table("trades").select("symbol")\
-            .eq("config_version", "v3").execute()
-        all_syms = sorted({r["symbol"] for r in (all_traded.data or [])})
-    except Exception:
-        all_syms = symbols
-
     checks: list[dict] = []
-    checks.extend(check_fifo_pnl(client, all_syms))
-    checks.extend(check_holdings(client, all_syms))
     checks.extend(check_negative_holdings(client))
     checks.extend(check_cash_accounting(client, symbols))
     checks.extend(check_orphan_lots(client))
