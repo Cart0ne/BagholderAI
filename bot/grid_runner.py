@@ -1558,7 +1558,12 @@ def _print_status(bot: GridBot):
     logger.info(f"  Realized P&L: ${status['realized_pnl']:.4f}")
     logger.info(f"  Unrealz P&L:  ${status['unrealized_pnl']:.4f}")
     logger.info(f"  Trades today: {status['trades_today']}")
-    logger.info(f"  Levels:       {status['levels']}")
+    # Brief s70 FASE 2: niente più state.levels (avg-cost mode).
+    if status.get('buy_trigger') and status.get('sell_trigger'):
+        logger.info(
+            f"  Triggers:     buy ↓ {fmt_price(status['buy_trigger'])} / "
+            f"sell ↑ {fmt_price(status['sell_trigger'])}"
+        )
 
 
 if __name__ == "__main__":
