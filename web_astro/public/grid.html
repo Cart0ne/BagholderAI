@@ -627,6 +627,10 @@
       var capacityPct = alloc > 0 ? (openCost / alloc) * 100 : 0;
       var maxCapacity = costPerTrade > 0 ? Math.floor(alloc / costPerTrade) : 0;
       var lastTrade = coinTrades.length > 0 ? coinTrades[0] : null;
+      // S70 FASE 2: prezzo dell'ultimo buy per il widget "Next buy if ↓".
+      // coinTrades è ordinato desc per created_at, find restituisce il più recente.
+      var lastBuyTrade = coinTrades.find(function(t) { return t.side === 'buy'; });
+      var lastBuyPrice = lastBuyTrade ? Number(lastBuyTrade.price) : 0;
 
       return {
         alloc: alloc, costPerTrade: costPerTrade,
@@ -638,7 +642,8 @@
         netSpent: netSpent, openCost: openCost,
         cashLeft: cashLeft,
         buysLeft: buysLeft, capacityPct: Math.min(capacityPct, 100),
-        maxCapacity: maxCapacity, lastTrade: lastTrade
+        maxCapacity: maxCapacity, lastTrade: lastTrade,
+        lastBuyPrice: lastBuyPrice
       };
     }
 
@@ -779,6 +784,20 @@
         var diffColor = !hasLive ? 'var(--text-dim)' : (diffPct >= 0 ? 'var(--green)' : 'var(--red)');
         var diffStr = !hasLive ? '—' : (diffPct >= 0 ? '+' : '') + diffPct.toFixed(2) + '%';
 
+        // S70 FASE 2: "Next buy if ↓" widget — prossimo trigger di buy.
+        // formula: last_buy × (1 − buy_pct/100). Se buy_pct=0 o no buy storico, mostra "—".
+        var buyPct = Number(cfg.buy_pct) || 0;
+        var hasBuyRef = a.lastBuyPrice > 0 && buyPct > 0;
+        var nextBuyTrigger = hasBuyRef ? a.lastBuyPrice * (1 - buyPct / 100) : 0;
+        var nextBuyStr = hasBuyRef ? fmtPrice(nextBuyTrigger) : '—';
+        var lastBuyStr = a.lastBuyPrice > 0 ? fmtPrice(a.lastBuyPrice) : '—';
+        var buyPctStr = buyPct > 0 ? '−' + buyPct.toFixed(1) + '%' : '—';
+        // Distanza % dal trigger (positivo = prezzo ancora sopra trigger, negativo = già sotto)
+        var nextBuyDistance = (hasBuyRef && livePrice > 0)
+          ? ((livePrice - nextBuyTrigger) / nextBuyTrigger * 100) : null;
+        var nextBuyColor = (nextBuyDistance === null) ? 'var(--text-dim)'
+          : (nextBuyDistance > 0 ? '#5fb3ff' : 'var(--green)');  // cyan = waiting; green = already below trigger
+
         return '<div class="coin-card" id="card-' + short + '">' +
           '<div class="coin-header">' +
             '<span class="coin-name" style="color:' + color + ';">' + short + '</span>' +
@@ -796,6 +815,10 @@
             // Riga 3 — attività: trades · last trade
             '<div class="coin-stat"><div class="cs-label">Trades</div><div class="cs-value">' + a.buyCount + 'B / ' + a.sellCount + 'S</div></div>' +
             '<div class="coin-stat"><div class="cs-label">Last trade</div><div class="cs-value">' + (a.lastTrade ? timeAgo(a.lastTrade.created_at) : '—') + '</div></div>' +
+            // S70 FASE 2 — Riga 4 — buy reference: last buy · buy% · next buy trigger
+            '<div class="coin-stat"><div class="cs-label">Last buy</div><div class="cs-value">' + lastBuyStr + '</div></div>' +
+            '<div class="coin-stat"><div class="cs-label">Buy %</div><div class="cs-value">' + buyPctStr + '</div></div>' +
+            '<div class="coin-stat"><div class="cs-label">Next buy if ↓</div><div class="cs-value" style="color:' + nextBuyColor + ';">' + nextBuyStr + '</div></div>' +
           '</div>' +
           '<div class="cap-bar-wrap">' +
             '<div class="cap-bar-label"><span>Capital usage</span><span>' + fmt(a.capacityPct, 0) + '%</span></div>' +
