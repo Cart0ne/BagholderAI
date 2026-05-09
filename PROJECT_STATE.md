@@ -1,152 +1,140 @@
 # PROJECT_STATE.md
 
-**Ultimo aggiornamento:** 2026-05-09 — sessione 69 (chiusura: BLOCCO 1 B+C completo FIFO contabile via, BLOCCO 2 parziale main_old + grid_runner sync, brief 69a avg-cost trading scritto pending Board approval)
+**Ultimo aggiornamento:** 2026-05-09 — sessione 69 (chiusura serale: deploy avg-cost trading completo FASE 1 + FASE 2 in giornata unica, ~880 righe nette via, DROP COLUMN bot_config × 5, buy/sell guard simmetrici Strategy A, IDLE recalibrate guard, polish UI grid.html)
 **Owner del file:** Claude Code (Intern). Rigenerato a ogni fine sessione.
 
 ---
 
 ## 1. Stato attuale
 
-Fase: **bot LIVE su Binance testnet (Grid-only, $500 budget Board confermato)** invariato da fine S68. 4 processi attivi su Mac Mini (orchestrator 96199 + 3 grid_runner) su commit `a8e91a0` (fix 68a, folder ancora `bot/strategies/`). **Dashboard ↔ bot ↔ Binance ora coerenti su avg-cost canonico**: rimosso ogni FIFO replay client-side da grid.html / tf.html / admin.html / dashboard-live.ts / commentary.py / health_check.py (BLOCCO 1 shipped 5 commit S69). FIFO trading logic (Strategy A per-lot) **ancora viva** nel bot: brief 69a pronto per deploy in finestra unica con TRUNCATE+restart. Sito **maintenance** dal S65. Target go-live €100 mainnet: **21-24 maggio 2026** se 69a deploy entro 17-18 maggio.
+Fase: **bot LIVE su Binance testnet (Grid-only, $500 budget Board)** in **avg-cost trading puro** (post brief s70 FASE 1 + FASE 2 shipped in unica giornata). Mac Mini su commit `cb21179` (HEAD). Nessun più FIFO logic in produzione: trigger sell/buy gating su `state.avg_buy_price`, sell amount = `capital_per_trade / current_price`, Strategy A guard simmetrici (no sell sotto avg + no buy sopra avg se holdings>0). DDL DROP COLUMN bot_config × 5 (`grid_mode`, `grid_levels`, `grid_lower`, `grid_upper`, `reserve_floor_pct`). File `bot/grid/fifo_queue.py` rimosso, codice fixed mode in grid_bot.py via (~250 righe). Sito **maintenance** dal S65. Target go-live €100 mainnet: **21-24 maggio** invariato.
 
 ## 2. Architettura attiva
 
-Repo locale: `/Users/max/Desktop/BagHolderAI/Repository/bagholder` (MBP). Repo runtime: `/Volumes/Archivio/bagholderai` su Mac Mini. Stack: Python 3.13, Supabase (DB+RLS, **19 tabelle 0 view post cleanup S68**), Telegram (alerts), Vercel (sito Astro `bagholderai.lol`).
+Repo locale: `/Users/max/Desktop/BagHolderAI/Repository/bagholder` (MBP). Repo runtime: `/Volumes/Archivio/bagholderai` su Mac Mini. Stack: Python 3.13, Supabase (DB+RLS, **19 tabelle 0 view**), Telegram (alerts), Vercel (sito Astro `bagholderai.lol`).
 
 ```
 bot/
   orchestrator.py          single-process supervisor: spawn 3 Grid + brain off via env flags
-  grid_runner.py           per-symbol process wrapper, hot-reload bot_config (1627 righe — Phase 2 split candidate)
+  grid_runner.py           per-symbol process wrapper, hot-reload bot_config (1591 righe — Phase 2 split candidate)
   exchange.py              Binance ccxt sandbox (S67)
-  exchange_orders.py       NEW (S67) — market-order wrapper. fee USDT canonical.
-  health_check.py          daily FIFO/holdings/cash integrity (57a)
-  db_maintenance.py        daily 04:00 UTC retention 14gg (47c) + Sentinel/Sherpa retention 30/60d
-  grid/                    Brain #1 — Grid (post-refactor S68b: era bot/strategies/, NON ancora live su Mac Mini)
-    grid_bot.py              public API + dataclasses (~1700 righe; fixed mode è codice morto, da rimuovere)
-    fifo_queue.py            FIFO replay + verify_fifo_queue (57a, audit-only)
-    state_manager.py         boot-time state restore (S66 avg-cost canonical)
-    buy_pipeline.py          buy exec — S67 live route via place_market_buy
-    sell_pipeline.py         sell exec — S66 avg-cost; S67 dust prevention; S68a guard avg_cost
-    dust_handler.py          dust pop helpers (legacy safety net)
+  exchange_orders.py       market-order wrapper, fee USDT canonical (S67)
+  health_check.py          daily health check (negative_holdings + cash_accounting; FIFO checks via S69, orphan_lots via S69)
+  db_maintenance.py        daily 04:00 UTC retention 14gg
+  grid/                    Brain #1 — Grid (post-refactor S68b)
+    grid_bot.py              public API + GridState dataclass (~880 righe, fixed mode via)
+    state_manager.py         init_avg_cost_state_from_db (no più FIFO replay, no restore_state v1)
+    buy_pipeline.py          buy exec + Strategy A guard "no buy above avg" (S69)
+    sell_pipeline.py         sell exec + 68a guard "no sell below avg"
+    dust_handler.py          write-off helpers (avg-cost, no più queue pop)
   trend_follower/          Brain #2 — TF (DISABLED via ENABLE_TF=false S67)
   sentinel/                Brain #3 — risk/opportunity score (DISABLED)
   sherpa/                  Brain #4 — parameter writer (DISABLED)
 db/, utils/, scripts/, web_astro/  (DB client, telegram notifier, daily reports, sito Astro maintenance)
-config/                    settings, briefs (in briefresolved.md/), validation_and_control_system.md,
-                           brief_67a / brief_68a (in repo)
-audits/                    gitignored — formula_verification_s66.md (S66) + 2026-05-08_pre-reset-s67/ (Mac Mini) +
-                           2026-05-09_pre-cleanup-s68/ (folder vuota: Board ha rifiutato backup pre-cleanup)
-tests/                     test_accounting_avg_cost.py 8/8 verdi (5 S66 + 2 S67 dust + 1 S68a guard)
+config/                    settings, validation_and_control_system.md, brief_69a + brief_s70_avg_cost_deploy
+audits/                    gitignored — formula_verification_s66.md (S66) + 2026-05-08_pre-reset-s67/ (Mac Mini)
+tests/                     test_accounting_avg_cost.py 11/11 verdi (8 originali + test_h 68a + test_i S70F1 + test_j idle_recalibrate_skipped + test_k buy_guard_above_avg)
+tests/legacy/              test_pct_sell_fifo + test_verify_fifo_queue + test_session10 + test_multi_token + test_grid_bot (fixed mode legacy)
 ```
 
-Comm Sentinel↔Sherpa↔Grid via Supabase only. **Mac Mini gira su commit `a8e91a0`** (fix 68a + folder ancora `bot/strategies/`). Refactor 68b (`bot/grid/`) è solo locale + GitHub, non applicato sul Mac Mini.
+Comm Sentinel↔Sherpa↔Grid via Supabase only. **Mac Mini gira su commit `cb21179`** (FASE 1+2 shipped + polish UI).
 
-## 3. In-flight (settimana 2026-05-09, prossima chat)
+## 3. In-flight (settimana 2026-05-10+, prossima chat)
 
-- **🔴 Brief 69a deploy** (PENDING Board approval data): avg-cost trading + rimozione fixed mode grid_bot.py + DROP COLUMN DB + apply 68b + TRUNCATE+restart. Earliest 2026-05-10, latest 2026-05-15. Brief in `config/brief_69a_avg_cost_trading_truncate_restart.md`.
-
-- **🟡 Brief 67a Step 5** (reconciliation gate nightly): ancora aperto, va shipped post-69a (richiede baseline pulita).
-
-- **🔴 Bug `recalibrate-on-restart`** (CEO 2026-05-07, residuo): trigger buy passano da -0.5% a -1.5% senza apparente ragione. Probabilmente sparisce con 69a (logica riscritta) ma da verificare post-deploy.
-
-- **🟢 Brief Reconciliation Binance** (DB ↔ `fetch_my_trades`): brief separato post go-live €100 mainnet baseline (vedi §6).
+- **🟡 [S69 RACCOMANDAZIONE Max] domani relax + minimi indispensabili:**
+  - **sell_pct net-of-fees** (calcolo fees nella percentuale): brief separato — vedi memoria `project_sell_pct_net_of_fees`. ~1h sviluppo + 1 nuovo widget dashboard. Da decidere prima del deploy mainnet.
+  - **Reset mensile testnet Binance handling**: procedura per quando Binance azzera senza preavviso (memoria `feedback_check_past_sessions` rilevante). Max spiegerà domani.
+  - **Check con dati Binance** (DB ↔ `fetch_my_trades`): brief separato post osservazione 24h.
+- **🟢 [S69 SHIPPED] 24-48h observation post-deploy avg-cost completo**: bot girando su `cb21179`. Tutti i guards Strategy A simmetrici attivi. Telegram alerts attive.
+- **🟡 [S67 residuo] Brief 67a Step 5** (reconciliation gate nightly): post osservazione 24-48h con baseline pulito.
 
 ## 4. Decisioni recenti
 
-- **2026-05-09 (S69 chiusura) — Budget testnet $500 confermato (Board)**. Niente passaggio a $10K. Allocazioni invariate: BTC $200, SOL $150, BONK $150, capital_per_trade $50/$20/$25. — *why:* Board ha valutato e ha scelto continuità con paper money setup, niente vantaggio tangibile a scalare a $10K solo per allinearsi al wallet Binance preassegnato.
-- **2026-05-09 (S69) — BLOCCO 1 shipped: B+C FIFO contabile via**. 3 commit (`6335633` grid+tf, `7231db7` admin+commentary+health_check, `f11b04e` dashboard-live.ts). Tutto frontend (grid.html / tf.html / admin.html / dashboard-live.ts / live-stats.ts) e backend (commentary.py / health_check.py / telegram_notifier.py) ora avg-cost. Pannello "Reconciliation FIFO vs DB" rimosso da admin.html (audit S65 obsoleto post-S66). Health check Check 1+2 (FIFO replay) via, restano 3 check (negative holdings, cash accounting, orphan lots). Test 8/8 verdi. Astro build pulito 10 pagine. Net -555 righe cross-file. — *why:* dashboard mentiva pre-S69 (FIFO replay client-side ricostruiva una formula non più scritta dal bot post-S66 avg-cost). Coerenza totale bot ↔ dashboard ↔ Binance.
-- **2026-05-09 (S69) — Portfolio overview ridisegnata 9 card** (commit `6335633`). Layout 3+3+3: Budget · Stato attuale · Total P&L / Cash to reinvest · Deployed · Skim / Unrealized · Fees · Dust. "Stato attuale" sostituisce "Net Worth" e SOTTRAE le fees (chiude anomalia "fees not deducted in paper mode"). Coin status aggiunte stat: Avg buy / Current price / Diff%. Recent trades: aggiunta colonna Fee, "Buy@" usa avg_buy_price snapshot al sell. Parameters: rimossa intera sezione Fixed Grid + select grid_mode. — *why:* spec Board richiesta sessione per sezione (data-by-data design conversation).
-- **2026-05-09 (S69) — BLOCCO 2 parziale shipped** (commit `ad048b6`). main_old.py cancellato (era in .gitignore via `*_old*`, gemello inutile). grid_runner.py sync delle 4 colonne fixed-mode (`grid_mode`, `grid_levels`, `grid_lower`, `grid_upper`) rimosso. — *why:* preparazione a 69a, codice morto sicuro. Refactor pesante grid_bot.py (~200 righe fixed mode) + DROP COLUMN DB rinviati a 69a per coerenza con TRUNCATE+restart.
-- **2026-05-09 (S69) — Brief 69a scritto** (commit `ee2b0aa`). Deploy in finestra unica: avg-cost trading (Strategy A: trigger su avg_buy_price, sell pool a price, niente più _pct_open_positions queue) + DROP COLUMN DB (5 colonne) + apply 68b + TRUNCATE testnet baseline + restart bot vergine. Stima 10-14h sviluppo + 24h observation = ~3 giornate. — *why:* chiudere debt strutturale FIFO/fixed mode prima di go-live €100 mainnet, in finestra unica per non avere riavvi multipli del bot.
-- **2026-05-09 (S68 chiusura) — Cleanup DB Supabase shipped**. DROP `feedback` + `sentinel_logs` + `portfolio` (3 tabelle vuote/legacy). DROP view `v_portfolio_summary` + `v_reserve_totals` (orfane). DELETE 54 row `bot_config WHERE is_active=false` (TF legacy allocations). 22→19 tabelle, 2→0 view. Niente backup (Board: paper money, tabelle vuote o temporanee). — *why:* "complessità solo se valore aggiunto", riconoscimento debt strutturale Board.
-- **2026-05-09 (S68) — Pivot Board "trading minimum viable"**. Board ha formulato filosofia: "Trading minimum viable. Ogni complicazione deve dimostrare prima di esistere." Solo Grid attivo. TF/Sentinel/Sherpa stay-but-off (no codice cancellato). 3 monete (BTC + SOL + BONK). Mainnet €100 invariato. Volumi Payhip + sito + narrativa NON toccati. — *why:* Max ha riconosciuto che 67 sessioni hanno accumulato complessità (22 tabelle, 4 brain, 1627 righe in singolo file, 90 notifiche/notte). Il restart riguarda solo il trading subsystem, non l'intero progetto.
-- **2026-05-09 (S68) — Brief 68b SHIPPED locale**. `bot/strategies/` → `bot/grid/` (7 file via git mv, history preservata). 23 import statements aggiornati. Replace `'trend_follower'` → `'tf'` (61 occorrenze) e `'manual'` → `'grid'` (24 occorrenze, eccezioni preservate per stop reason Telegram). Test 8/8 verdi. Commit `39e05b7`. **NON applicato sul Mac Mini** (in attesa decisione Board, cosmetico). — *why:* preparazione standardizzazione `managed_by` + namespace coerente.
-- **2026-05-09 (S68) — Brief 68a SHIPPED**. `bot/grid/sell_pipeline.py` linea 264 + 451: guard "Strategy A no sell at loss" da `price < lot_buy_price` a `price < bot.state.avg_buy_price`. Reason string + log BLOCKED aggiornati a "avg cost". Test 8/8 verdi (incluso `test_h` nuovo). Commit `a8e91a0`, applicato su Mac Mini. — *why:* doppio standard FIFO (S57a guard) + avg-cost (S66 realized) causava sell in loss strutturali. Evidenza: BONK sell 2026-05-08 22:56 UTC realized −$0.152.
-- **2026-05-09 (S68) — Verifica testnet Binance**: wallet ha 446 asset preassegnati + ~$10K USDT (NON $500). Il "$500" è convenzione interna, Binance non lo conosce. History `fetch_my_trades` + `fetch_orders` persistente → reconciliation DB ↔ Binance fattibile. Reset mensile testnet non confermato in 60s, da verificare.
-- **2026-05-08 (S67 chiusura) — Brief 67a Step 2-4 SHIPPED** (immutato): dust prevention + ccxt set_sandbox_mode(True) + place_market_buy/sell + fee USDT canonical (CEO opzione A) + reset DB + restart $500 Grid-only.
-- **2026-05-08 (S66 chiusura) — Operation Clean Slate Step 0+1 SHIPPED** (immutato): pivot avg-cost canonico in `_execute_sell` e `_execute_percentage_sell`.
-- **2026-05-08 (S65) — Opzione 3 dashboard Total P&L only** (immutato, commit `6100caf`).
+- **2026-05-09 (S69 sera) — Strategy A simmetrico SHIPPED**: aggiunto guard "no buy above avg if holdings>0" (commit `74a13fa`) come specular del 68a "no sell below avg". Inizialmente deferred a favore della sola opzione #1 (idle_recalibrate_guard), poi Max ha deciso di shippare anche questo per chiudere completamente il loop "media in salita". Solo manual bots (managed_by="grid"); TF/tf_grid bypassano. Prima entrata libera. Test_k coprire 4 scenari. — *why:* coerenza Strategy A, niente più cost basis gonfiato in trend up persistenti.
+- **2026-05-09 (S69 sera) — IDLE recalibrate guard SHIPPED**: skip recalibrate se current_price > avg_buy_price (commit `84e46ea`). Già scattato in produzione su SOL post-restart (21.7h idle, current $92.81 > avg $92.45 → reference invariato). — *why:* analisi dei 4 scenari RECALIBRATE post-S70 deploy ha rivelato che lo Scenario 4 (lateral-up market) avrebbe causato mediamento in salita; la #1 lo blocca alla radice.
+- **2026-05-09 (S69 sera) — DROP COLUMN bot_config × 5 SHIPPED**: `grid_mode`, `grid_levels`, `grid_lower`, `grid_upper`, `reserve_floor_pct` tutti DROP. DDL eseguito tramite Supabase MCP. 4 colonne prima (commit `aa4a064`), `grid_mode` poi (commit `5b106dc`). — *why:* chiusura debt schema fixed mode + coerenza con cleanup codice grid_bot ~250 righe.
+- **2026-05-09 (S69 pomeriggio/sera) — Cleanup completo fixed mode SHIPPED**: 250+ righe via da grid_bot.py, buy_pipeline.py, sell_pipeline.py, state_manager.py, grid_runner.py. Rimosso GridLevel dataclass, lower_bound/upper_bound/levels da GridState, num_levels/range_percent/grid_mode da __init__, _create_levels logic, branch `if grid_mode == "fixed"` ovunque, wrapper _execute_buy/_execute_sell/_activate_*/restore_state_from_db. 3 test legacy (test_session10, test_multi_token, test_grid_bot) spostati in tests/legacy/. — *why:* avg-cost trading è l'unico modo runtime, fixed mode codice morto pesante e fonte potenziale di bug. Coerenza totale.
+- **2026-05-09 (S69 pomeriggio) — Rimozione `bot/grid/fifo_queue.py` SHIPPED**: -173 righe. File già non importato dopo S70 FASE 1 cleanup wrapper (commit `2763705`); rimozione fisica del file in commit `ce58554`.
+- **2026-05-09 (S69 pomeriggio) — Rewrite state_manager.py SHIPPED**: `init_percentage_state_from_db` → `init_avg_cost_state_from_db` (commit `ecb7503`). Legge holdings + avg_buy_price + realized_pnl + _pct_last_buy_price + _last_trade_time da `trades` v3 senza più FIFO queue replay. -50% righe della funzione.
+- **2026-05-09 (S69 pomeriggio) — Rimozione attributo `_pct_open_positions` SHIPPED**: tutti i callsite (grid_bot, buy_pipeline, sell_pipeline, dust_handler, grid_runner, snapshot_writer) puliti. dust_handler.py riscritto interamente per fare write-off su `state.holdings` invece che pop dalla queue (commit `3bac9ba`). -43 righe nette.
+- **2026-05-09 (S69 mattina/inizio) — brief s70 FASE 1 SHIPPED**: avg-cost trading core (commit `277f2f9`). Trigger sell su `state.avg_buy_price` (singolo decisione), sell amount = `capital_per_trade / current_price`, force-liquidate path (TF override) usa `state.holdings`. Rimosso self-heal, verify_fifo_queue, multi-sell loop, init_percentage post-trade callsite. Reason strings su "avg cost" (non lot_buy_price). Test 9/9 verdi. Deploy live su Mac Mini con git pull pre-S69 BLOCCO 1 (no DELETE Supabase, decisione Max sera).
+- **2026-05-09 (S69 sera) — Polish UI grid.html SHIPPED** (commit `cb21179`): allineamento input config field via flex+align-items:end, restructure coin-card in 4 sezioni semantiche (Price · Cash flow · Activity · Triggers), aggiunto widget "Next sell if ↑" gemello del Next buy if ↓, font ridotti per non far esplodere altezza, sostituito 🎒 con `<img src="grid-bot.svg">` (mascot SVG vero, height 1.6em + drop-shadow verde).
+- **2026-05-09 (S69) — sell_pct net-of-fees DEFERRED**: proposta Max di garantire sell_pct% NETTO post-fee (round-trip 2×FEE_RATE = 0.15%), con calcolo `sell_trigger = avg × (1 + sell_pct/100 + FEE) / (1 − FEE)`. Memoria `project_sell_pct_net_of_fees` salvata. Da implementare prima del go-live mainnet con parametrizzazione FEE_RATE (BNB discount).
+- **2026-05-09 (S69) — Budget testnet $500 confermato** (Board): invariato dal S68. Allocazioni BTC $200, SOL $150, BONK $150, capital_per_trade variabile.
 
 ## 5. Bug noti aperti
 
-- **🟢 [S69 RISOLTO parziale] Pulizia codice fixed mode**: main_old.py cancellato + grid_runner.py sync 4 colonne via. Refactor pesante grid_bot.py (~200 righe) + DROP COLUMN DB → in brief 69a.
-- **🟢 [S69 RISOLTO] FIFO replay client-side dashboard**: tutto avg-cost ovunque (grid.html / tf.html / admin.html / dashboard-live.ts / commentary.py / health_check.py / telegram_notifier.py). Pannello "Reconciliation FIFO vs DB" eliminato.
-- **🟡 [S68 NEW] Trigger sell in `bot/grid/grid_bot.py:749-752`** valuta per-lot (non avg_cost). Sell-in-loss bloccati a valle dal guard fix S68a. **Brief 69a chiude questo bug** (riscrittura trigger + rimozione _pct_open_positions queue).
-- **🟡 [S68 NEW] Strange sell BONK 22:56 in DB v3** (lot fantasma riusato): emerso in audit S69. **Brief 69a chiude per costruzione** (niente più queue, no possibilità di lot fantasma).
-- **🟡 [S68 NEW] `grid_runner.py` 1627 righe** di cui 833 in `run_grid_bot()`. Phase 2 split candidato post-go-live.
-- **🔴 [S67] `exchange_order_id=null` su sell OP/USDT** (`bot/exchange_orders.py:_normalize_order_response`): non gating, debt cosmetico. Aperto.
-- **🟡 [S67] Slippage testnet ~1% sui BONK trade**: Binance testnet con book sottile. Bot non logga `check_price`, solo `fill_price` → impossibile misurare slippage post-hoc. Reason mente con fill_price (BUSINESS_STATE §27).
-- **🟡 [S67] Bot trigger buy_pct cambia spontaneamente a restart** (`bot/grid/grid_bot.py` config_reader): probabilmente sparisce con 69a (riscrittura), da verificare post-deploy.
-- `bot/grid/grid_bot.py:758` — `# TODO 62a (Phase 2): this loop is the 60c double-call source.` (non gating, S67 dust prevention copre il caso principale)
-- `bot/grid/sell_pipeline.py:23` — `# TODO 62a (Phase 2): make _execute_percentage_sell atomic` (race audit↔log_trade)
-- `bot/grid/dust_handler.py:17` — `# TODO 62a (Phase 2): emit 'dust_lot_removed' events`
-- `bot/trend_follower/allocator.py:43` — `# TODO: move to trend_config in a future session`
-- **TF distance filter 12% fisso vs EMA20** (CEO, 2026-05-07): cross-tema Sentinel/Sherpa, S69+
-- **🔴 [S63] `speed_of_fall_accelerating` miscalibrato** + **🟡 Risk score binario** + **🔴 Opportunity score morta**: tutti su Sentinel, da ricalibrare quando ricolleghiamo (S69+)
-- **🟡 [S63] Grid polling REST 60s perde i picchi BTC sub-minuto**: mitigazione pre-mainnet → BTC interval 60s → 20s
-- **🟡 [S63] Supabase REST cap 1000 righe latente in home/dashboard pubblica**: posticipato (sito ancora in maintenance)
+- **🟢 [S69 RISOLTO]** FIFO trading logic + queue replay (state_manager + sell_pipeline + grid_bot) — sostituito da avg-cost trading puro.
+- **🟢 [S69 RISOLTO]** Codice fixed mode in `grid_bot.py` (~250 righe) — via.
+- **🟢 [S69 RISOLTO]** DROP COLUMN bot_config × 5 — schema pulito.
+- **🟢 [S69 RISOLTO]** `_pct_open_positions` attribute + dust_handler pop paths — write-off semplice.
+- **🟢 [S69 RISOLTO]** File `fifo_queue.py` — via.
+- **🟢 [S69 RISOLTO]** check_orphan_lots health check — obsoleto post-avg-cost (i 2 BONK fossili pre-S68a 2026-05-08 21:44/22:56 restano nel DB come record storico).
+- **🟢 [S69 RISOLTO]** IDLE recalibrate "media in salita" loop (Scenario 4) — guard implementato.
+- **🟢 [S69 RISOLTO]** Strategy A asimmetrica (sell guard 68a senza buy gemello) — buy guard simmetrico shipped.
+- **🔴 [S67]** `exchange_order_id=null` su sell OP/USDT (`bot/exchange_orders.py:_normalize_order_response`) — non gating, debt cosmetico. Aperto.
+- **🟡 [S67]** Slippage testnet ~1% su BONK — Binance testnet con book sottile. Bot non logga `check_price`, solo `fill_price` → impossibile misurare slippage post-hoc. Reason mente con fill_price.
+- **🟡 [S67]** Bot trigger buy_pct cambia spontaneamente a restart (`bot/grid/grid_bot.py` config_reader) — probabilmente sparisce con S69 (logica riscritta), da verificare nelle prossime 24-48h.
+- **🟡 [S69 NEW]** 2 BONK sells fossili pre-S68a con `buy_trade_id NULL` — restano in DB ma niente più check che li flagga.
+- **🟡 [S68 NEW]** `grid_runner.py` 1591 righe (di cui ~830 in `run_grid_bot()`). Phase 2 split post-go-live.
+- **TF distance filter 12% fisso vs EMA20** (CEO 2026-05-07): cross-tema Sentinel/Sherpa, post-go-live.
+- **🔴 [S63]** `speed_of_fall_accelerating` miscalibrato + **🟡 Risk score binario** + **🔴 Opportunity score morta**: Sentinel calibration, post-go-live.
+- **🟡 [S63]** Grid polling REST 60s perde i picchi BTC sub-minuto: mitigazione pre-mainnet → BTC interval 60s → 20s.
 
 ## 6. Domande aperte per CEO
 
-- ✅ **[S69 risolto] Data deploy brief 69a**: **entro oggi 2026-05-09** (Board fine giornata).
-- ✅ **[S69 risolto] Reset mensile testnet Binance**: confermato dal sito ufficiale Binance Testnet (~1/mese, no preavviso, API keys preservate dal 2020). Non bloccante per il deploy.
-- 🟡 **[S69] Reconciliation gate / 67a Step 5**: rimandato. **CEO sta preparando un nuovo brief separato** che probabilmente assorbe/sostituisce 67a Step 5 + Reconciliation Binance.
-- **[S69] Reconciliation Binance (DB ↔ `fetch_my_trades`)**: brief separato post go-live €100 mainnet (vedi sopra, in attesa del nuovo brief CEO).
-- **Budget testnet $10K vs $500**: Board valuta. Se $10K, scaling `capital_per_trade` $200/$100/$100 + `MAX_CAPITAL`.
-- **Reset mensile testnet Binance**: vale verifica formale?
-- **Phase 2 split `grid_runner.py`**: confermi parking post-go-live?
-- **Health check FIFO drift $0.28** (BONK): riclassificare da "fail" a "audit informativo" (post-S66 expected)?
-- **Recalibrate-on-restart investigation** (Apple Note CEO 2026-05-07): da indagare a freddo prossima chat
-- **Skim_pct 30% è la soglia giusta?** (Max 2026-05-08): da rivalutare con dati testnet veri
-- **BNB-discount fee** (CEO opzione A future-proof): trascurabile su €100, da risolvere prima dello scale-up
-- **Tradermonty full-repo scan** parcheggiato (memoria `project_tradermonty_full_scan`)
-- **Esposizione pubblica Validation & Control System** rimandata
-- **Reaction chart `/admin` poco leggibile in regime calmo** — fix grafico, post-restart Sentinel
+- ✅ **[S69 risolto] Brief s70 FASE 1 + FASE 2 deploy**: completato in giornata.
+- ✅ **[S69 risolto] DROP COLUMN bot_config × 5**: shipped.
+- ✅ **[S69 risolto] Strategy A simmetrico (buy guard)**: shipped.
+- 🟡 **[S69 NEW] sell_pct net-of-fees**: brief separato post-osservazione, prima del deploy mainnet.
+- 🟡 **[S69 NEW] Reset mensile testnet Binance**: procedura per detection automatica + recovery (Max spiegherà a freddo).
+- 🟡 **[S69 NEW] Reconciliation Binance** (DB ↔ `fetch_my_trades`): brief separato post osservazione 24-48h.
+- **[S65] Health check FIFO drift $0.28** (BONK): SUPERATO post-S69 (Check FIFO via).
+- **Recalibrate-on-restart investigation** (CEO 2026-05-07): probabilmente RISOLTO con la riscrittura S70 FASE 1, da verificare in 24-48h.
+- **Skim_pct 30% è la soglia giusta?** (Max 2026-05-08): da rivalutare con dati testnet veri.
+- **BNB-discount fee** (CEO opzione A future-proof): trascurabile su €100, da risolvere prima dello scale-up. **Connesso a sell_pct net-of-fees**.
+- **Tradermonty full-repo scan** parcheggiato (memoria `project_tradermonty_full_scan`).
+- **Esposizione pubblica Validation & Control System** rimandata.
+- **Reaction chart `/admin` poco leggibile in regime calmo** — fix grafico, post-restart Sentinel.
 
 ## 7. Vincoli stagionali / deadline tecniche
 
-- **Bot LIVE su Binance testnet** dal 2026-05-08 21:15 UTC (post-restart S67) + restartato 2026-05-09 09:24 UTC (post-fix 68a). PID orchestrator 96199 + 3 child grid_runner. Brain off.
-- **Go/no-go €100 LIVE**: target ~**21-24 maggio 2026** se 69a deploy entro 17-18 maggio. Slip a 24-27 se deploy 19-20.
-- **Sequenza S70**: deploy brief 69a (avg-cost trading + DROP COLUMN DB + apply 68b + TRUNCATE+restart) + 24h observation + brief 67a Step 5 reconciliation gate.
-- **Multi-macchina**: MBP (sviluppo) ↔ Mac Mini (runtime). Mac Mini su commit `a8e91a0`. MBP+GitHub su `ee2b0aa`. Disallineamento volontario fino a deploy 69a.
-- **Replay Sherpa counterfactual** parcheggiato (post-reactivation Sherpa, post go-live €100).
-- **Phase 9 V&C — Pre-Live Gates**: contabilità S66 ✅, fee USDT canonical S67 ✅, dust prevention S67 ✅, sell-in-loss guard avg_cost S68a ✅, DB schema cleanup S68 ✅, FIFO contabile via S69 ✅, avg-cost trading (deploy 69a, 🔲), reconciliation gate nightly (post-69a, 🔲), wallet reconciliation Binance settimanale (post go-live, 🔲).
+- **Bot LIVE su Binance testnet** dal restart S69 sera (2026-05-09 ~18:54 UTC) post-cleanup completo. PID orchestrator 97672 + 3 grid_runner. Brain off (ENABLE_TF/SENTINEL/SHERPA=false). Mac Mini su `cb21179`.
+- **Go/no-go €100 LIVE**: target ~**21-24 maggio 2026** confermato Board. Slip a 24-27 se osservazione 24-48h scopre regressioni.
+- **Sequenza S70+**: minimi indispensabili (sell_pct net-of-fees + reset testnet handling + reconciliation Binance) + 24-48h observation + reconciliation gate nightly. Niente nuove feature finché Grid non gira pulito.
+- **Multi-macchina**: MBP (sviluppo) ↔ Mac Mini (runtime). Tutti allineati su commit `cb21179`.
+- **Phase 9 V&C — Pre-Live Gates**: contabilità S66 ✅, fee USDT canonical S67 ✅, dust prevention S67 ✅, sell-in-loss guard avg_cost S68a ✅, DB schema cleanup S68 ✅, FIFO contabile via S69 ✅, **avg-cost trading completo S69 ✅**, **Strategy A simmetrico S69 ✅**, **IDLE recalibrate guard S69 ✅**, reconciliation gate nightly (post-S69, 🔲), wallet reconciliation Binance settimanale (post go-live, 🔲).
 
 ## 8. Cosa NON è stato fatto e perché
 
-In S69 NON è stato deployato il **brief 69a** (avg-cost trading): scritto e pronto, in attesa decisione Board sulla data deploy. Earliest 2026-05-10, latest 2026-05-15.
+In S69 NON è stato shipped **brief 67a Step 5 (reconciliation gate nightly)** — richiede baseline pulito post-deploy + 24-48h observation. Candidato S70.
 
-NON è stato shipped **brief 67a Step 5 (reconciliation gate nightly)** — sarà parte del deploy 69a o sessione separata post-69a.
+NON è stato implementato **sell_pct net-of-fees** (calcolo fee nella percentuale): proposta Max parcheggiata nella memoria `project_sell_pct_net_of_fees`. Dipende da decisione semantica (cambia significato di sell_pct lordo→netto) e da parametrizzazione FEE_RATE per BNB-discount future-proofing.
 
-NON è stato applicato il **refactor 68b sul Mac Mini**. Sarà parte del deploy 69a (richiede comunque restart bot).
+NON è stata implementata la **procedura reset mensile testnet Binance** — Max ha indicato la spiegherà a freddo prossima sessione.
 
-NON è stato fatto il refactor pesante di **fixed mode in `grid_bot.py`** (~200 righe): rimandato a 69a per coerenza con TRUNCATE+restart e DROP COLUMN DB.
+NON è stato risolto il bug **`exchange_order_id=null`** sul sell OP — debt cosmetico tracciato post-go-live.
 
-NON è stato risolto il bug **`exchange_order_id=null`** sul sell OP — debt cosmetico tracciato per post-69a.
+NON è stato fatto il **Phase 2 split di `grid_runner.py`** (~1591 righe, di cui 830 in `run_grid_bot()`). Parcheggiato post-go-live €100.
 
-NON è stato risolto il bug **`recalibrate-on-restart`**. Probabilmente sparisce con 69a (riscrittura logica), da verificare post-deploy.
+NON sono state ricollegate **TF/Sentinel/Sherpa**. Coerente con pivot Board "minimum viable, solo Grid".
 
-NON è stato verificato il **reset mensile testnet Binance**. Da fare prima del deploy 69a (per pianificare la finestra).
+NON è stato riaperto il **sito pubblico** (home + nav). Decisione CEO S65 ancora valida: aspettiamo numeri certificati post-osservazione.
 
-NON è stato shipped **Phase 2 split `grid_runner.py`**. Parcheggiato post-go-live.
-
-NON sono state ricollegate TF/Sentinel/Sherpa. Coerente con pivot Board "minimum viable, solo Grid".
-
-NON è stato riaperto il **sito pubblico** (home + nav). Decisione CEO S65 ancora valida: aspettiamo numeri certificati post-69a.
-
-NON è stato aggiornato il test `tests/test_verify_fifo_queue.py` (lascio finché `verify_fifo_queue` esiste; sparisce con 69a).
+NON è stato eseguito **DELETE Supabase baseline** pre-restart (Max sera 2026-05-09 "non fare DELETE"). Bot è ripartito sopra DB esistente con i 2 BONK fossili pre-S68a ancora dentro: niente regressione, solo record storico.
 
 ## 9. Audit esterni (sintesi)
 
 | Data | Area | Topic | Verdetto | Findings chiave | Report |
 |------|------|-------|----------|-----------------|--------|
 | 2026-05-07 | 1 | Phase 1 split grid_bot.py | APPROVED | 0 regressioni, 0 risk gates aperti | `audits/audit_report_20260507_phase1_grid_split_review.md` |
-| 2026-05-08 | 1 | Operation Clean Slate Step 0d (formula verification) | CRITICAL FINDING SHIPPED FIX | Bias `realized_pnl` +$26.97 (+29%) certificato. Root cause: queue desync per 4 cause concorrenti. Fix Step 1 chiude identità al centesimo. | `audits/2026-05-08_pre-clean-slate/formula_verification_s66.md` (gitignored) |
-| 2026-05-08 | 1 | S67 brief 67a Step 2-4 (testnet order placement) | SHIPPED + 4 BUG INTERNI | 6 buy + 1 sell live testnet. 4 bug emersi a caldo: severity 'warning' (CHECK fail), mode='paper' hardcoded, fee in raw native, ccxt sandbox config-key ignorato. Tutti fixati nella stessa sessione. | `report_for_CEO/2026-05-08_s67_fee_usdt_design_decision_report_for_ceo.md` |
-| 2026-05-08 | 1 | Pre-reset Supabase backup | COMPLETE | 22 tabelle, 51,943 righe, 22.47 MB JSONL su Mac Mini | `audits/2026-05-08_pre-reset-s67/_manifest.json` (gitignored) |
-| 2026-05-09 | 1 | S68a sell-in-loss guard fix | SHIPPED + TEST 8/8 | Doppio standard FIFO+avg-cost risolto. Test_h aggiunto. Bot Mac Mini restartato Grid-only. | `report_for_CEO/2026-05-09_s68_brief_68a_shipped_report_for_ceo.md` |
-| 2026-05-09 | 1 | S68b refactor folder + managed_by | SHIPPED LOCAL | bot/strategies/ → bot/grid/, 'trend_follower' → 'tf', 'manual' → 'grid'. NON ancora live su Mac Mini. | commit `39e05b7` |
-| 2026-05-09 | 0 | S68 audit Supabase 22 tabelle | COMPLETE + CLEANUP SHIPPED | 5 oggetti morti rimossi (3 tabelle + 2 view) + 54 row bot_config TF legacy. 22→19 tabelle, 2→0 view. | `report_for_CEO/2026-05-09_s68_chiusura_finale_report_for_ceo.md` |
-| 2026-05-09 | 1 | S69 BLOCCO 1 B+C: FIFO contabile via dashboard + commentary + health_check | SHIPPED | 5 commit, -555 righe nette cross-file. Tutto frontend + backend contabile su avg-cost canonico. Test 8/8 verdi. Astro build pulito. Pannello Reconciliation FIFO admin via, sostituito da TODO Reconciliation Binance. | commit `6335633`, `7231db7`, `f11b04e` |
-| 2026-05-09 | 1 | S69 BLOCCO 2 parziale: main_old.py + grid_runner sync fixed via | SHIPPED | -1 file, -8 righe netto grid_runner.py. Refactor pesante grid_bot.py + DROP COLUMN DB rinviati a 69a. | commit `ad048b6` |
-| 2026-05-09 | 1 | S69 BLOCCO 3.1: brief 69a avg-cost trading scritto | PENDING BOARD | 199 righe brief con scope, file:linea, sequenza deploy, test, rollback, decision log. Stima 10-14h sviluppo + 24h observation. | commit `ee2b0aa`, file `config/brief_69a_avg_cost_trading_truncate_restart.md` |
+| 2026-05-08 | 1 | Operation Clean Slate Step 0d (formula verification) | CRITICAL FINDING SHIPPED FIX | Bias `realized_pnl` +$26.97 (+29%) certificato. Fix Step 1 chiude identità al centesimo. | `audits/2026-05-08_pre-clean-slate/formula_verification_s66.md` |
+| 2026-05-08 | 1 | S67 brief 67a Step 2-4 (testnet order placement) | SHIPPED + 4 BUG INTERNI | 6 buy + 1 sell live testnet. 4 bug fixati nella stessa sessione. | `report_for_CEO/2026-05-08_s67_fee_usdt_design_decision_report_for_ceo.md` |
+| 2026-05-08 | 1 | Pre-reset Supabase backup | COMPLETE | 22 tabelle, 51,943 righe, 22.47 MB JSONL su Mac Mini | `audits/2026-05-08_pre-reset-s67/_manifest.json` |
+| 2026-05-09 | 1 | S68a sell-in-loss guard fix | SHIPPED + TEST 8/8 | Doppio standard FIFO+avg-cost risolto. Test_h aggiunto. | `report_for_CEO/2026-05-09_s68_brief_68a_shipped_report_for_ceo.md` |
+| 2026-05-09 | 1 | S68b refactor folder + managed_by | SHIPPED | bot/strategies/ → bot/grid/, 'trend_follower' → 'tf', 'manual' → 'grid'. | commit `39e05b7` |
+| 2026-05-09 | 0 | S68 audit Supabase 22 tabelle | COMPLETE + CLEANUP SHIPPED | 5 oggetti morti rimossi + 54 row bot_config TF legacy. 22→19 tabelle. | `report_for_CEO/2026-05-09_s68_chiusura_finale_report_for_ceo.md` |
+| 2026-05-09 | 1 | S69 BLOCCO 1 B+C: FIFO contabile via dashboard | SHIPPED | Tutto frontend + backend contabile su avg-cost canonico. Test 8/8 verdi. | commit `6335633`, `7231db7`, `f11b04e` |
+| 2026-05-09 | 1 | S69 brief s70 FASE 1: avg-cost trading core | SHIPPED + TEST 9/9 | Trigger sell su avg_buy_price + singolo sell capital_per_trade/price. Niente più FIFO queue nel hot path. | commit `277f2f9` |
+| 2026-05-09 | 1 | S69 brief s70 FASE 2: cleanup completo | SHIPPED + TEST 11/11 | 5 commit + DDL DROP COLUMN × 5. ~880 righe nette via. Strategy A simmetrico (buy + sell guard). IDLE recalibrate guard. fifo_queue.py via, fixed mode via, _pct_open_positions via, state_manager rewrite, dust_handler riscritto. | commit `84e46ea`, `2763705`, `f9cceaa`, `aa4a064`, `74a13fa`, `3bac9ba`, `ecb7503`, `ce58554`, `5b106dc` |
+| 2026-05-09 | 1 | S69 polish UI grid.html | SHIPPED | Config field alignment + coin-card 4 sezioni semantiche + Next sell if ↑ widget + grid-bot SVG mascot al posto di emoji. | commit `cb21179` |
