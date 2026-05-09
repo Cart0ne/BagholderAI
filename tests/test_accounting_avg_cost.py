@@ -86,7 +86,6 @@ def make_bot(capital=1000.0, capital_per_trade=50.0):
     bot.state.total_invested = 0.0
     bot.state.total_received = 0.0
     bot.state.total_fees = 0.0
-    bot._pct_open_positions = []
     bot._pct_last_buy_price = 0.0
     bot.capital_per_trade = capital_per_trade
     # Disable safety latches that would block buys/sells in tests

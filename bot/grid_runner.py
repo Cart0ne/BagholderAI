@@ -354,7 +354,7 @@ def _consume_initial_lots(reader, bot, symbol: str, price: float, notifier) -> i
     # Single aggregated buy: temporarily scale capital_per_trade so the
     # existing _execute_percentage_buy path emits ONE trade for N lots
     # worth of capital. Grid sell-per-lot semantics are preserved because
-    # the resulting position is one big lot in _pct_open_positions, and
+    # the resulting position is one big avg-cost entry on state, and
     # greed decay evaluates each lot independently against its own buy
     # price (all lots after this carry their own price).
     per_trade_before = bot.capital_per_trade
@@ -1436,25 +1436,12 @@ def _force_liquidate(bot, exchange, trade_logger, notifier, symbol: str,
     try:
         price = fetch_price(exchange, symbol)
 
-        # 39e Fix 1: cost basis = sum of (lot.amount × lot.buy_price) over
-        # the FIFO queue. Fallback to avg_buy_price × holdings only if the
-        # queue is empty (shouldn't happen for a live TF bot, but keep the
-        # safety net for fixed-mode or edge states).
-        open_lots = getattr(bot, "_pct_open_positions", None) or []
-        if open_lots:
-            lot_cost_basis = sum(
-                float(lot.get("amount", 0)) * float(lot.get("price", 0))
-                for lot in open_lots
-            )
-            # Use queue amounts as authoritative — bot.state.holdings can
-            # drift from queue sum by floating-point dust after repeated
-            # ops. The sell volume is the queue sum so the PnL math stays
-            # consistent with the cost basis.
-            sell_amount = sum(float(lot.get("amount", 0)) for lot in open_lots)
-        else:
-            avg_buy = bot.state.avg_buy_price if bot.state and bot.state.avg_buy_price else 0
-            lot_cost_basis = avg_buy * holdings
-            sell_amount = holdings
+        # Brief s70 FASE 2: avg-cost forced liquidation.
+        # cost basis = avg_buy_price × holdings. The legacy FIFO queue
+        # path è stato rimosso (no più _pct_open_positions in stato bot).
+        avg_buy = bot.state.avg_buy_price if bot.state and bot.state.avg_buy_price else 0
+        lot_cost_basis = avg_buy * holdings
+        sell_amount = holdings
 
         proceeds = price * sell_amount
         # Fees: same rate as GridBot._execute_percentage_sell — charged on
@@ -1520,10 +1507,6 @@ def _force_liquidate(bot, exchange, trade_logger, notifier, symbol: str,
             bot.state.daily_realized_pnl += realized_pnl
             bot.state.holdings = 0
             bot.state.avg_buy_price = 0
-        # Empty the FIFO queue too so any downstream read (e.g. get_status
-        # during the farewell log) sees a consistent zero state.
-        if hasattr(bot, "_pct_open_positions"):
-            bot._pct_open_positions = []
 
         pnl_emoji = "📈" if realized_pnl >= 0 else "📉"
         pnl_sign = "+" if realized_pnl >= 0 else ""

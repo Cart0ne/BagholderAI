@@ -649,7 +649,6 @@ def execute_percentage_sell(
 
     bot._daily_trade_count += 1
     bot._last_trade_time = datetime.utcnow()
-    bot._self_heal_attempted = False  # real trade happened, allow self-heal again if needed
 
     trade_pnl_pct = (realized_pnl / cost_basis * 100) if cost_basis > 0 else 0
 

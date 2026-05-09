@@ -312,11 +312,10 @@ def execute_percentage_buy(bot, price: float) -> Optional[dict]:
         bot.state.avg_buy_price = (old_avg * old_holdings + price * amount) / bot.state.holdings
 
     bot._pct_last_buy_price = price
-    bot._pct_open_positions.append({"amount": amount, "price": price})
+    # Brief s70 FASE 2: avg-cost trading — no FIFO queue to populate.
     bot._daily_trade_count += 1
     bot._last_buy_time = time.time()
     bot._last_trade_time = datetime.utcnow()
-    bot._self_heal_attempted = False  # real trade happened, allow self-heal again if needed
 
     # 51b fix (2026-05-04): reset trailing peak on every confirmed TF buy.
     # Without this, a peak from an earlier lot survives a last-shot buy at a

@@ -82,7 +82,9 @@ def write_state_snapshot(bot, symbol: str) -> None:
             "cash_available": float(status.get("available_capital") or 0),
             "unrealized_pnl": float(status.get("unrealized_pnl") or 0),
             "realized_pnl_cumulative": float(status.get("realized_pnl") or 0),
-            "open_lots_count": len(getattr(bot, "_pct_open_positions", []) or []),
+            # Brief s70 FASE 2: avg-cost trading — no more FIFO queue.
+            # Column kept for backward compat with legacy snapshots: 1 if holdings>0.
+            "open_lots_count": 1 if (bot.state and bot.state.holdings > 0) else 0,
             "pct_last_buy_price": float(getattr(bot, "_pct_last_buy_price", 0) or 0),
             "greed_tier_pct": greed_tier_pct,
             "greed_age_minutes": greed_age_minutes,

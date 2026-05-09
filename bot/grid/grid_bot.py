@@ -172,10 +172,11 @@ class GridBot:
         self.skipped_sells: list = []    # filled each cycle with insufficient-holdings skips
         self.idle_reentry_alerts: list = []  # filled each cycle when idle re-entry fires
         self._idle_logged_hour: int = -1     # last elapsed-hour mark already logged (avoids spam)
-        # Percentage mode state
+        # Percentage mode state (avg-cost trading post-S70 FASE 2)
         self._pct_last_buy_price: float = 0.0
-        self._pct_open_positions: list = []  # FIFO: [{"amount": float, "price": float}, ...]
-        self._self_heal_attempted: bool = False  # prevents repeated futile self-heal calls
+        # Brief s70 FASE 2: _pct_open_positions e _self_heal_attempted
+        # rimossi insieme al FIFO queue. Avg-cost trading consulta solo
+        # state.avg_buy_price + state.holdings nel hot path.
 
     # ------------------------------------------------------------------
     # Helpers (kept on GridBot — small + heavily used internally).
@@ -461,7 +462,7 @@ class GridBot:
                     f"[{self.symbol}] STOP-LOSS TRIGGERED: unrealized ${unrealized:.2f} "
                     f"<= threshold ${loss_threshold:.2f} "
                     f"({self.tf_stop_loss_pct:.0f}% of open value ${open_value:.2f}). "
-                    f"Liquidating all {len(self._pct_open_positions)} lots."
+                    f"Liquidating all holdings ({self.state.holdings:.6f})."
                 )
                 self._stop_loss_triggered = True
                 # 45a v2: record SL timestamp in bot_config for the TF cooldown.
@@ -486,7 +487,7 @@ class GridBot:
                         "unrealized": unrealized,
                         "threshold": loss_threshold,
                         "pct": self.tf_stop_loss_pct,
-                        "lots": len(self._pct_open_positions),
+                        "holdings": float(self.state.holdings),
                     },
                 )
 
@@ -517,7 +518,7 @@ class GridBot:
                         f"dropped {drop_from_peak_pct:.1f}% from peak {fmt_price(self._trailing_peak_price)} "
                         f"(trigger: {fmt_price(trailing_trigger)}). "
                         f"Unrealized: ${unrealized:+.2f}. "
-                        f"Liquidating all {len(self._pct_open_positions)} lots."
+                        f"Liquidating all holdings ({self.state.holdings:.6f})."
                     )
                     self._trailing_stop_triggered = True
                     # Re-use the SL cooldown clock so the TF can't immediately
@@ -550,7 +551,7 @@ class GridBot:
                             "unrealized": unrealized,
                             "activation_pct": float(self.tf_trailing_stop_activation_pct),
                             "trailing_pct": float(self.tf_trailing_stop_pct),
-                            "lots": len(self._pct_open_positions),
+                            "holdings": float(self.state.holdings),
                         },
                     )
 
@@ -574,7 +575,7 @@ class GridBot:
                     f"[{self.symbol}] TAKE-PROFIT TRIGGERED: unrealized ${unrealized:.2f} "
                     f">= threshold ${profit_threshold:.2f} "
                     f"({self.tf_take_profit_pct:.0f}% of open value ${open_value:.2f}). "
-                    f"Liquidating all {len(self._pct_open_positions)} lots."
+                    f"Liquidating all holdings ({self.state.holdings:.6f})."
                 )
                 self._take_profit_triggered = True
                 log_event(
@@ -587,7 +588,7 @@ class GridBot:
                         "unrealized": unrealized,
                         "threshold": profit_threshold,
                         "pct": self.tf_take_profit_pct,
-                        "lots": len(self._pct_open_positions),
+                        "holdings": float(self.state.holdings),
                     },
                 )
 
@@ -616,7 +617,7 @@ class GridBot:
                 logger.warning(
                     f"[{self.symbol}] PROFIT-LOCK TRIGGERED: net PnL ${net_pnl:.2f} "
                     f"({net_pnl_pct:.1f}%) >= {self.tf_profit_lock_pct:.1f}% of alloc "
-                    f"${self.capital:.2f}. Liquidating all {len(self._pct_open_positions)} lots "
+                    f"${self.capital:.2f}. Liquidating all holdings ({self.state.holdings:.6f}) "
                     f"(realized ${self.state.realized_pnl:.2f} + unrealized ${unrealized:.2f})."
                 )
                 self._profit_lock_triggered = True
@@ -647,7 +648,7 @@ class GridBot:
                         "net_pnl_pct": net_pnl_pct,
                         "threshold_pct": self.tf_profit_lock_pct,
                         "capital_allocation": self.capital,
-                        "lots": len(self._pct_open_positions),
+                        "holdings": float(self.state.holdings),
                     },
                 )
 
@@ -800,14 +801,11 @@ class GridBot:
         if not buy_cooldown_active:
             if self._pct_last_buy_price == 0:
                 if self.state.holdings > 0:
-                    # Already have positions (e.g. switched from fixed mode mid-run).
-                    # Skip the first buy and use avg_buy_price as the reference.
+                    # Brief s70 FASE 2: holdings esistenti senza ref → usa avg.
+                    # Path coperto dal boot replay (state_manager carica
+                    # holdings + avg_buy_price), ma defensive per restart
+                    # edge cases.
                     self._pct_last_buy_price = self.state.avg_buy_price
-                    if not self._pct_open_positions:
-                        self._pct_open_positions.append({
-                            "amount": self.state.holdings,
-                            "price": self.state.avg_buy_price,
-                        })
                     logger.info(
                         f"[{self.symbol}] Pct mode: existing holdings found, skipping first buy. "
                         f"Ref price set to avg buy {fmt_price(self.state.avg_buy_price)}"
