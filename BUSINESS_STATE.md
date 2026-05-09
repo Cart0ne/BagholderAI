@@ -117,12 +117,11 @@ Preview rimosse da entrambi i volumi.
 - **grid.html rebuild card-by-card (primo task S69)** — RISOLTO S69 BLOCCO 1 (commit `6335633`). Portfolio overview 9 card 3+3+3 con formule esplicite, Coin status con Avg buy/Current price/Diff%, Recent trades con colonna Fee.
 - **check_price logging in trades (parcheggiato a S69+)** — Ancora aperto. Necessario per misurare slippage testnet post-hoc (oggi reason mente con fill_price).
 
-**[S69 NEW open questions]**
+**[S69 risolte fine giornata 2026-05-09]**
 
-1. **Data deploy brief 69a** (avg-cost trading + DROP COLUMN DB + apply 68b + TRUNCATE+restart): earliest 2026-05-10, latest 2026-05-15 per non slippare go-live €100 mainnet (target 21-24 maggio).
-2. **Brief 67a Step 5 (reconciliation gate nightly)**: shipped insieme a 69a (stessa finestra) o sessione separata post-69a observation?
-3. **Reconciliation Binance (DB ↔ `fetch_my_trades`)**: brief separato post go-live €100 mainnet baseline. Sostituisce il pannello "Reconciliation FIFO vs DB" rimosso da `/admin` in S69. Stima ~3-4h.
-4. **Reset mensile testnet Binance**: verifica formale prima del deploy 69a (per pianificare la finestra)?
+1. ✅ **Data deploy brief 69a**: entro oggi 2026-05-09 (Board confermato).
+2. ✅ **Reset mensile testnet Binance**: confermato dal sito Binance Testnet (~1/mese, no preavviso, API keys preservate post-Aug 2020). Non bloccante.
+3. 🟡 **Reconciliation gate (67a Step 5) + Reconciliation Binance (DB ↔ `fetch_my_trades`)**: rimandati a **nuovo brief CEO in preparazione** che probabilmente unifica i due topic.
 
 ---
 

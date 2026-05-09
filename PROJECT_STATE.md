@@ -88,9 +88,10 @@ Comm Sentinel↔Sherpa↔Grid via Supabase only. **Mac Mini gira su commit `a8e9
 
 ## 6. Domande aperte per CEO
 
-- **🆕 [S69] Data deploy brief 69a**: earliest 2026-05-10, latest 2026-05-15 per non slippare go-live €100 mainnet (target 21-24 maggio). Decision Board.
-- **🆕 [S69] Brief 67a Step 5 (reconciliation gate nightly)**: shipped insieme a 69a (stessa finestra) o sessione separata post-69a observation?
-- **[S69] Reconciliation Binance (DB ↔ `fetch_my_trades`)**: brief separato post go-live €100 mainnet. Sostituisce il pannello "Reconciliation FIFO vs DB" rimosso da `/admin` in S69. Verifica periodica DB ↔ Binance (order ID/fill price/fee/timestamp). Stima: ~3-4h. Trigger: TRUNCATE+restart bot pulito.
+- ✅ **[S69 risolto] Data deploy brief 69a**: **entro oggi 2026-05-09** (Board fine giornata).
+- ✅ **[S69 risolto] Reset mensile testnet Binance**: confermato dal sito ufficiale Binance Testnet (~1/mese, no preavviso, API keys preservate dal 2020). Non bloccante per il deploy.
+- 🟡 **[S69] Reconciliation gate / 67a Step 5**: rimandato. **CEO sta preparando un nuovo brief separato** che probabilmente assorbe/sostituisce 67a Step 5 + Reconciliation Binance.
+- **[S69] Reconciliation Binance (DB ↔ `fetch_my_trades`)**: brief separato post go-live €100 mainnet (vedi sopra, in attesa del nuovo brief CEO).
 - **Budget testnet $10K vs $500**: Board valuta. Se $10K, scaling `capital_per_trade` $200/$100/$100 + `MAX_CAPITAL`.
 - **Reset mensile testnet Binance**: vale verifica formale?
 - **Phase 2 split `grid_runner.py`**: confermi parking post-go-live?
