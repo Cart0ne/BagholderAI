@@ -5,12 +5,10 @@
    read-only). All updates are best-effort: if a query fails we leave
    the server-rendered mock fallback in place.
 
-   Opzione A (decision_s65, 2026-05-08): Realized P&L everywhere comes
-   from trades.realized_pnl (DB SUM, what the bot actually wrote).
-   Strict-FIFO replay was diverging by ~$26 today and producing per-row
-   sign flips. FIFO consumption is retained only for openCost/openAmount
-   (unrealized + cash math) and buyAvg display. FIFO audit replay still
-   lives in /admin for internal verification. */
+   S69: tutto avg-cost (post-S66 Operation Clean Slate). Realized = DB SUM
+   di trades.realized_pnl (gia' avg-cost canonico). avg_buy_price ricostruito
+   running weighted (specchio bot/grid/buy_pipeline.py:117). Niente piu' FIFO
+   replay client-side. */
 
 import { sbFetchAll } from "./sb-paginated";
 
@@ -34,9 +32,7 @@ const sbq = async <T>(table: string, params: string): Promise<T> => {
 /* fetchAllTrades — single paginated fetch via Range header (brief 60e).
    Replaces the prior split-by-managed_by workaround. Pagination scales
    beyond the anon-role 1000-row cap (~50k trades safe). The caller gets
-   a unified array sorted ASC by created_at, ready for FIFO replay
-   (per-symbol queues never mix across bots since each symbol is owned
-   by a single managed_by value). */
+   a unified array sorted ASC by created_at, ready for avg-cost replay. */
 async function fetchAllTrades<T extends { created_at: string }>(
   selectFields: string,
 ): Promise<T[]> {
@@ -83,10 +79,9 @@ const TF_LAUNCH_ISO = "2026-04-15T00:00:00Z";   /* first TF trade — matches le
 })();
 
 /* ====================================================================
-   1. TODAY snapshot row — Grid + TF aggregato (Opzione A — decision_s65).
+   1. TODAY snapshot row — Grid + TF aggregato.
    Today P&L = SUM(realized_pnl) on sells with created_at >= UTC midnight.
-   Strict-FIFO replay removed: one source of truth = DB. Today's window
-   matches the bot's daily PnL aggregation (UTC 00→24).
+   Today's window matches the bot's daily PnL aggregation (UTC 00→24).
    ==================================================================== */
 
 type Trade = {
@@ -372,12 +367,11 @@ const COIN_COLORS: Record<string, string> = {
 const colorFor = (sym: string) => COIN_COLORS[sym] ?? "#9aa3b8";
 const shortFor = (sym: string) => sym.replace("/USDT", "");
 
-/* Per-coin breakdown helper.
-   Opzione A (decision_s65): realized P&L comes directly from
-   trades.realized_pnl (DB SUM). FIFO replay is retained ONLY to
-   compute open lots (openCost, openAmount) which feed unrealized P&L
-   and cash math — those are not affected by the strict-FIFO bias.
-   Fees come from trades.fee directly. */
+/* Per-coin breakdown helper (S69 avg-cost replay).
+   - realized = trades.realized_pnl DB SUM (post-S66 e' avg-cost canonico).
+   - avg_buy_price ricostruito running weighted (specchio bot/grid/buy_pipeline.py).
+   - openCost = avg_buy_price × holdings; reset quando holdings va a zero.
+   - fees = Σ trades.fee diretta. */
 function analyzeCoin(trades: AllTrade[]): {
   realized: number; openCost: number; openAmount: number;
   netInvested: number; fees: number;
@@ -385,40 +379,42 @@ function analyzeCoin(trades: AllTrade[]): {
   const sorted = [...trades].sort(
     (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
   );
-  const queue: { amount: number; cost: number }[] = [];
-  let realized = 0, fees = 0, netInvested = 0;
+  let holdings = 0, avgBuyPrice = 0;
+  let totalInvested = 0, totalReceived = 0;
+  let realized = 0, fees = 0;
   for (const t of sorted) {
-    const amt  = Number(t.amount || 0);
-    const cost = Number(t.cost || 0);
+    const amt   = Number(t.amount || 0);
+    const cost  = Number(t.cost || 0);
+    // price implicito da cost/amount (fill_price effettivo). trades.price
+    // non è in SELECT delle query: cost/amount lo ricava esattamente.
+    const price = amt > 0 ? cost / amt : 0;
     fees += Number(t.fee || 0);
     if (t.side === "buy") {
-      queue.push({ amount: amt, cost });
-      netInvested += cost;
+      const newHoldings = holdings + amt;
+      if (newHoldings > 0) {
+        avgBuyPrice = (avgBuyPrice * holdings + price * amt) / newHoldings;
+      }
+      holdings = newHoldings;
+      totalInvested += cost;
     } else {
-      /* Realized P&L: read what the bot actually wrote, not strict-FIFO. */
+      holdings -= amt;
+      totalReceived += cost;
       const dbPnl = Number(t.realized_pnl);
       if (Number.isFinite(dbPnl)) realized += dbPnl;
-      /* FIFO consumption is still needed to keep openCost/openAmount
-         consistent with what's left in the queue after this sell. */
-      let rem = amt;
-      while (rem > 1e-6 && queue.length > 0) {
-        const lot = queue[0];
-        if (lot.amount <= rem + 1e-6) {
-          rem -= lot.amount;
-          queue.shift();
-        } else {
-          const portion = rem / lot.amount;
-          lot.cost   -= lot.cost * portion;
-          lot.amount -= rem;
-          rem = 0;
-        }
+      // Reset avg quando si chiude del tutto (specchio sell_pipeline.py:374)
+      if (holdings <= 1e-6) {
+        holdings = 0;
+        avgBuyPrice = 0;
       }
-      netInvested -= cost;
     }
   }
-  const openAmount = queue.reduce((s, l) => s + l.amount, 0);
-  const openCost   = queue.reduce((s, l) => s + l.cost,   0);
-  return { realized, openCost, openAmount, netInvested, fees };
+  return {
+    realized,
+    openCost: avgBuyPrice * holdings,
+    openAmount: holdings,
+    netInvested: totalInvested - totalReceived,
+    fees,
+  };
 }
 
 (async () => {
@@ -458,7 +454,7 @@ function analyzeCoin(trades: AllTrade[]): {
     const tfActive = (configs ?? []).filter(c => c.is_active && tfManagedBy(c.managed_by));
     const gridActive = (configs ?? []).filter(c => c.is_active && gridManagedBy(c.managed_by));
 
-    /* Group trades by symbol for FIFO replay. */
+    /* Group trades by symbol for avg-cost replay. */
     const tradesBySym: Record<string, AllTrade[]> = {};
     for (const t of allTrades ?? []) (tradesBySym[t.symbol] ||= []).push(t);
 
@@ -473,7 +469,7 @@ function analyzeCoin(trades: AllTrade[]): {
     const tfAllTrades   = (allTrades ?? []).filter(t => tfManagedBy(t.managed_by ?? ""));
     const gridAllTrades = (allTrades ?? []).filter(t => gridManagedBy(t.managed_by ?? ""));
 
-    /* FIFO realized + fees across ALL coins of the group (active or deallocated). */
+    /* Realized + fees across ALL coins of the group (active or deallocated). */
     function realizedAndFeesAcross(trades: AllTrade[]): { realized: number; fees: number } {
       const bySym: Record<string, AllTrade[]> = {};
       for (const t of trades) (bySym[t.symbol] ||= []).push(t);
@@ -630,12 +626,11 @@ function analyzeCoin(trades: AllTrade[]): {
 })();
 
 /* ====================================================================
-   4. § 4 RECENT ACTIVITY — last N trades, FIFO-annotated for sells.
-   Same pattern as legacy dashboard.html renderRecentTrades:
-   - Replay all trades chronologically per symbol with a FIFO buy queue
-   - For each sell, compute the average buy price of the consumed lots
-     (so the user sees "I bought at $X, sold at $Y, P&L = (Y-X) × amount")
-   - Render the most recent N (mixed Grid + TF) with bot tag color-coded.
+   4. § 4 RECENT ACTIVITY — last N trades.
+   S69 avg-cost: per ogni sell mostriamo l'avg_buy_price snapshot al
+   momento del sell (running weighted average sui buy precedenti). P&L
+   per-row letto direttamente da trades.realized_pnl (avg-cost canonico
+   post-S66). Render delle ultime N mixed Grid + TF con bot tag color-coded.
    ==================================================================== */
 
 const RECENT_TRADES_LIMIT = 6;
@@ -643,11 +638,11 @@ const RECENT_TRADES_LIMIT = 6;
 (async () => {
   try {
     /* Need full history (not just the recent rows) because
-       annotateBuyAvg replays FIFO from the first buy to compute the
-       consumed lot's avg buy price. fetchAllTrades paginates via
-       Range header to bypass the anon-role 1000-row cap. */
+       annotateBuyAvg replays avg-cost from the first buy to compute the
+       avg_buy snapshot at each sell. fetchAllTrades paginates via Range
+       header to bypass the anon-role 1000-row cap. */
     const trades = await fetchAllTrades<AllTrade>(
-      "symbol,side,amount,price,cost,realized_pnl,created_at,managed_by",
+      "symbol,side,amount,cost,realized_pnl,created_at,managed_by",
     );
     if (!trades || !trades.length) return;
 
@@ -659,11 +654,8 @@ const RECENT_TRADES_LIMIT = 6;
       t.managed_by === "trend_follower" || t.managed_by === "tf_grid",
     );
 
-    /* Per-row P&L = trades.realized_pnl (DB, what the bot actually
-       wrote). Opzione A — decision_s65. buyAvg (avg buy price of
-       consumed lots) is informational only and still uses FIFO
-       consumption since strict-FIFO and bot-FIFO disagree only on the
-       choice of lot, not on the consumed amount. */
+    /* Per-row P&L = trades.realized_pnl (DB SUM, avg-cost canonico).
+       buyAvg = avg_buy_price snapshot al momento del sell. */
     type Annot = {
       buyAvg: Map<AllTrade, number>;
       pnl:    Map<AllTrade, number>;
@@ -674,31 +666,28 @@ const RECENT_TRADES_LIMIT = 6;
       const buyAvg = new Map<AllTrade, number>();
       const pnl    = new Map<AllTrade, number>();
       for (const sym of Object.keys(bySym)) {
-        const queue: { amount: number; price: number }[] = [];
+        // Avg-cost replay per simbolo (specchio buy_pipeline.py:117).
+        let holdings = 0, avgBuyPrice = 0;
         for (const t of bySym[sym]) {
-          const amt   = Number(t.amount || 0);
-          const price = Number(t.price  || 0);
+          const amt  = Number(t.amount || 0);
+          const cost = Number(t.cost || 0);
+          const price = amt > 0 ? cost / amt : 0;
           if (t.side === "buy") {
-            queue.push({ amount: amt, price });
+            const newHoldings = holdings + amt;
+            if (newHoldings > 0) {
+              avgBuyPrice = (avgBuyPrice * holdings + price * amt) / newHoldings;
+            }
+            holdings = newHoldings;
           } else {
+            // Snapshot avg-cost al momento del sell
+            if (avgBuyPrice > 0) buyAvg.set(t, avgBuyPrice);
             const dbPnl = Number(t.realized_pnl);
             if (Number.isFinite(dbPnl)) pnl.set(t, dbPnl);
-            let rem = amt, priceCost = 0, consumed = 0;
-            while (rem > 1e-6 && queue.length > 0) {
-              const lot = queue[0];
-              if (lot.amount <= rem + 1e-6) {
-                priceCost += lot.amount * lot.price;
-                consumed  += lot.amount;
-                rem       -= lot.amount;
-                queue.shift();
-              } else {
-                priceCost += rem * lot.price;
-                consumed  += rem;
-                lot.amount -= rem;
-                rem = 0;
-              }
+            holdings -= amt;
+            if (holdings <= 1e-6) {
+              holdings = 0;
+              avgBuyPrice = 0;
             }
-            if (consumed > 0) buyAvg.set(t, priceCost / consumed);
           }
         }
       }
@@ -924,7 +913,7 @@ function renderGridNatives(
 
 /* ====================================================================
    5. § 3 PERFORMANCE — charts (cumulative line + weekly stacked bars).
-   Approach mirrors legacy /web/dashboard.html (FIFO realized, MTM via
+   Approach mirrors legacy /web/dashboard.html (avg-cost realized, MTM via
    daily_pnl.total_value + reconstructed TF) with two changes:
      - explicit managed_by=eq.grid filter on daily_pnl (legacy omitted it,
        which would silently break if the bot ever wrote TF snapshots)
