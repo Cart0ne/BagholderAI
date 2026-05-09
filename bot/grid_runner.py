@@ -152,16 +152,8 @@ def _sync_config_to_bot(reader: "SupabaseConfigReader", bot: "GridBot", symbol: 
         bot.sell_pct = float(sb_cfg["sell_pct"])
     if "capital_per_trade" in sb_cfg and sb_cfg["capital_per_trade"] is not None:
         bot.capital_per_trade = float(sb_cfg["capital_per_trade"])
-    if "grid_mode" in sb_cfg and sb_cfg["grid_mode"] is not None:
-        new_mode = sb_cfg["grid_mode"]
-        if new_mode != bot.grid_mode:
-            logger.info(f"[{symbol}] Grid mode changed: {bot.grid_mode} → {new_mode}")
-            bot.grid_mode = new_mode
-            if new_mode == "percentage":
-                bot.init_avg_cost_state_from_db()
-            logger.info(f"[{symbol}] Strategy re-initialized for {new_mode} mode")
-        else:
-            bot.grid_mode = new_mode
+    # Brief s70 FASE 2: grid_mode rimosso dallo schema bot_config.
+    # Avg-cost only — niente più switching dinamico fixed↔percentage.
     if "skim_pct" in sb_cfg and sb_cfg["skim_pct"] is not None:
         bot.skim_pct = float(sb_cfg["skim_pct"])
     if "idle_reentry_hours" in sb_cfg and sb_cfg["idle_reentry_hours"] is not None:
@@ -436,9 +428,9 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
         sb_cfg = config_reader.get_config(symbol)
         if sb_cfg:
             # Override local config with Supabase values
-            # S69: rimosso sync di grid_mode/grid_levels/grid_lower/grid_upper —
-            # fixed mode è codice morto (tutti i bot_config hanno grid_mode='percentage').
-            # Refactor completo + DROP COLUMN DB rinviato a BLOCCO 3 (TRUNCATE+restart).
+            # Brief s70 FASE 2: tutte le colonne fixed-mode (grid_mode +
+            # grid_levels/lower/upper + reserve_floor_pct) DROPPED dal DB.
+            # Avg-cost only.
             if sb_cfg.get("capital_allocation") is not None:
                 cfg.capital = float(sb_cfg["capital_allocation"])
             if sb_cfg.get("capital_per_trade") is not None:
@@ -459,15 +451,8 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
     logger.info(f"Mode: {'PAPER' if TradingMode.is_paper() else 'LIVE'}")
     logger.info(f"Symbol: {cfg.symbol}")
     logger.info(f"Capital: ${cfg.capital}")
-    logger.info(f"Levels: {cfg.num_levels}")
-    logger.info(f"Range: {cfg.grid_range_pct * 100:.1f}%")
-    logger.info(f"Grid mode: {cfg.grid_mode}")
-    if cfg.grid_mode == "percentage":
-        logger.info(f"Capital per trade: ${cfg.capital_per_trade}")
-        logger.info(f"Buy pct: {cfg.buy_pct}% / Sell pct: {cfg.sell_pct}%")
-    else:
-        per_level = cfg.capital / max(cfg.num_levels // 2, 1)
-        logger.info(f"Capital per level: ${per_level:.2f} (={cfg.capital} / {cfg.num_levels // 2} buy levels)")
+    logger.info(f"Capital per trade: ${cfg.capital_per_trade}")
+    logger.info(f"Buy pct: {cfg.buy_pct}% / Sell pct: {cfg.sell_pct}%")
     logger.info(f"Check interval: {cfg.check_interval_seconds}s")
     logger.info(f"Buy cooldown: {cfg.buy_cooldown_seconds}s")
     logger.info("=" * 50)
@@ -597,8 +582,6 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
         symbol=cfg.symbol,
         strategy=STRATEGY,
         capital=cfg.capital,
-        num_levels=cfg.num_levels,
-        range_percent=cfg.grid_range_pct,
         # 67a: read the trading mode dynamically. Hardcoding "paper" caused
         # all live testnet trades to be tagged as paper in the DB, breaking
         # downstream filters (dashboards, reconciliation, audit). The CHECK
@@ -607,7 +590,6 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
         mode=TradingMode.MODE,
         buy_cooldown_seconds=cfg.buy_cooldown_seconds,
         min_profit_pct=cfg.min_profit_pct,
-        grid_mode=cfg.grid_mode,
         buy_pct=cfg.buy_pct,
         sell_pct=cfg.sell_pct,
         capital_per_trade=cfg.capital_per_trade,
@@ -654,42 +636,28 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
         logger.warning(f"[{cfg.symbol}] Could not load exchange filters: {e}")
 
     bot.setup_grid(price)
-    if cfg.grid_mode == "percentage":
-        # Brief s70 FASE 1: boot replay populates state.holdings +
-        # state.avg_buy_price from canonical avg-cost. The FIFO queue
-        # field is also touched by the legacy replay but no longer
-        # consulted in the hot path (avg-cost trading).
-        bot.init_avg_cost_state_from_db()
-    else:
-        bot.restore_state_from_db()
+    # Brief s70 FASE 2: avg-cost only. Boot replay popola state.holdings
+    # + state.avg_buy_price + _pct_last_buy_price + _last_trade_time.
+    bot.init_avg_cost_state_from_db()
 
     # Print initial grid
-    if cfg.grid_mode == "percentage":
-        logger.info("Grid triggers (percentage mode):")
-        ref = bot._pct_last_buy_price
-        if ref:
-            buy_trigger = ref * (1 - bot.buy_pct / 100)
-            logger.info(f"  Buy trigger:    {fmt_price(buy_trigger)}  (ref {fmt_price(ref)} -{bot.buy_pct}%)")
-        else:
-            logger.info(f"  Buy trigger:    immediate  (no reference — first entry)")
-        if bot.state.holdings > 0 and bot.state.avg_buy_price > 0:
-            sell_trigger = bot.state.avg_buy_price * (1 + bot.sell_pct / 100)
-            logger.info(
-                f"  Sell trigger:   {fmt_price(sell_trigger)}  "
-                f"(avg cost {fmt_price(bot.state.avg_buy_price)} +{bot.sell_pct}%, "
-                f"holdings {bot.state.holdings:.6f})"
-            )
-        else:
-            logger.info(f"  Holdings:       none")
-        logger.info(f"  Current price:  {fmt_price(price)}")
+    logger.info("Grid triggers (avg-cost mode):")
+    ref = bot._pct_last_buy_price
+    if ref:
+        buy_trigger = ref * (1 - bot.buy_pct / 100)
+        logger.info(f"  Buy trigger:    {fmt_price(buy_trigger)}  (ref {fmt_price(ref)} -{bot.buy_pct}%)")
     else:
-        logger.info("Grid levels (fixed mode):")
-        for level in bot.state.levels:
-            marker = "BUY ↓" if level.side == "buy" else "SELL ↑"
-            base = cfg.symbol.split("/")[0] if "/" in cfg.symbol else cfg.symbol
-            amount_str = f" ({level.order_amount:.6f} {base})" if level.order_amount > 0 else ""
-            logger.info(f"  {fmt_price(level.price):>14}  {marker}{amount_str}")
-        logger.info(f"  Current price:  {fmt_price(price)}")
+        logger.info(f"  Buy trigger:    immediate  (no reference — first entry)")
+    if bot.state.holdings > 0 and bot.state.avg_buy_price > 0:
+        sell_trigger = bot.state.avg_buy_price * (1 + bot.sell_pct / 100)
+        logger.info(
+            f"  Sell trigger:   {fmt_price(sell_trigger)}  "
+            f"(avg cost {fmt_price(bot.state.avg_buy_price)} +{bot.sell_pct}%, "
+            f"holdings {bot.state.holdings:.6f})"
+        )
+    else:
+        logger.info(f"  Holdings:       none")
+    logger.info(f"  Current price:  {fmt_price(price)}")
 
     # Per-bot start notification suppressed: the orchestrator's single
     # "🚀 Orchestrator started" summary is enough — less Telegram noise.

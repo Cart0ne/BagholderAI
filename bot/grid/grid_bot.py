@@ -36,24 +36,15 @@ logger = logging.getLogger("bagholderai.grid")
 
 
 @dataclass
-class GridLevel:
-    """A single level in the grid."""
-    price: float
-    side: str  # "buy" or "sell"
-    filled: bool = False
-    filled_at: Optional[float] = None  # timestamp when filled
-    order_amount: float = 0.0  # amount in base currency (e.g., BTC)
-
-
-@dataclass
 class GridState:
-    """Current state of the grid bot for one symbol."""
+    """Current state of the grid bot for one symbol (avg-cost mode).
+
+    Brief s70 FASE 2: rimossi i campi fixed-mode (lower_bound, upper_bound,
+    levels). Avg-cost trading non ha più una griglia di livelli prefissati.
+    """
     symbol: str
     strategy: str  # "A" or "B"
     center_price: float
-    lower_bound: float
-    upper_bound: float
-    levels: list = field(default_factory=list)
     total_invested: float = 0.0  # total USDT spent on buys
     total_received: float = 0.0  # total USDT received from sells
     total_fees: float = 0.0
@@ -94,12 +85,9 @@ class GridBot:
         symbol: str = "BTC/USDT",
         strategy: str = "A",
         capital: float = 100.0,  # USDT allocated to this grid
-        num_levels: int = 10,
-        range_percent: float = 0.04,  # 4% range (2% above and below)
         mode: str = "paper",
         buy_cooldown_seconds: int = 0,  # Task 5: min seconds between buys
         min_profit_pct: float = 0.0,    # Task 10: min gross margin % to allow a sell (e.g. 1.0 = 1%)
-        grid_mode: str = "fixed",       # "fixed" or "percentage"
         buy_pct: float = 0.0,           # % drop from last buy to trigger next buy
         sell_pct: float = 0.0,          # % rise from avg buy to trigger sell
         capital_per_trade: float = 0.0, # USDT to spend per buy in percentage mode
@@ -126,12 +114,9 @@ class GridBot:
         self.symbol = symbol
         self.strategy = strategy
         self.capital = capital
-        self.num_levels = num_levels
-        self.range_percent = range_percent
         self.mode = mode
         self.buy_cooldown_seconds = buy_cooldown_seconds
         self.min_profit_pct = min_profit_pct
-        self.grid_mode = grid_mode
         self.buy_pct = buy_pct
         self.sell_pct = sell_pct
         self.capital_per_trade = capital_per_trade
@@ -228,60 +213,20 @@ class GridBot:
         existing holdings across the new sell levels. Buy level sizes
         are calculated from available_capital (Task 7), not total capital.
         """
-        # Save old accounting before overwriting state
+        # Brief s70 FASE 2: avg-cost mode setup. Niente più creazione di
+        # GridLevel pre-fissati; il bot prende decisioni guardando solo
+        # state.avg_buy_price + state.holdings + _pct_last_buy_price.
         old_state = self.state
-
-        # Task 7: use available capital on reset, full capital on first setup
         if old_state is not None:
             available_capital = max(0.0, self.capital - old_state.total_invested + old_state.total_received)
         else:
             available_capital = self.capital
 
-        half_range = current_price * (self.range_percent / 2)
-        lower = current_price - half_range
-        upper = current_price + half_range
-
-        # Calculate step size between levels
-        step = (upper - lower) / (self.num_levels - 1)
-
-        # Determine rounding precision based on price
         decimals = self._price_decimals(current_price)
-
-        # Capital per level (only buy levels use capital)
-        num_buy_levels = self.num_levels // 2
-        capital_per_level = available_capital / num_buy_levels
-
-        levels = []
-        for i in range(self.num_levels):
-            level_price = lower + (step * i)
-
-            if level_price < current_price:
-                # Buy level — below current price
-                amount = capital_per_level / level_price
-                if self._exchange_filters:
-                    from utils.exchange_filters import round_to_step
-                    amount = round_to_step(amount, self._exchange_filters["lot_step_size"])
-                levels.append(GridLevel(
-                    price=round(level_price, decimals),
-                    side="buy",
-                    order_amount=round(amount, 8),
-                ))
-            else:
-                # Sell level — above current price
-                # Sell levels start empty (nothing to sell until we buy)
-                levels.append(GridLevel(
-                    price=round(level_price, decimals),
-                    side="sell",
-                    order_amount=0.0,
-                ))
-
         self.state = GridState(
             symbol=self.symbol,
             strategy=self.strategy,
             center_price=round(current_price, decimals),
-            lower_bound=round(lower, decimals),
-            upper_bound=round(upper, decimals),
-            levels=levels,
             last_price=current_price,
             created_at=datetime.utcnow().isoformat(),
         )
@@ -297,41 +242,22 @@ class GridBot:
             self.state.daily_realized_pnl = old_state.daily_realized_pnl
             self.state.trades_today = old_state.trades_today
 
-            # Distribute existing holdings across sell levels
-            if self.state.holdings > 0:
-                sell_levels = [l for l in levels if l.side == "sell"]
-                if sell_levels:
-                    amount_per_level = self.state.holdings / len(sell_levels)
-                    for sl in sell_levels:
-                        sl.order_amount = round(amount_per_level, 8)
-
         is_reset = "RESET" if old_state is not None else "NEW"
-        if self.grid_mode == "percentage":
-            buy_trigger = current_price * (1 - self.buy_pct / 100)
-            sell_trigger = current_price * (1 + self.sell_pct / 100)
-            range_str = (
-                f"Range: {fmt_price(buy_trigger)} (-{self.buy_pct}%) - "
-                f"{fmt_price(sell_trigger)} (+{self.sell_pct}%)"
-            )
-        else:
-            range_str = f"Range Fixed: {fmt_price(lower)} - {fmt_price(upper)}"
+        buy_trigger = current_price * (1 - self.buy_pct / 100)
+        sell_trigger = current_price * (1 + self.sell_pct / 100)
         logger.info(
             f"Grid {is_reset}: {self.symbol} | "
             f"Center: {fmt_price(current_price)} | "
-            f"{range_str} | "
-            f"Levels: {self.num_levels} | "
+            f"Range: {fmt_price(buy_trigger)} (-{self.buy_pct}%) - "
+            f"{fmt_price(sell_trigger)} (+{self.sell_pct}%) | "
             f"Available capital: ${available_capital:.2f}"
         )
 
         return self.state
 
     # ------------------------------------------------------------------
-    # State restoration — wrappers around state_manager.
+    # State restoration — wrapper around state_manager.
     # ------------------------------------------------------------------
-
-    def restore_state_from_db(self):
-        """v1 fixed-mode position restore. Delegates to state_manager."""
-        return state_manager.restore_state_from_db(self)
 
     def init_avg_cost_state_from_db(self):
         """v3 avg-cost replay from DB. Delegates to state_manager.
@@ -356,66 +282,10 @@ class GridBot:
         if not self.state:
             raise RuntimeError("Grid not initialized. Call setup_grid() first.")
 
-        if self.grid_mode == "percentage":
-            return self._check_percentage_and_execute(current_price)
-
-        # Reset daily counters if new day
-        today = datetime.utcnow().date()
-        if today != self._daily_date:
-            self._daily_trade_count = 0
-            self._daily_date = today
-        if today != self._daily_pnl_date:
-            self.state.daily_realized_pnl = 0.0
-            self._daily_pnl_date = today
-
-        trades = []
-        self.skipped_buys = []
-        self.skipped_sells = []
-        self.state.last_price = current_price
-
-        # Task 5: check if buy cooldown is active
-        now = time.time()
-        buy_cooldown_active = (
-            self.buy_cooldown_seconds > 0
-            and (now - self._last_buy_time) < self.buy_cooldown_seconds
-        )
-        if buy_cooldown_active:
-            remaining = self.buy_cooldown_seconds - (now - self._last_buy_time)
-            logger.debug(f"Buy cooldown active, {remaining:.0f}s remaining. Skipping buy levels.")
-
-        for level in self.state.levels:
-            if level.filled:
-                continue
-
-            # Check daily operation limit (hardcoded rule)
-            if self._daily_trade_count >= 50:
-                logger.warning("Daily operation limit reached (50). Stopping.")
-                break
-
-            if level.side == "buy" and current_price <= level.price:
-                if buy_cooldown_active:
-                    continue  # skip all buys while cooldown is active
-                trade = self._execute_buy(level, current_price)
-                if trade:
-                    trades.append(trade)
-                    buy_cooldown_active = True  # block further buys this cycle regardless of cooldown setting
-
-            elif level.side == "sell" and current_price >= level.price:
-                if self.state.holdings > 0:
-                    trade = self._execute_sell(level, current_price)
-                    if trade:
-                        trades.append(trade)
-
-        return trades
-
-    def _check_percentage_and_execute(self, current_price: float) -> list:
-        """
-        Percentage-based buy/sell logic (grid_mode = 'percentage').
-
-        BUY:  price dropped buy_pct% below last buy price → buy capital_per_trade USDT
-              If no previous buys, buy immediately to establish reference.
-        SELL: price rose sell_pct% above avg buy price → sell oldest open lot (FIFO).
-        """
+        # Brief s70 FASE 2: avg-cost trading only (fixed-mode rimosso).
+        # BUY:  price dropped buy_pct% below last buy price → buy capital_per_trade USDT
+        #       Se nessun buy precedente, primo buy immediato per stabilire il reference.
+        # SELL: price rose sell_pct% above avg_buy_price → sell capital_per_trade / price.
         today = datetime.utcnow().date()
         if today != self._daily_date:
             self._daily_trade_count = 0
@@ -927,14 +797,12 @@ class GridBot:
     # Kept as methods so existing callers (grid_runner, tests) work unchanged.
     # ------------------------------------------------------------------
 
-    def _execute_buy(self, level: GridLevel, price: float) -> Optional[dict]:
-        return buy_pipeline.execute_buy(self, level, price)
+    # Brief s70 FASE 2: rimossi i wrapper fixed-mode (_execute_buy /
+    # _execute_sell / _activate_sell_level / _activate_buy_level).
+    # Avg-cost trading usa solo execute_percentage_buy / sell.
 
     def _execute_percentage_buy(self, price: float) -> Optional[dict]:
         return buy_pipeline.execute_percentage_buy(self, price)
-
-    def _execute_sell(self, level: GridLevel, price: float) -> Optional[dict]:
-        return sell_pipeline.execute_sell(self, level, price)
 
     def _execute_percentage_sell(
         self,
@@ -945,12 +813,6 @@ class GridBot:
         return sell_pipeline.execute_percentage_sell(
             self, price, sell_amount=sell_amount, force_all=force_all
         )
-
-    def _activate_sell_level(self, buy_level: GridLevel, amount: float):
-        return buy_pipeline.activate_sell_level(self, buy_level, amount)
-
-    def _activate_buy_level(self, sell_level: GridLevel):
-        return sell_pipeline.activate_buy_level(self, sell_level)
 
     def evaluate_gain_saturation(self, current_price: float, trigger_source: str) -> bool:
         return sell_pipeline.evaluate_gain_saturation(self, current_price, trigger_source)
@@ -963,17 +825,19 @@ class GridBot:
     # ------------------------------------------------------------------
 
     def get_status(self) -> dict:
-        """Return current grid status for dashboard/Telegram."""
+        """Return current grid status for dashboard/Telegram (avg-cost mode)."""
         if not self.state:
             return {"status": "not_initialized"}
 
-        filled_buys = sum(1 for l in self.state.levels if l.side == "buy" and l.filled)
-        filled_sells = sum(1 for l in self.state.levels if l.side == "sell" and l.filled)
-        active_buys = sum(1 for l in self.state.levels if l.side == "buy" and not l.filled)
-        active_sells = sum(1 for l in self.state.levels if l.side == "sell" and not l.filled and l.order_amount > 0)
-
         # available_capital = allocated - invested + received - reserve
         available_capital = self._available_cash()
+        decimals = self._price_decimals(self.state.center_price)
+        ref = self._pct_last_buy_price or self.state.avg_buy_price or self.state.last_price
+        buy_trigger = ref * (1 - self.buy_pct / 100) if ref else 0
+        sell_trigger = (
+            self.state.avg_buy_price * (1 + self.sell_pct / 100)
+            if self.state.avg_buy_price > 0 else 0
+        )
 
         return {
             "symbol": self.symbol,
@@ -981,21 +845,14 @@ class GridBot:
             "mode": self.mode,
             "center_price": self.state.center_price,
             "range": (
-                f"${self.state.last_price * (1 - self.buy_pct / 100):.{self._price_decimals(self.state.center_price)}f} (-{self.buy_pct}%) - "
-                f"${self.state.last_price * (1 + self.sell_pct / 100):.{self._price_decimals(self.state.center_price)}f} (+{self.sell_pct}%)"
-                if self.grid_mode == "percentage" else
-                f"${self.state.lower_bound:.{self._price_decimals(self.state.center_price)}f} - ${self.state.upper_bound:.{self._price_decimals(self.state.center_price)}f}"
+                f"${buy_trigger:.{decimals}f} (-{self.buy_pct}% from last buy) - "
+                f"${sell_trigger:.{decimals}f} (+{self.sell_pct}% above avg)"
             ),
             "last_price": self.state.last_price,
-            "levels": {
-                "total": self.num_levels,
-                "active_buys": active_buys,
-                "active_sells": active_sells,
-                "filled_buys": filled_buys,
-                "filled_sells": filled_sells,
-            },
             "holdings": self.state.holdings,
             "avg_buy_price": self.state.avg_buy_price,
+            "buy_trigger": buy_trigger,
+            "sell_trigger": sell_trigger,
             "capital": self.capital,
             "available_capital": available_capital,
             "invested": self.state.total_invested,
@@ -1007,19 +864,5 @@ class GridBot:
         }
 
     def should_reset_grid(self, current_price: float) -> bool:
-        """
-        Check if the price has moved too far from the grid center.
-        If price is outside the grid range, we should create a new grid.
-        In percentage mode there is no fixed range, so never reset.
-        """
-        if not self.state:
-            return True
-
-        if self.grid_mode == "percentage":
-            return False
-
-        margin = (self.state.upper_bound - self.state.lower_bound) * 0.1
-        return (
-            current_price < self.state.lower_bound - margin
-            or current_price > self.state.upper_bound + margin
-        )
+        """Brief s70 FASE 2: avg-cost mode has no fixed range, never reset."""
+        return False

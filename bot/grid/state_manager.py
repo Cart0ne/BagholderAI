@@ -1,14 +1,12 @@
 """
 BagHolderAI - State manager (Phase 1 split from grid_bot.py).
 
-Boot-time state restoration from DB:
-- restore_state_from_db: fixed-mode legacy path (v1).
-- init_avg_cost_state_from_db: percentage-mode avg-cost replay (v3).
+Boot-time state restoration from DB.
 
-Brief s70 FASE 2 (2026-05-09): the legacy FIFO queue replay has been
-removed. Avg-cost trading consults only state.avg_buy_price and
-state.holdings; the queue was no longer driving any trade decision
-post-S70 FASE 1.
+Brief s70 FASE 2 (2026-05-09): la legacy FIFO queue replay è stata
+rimossa, e la legacy `restore_state_from_db` (fixed-mode v1) è stata
+rimossa insieme al cleanup completo del fixed-mode (vedi commit 9).
+Avg-cost trading consulta solo state.avg_buy_price e state.holdings.
 """
 
 import logging
@@ -16,40 +14,6 @@ from datetime import datetime, timezone
 from utils.formatting import fmt_price
 
 logger = logging.getLogger("bagholderai.grid")
-
-
-def restore_state_from_db(bot):
-    """
-    Restore holdings, avg_buy_price, and P&L from historical trades in DB.
-    Call after setup_grid() on startup to recover v1 positions.
-    """
-    if not bot.trade_logger or not bot.state:
-        return
-
-    pos = bot.trade_logger.get_open_position(bot.symbol)
-    if pos["holdings"] <= 0:
-        logger.info(f"No open position found in DB for {bot.symbol}.")
-        return
-
-    bot.state.holdings = pos["holdings"]
-    bot.state.avg_buy_price = pos["avg_buy_price"]
-    bot.state.realized_pnl = pos["realized_pnl"]
-    bot.state.total_fees = pos["total_fees"]
-    bot.state.total_invested = pos["total_invested"]
-    bot.state.total_received = pos["total_received"]
-
-    # Distribute recovered holdings across sell levels
-    sell_levels = [l for l in bot.state.levels if l.side == "sell"]
-    if sell_levels:
-        amount_per_level = bot.state.holdings / len(sell_levels)
-        for sl in sell_levels:
-            sl.order_amount = round(amount_per_level, 8)
-
-    logger.info(
-        f"Restored from DB: {pos['holdings']:.6f} {bot.symbol} "
-        f"@ avg {fmt_price(pos['avg_buy_price'])} | "
-        f"Realized P&L: ${pos['realized_pnl']:.4f}"
-    )
 
 
 def init_avg_cost_state_from_db(bot):
