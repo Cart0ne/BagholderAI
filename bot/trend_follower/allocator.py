@@ -1181,11 +1181,8 @@ def apply_allocations(
                 "buy_pct": buy_pct,
                 "sell_pct": sell_pct,
                 "grid_mode": "percentage",
-                # grid_levels / grid_lower / grid_upper are NOT NULL in the DB
-                # but unused in percentage mode — set placeholders so INSERT succeeds.
-                "grid_levels": 10,
-                "grid_lower": 0,
-                "grid_upper": 0,
+                # Brief s70 FASE 2: grid_levels/grid_lower/grid_upper DROPPED
+                # from bot_config DDL. Allocator no longer writes these fields.
                 # TF does not want a min-profit gate (sell_pct is the sole
                 # sell threshold for this strategy). Force 0 explicitly so
                 # the behavior is independent of the bot_config column default.

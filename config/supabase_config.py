@@ -20,8 +20,12 @@ CONFIG_REFRESH_INTERVAL = 300  # seconds between config refreshes
 
 # Fields to read from bot_config
 _CONFIG_FIELDS = (
-    "symbol,capital_allocation,grid_levels,grid_lower,grid_upper,"
-    "profit_target_pct,reserve_floor_pct,capital_per_trade,"
+    # Brief s70 FASE 2 (2026-05-09): grid_levels, grid_lower, grid_upper,
+    # reserve_floor_pct DROPPED from bot_config schema. grid_mode retained
+    # because the fixed-mode cleanup (~200 righe in grid_bot.py) is
+    # deferred to S71+.
+    "symbol,capital_allocation,"
+    "profit_target_pct,capital_per_trade,"
     "is_active,buy_pct,sell_pct,grid_mode,skim_pct,idle_reentry_hours,"
     "pending_liquidation,managed_by,stop_buy_drawdown_pct,"
     # 42a: multi-lot entry + greed decay anchor
