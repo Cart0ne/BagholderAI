@@ -42,7 +42,7 @@ class MockPnLTracker:
 
 
 def make_bot():
-    from bot.strategies.grid_bot import GridBot
+    from bot.grid.grid_bot import GridBot
     bot = GridBot(
         exchange=None,
         trade_logger=MockTradeLogger(),

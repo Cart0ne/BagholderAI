@@ -134,7 +134,7 @@ def test_buy_cooldown():
     print("TEST 3: Buy cooldown")
     print("=" * 60)
 
-    from bot.strategies.grid_bot import GridBot
+    from bot.grid.grid_bot import GridBot
 
     mock_logger = MockTradeLogger()
     bot = GridBot(
@@ -182,7 +182,7 @@ def test_grid_reset_available_capital():
     print("TEST 4: Grid reset uses available_capital")
     print("=" * 60)
 
-    from bot.strategies.grid_bot import GridBot
+    from bot.grid.grid_bot import GridBot
 
     capital = 100.0
     mock_logger = MockTradeLogger()
@@ -242,7 +242,7 @@ def test_grid_reset_preserves_accounting():
     print("TEST 5: Grid reset preserves accounting")
     print("=" * 60)
 
-    from bot.strategies.grid_bot import GridBot
+    from bot.grid.grid_bot import GridBot
 
     mock_logger = MockTradeLogger()
     bot = GridBot(
@@ -302,7 +302,7 @@ def test_min_profit_sell_blocked():
     print("TEST 6: min_profit_pct — sell blocked below target")
     print("=" * 60)
 
-    from bot.strategies.grid_bot import GridBot
+    from bot.grid.grid_bot import GridBot
 
     mock_logger = MockTradeLogger()
     bot = GridBot(
@@ -355,7 +355,7 @@ def test_min_profit_sell_allowed():
     print("TEST 7: min_profit_pct — sell allowed above target")
     print("=" * 60)
 
-    from bot.strategies.grid_bot import GridBot
+    from bot.grid.grid_bot import GridBot
 
     mock_logger = MockTradeLogger()
     bot = GridBot(

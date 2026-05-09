@@ -258,12 +258,12 @@ def liquidate_one(client, exchange, symbol: str, dry_run: bool) -> dict | None:
     # Resolve managed_by + skim_pct from active bot_config (prefer is_active=true)
     cfgs = get_bot_configs_for_symbol(client, symbol)
     active_cfg = next((c for c in cfgs if c.get("is_active")), None) or (cfgs[0] if cfgs else {})
-    managed_by = active_cfg.get("managed_by", "manual")
+    managed_by = active_cfg.get("managed_by", "grid")
     skim_pct = float(active_cfg.get("skim_pct") or 0)
     capital_allocation = float(active_cfg.get("capital_allocation") or 0)
 
     # Brain mapping
-    brain = "trend" if managed_by in ("trend_follower", "tf_grid") else "grid"
+    brain = "trend" if managed_by in ("tf", "tf_grid") else "grid"
 
     trade_row = {
         "symbol": symbol,

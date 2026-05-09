@@ -123,7 +123,7 @@ def _reconcile_orphan_tf_bots(supabase, notifier) -> None:
     FIFO queue, see pending_liquidation, run the force-liquidate branch,
     and close the cycle normally.
 
-    Skips manual bots (managed_by != 'trend_follower') — those are under
+    Skips manual bots (managed_by != 'tf') — those are under
     user control, auto-rianimation would be invasive. No price check
     here; grid_bot's dust-handling will close sub-min_notional residuals
     on the first tick after spawn.
@@ -131,7 +131,7 @@ def _reconcile_orphan_tf_bots(supabase, notifier) -> None:
     try:
         rows = supabase.table("bot_config").select(
             "symbol, is_active, managed_by, pending_liquidation"
-        ).eq("managed_by", "trend_follower").eq("is_active", False).execute()
+        ).eq("managed_by", "tf").eq("is_active", False).execute()
     except Exception as e:
         logger.warning(f"[RECONCILER] Could not query bot_config: {e}")
         return
@@ -450,10 +450,10 @@ def run_orchestrator():
             for sym in should_run:
                 if sym in grid_processes:
                     continue
-                managed_by = desired[sym].get("managed_by") or "manual"
+                managed_by = desired[sym].get("managed_by") or "grid"
                 proc = _spawn_grid_bot(sym)
                 grid_processes[sym] = ProcessInfo(sym, proc, managed_by)
-                source = "TF" if managed_by == "trend_follower" else "manual"
+                source = "TF" if managed_by == "tf" else "Grid"
                 logger.info(f"[{sym}] Grid bot spawned (pid={proc.pid}, {source})")
                 # Per-bot spawn notification suppressed — the orchestrator-level
                 # summary message is enough; new TF allocations still surface via

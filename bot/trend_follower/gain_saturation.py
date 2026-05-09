@@ -83,7 +83,7 @@ def count_positive_sells_since(supabase, symbol: str, since: datetime) -> int:
             supabase.table("trades")
             .select("id", count="exact")
             .eq("symbol", symbol)
-            .eq("managed_by", "trend_follower")
+            .eq("managed_by", "tf")
             .eq("side", "sell")
             .gt("realized_pnl", 0)
             .gte("created_at", since.isoformat())

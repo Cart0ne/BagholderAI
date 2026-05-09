@@ -56,7 +56,7 @@ class MockPnLTracker:
 
 def make_bot(capital=1000.0, capital_per_trade=50.0):
     """Construct a fresh GridBot in percentage mode with mock collaborators."""
-    from bot.strategies.grid_bot import GridBot
+    from bot.grid.grid_bot import GridBot
     bot = GridBot(
         exchange=None,
         trade_logger=MockTradeLogger(),

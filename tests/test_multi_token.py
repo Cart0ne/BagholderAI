@@ -36,7 +36,7 @@ def test_config_lookup():
 
 
 def test_grid_setup_sol():
-    from bot.strategies.grid_bot import GridBot
+    from bot.grid.grid_bot import GridBot
 
     cfg = get_grid_config("SOL/USDT")
     # Use a realistic SOL price for offline test
@@ -81,7 +81,7 @@ def test_grid_setup_sol():
 
 
 def test_grid_setup_bonk():
-    from bot.strategies.grid_bot import GridBot
+    from bot.grid.grid_bot import GridBot
 
     cfg = get_grid_config("BONK/USDT")
     test_price = 0.00001234

@@ -26,7 +26,7 @@ from datetime import datetime, timezone
 from utils.formatting import fmt_price
 from db.event_logger import log_event
 
-from bot.strategies import (
+from bot.grid import (
     fifo_queue,
     state_manager,
     buy_pipeline,
@@ -153,7 +153,7 @@ class GridBot:
         self.greed_decay_tiers: Optional[list] = greed_decay_tiers
         self.is_active: bool = True  # controlled via Supabase bot_config
         self.pending_liquidation: bool = False  # TF rotation trigger
-        self.managed_by: str = "manual"  # "manual" or "trend_follower"
+        self.managed_by: str = "grid"  # "grid", "tf", or "tf_grid" (68b)
         self._stop_loss_triggered: bool = False  # 39a: latched once threshold is breached
         self._stop_buy_active: bool = False  # 39b: latched once drawdown breached, resets on profitable sell
         self._take_profit_triggered: bool = False  # 39c: latched once +pct threshold reached
@@ -440,7 +440,7 @@ class GridBot:
         # bot. Manual bots and TF bots with the feature disabled skip it
         # entirely (no peak persisted, no API cost). In-memory only by design
         # (see brief: a restart "forgets" the peak which is conservative).
-        if (self.managed_by == "trend_follower"
+        if (self.managed_by == "tf"
                 and self.tf_trailing_stop_pct > 0
                 and self.state.holdings > 0
                 and current_price > self._trailing_peak_price):
@@ -450,7 +450,7 @@ class GridBot:
         # Evaluated on the entire position (not per-lot) so a partial rebound
         # on one lot doesn't mask the overall bleed. Only armed for TF bots
         # (manual bots keep Strategy A's unconditional "never sell at loss").
-        if (self.managed_by == "trend_follower"
+        if (self.managed_by == "tf"
                 and self.tf_stop_loss_pct > 0
                 and self.state.holdings > 0
                 and self.state.avg_buy_price > 0
@@ -498,7 +498,7 @@ class GridBot:
         # avg_buy × (1 + activation_pct%), a drop of trailing_pct% from peak
         # forces a full liquidation. Doesn't fire if SL/TP/PL/45g already
         # latched, or when the feature is disabled (tf_trailing_stop_pct=0).
-        if (self.managed_by == "trend_follower"
+        if (self.managed_by == "tf"
                 and self.tf_trailing_stop_pct > 0
                 and not self._stop_loss_triggered
                 and not self._trailing_stop_triggered
@@ -562,7 +562,7 @@ class GridBot:
         # supera la soglia, indipendentemente dal signal TF. Mutuamente
         # esclusivo con stop-loss per costruzione (unrealized non può
         # essere contemporaneamente <= -X e >= +X).
-        if (self.managed_by == "trend_follower"
+        if (self.managed_by == "tf"
                 and self.tf_take_profit_pct > 0
                 and self.state.holdings > 0
                 and self.state.avg_buy_price > 0
@@ -603,7 +603,7 @@ class GridBot:
         # Phase 2 hook (~2 weeks after deploy): if/when 36f Trailing Stop
         # lands, it takes priority over Profit Lock. Add the armed-check
         # right here (e.g. `and not self._trailing_stop_armed`).
-        if (self.managed_by in ("trend_follower", "tf_grid")
+        if (self.managed_by in ("tf", "tf_grid")
                 and (self.tf_profit_lock_enabled or self.managed_by == "tf_grid")
                 and self.tf_profit_lock_pct > 0
                 and self.state.holdings > 0
@@ -665,7 +665,7 @@ class GridBot:
         # drawdown totale eccede la soglia, blocca NUOVE buy — i lot esistenti
         # restano sotto Strategy A (mai sell in perdita). Il flag è latched
         # finché una sell in profit lo resetta (isteresi event-based).
-        if (self.managed_by != "trend_follower"
+        if (self.managed_by != "tf"
                 and self.stop_buy_drawdown_pct > 0
                 and self.state.holdings > 0
                 and self.state.avg_buy_price > 0
@@ -731,7 +731,7 @@ class GridBot:
             # take-profit and profit-lock it includes lots that haven't
             # individually hit their sell_pct yet.
             force_liquidate = (
-                self.managed_by in ("trend_follower", "tf_grid")
+                self.managed_by in ("tf", "tf_grid")
                 and (self._stop_loss_triggered
                      or self._trailing_stop_triggered
                      or self._take_profit_triggered

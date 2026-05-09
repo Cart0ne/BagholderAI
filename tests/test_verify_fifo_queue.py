@@ -88,7 +88,7 @@ class MockPnLTracker:
 
 
 def make_bot(db_trades):
-    from bot.strategies.grid_bot import GridBot
+    from bot.grid.grid_bot import GridBot
     bot = GridBot(
         exchange=None,
         trade_logger=MockTradeLogger(db_trades),
@@ -331,7 +331,7 @@ def test_db_error_returns_true_safely():
     class CrashingLogger:
         client = CrashingClient()
 
-    from bot.strategies.grid_bot import GridBot
+    from bot.grid.grid_bot import GridBot
     bot = GridBot(
         exchange=None,
         trade_logger=CrashingLogger(),

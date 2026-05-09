@@ -42,7 +42,7 @@ class MockPnLTracker:
 
 def test_grid_setup():
     """Test that grid creates correct levels around price."""
-    from bot.strategies.grid_bot import GridBot
+    from bot.grid.grid_bot import GridBot
     
     mock_logger = MockTradeLogger()
     bot = GridBot(
@@ -85,7 +85,7 @@ def test_grid_setup():
 
 def test_buy_execution():
     """Test that bot buys when price drops to a level."""
-    from bot.strategies.grid_bot import GridBot
+    from bot.grid.grid_bot import GridBot
     
     mock_logger = MockTradeLogger()
     bot = GridBot(
@@ -125,7 +125,7 @@ def test_buy_execution():
 
 def test_sell_execution():
     """Test that bot sells when price rises after buying."""
-    from bot.strategies.grid_bot import GridBot
+    from bot.grid.grid_bot import GridBot
     
     mock_logger = MockTradeLogger()
     bot = GridBot(
@@ -172,7 +172,7 @@ def test_sell_execution():
 
 def test_never_sell_at_loss():
     """Test the HARDCODED rule: Strategy A never sells at loss."""
-    from bot.strategies.grid_bot import GridBot
+    from bot.grid.grid_bot import GridBot
     
     mock_logger = MockTradeLogger()
     bot = GridBot(
@@ -223,7 +223,7 @@ def test_never_sell_at_loss():
 
 def test_avg_buy_price_accounting():
     """Test that avg_buy_price is a correct weighted average, survives sells, and resets to 0."""
-    from bot.strategies.grid_bot import GridBot
+    from bot.grid.grid_bot import GridBot
 
     mock_logger = MockTradeLogger()
     bot = GridBot(
@@ -341,7 +341,7 @@ def test_avg_buy_price_accounting():
 
 def test_grid_reset_preserves_state():
     """BUG 2: Grid reset must preserve accounting and activate sell levels for existing holdings."""
-    from bot.strategies.grid_bot import GridBot
+    from bot.grid.grid_bot import GridBot
 
     mock_logger = MockTradeLogger()
     bot = GridBot(
@@ -409,7 +409,7 @@ def test_grid_reset_preserves_state():
 def test_daily_pnl_resets():
     """BUG 3: daily_realized_pnl resets at day change, realized_pnl stays cumulative."""
     from datetime import date
-    from bot.strategies.grid_bot import GridBot
+    from bot.grid.grid_bot import GridBot
     from unittest.mock import patch
 
     mock_logger = MockTradeLogger()
@@ -431,7 +431,7 @@ def test_daily_pnl_resets():
 
     # Day 1: setup, buy, then sell for profit
     day1 = date(2026, 3, 26)
-    with patch("bot.strategies.grid_bot.date") as mock_date:
+    with patch("bot.grid.grid_bot.date") as mock_date:
         mock_date.today.return_value = day1
         mock_date.side_effect = lambda *args, **kw: date(*args, **kw)
         bot._daily_date = day1
@@ -457,7 +457,7 @@ def test_daily_pnl_resets():
 
     # Day 2: date changes — daily_realized_pnl should reset
     day2 = date(2026, 3, 27)
-    with patch("bot.strategies.grid_bot.date") as mock_date:
+    with patch("bot.grid.grid_bot.date") as mock_date:
         mock_date.today.return_value = day2
         mock_date.side_effect = lambda *args, **kw: date(*args, **kw)
 
@@ -477,7 +477,7 @@ def test_daily_pnl_resets():
 
 def test_price_simulation():
     """Simulate realistic price movement over time."""
-    from bot.strategies.grid_bot import GridBot
+    from bot.grid.grid_bot import GridBot
     import math
     
     mock_logger = MockTradeLogger()

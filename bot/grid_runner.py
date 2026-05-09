@@ -48,7 +48,7 @@ from config.settings import (
 )
 from config.supabase_config import SupabaseConfigReader
 from bot.exchange import create_exchange
-from bot.strategies.grid_bot import GridBot
+from bot.grid.grid_bot import GridBot
 from db.client import TradeLogger, PortfolioManager, DailyPnLTracker, ReserveLedger
 from db.event_logger import log_event
 from db.snapshot_writer import write_state_snapshot
@@ -190,7 +190,7 @@ def _sync_config_to_bot(reader: "SupabaseConfigReader", bot: "GridBot", symbol: 
     # these thresholds (grid_bot gates the checks on managed_by); manual bots
     # keep their own stop_buy_drawdown_pct (39b). Log at INFO on change —
     # Telegram notification is owned by the TF scan loop (39g), not here.
-    if bot.managed_by in ("trend_follower", "tf_grid"):
+    if bot.managed_by in ("tf", "tf_grid"):
         tf_slp = reader.get_trend_config_value("tf_stop_loss_pct")
         if tf_slp is not None:
             new_slp = float(tf_slp)
@@ -330,7 +330,7 @@ def _consume_initial_lots(reader, bot, symbol: str, price: float, notifier) -> i
 
     Returns the number of logical lots bought (0 if not applicable).
     """
-    if bot.managed_by not in ("trend_follower", "tf_grid"):
+    if bot.managed_by not in ("tf", "tf_grid"):
         return 0
     # In-memory latch: once we've handled the entry for this bot instance,
     # don't even look at the cached initial_lots again — the 300s reader
@@ -574,7 +574,7 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
         logger.warning(f"Could not read bot_config.tf_exit_after_n_override for {cfg.symbol}: {e}.")
 
     # 39b: manual stop-buy threshold is per-coin (lives in bot_config).
-    # TF bots ignore it (gated by managed_by != 'trend_follower' in grid_bot).
+    # TF bots ignore it (gated by managed_by != 'tf' in grid_bot).
     stop_buy_drawdown_pct = 0.0
     try:
         if sb_cfg and sb_cfg.get("stop_buy_drawdown_pct") is not None:
@@ -635,12 +635,12 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
         greed_decay_tiers=greed_decay_tiers,
     )
 
-    # Initial managed_by from Supabase (default "manual")
+    # Initial managed_by from Supabase (default "grid" — 68b)
     try:
         _initial_cfg = config_reader.get_config(cfg.symbol)
-        bot.managed_by = (_initial_cfg.get("managed_by") or "manual") if _initial_cfg else "manual"
+        bot.managed_by = (_initial_cfg.get("managed_by") or "grid") if _initial_cfg else "grid"
     except Exception:
-        bot.managed_by = "manual"
+        bot.managed_by = "grid"
 
     # Fetch initial price and setup grid
     try:
@@ -721,7 +721,7 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
         symbol=cfg.symbol,
         message=f"Grid bot entering main loop (interval {check_interval}s)",
         details={
-            "managed_by": getattr(bot, "managed_by", "manual"),
+            "managed_by": getattr(bot, "managed_by", "grid"),
             "check_interval_s": check_interval,
             "capital": cfg.capital,
         },
@@ -772,7 +772,7 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
             # limited per-symbol to avoid hammering Supabase. The check
             # itself is idempotent against the post-sell path via the
             # _gain_saturation_triggered flag.
-            if (bot.managed_by == "trend_follower"
+            if (bot.managed_by == "tf"
                     and bot.tf_exit_after_n_enabled
                     and not bot._gain_saturation_triggered):
                 from bot.trend_follower.gain_saturation import should_run_proactive_check
@@ -816,7 +816,7 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
                 # the allocator already wrote one when it set
                 # pending_liquidation=True (see allocator.py:1138).
                 if (top_reason == "GAIN-SATURATION"
-                        and getattr(bot, "managed_by", "manual") == "trend_follower"
+                        and getattr(bot, "managed_by", "grid") == "tf"
                         and trade_logger is not None):
                     try:
                         trade_logger.client.table("trend_decisions_log").insert({
@@ -908,8 +908,8 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
                 # the cycle never ends in TF's eyes and the next ALLOCATE
                 # would attribute its trades to the wrong window. Mirrors
                 # what the allocator does for SWAP / BEARISH dealloc paths.
-                managed_by = getattr(bot, "managed_by", "manual")
-                if managed_by in ("trend_follower", "tf_grid") and trade_logger is not None:
+                managed_by = getattr(bot, "managed_by", "grid")
+                if managed_by in ("tf", "tf_grid") and trade_logger is not None:
                     forced_sells = [t for t in (trades or []) if t.get("side") == "sell"]
                     total_pnl = sum(float(t.get("realized_pnl", 0)) for t in forced_sells)
                     if managed_by == "tf_grid":
@@ -1409,7 +1409,7 @@ def _force_liquidate(bot, exchange, trade_logger, notifier, symbol: str,
     which the old flow bypassed unconditionally.
     """
     holdings = bot.state.holdings if bot.state else 0
-    managed_by = getattr(bot, "managed_by", "manual")
+    managed_by = getattr(bot, "managed_by", "grid")
 
     if holdings <= 1e-6:
         # 39f Section B: the stop-loss / take-profit paths already
@@ -1421,7 +1421,7 @@ def _force_liquidate(bot, exchange, trade_logger, notifier, symbol: str,
         # shutdown) keep the silent return — there's no TF cycle to
         # summarize.
         logger.info(f"[{symbol}] No holdings to liquidate (reason: {reason})")
-        if managed_by in ("trend_follower", "tf_grid") and trade_logger is not None:
+        if managed_by in ("tf", "tf_grid") and trade_logger is not None:
             try:
                 summary = _build_cycle_summary(trade_logger.client, symbol, None)
                 if summary:
@@ -1467,7 +1467,7 @@ def _force_liquidate(bot, exchange, trade_logger, notifier, symbol: str,
         # BOTH the buy legs (reconstructed from cost basis) and the sell.
         # 52a: paper-mode realized_pnl excludes fees — see grid_bot.py
         # _execute_sell comment for the full rationale.
-        from bot.strategies.grid_bot import GridBot
+        from bot.grid.grid_bot import GridBot
         fee_rate = GridBot.FEE_RATE
         sell_fee = proceeds * fee_rate
         buy_fees = lot_cost_basis * fee_rate
@@ -1546,7 +1546,7 @@ def _force_liquidate(bot, exchange, trade_logger, notifier, symbol: str,
         # have a TF "cycle" concept, so skip for them. The summary queries
         # trend_decisions_log for the last ALLOCATE and aggregates all
         # trades since then — including the liquidation sell we just wrote.
-        if managed_by in ("trend_follower", "tf_grid") and trade_logger is not None:
+        if managed_by in ("tf", "tf_grid") and trade_logger is not None:
             try:
                 liquidation_id = trade_db_row.get("id") if isinstance(trade_db_row, dict) else None
                 summary = _build_cycle_summary(trade_logger.client, symbol, liquidation_id)

@@ -173,36 +173,36 @@ def test_count_positive_sells_basic():
     sb = MockSupabase({
         "trades": [
             # In-period positive sells (count = 4)
-            {"symbol": "MOVR/USDT", "managed_by": "trend_follower",
+            {"symbol": "MOVR/USDT", "managed_by": "tf",
              "side": "sell", "realized_pnl": 1.0,
              "created_at": "2026-04-25T11:00:00+00:00", "id": 1},
-            {"symbol": "MOVR/USDT", "managed_by": "trend_follower",
+            {"symbol": "MOVR/USDT", "managed_by": "tf",
              "side": "sell", "realized_pnl": 0.5,
              "created_at": "2026-04-25T12:00:00+00:00", "id": 2},
-            {"symbol": "MOVR/USDT", "managed_by": "trend_follower",
+            {"symbol": "MOVR/USDT", "managed_by": "tf",
              "side": "sell", "realized_pnl": 2.0,
              "created_at": "2026-04-25T13:00:00+00:00", "id": 3},
-            {"symbol": "MOVR/USDT", "managed_by": "trend_follower",
+            {"symbol": "MOVR/USDT", "managed_by": "tf",
              "side": "sell", "realized_pnl": 0.1,
              "created_at": "2026-04-25T14:00:00+00:00", "id": 4},
             # In-period but negative — must NOT count
-            {"symbol": "MOVR/USDT", "managed_by": "trend_follower",
+            {"symbol": "MOVR/USDT", "managed_by": "tf",
              "side": "sell", "realized_pnl": -3.0,
              "created_at": "2026-04-25T15:00:00+00:00", "id": 5},
             # In-period buy — must NOT count
-            {"symbol": "MOVR/USDT", "managed_by": "trend_follower",
+            {"symbol": "MOVR/USDT", "managed_by": "tf",
              "side": "buy", "realized_pnl": None,
              "created_at": "2026-04-25T11:30:00+00:00", "id": 6},
             # Pre-period positive sell — must NOT count
-            {"symbol": "MOVR/USDT", "managed_by": "trend_follower",
+            {"symbol": "MOVR/USDT", "managed_by": "tf",
              "side": "sell", "realized_pnl": 5.0,
              "created_at": "2026-04-20T10:00:00+00:00", "id": 7},
             # In-period positive sell on different coin — must NOT count
-            {"symbol": "MBOX/USDT", "managed_by": "trend_follower",
+            {"symbol": "MBOX/USDT", "managed_by": "tf",
              "side": "sell", "realized_pnl": 5.0,
              "created_at": "2026-04-25T13:00:00+00:00", "id": 8},
             # In-period positive sell but managed_by=manual — must NOT count
-            {"symbol": "MOVR/USDT", "managed_by": "manual",
+            {"symbol": "MOVR/USDT", "managed_by": "grid",
              "side": "sell", "realized_pnl": 5.0,
              "created_at": "2026-04-25T13:00:00+00:00", "id": 9},
         ],

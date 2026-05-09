@@ -62,7 +62,7 @@ def get_effective_tp(bot) -> tuple:
     For anything else (manual bots, missing allocated_at, empty/bad
     tiers), returns (bot.sell_pct, None, None) — the legacy behavior.
     """
-    if bot.managed_by not in ("trend_follower", "tf_grid"):
+    if bot.managed_by not in ("tf", "tf_grid"):
         return (bot.sell_pct, None, None)
     if bot.allocated_at is None or not bot.greed_decay_tiers:
         return (bot.sell_pct, None, None)
@@ -133,7 +133,7 @@ def evaluate_gain_saturation(bot, current_price: float, trigger_source: str) -> 
     Returns True if the breaker fired this call, False otherwise.
     Idempotent: a second call after the first trigger is a no-op.
     """
-    if bot.managed_by != "trend_follower":
+    if bot.managed_by != "tf":
         return False
     if not bot.tf_exit_after_n_enabled:
         return False
@@ -266,7 +266,7 @@ def execute_sell(bot, level, price: float) -> Optional[dict]:
         # stop-loss, trailing-stop, take-profit, profit-lock,
         # gain-saturation, or bearish exit (mixed-lots liquidation).
         tf_override = (
-            bot.managed_by in ("trend_follower", "tf_grid")
+            bot.managed_by in ("tf", "tf_grid")
             and (bot._stop_loss_triggered
                  or bot._trailing_stop_triggered
                  or bot._take_profit_triggered
@@ -391,7 +391,7 @@ def execute_sell(bot, level, price: float) -> Optional[dict]:
         "mode": bot.mode,
         "realized_pnl": realized_pnl,
         "holdings_value_before": holdings_value_before,
-        "managed_by": getattr(bot, "managed_by", "manual"),
+        "managed_by": getattr(bot, "managed_by", "grid"),
     }
 
     # Log to database
@@ -414,7 +414,7 @@ def execute_sell(bot, level, price: float) -> Optional[dict]:
 
 def execute_percentage_sell(bot, price: float) -> Optional[dict]:
     """Execute a percentage-mode sell: sell oldest open lot (FIFO)."""
-    from bot.strategies.dust_handler import handle_step_size_dust, handle_economic_dust
+    from bot.grid.dust_handler import handle_step_size_dust, handle_economic_dust
 
     if not bot._pct_open_positions:
         return None
@@ -450,7 +450,7 @@ def execute_percentage_sell(bot, price: float) -> Optional[dict]:
     # bot.state.avg_buy_price is. TF override paths unchanged.
     if bot.strategy == "A" and price < bot.state.avg_buy_price:
         tf_override = (
-            bot.managed_by in ("trend_follower", "tf_grid")
+            bot.managed_by in ("tf", "tf_grid")
             and (bot._stop_loss_triggered
                  or bot._trailing_stop_triggered
                  or bot._take_profit_triggered
@@ -605,7 +605,7 @@ def execute_percentage_sell(bot, price: float) -> Optional[dict]:
                 "revenue": float(revenue),
                 "realized_pnl": float(realized_pnl),
                 "queue_depth": len(bot._pct_open_positions),
-                "managed_by": getattr(bot, "managed_by", "manual"),
+                "managed_by": getattr(bot, "managed_by", "grid"),
             },
         )
     except Exception:
@@ -692,7 +692,7 @@ def execute_percentage_sell(bot, price: float) -> Optional[dict]:
             f"GAIN-SATURATION: N positive sells reached, exit at {fmt_price(price)} "
             f"(lot buy {fmt_price(lot_buy_price)})"
         )
-    elif bot.pending_liquidation and bot.managed_by == "trend_follower":
+    elif bot.pending_liquidation and bot.managed_by == "tf":
         reason = (
             f"BEARISH EXIT: TF rotation, sell at {fmt_price(price)} "
             f"(lot buy {fmt_price(lot_buy_price)})"
@@ -707,7 +707,7 @@ def execute_percentage_sell(bot, price: float) -> Optional[dict]:
         # include tier info in the reason so it shows up in logs and
         # Telegram. Manual bots keep the legacy sell_pct wording.
         tp_pct, age_min, tier = get_effective_tp(bot)
-        if bot.managed_by in ("trend_follower", "tf_grid") and age_min is not None:
+        if bot.managed_by in ("tf", "tf_grid") and age_min is not None:
             reason = (
                 f"Greed decay sell: price {fmt_price(price)} >= lot buy "
                 f"{fmt_price(lot_buy_price)} * (1 + {tp_pct}%) "
@@ -737,7 +737,7 @@ def execute_percentage_sell(bot, price: float) -> Optional[dict]:
         "trade_pnl_pct": trade_pnl_pct,  # for Telegram only, filtered before DB log
         "capital_allocated": bot.capital,
         "holdings_value_before": holdings_value_before,
-        "managed_by": getattr(bot, "managed_by", "manual"),
+        "managed_by": getattr(bot, "managed_by", "grid"),
     }
     # 67a: fee_asset only written for real exchange fills (defensive against
     # pre-migration deploys — see buy_pipeline.py for rationale).
@@ -749,7 +749,7 @@ def execute_percentage_sell(bot, price: float) -> Optional[dict]:
     # sell was forced (stop-loss / take-profit / profit-lock / gain-
     # saturation / bearish) — those have their own reason tags that
     # already dominate the message.
-    if (bot.managed_by in ("trend_follower", "tf_grid")
+    if (bot.managed_by in ("tf", "tf_grid")
             and not bot._stop_loss_triggered
             and not bot._trailing_stop_triggered
             and not bot._take_profit_triggered

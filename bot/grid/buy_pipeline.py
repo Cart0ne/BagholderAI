@@ -139,7 +139,7 @@ def execute_buy(bot, level, price: float) -> Optional[dict]:
         "mode": bot.mode,
         "cash_before": cash_before,
         "capital_allocated": bot.capital,
-        "managed_by": getattr(bot, "managed_by", "manual"),
+        "managed_by": getattr(bot, "managed_by", "grid"),
     }
 
     # Log to database
@@ -287,7 +287,7 @@ def execute_percentage_buy(bot, price: float) -> Optional[dict]:
     # lot B $0.1095 → trailing fired 1 min later, sold both at -2% from
     # stale peak). Reset only when the trailing feature is enabled on a TF
     # bot; manual bots and disabled-trailing TF bots are unaffected.
-    if (bot.managed_by == "trend_follower"
+    if (bot.managed_by == "tf"
             and bot.tf_trailing_stop_pct > 0):
         bot._trailing_peak_price = price
 
@@ -314,7 +314,7 @@ def execute_percentage_buy(bot, price: float) -> Optional[dict]:
         "mode": bot.mode,
         "cash_before": cash_before,
         "capital_allocated": bot.capital,
-        "managed_by": getattr(bot, "managed_by", "manual"),
+        "managed_by": getattr(bot, "managed_by", "grid"),
     }
     # 67a: fee_asset only written for real exchange fills. Paper trades
     # omit the field to avoid INSERT failures on schemas that haven't

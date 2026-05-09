@@ -371,10 +371,10 @@ def send_scan_report(notifier: SyncTelegramNotifier, coins: list[dict],
     for a in current_allocs:
         if not a.get("is_active"):
             continue
-        managed = a.get("managed_by", "trend_follower")
+        managed = a.get("managed_by", "tf")
         if managed == "tf_grid":
             tag = "🟢 GRID"
-        elif managed == "trend_follower":
+        elif managed == "tf":
             tag = "🔵 TF"
         else:
             tag = "⚫"
@@ -621,7 +621,7 @@ def run_trend_follower():
             # resetting allocated_at (and the greed-decay clock with it).
             tf_allocs = [
                 a for a in current_allocs
-                if a.get("managed_by") in ("trend_follower", "tf_grid")
+                if a.get("managed_by") in ("tf", "tf_grid")
             ]
             tf_budget_nominal = float(config.get("tf_budget", 100))
 

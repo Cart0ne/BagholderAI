@@ -260,7 +260,7 @@ def _fetch_active_manual_bots(supabase) -> list[dict]:
             "idle_reentry_hours, stop_buy_drawdown_pct"
         )
         .eq("is_active", True)
-        .eq("managed_by", "manual")
+        .eq("managed_by", "grid")
         .execute()
     )
     return res.data or []

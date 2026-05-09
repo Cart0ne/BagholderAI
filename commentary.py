@@ -206,7 +206,7 @@ def get_tf_state(supabase_client):
         cfg = (
             supabase_client.table("bot_config")
             .select("symbol, is_active, capital_allocation, managed_by")
-            .in_("managed_by", ["trend_follower", "tf_grid"])
+            .in_("managed_by", ["tf", "tf_grid"])
             .execute()
         )
         tf_config = cfg.data or []
@@ -217,7 +217,7 @@ def get_tf_state(supabase_client):
             supabase_client.table("trades")
             .select("symbol, side, amount, price, cost, fee, realized_pnl, created_at")
             .eq("config_version", "v3")
-            .in_("managed_by", ["trend_follower", "tf_grid"])
+            .in_("managed_by", ["tf", "tf_grid"])
             .order("created_at", desc=True)
             .execute()
         )
@@ -230,7 +230,7 @@ def get_tf_state(supabase_client):
             supabase_client.table("reserve_ledger")
             .select("amount")
             .eq("config_version", "v3")
-            .in_("managed_by", ["trend_follower", "tf_grid"])
+            .in_("managed_by", ["tf", "tf_grid"])
             .execute()
         )
         skim_total = sum(float(r.get("amount") or 0) for r in (sk.data or []))
@@ -390,7 +390,7 @@ def get_grid_state(supabase_client):
     Fetch Grid bot state for the daily report — single source of truth,
     byte-for-byte identical to the public dashboard.
 
-    Filter: config_version='v3' AND managed_by='manual'. Brief 46b: tf_grid
+    Filter: config_version='v3' AND managed_by='grid'. Brief 46b: tf_grid
     coins are TF-funded, not Grid — they belong in get_tf_state instead.
 
     Returns the same shape as the legacy _build_portfolio_summary so callers
@@ -418,7 +418,7 @@ def get_grid_state(supabase_client):
         cfg = (
             supabase_client.table("bot_config")
             .select("symbol, is_active, capital_allocation, managed_by")
-            .eq("managed_by", "manual")
+            .eq("managed_by", "grid")
             .execute()
         )
         grid_config = cfg.data or []
@@ -435,7 +435,7 @@ def get_grid_state(supabase_client):
             supabase_client.table("trades")
             .select("symbol, side, amount, price, cost, fee, realized_pnl, created_at")
             .eq("config_version", "v3")
-            .eq("managed_by", "manual")
+            .eq("managed_by", "grid")
             .order("created_at", desc=False)
             .execute()
         )
@@ -621,7 +621,7 @@ def generate_daily_commentary(portfolio_data, supabase_client):
                 "cash_remaining": round(grid_cash, 2),
                 "positions": grid_positions,
             },
-            "trend_follower": {
+            "tf": {
                 "initial_capital": round(tf_initial, 2),
                 "total_value": tf_state["total_value"],
                 "total_pnl": tf_state["total_pnl"],
@@ -642,7 +642,7 @@ def generate_daily_commentary(portfolio_data, supabase_client):
                     "sells_count": grid_today_sells,
                     "realized_pnl": round(grid_today_realized, 2),
                 },
-                "trend_follower": {
+                "tf": {
                     "trades_count": tf_state["trades_today"],
                     "buys_count": tf_state["buys_today"],
                     "sells_count": tf_state["sells_today"],

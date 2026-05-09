@@ -109,7 +109,7 @@ def _fetch_unrealized_pnl(supabase, symbol: str, current_price: float) -> float:
       (current_price - avg_buy_price) * holdings
 
     Reconstructs holdings + weighted-avg cost basis by replaying every
-    TF trade (managed_by IN ('trend_follower','tf_grid'), config_version='v3')
+    TF trade (managed_by IN ('tf','tf_grid'), config_version='v3')
     for the symbol in chronological order — matching grid_bot's own cost
     accounting. tf_grid trades count as TF capital (Brief 46b).
 
@@ -123,7 +123,7 @@ def _fetch_unrealized_pnl(supabase, symbol: str, current_price: float) -> float:
             supabase.table("trades")
             .select("side,amount,price")
             .eq("symbol", symbol)
-            .in_("managed_by", ["trend_follower", "tf_grid"])
+            .in_("managed_by", ["tf", "tf_grid"])
             .eq("config_version", "v3")
             .order("created_at", desc=False)
             .execute()
@@ -498,7 +498,7 @@ def decide_allocations(
             # tf_grid uses stricter SWAP thresholds (see constants above).
             # GRID positions are expensive to rotate, so we require more
             # signal strength advantage, a longer cooldown, and breakeven.
-            active_managed_by = alloc.get("managed_by", "trend_follower")
+            active_managed_by = alloc.get("managed_by", "tf")
             if active_managed_by == "tf_grid":
                 strength_delta_threshold = SWAP_TF_GRID_STRENGTH_DELTA
                 cooldown_threshold = SWAP_TF_GRID_COOLDOWN_HOURS
@@ -974,7 +974,7 @@ def resize_active_allocations(
     tf_active = [
         a for a in current_allocations
         if a.get("is_active")
-        and a.get("managed_by") in ("trend_follower", "tf_grid")
+        and a.get("managed_by") in ("tf", "tf_grid")
         and not a.get("pending_liquidation")
     ]
 
@@ -1100,7 +1100,7 @@ def apply_allocations(
     """
     Apply TF allocation decisions to bot_config. Called only when dry_run=False.
 
-    ALLOCATE   → INSERT or UPDATE bot_config (is_active=True, managed_by='trend_follower')
+    ALLOCATE   → INSERT or UPDATE bot_config (is_active=True, managed_by='tf')
     DEALLOCATE → SET pending_liquidation=True (grid_runner forces sell + self-stop)
 
     `coin_lookup` (symbol → classified coin dict) is used to compute
@@ -1170,7 +1170,7 @@ def apply_allocations(
                 _vt_int = int(stored_volume_tier) if stored_volume_tier is not None else None
             except (TypeError, ValueError):
                 _vt_int = None
-            mgmt_mode = "tf_grid" if _vt_int in (1, 2) else "trend_follower"
+            mgmt_mode = "tf_grid" if _vt_int in (1, 2) else "tf"
 
             row_fields = {
                 "is_active": True,
@@ -1322,7 +1322,7 @@ def apply_allocations(
                     continue
 
                 current_managed_by = existing.data[0].get("managed_by")
-                if current_managed_by != "trend_follower":
+                if current_managed_by != "tf":
                     logger.warning(
                         f"[ALLOCATOR] {symbol}: managed_by={current_managed_by}, "
                         f"skipping DEALLOCATE (not TF-managed)"

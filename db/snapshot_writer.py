@@ -76,7 +76,7 @@ def write_state_snapshot(bot, symbol: str) -> None:
 
         row = {
             "symbol": symbol,
-            "managed_by": getattr(bot, "managed_by", "manual"),
+            "managed_by": getattr(bot, "managed_by", "grid"),
             "holdings": float(status.get("holdings") or 0),
             "avg_buy_price": float(status.get("avg_buy_price") or 0),
             "cash_available": float(status.get("available_capital") or 0),

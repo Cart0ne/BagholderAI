@@ -52,7 +52,7 @@ def fetch_all_tf_trades():
             sb.table("trades")
             .select("id, symbol, side, amount, price, cost, fee, realized_pnl, "
                     "buy_trade_id, created_at")
-            .eq("managed_by", "trend_follower")
+            .eq("managed_by", "tf")
             .order("created_at")
             .range(offset, offset + step - 1)
             .execute()

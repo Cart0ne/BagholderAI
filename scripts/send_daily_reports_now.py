@@ -42,7 +42,7 @@ def main():
         .execute()
         .data or []
     )
-    grid_today = [t for t in grid_trades_today_all if t.get("managed_by") == "manual"]
+    grid_today = [t for t in grid_trades_today_all if t.get("managed_by") == "grid"]
     today_buys = sum(1 for t in grid_today if t.get("side") == "buy")
     today_sells = sum(1 for t in grid_today if t.get("side") == "sell")
     day_realized = sum(float(t.get("realized_pnl") or 0) for t in grid_today)

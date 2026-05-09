@@ -113,7 +113,7 @@ def make_alloc(symbol, capital=50.0, hours_ago=10.0):
         "symbol": symbol,
         "is_active": True,
         "capital_allocation": capital,
-        "managed_by": "trend_follower",
+        "managed_by": "tf",
         "updated_at": _iso_hours_ago(hours_ago),
         "created_at": _iso_hours_ago(hours_ago + 24),
     }
@@ -231,7 +231,7 @@ coins = [
 ]
 mock_sb_loss = MockSupabase(trades_rows=[
     {"symbol": "AXL/USDT", "side": "buy", "amount": 1.0, "price": 100.0,
-     "managed_by": "trend_follower", "config_version": "v3"},
+     "managed_by": "tf", "config_version": "v3"},
 ])
 decs = decide_allocations(coins, allocs, tiers, filters, config, 100.0,
                           exchange=MockExchange(), supabase=mock_sb_loss)
@@ -281,14 +281,14 @@ check("Rescan failure → legacy HOLD for AXL",
 print("\n=== _fetch_unrealized_pnl ===")
 mock_sb_mix = MockSupabase(trades_rows=[
     {"symbol": "ANY/USDT", "side": "buy", "amount": 2.0, "price": 100.0,
-     "managed_by": "trend_follower", "config_version": "v3"},
+     "managed_by": "tf", "config_version": "v3"},
     {"symbol": "ANY/USDT", "side": "buy", "amount": 2.0, "price": 110.0,
-     "managed_by": "trend_follower", "config_version": "v3"},
+     "managed_by": "tf", "config_version": "v3"},
     {"symbol": "ANY/USDT", "side": "sell", "amount": 1.0, "price": 115.0,
-     "managed_by": "trend_follower", "config_version": "v3"},
+     "managed_by": "tf", "config_version": "v3"},
     # Manual trade must be excluded
     {"symbol": "ANY/USDT", "side": "buy", "amount": 10.0, "price": 1.0,
-     "managed_by": "manual", "config_version": "v3"},
+     "managed_by": "grid", "config_version": "v3"},
 ])
 pnl = _fetch_unrealized_pnl(mock_sb_mix, "ANY/USDT", current_price=120.0)
 # After replay: holdings=3, avg_buy_price = (100*2 + 110*2)/4 = 105 (sell doesn't touch avg)
