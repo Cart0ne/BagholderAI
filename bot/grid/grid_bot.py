@@ -334,11 +334,12 @@ class GridBot:
         """v1 fixed-mode position restore. Delegates to state_manager."""
         return state_manager.restore_state_from_db(self)
 
-    def init_percentage_state_from_db(self):
-        """v3 pct-mode replay from DB. Delegates to state_manager.
-        Brief s70 FASE 2: queue replay still happens in state_manager but
-        is no longer consulted by the hot path (avg-cost trading)."""
-        return state_manager.init_percentage_state_from_db(self)
+    def init_avg_cost_state_from_db(self):
+        """v3 avg-cost replay from DB. Delegates to state_manager.
+        Brief s70 FASE 2: la legacy FIFO queue replay è stata rimossa.
+        Ora ricostruisce solo holdings + avg_buy_price + realized_pnl
+        + _pct_last_buy_price + _last_trade_time."""
+        return state_manager.init_avg_cost_state_from_db(self)
 
     # ------------------------------------------------------------------
     # Main dispatcher — kept here, the central decision flow.

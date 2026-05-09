@@ -98,7 +98,7 @@ def find_open_positions(client) -> list[dict]:
 
 
 # ----------------------------------------------------------------------
-# FIFO replay (replicates state_manager.init_percentage_state_from_db)
+# Avg-cost replay (replicates state_manager.init_avg_cost_state_from_db)
 # ----------------------------------------------------------------------
 
 def replay_fifo(client, symbol: str) -> dict:

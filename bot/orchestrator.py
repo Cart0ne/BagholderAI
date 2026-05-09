@@ -119,8 +119,8 @@ def _reconcile_orphan_tf_bots(supabase, notifier) -> None:
 
     Strategy: flip is_active=True + pending_liquidation=True on each
     orphan row. The standard poll loop will spawn the grid_runner at
-    the next tick; its init_percentage_state_from_db will rebuild the
-    FIFO queue, see pending_liquidation, run the force-liquidate branch,
+    the next tick; its init_avg_cost_state_from_db will restore
+    holdings + avg, see pending_liquidation, run the force-liquidate branch,
     and close the cycle normally.
 
     Skips manual bots (managed_by != 'tf') — those are under

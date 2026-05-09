@@ -158,7 +158,7 @@ def _sync_config_to_bot(reader: "SupabaseConfigReader", bot: "GridBot", symbol: 
             logger.info(f"[{symbol}] Grid mode changed: {bot.grid_mode} → {new_mode}")
             bot.grid_mode = new_mode
             if new_mode == "percentage":
-                bot.init_percentage_state_from_db()
+                bot.init_avg_cost_state_from_db()
             logger.info(f"[{symbol}] Strategy re-initialized for {new_mode} mode")
         else:
             bot.grid_mode = new_mode
@@ -659,7 +659,7 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
         # state.avg_buy_price from canonical avg-cost. The FIFO queue
         # field is also touched by the legacy replay but no longer
         # consulted in the hot path (avg-cost trading).
-        bot.init_percentage_state_from_db()
+        bot.init_avg_cost_state_from_db()
     else:
         bot.restore_state_from_db()
 

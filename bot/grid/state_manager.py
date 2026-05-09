@@ -3,11 +3,12 @@ BagHolderAI - State manager (Phase 1 split from grid_bot.py).
 
 Boot-time state restoration from DB:
 - restore_state_from_db: fixed-mode legacy path (v1).
-- init_percentage_state_from_db: percentage-mode FIFO replay (v3).
+- init_avg_cost_state_from_db: percentage-mode avg-cost replay (v3).
 
-Both functions mutate `bot.state` and `bot._pct_open_positions` /
-`bot._pct_last_buy_price` in place. They preserve identical behaviour to
-the original methods on GridBot.
+Brief s70 FASE 2 (2026-05-09): the legacy FIFO queue replay has been
+removed. Avg-cost trading consults only state.avg_buy_price and
+state.holdings; the queue was no longer driving any trade decision
+post-S70 FASE 1.
 """
 
 import logging
@@ -51,12 +52,21 @@ def restore_state_from_db(bot):
     )
 
 
-def init_percentage_state_from_db(bot):
+def init_avg_cost_state_from_db(bot):
     """
-    Restore percentage mode state from DB on startup.
-    Reconstructs the FIFO open-positions queue, last buy price,
-    and cash accounting (total_invested / total_received) by replaying
-    all v3 trades for this symbol chronologically.
+    Restore avg-cost percentage-mode state from DB on startup.
+
+    Replays all v3 trades for this symbol chronologically and recomputes:
+    - state.holdings (qty_canonical)
+    - state.avg_buy_price (running weighted average; reset to 0 on full sell)
+    - state.realized_pnl (sum of (sell_price - avg_at_sell) × sell_qty)
+    - state.total_invested, state.total_received
+    - bot._pct_last_buy_price (price del trade buy più recente)
+    - bot._last_trade_time (timestamp del trade più recente, per idle path)
+
+    Brief s70 FASE 2: niente più FIFO queue replay. La queue era usata
+    per guidare il Strategy A trigger per-lot pre-S70; con avg-cost
+    trading il trigger guarda solo state.avg_buy_price.
     """
     if not bot.trade_logger:
         return
@@ -71,24 +81,15 @@ def init_percentage_state_from_db(bot):
         )
         trades = result.data or []
     except Exception as e:
-        logger.warning(f"[{bot.symbol}] Could not load pct state from DB: {e}")
+        logger.warning(f"[{bot.symbol}] Could not load avg-cost state from DB: {e}")
         return
 
-    # 66a (Operation Clean Slate): two parallel replay tracks.
-    #   1. FIFO queue       → drives Strategy A trigger (lot_buy_price)
-    #   2. Canonical avg    → drives state.avg_buy_price + state.realized_pnl
-    # Both must be aligned with what the bot would have at runtime if it
-    # had never restarted. Pre-66a code derived avg from the FIFO residual
-    # queue, which after multi-lot sells produced a different avg from the
-    # one the bot mantained at runtime — feeding the +29% bias documented
-    # in audits/2026-05-08_pre-clean-slate/formula_verification_s66.md.
-    open_positions = []
     last_buy_price = 0.0
     total_invested = 0.0
     total_received = 0.0
-    avg_canonical = 0.0
-    qty_canonical = 0.0
-    realized_pnl_replay = 0.0
+    avg = 0.0
+    qty = 0.0
+    realized = 0.0
 
     for t in trades:
         side = t.get("side")
@@ -97,39 +98,21 @@ def init_percentage_state_from_db(bot):
         cost = float(t.get("cost") or (amount * price))
         if side == "buy":
             total_invested += cost
-            open_positions.append({"amount": amount, "price": price})
             last_buy_price = price
-            # Canonical avg update on buy (weighted average).
-            new_qty = qty_canonical + amount
+            new_qty = qty + amount
             if new_qty > 0:
-                avg_canonical = (
-                    (avg_canonical * qty_canonical + price * amount) / new_qty
-                )
-            qty_canonical = new_qty
+                avg = (avg * qty + price * amount) / new_qty
+            qty = new_qty
         elif side == "sell":
             revenue = amount * price
             total_received += revenue
-            # Canonical realized: (sell_price - avg) × sell_qty.
-            # avg does NOT change on sell.
-            if qty_canonical > 1e-12:
-                realized_pnl_replay += (price - avg_canonical) * amount
-                qty_canonical -= amount
-                if qty_canonical <= 1e-9:
-                    qty_canonical = 0.0
-                    avg_canonical = 0.0  # reset on full sell-out
-            # FIFO queue consume (oldest first) — for Strategy A trigger.
-            if open_positions:
-                remaining = amount
-                while remaining > 1e-12 and open_positions:
-                    oldest = open_positions[0]
-                    if oldest["amount"] <= remaining + 1e-12:
-                        remaining -= oldest["amount"]
-                        open_positions.pop(0)
-                    else:
-                        oldest["amount"] -= remaining
-                        remaining = 0
+            if qty > 1e-12:
+                realized += (price - avg) * amount
+                qty -= amount
+                if qty <= 1e-9:
+                    qty = 0.0
+                    avg = 0.0  # reset on full sell-out
 
-    bot._pct_open_positions = open_positions
     bot._pct_last_buy_price = last_buy_price
 
     # Restore last trade time so idle re-entry countdown is correct.
@@ -144,7 +127,7 @@ def init_percentage_state_from_db(bot):
                     dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
                 # Only overwrite if DB value is newer than in-memory value.
                 # The idle-recalibrate path sets _last_trade_time = utcnow() without
-                # writing to DB; the self-heal re-init must not clobber that.
+                # writing to DB; this re-init must not clobber that.
                 if bot._last_trade_time is None or dt > bot._last_trade_time:
                     bot._last_trade_time = dt
                     bot._idle_logged_hour = -1  # reset so first eval logs immediately
@@ -163,23 +146,9 @@ def init_percentage_state_from_db(bot):
     if bot.state:
         bot.state.total_invested = total_invested
         bot.state.total_received = total_received
-
-        # 66a: holdings + avg_buy_price come from canonical replay (not
-        # from the FIFO residual queue). Sanity-check the two should
-        # match within tolerance — if not, log a warning (data drift).
-        bot.state.holdings = qty_canonical
-        bot.state.avg_buy_price = avg_canonical
-        bot.state.realized_pnl = realized_pnl_replay
-
-        if open_positions:
-            queue_total = sum(lot["amount"] for lot in open_positions)
-            if abs(queue_total - qty_canonical) > 1e-6:
-                logger.warning(
-                    f"[{bot.symbol}] FIFO queue / canonical qty desync: "
-                    f"queue_total={queue_total:.8f} vs canonical={qty_canonical:.8f} "
-                    f"(diff={queue_total - qty_canonical:+.8f}). "
-                    f"Trusting canonical for state.holdings."
-                )
+        bot.state.holdings = qty
+        bot.state.avg_buy_price = avg
+        bot.state.realized_pnl = realized
 
     available = bot.capital - total_invested + total_received
     reserve_str = ""
@@ -193,9 +162,9 @@ def init_percentage_state_from_db(bot):
             logger.warning(f"[{bot.symbol}] Could not fetch reserve total for cash log: {e}")
 
     logger.info(
-        f"[{bot.symbol}] Pct mode restored: {len(open_positions)} open lots, "
-        f"holdings={bot.state.holdings:.6f}, "
+        f"[{bot.symbol}] Avg-cost state restored: holdings={bot.state.holdings:.6f}, "
         f"avg_buy={fmt_price(bot.state.avg_buy_price)}, "
+        f"realized=${bot.state.realized_pnl:.4f}, "
         f"last buy {fmt_price(last_buy_price)}"
     )
     logger.info(
