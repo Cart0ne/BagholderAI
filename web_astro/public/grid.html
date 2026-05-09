@@ -70,6 +70,11 @@
     h1 {
       font-size: clamp(24px, 6vw, 36px); font-weight: 700; line-height: 1.1;
       letter-spacing: -0.03em; color: #fff; margin-bottom: 4px;
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    }
+    h1 .h1-mascot {
+      height: 1.6em; width: auto; flex-shrink: 0;
+      filter: drop-shadow(0 2px 6px rgba(34,197,94,0.25));
     }
     h1 .ai { color: var(--green); }
     h1 .admin { color: var(--red); font-size: 0.5em; vertical-align: super; letter-spacing: 0.05em; }
@@ -143,14 +148,24 @@
     .status-ok { background: rgba(34,197,94,0.15); color: var(--green); }
 
     .coin-grid {
-      display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 16px;
+      display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+      column-gap: 8px; row-gap: 6px; margin-bottom: 14px;
     }
+    .coin-section-label {
+      grid-column: 1 / -1;
+      font-family: var(--mono); font-size: 9px; color: var(--text-dim);
+      text-transform: uppercase; letter-spacing: 0.12em;
+      padding-bottom: 2px; margin-top: 6px;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .coin-section-label:first-child { margin-top: 0; }
     .coin-stat .cs-label {
-      font-family: var(--mono); font-size: 10px; color: var(--text-dim);
-      text-transform: uppercase; letter-spacing: 0.05em;
+      font-family: var(--mono); font-size: 9px; color: var(--text-dim);
+      text-transform: uppercase; letter-spacing: 0.04em;
     }
     .coin-stat .cs-value {
-      font-size: 18px; font-weight: 700; color: #fff; margin-top: 2px;
+      font-size: 15px; font-weight: 700; color: #fff; margin-top: 2px;
+      line-height: 1.2;
     }
 
     /* Capacity bar */
@@ -169,16 +184,26 @@
     .config-section { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
     .config-grid {
       display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+      align-items: end;
+    }
+    /* Each field is a flex column so the input is pushed to the bottom of its
+       grid cell. Combined with align-items:end above, all inputs in the same
+       row align horizontally regardless of how many lines the label/description
+       takes. */
+    .config-field {
+      display: flex; flex-direction: column; height: 100%;
     }
     .config-field label {
       font-family: var(--mono); font-size: 10px; color: var(--text-dim);
       display: block; margin-bottom: 2px; text-transform: uppercase; letter-spacing: 0.03em;
+      flex: 1;
     }
     .config-field input {
       font-family: var(--mono); font-size: 14px; padding: 8px 10px;
       background: rgba(255,255,255,0.04); border: 1px solid var(--border);
       border-radius: 6px; color: #fff; width: 100%; outline: none;
       transition: border-color 0.2s;
+      margin-top: auto;
     }
     .config-field input:focus { border-color: var(--green); }
     .config-field input.changed { border-color: var(--yellow); }
@@ -240,6 +265,7 @@
       border-radius: 6px; color: #fff; width: 100%; outline: none;
       transition: border-color 0.2s; cursor: pointer;
       -webkit-appearance: none; appearance: none;
+      margin-top: auto;
     }
     .config-field select:focus { border-color: var(--green); }
     .config-field select.changed { border-color: var(--yellow); }
@@ -317,7 +343,7 @@
         <span><span class="dot">●</span> GRID — private</span>
         <span id="last-update"></span>
       </div>
-      <h1>🎒 BagHolder<span class="ai">AI</span> <span class="admin">GRID</span></h1>
+      <h1><img class="h1-mascot" src="grid-bot.svg" alt="Grid bot"><span>BagHolder<span class="ai">AI</span> <span class="admin">GRID</span></span></h1>
 
       <!-- Alerts -->
       <div id="alerts" style="margin-top: 16px;"></div>
@@ -784,19 +810,31 @@
         var diffColor = !hasLive ? 'var(--text-dim)' : (diffPct >= 0 ? 'var(--green)' : 'var(--red)');
         var diffStr = !hasLive ? '—' : (diffPct >= 0 ? '+' : '') + diffPct.toFixed(2) + '%';
 
-        // S70 FASE 2: "Next buy if ↓" widget — prossimo trigger di buy.
-        // formula: last_buy × (1 − buy_pct/100). Se buy_pct=0 o no buy storico, mostra "—".
+        // S70 FASE 2: trigger widgets — "Next buy if ↓" + "Next sell if ↑".
+        // Buy:  last_buy × (1 − buy_pct/100).
+        // Sell: avg_buy × (1 + sell_pct/100).
         var buyPct = Number(cfg.buy_pct) || 0;
+        var sellPct = Number(cfg.sell_pct) || 0;
         var hasBuyRef = a.lastBuyPrice > 0 && buyPct > 0;
+        var hasSellRef = a.avgBuyPrice > 0 && sellPct > 0 && !positionClosed;
         var nextBuyTrigger = hasBuyRef ? a.lastBuyPrice * (1 - buyPct / 100) : 0;
+        var nextSellTrigger = hasSellRef ? a.avgBuyPrice * (1 + sellPct / 100) : 0;
         var nextBuyStr = hasBuyRef ? fmtPrice(nextBuyTrigger) : '—';
-        var lastBuyStr = a.lastBuyPrice > 0 ? fmtPrice(a.lastBuyPrice) : '—';
-        var buyPctStr = buyPct > 0 ? '−' + buyPct.toFixed(1) + '%' : '—';
-        // Distanza % dal trigger (positivo = prezzo ancora sopra trigger, negativo = già sotto)
+        var nextSellStr = hasSellRef ? fmtPrice(nextSellTrigger) : '—';
+        var buySellPctStr = (buyPct > 0 || sellPct > 0)
+          ? (buyPct > 0 ? '−' + buyPct.toFixed(1) + '%' : '—') + ' / ' + (sellPct > 0 ? '+' + sellPct.toFixed(1) + '%' : '—')
+          : '—';
+        // Distanza % dal trigger di buy (positivo = prezzo ancora sopra trigger, negativo = già sotto)
         var nextBuyDistance = (hasBuyRef && livePrice > 0)
           ? ((livePrice - nextBuyTrigger) / nextBuyTrigger * 100) : null;
         var nextBuyColor = (nextBuyDistance === null) ? 'var(--text-dim)'
-          : (nextBuyDistance > 0 ? '#5fb3ff' : 'var(--green)');  // cyan = waiting; green = already below trigger
+          : (nextBuyDistance > 0 ? '#5fb3ff' : 'var(--green)');  // cyan = waiting; green = already below
+        // Distanza % dal trigger di sell (negativo = ancora sotto trigger, positivo = già sopra)
+        var nextSellDistance = (hasSellRef && livePrice > 0)
+          ? ((livePrice - nextSellTrigger) / nextSellTrigger * 100) : null;
+        var nextSellColor = (nextSellDistance === null) ? 'var(--text-dim)'
+          : (nextSellDistance < 0 ? '#5fb3ff' : 'var(--green)');  // cyan = waiting; green = already above
+        var lastBuyStr = a.lastBuyPrice > 0 ? fmtPrice(a.lastBuyPrice) : '—';
 
         return '<div class="coin-card" id="card-' + short + '">' +
           '<div class="coin-header">' +
@@ -804,21 +842,26 @@
             '<span class="coin-status ' + statusClass + '">' + statusText + '</span>' +
           '</div>' +
           '<div class="coin-grid">' +
-            // Riga 1 — prezzo: avg buy · current price · diff %
+            // PRICE — avg buy · current price · diff %
+            '<div class="coin-section-label">Price</div>' +
             '<div class="coin-stat"><div class="cs-label">Avg buy</div><div class="cs-value">' + (positionClosed ? '—' : fmtPrice(a.avgBuyPrice)) + '</div></div>' +
             '<div class="coin-stat"><div class="cs-label">Current price</div><div class="cs-value">' + ((positionClosed || !livePrice) ? '—' : fmtPrice(livePrice)) + '</div></div>' +
             '<div class="coin-stat"><div class="cs-label">Diff %</div><div class="cs-value" style="color:' + diffColor + ';">' + diffStr + '</div></div>' +
-            // Riga 2 — cash flow: cash · open cost basis · realized
+            // CASH FLOW — cash · open cost basis · realized
+            '<div class="coin-section-label">Cash flow</div>' +
             '<div class="coin-stat"><div class="cs-label">Cash</div><div class="cs-value">' + fmtUsd(a.cashLeft) + '</div></div>' +
             '<div class="coin-stat"><div class="cs-label">Open cost basis</div><div class="cs-value">' + fmtUsd(a.openCost) + '</div></div>' +
             '<div class="coin-stat"><div class="cs-label">Realized</div><div class="cs-value" style="color:' + (a.realizedPnl >= 0 ? 'var(--green)' : 'var(--red)') + ';">' + (a.realizedPnl >= 0 ? '+' : '') + fmtUsd(a.realizedPnl) + '</div></div>' +
-            // Riga 3 — attività: trades · last trade
+            // ACTIVITY — trades · last trade · last buy
+            '<div class="coin-section-label">Activity</div>' +
             '<div class="coin-stat"><div class="cs-label">Trades</div><div class="cs-value">' + a.buyCount + 'B / ' + a.sellCount + 'S</div></div>' +
             '<div class="coin-stat"><div class="cs-label">Last trade</div><div class="cs-value">' + (a.lastTrade ? timeAgo(a.lastTrade.created_at) : '—') + '</div></div>' +
-            // S70 FASE 2 — Riga 4 — buy reference: last buy · buy% · next buy trigger
             '<div class="coin-stat"><div class="cs-label">Last buy</div><div class="cs-value">' + lastBuyStr + '</div></div>' +
-            '<div class="coin-stat"><div class="cs-label">Buy %</div><div class="cs-value">' + buyPctStr + '</div></div>' +
+            // TRIGGERS — buy/sell % · next buy if ↓ · next sell if ↑
+            '<div class="coin-section-label">Triggers</div>' +
+            '<div class="coin-stat"><div class="cs-label">Buy / Sell %</div><div class="cs-value">' + buySellPctStr + '</div></div>' +
             '<div class="coin-stat"><div class="cs-label">Next buy if ↓</div><div class="cs-value" style="color:' + nextBuyColor + ';">' + nextBuyStr + '</div></div>' +
+            '<div class="coin-stat"><div class="cs-label">Next sell if ↑</div><div class="cs-value" style="color:' + nextSellColor + ';">' + nextSellStr + '</div></div>' +
           '</div>' +
           '<div class="cap-bar-wrap">' +
             '<div class="cap-bar-label"><span>Capital usage</span><span>' + fmt(a.capacityPct, 0) + '%</span></div>' +
