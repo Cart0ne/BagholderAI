@@ -258,9 +258,10 @@ def test_e_random_sequence_identity():
 
     # Force-close any residual holdings to test pure identity
     while bot.state.holdings > 1e-9 and bot._pct_open_positions:
-        # sell the oldest lot at current avg + 1%, which is always > lot price
+        # 68a: Strategy A guard now checks avg_buy_price, so sell_price must be > avg.
+        # We keep the oldest_lot_price > sell_price safety as well, in case some
+        # future code path re-introduces a lot-level check.
         sell_price = bot.state.avg_buy_price * 1.001 if bot.state.avg_buy_price > 0 else 1.0
-        # actual lot sell uses lot_buy_price for Strategy A, so make sure sell_price > lot_buy_price
         oldest_lot_price = bot._pct_open_positions[0]["price"]
         sell_price = max(sell_price, oldest_lot_price * 1.001)
         result = bot._execute_percentage_sell(price=sell_price)
@@ -353,6 +354,63 @@ def test_f_dust_prevention_residual_below_min_sellable():
     print(f"  closed identity holds: rev − inv = realized ✓")
 
 
+def test_h_guard_blocks_sell_below_avg_even_above_lot_buy():
+    """68a: Strategy A guard must block a sell when price > oldest lot_buy_price
+    but price < avg_buy_price. Pre-68a the guard checked lot_buy → such sells
+    would pass and produce realized_pnl < 0 (canonical avg-cost). Post-68a the
+    guard checks avg_buy_price → these sells are correctly blocked.
+
+    Evidence motivating the fix: BONK sell 2026-05-08 22:56 UTC, realized −$0.152
+    when price ($0.00000724) was above oldest lot ($0.00000722) but below avg.
+    """
+    print("=" * 70)
+    print("TEST H: 68a — guard blocks sell when price > lot_buy but price < avg")
+    print("=" * 70)
+    bot = make_bot()
+
+    # Two buys at very different prices to force avg > oldest_lot
+    bot._execute_percentage_buy(price=5.0)    # $50 → 10 qty @ avg $5
+    bot._execute_percentage_buy(price=15.0)   # $50 → 3.333 qty @ avg = ?
+    expected_avg = (5.0 * 10.0 + 15.0 * (50.0 / 15.0)) / (10.0 + 50.0 / 15.0)
+    expected_avg = round(expected_avg, 6)
+    actual_avg = round(bot.state.avg_buy_price, 6)
+    assert_close(actual_avg, expected_avg, label="avg after 2 mixed buys")
+    print(f"  state: oldest lot=$5.00, avg=${bot.state.avg_buy_price:.4f}")
+
+    # Pick a price that is strictly between lot_buy ($5) and avg
+    sell_price = 7.0  # > $5 (oldest lot) but < avg (~$7.50)
+    assert sell_price > 5.0, "sell_price must be above oldest lot_buy"
+    assert sell_price < bot.state.avg_buy_price, (
+        f"sell_price ${sell_price} must be below avg ${bot.state.avg_buy_price:.4f} "
+        "for this test to be meaningful"
+    )
+
+    # Pre-68a behaviour would have executed and produced realized < 0.
+    # Post-68a: guard must block, return None, no state mutation.
+    holdings_before = bot.state.holdings
+    realized_before = bot.state.realized_pnl
+    trades_before = len(bot.trade_logger.trades)
+
+    result = bot._execute_percentage_sell(price=sell_price)
+
+    assert result is None, "guard must BLOCK the sell"
+    assert_close(bot.state.holdings, holdings_before, label="holdings unchanged after blocked sell")
+    assert_close(bot.state.realized_pnl, realized_before, label="realized_pnl unchanged after blocked sell")
+    assert len(bot.trade_logger.trades) == trades_before, "no new trade logged"
+    print(f"  sell at ${sell_price} blocked correctly (would have been loss vs avg ${bot.state.avg_buy_price:.4f}) ✓")
+    print(f"  no state mutation ✓")
+
+    # Sanity check: a sell ABOVE avg must still execute
+    sell_price_ok = bot.state.avg_buy_price * 1.05  # +5% above avg
+    avg_at_sell = bot.state.avg_buy_price
+    result_ok = bot._execute_percentage_sell(price=sell_price_ok)
+    assert result_ok is not None, "sell above avg must execute"
+    expected_pnl = (sell_price_ok - avg_at_sell) * result_ok["amount"]
+    assert_close(result_ok["realized_pnl"], expected_pnl, tol=1e-6,
+                 label="realized = (sell_price - avg) * qty")
+    print(f"  sell at ${sell_price_ok:.4f} executed (above avg) → realized ${result_ok['realized_pnl']:+.4f} ✓")
+
+
 def test_g_dust_prevention_no_trigger_when_residual_healthy():
     """66a Step 2: if residual is well above 1.5x min_sellable, normal pct-sell
     runs unchanged (single-lot consumption). Guards against over-aggressive
@@ -408,6 +466,7 @@ def main():
         test_e_random_sequence_identity,
         test_f_dust_prevention_residual_below_min_sellable,
         test_g_dust_prevention_no_trigger_when_residual_healthy,
+        test_h_guard_blocks_sell_below_avg_even_above_lot_buy,
     ]
     passed = 0
     failed = []

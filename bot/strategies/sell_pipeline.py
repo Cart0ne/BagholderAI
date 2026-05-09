@@ -254,18 +254,14 @@ def execute_sell(bot, level, price: float) -> Optional[dict]:
             )
             return None
 
-    # 57a: Strategy A guard checks the FIFO lot being sold, not avg_buy_price.
-    # On a multi-lot position the avg can drift toward market and let the
-    # bot sell a lot that is realy underwater while the avg looks profitable.
-    # Falls back to avg_buy_price only if the FIFO queue is empty (legacy /
-    # restart edge); _execute_sell here is the fixed-mode path which today
-    # is unused, so this is preventative for any future fixed-mode revival.
-    lot_buy_price = (
-        bot._pct_open_positions[0]["price"]
-        if bot._pct_open_positions
-        else bot.state.avg_buy_price
-    )
-    if bot.strategy == "A" and price < lot_buy_price:
+    # 68a: Strategy A guard checks avg_buy_price (canonical avg-cost).
+    # Pre-68a the guard checked lot_buy_price (oldest FIFO lot), but the
+    # realized_pnl calculation uses avg_buy_price (S66 canonical fix), so a
+    # multi-lot position could pass the guard at lot_buy and still produce
+    # realized_pnl < 0 because price < avg_buy_price. Evidence: BONK sell
+    # 2026-05-08 22:56 UTC, realized −$0.152. Now the guard and the realized
+    # calculation share one source of truth: bot.state.avg_buy_price.
+    if bot.strategy == "A" and price < bot.state.avg_buy_price:
         # 39a/39c/45f/45g/51b: TF bots can override Strategy A on
         # stop-loss, trailing-stop, take-profit, profit-lock,
         # gain-saturation, or bearish exit (mixed-lots liquidation).
@@ -293,11 +289,11 @@ def execute_sell(bot, level, price: float) -> Optional[dict]:
                 reason = "BEARISH EXIT"
             logger.warning(
                 f"{reason} OVERRIDE: Sell at {fmt_price(price)} < "
-                f"lot buy {fmt_price(lot_buy_price)} ({bot.symbol})."
+                f"avg cost {fmt_price(bot.state.avg_buy_price)} ({bot.symbol})."
             )
         else:
             logger.info(
-                f"BLOCKED: Sell at {fmt_price(price)} < lot buy {fmt_price(lot_buy_price)}. "
+                f"BLOCKED: Sell at {fmt_price(price)} < avg cost {fmt_price(bot.state.avg_buy_price)}. "
                 f"Strategy A never sells at loss."
             )
             return None
@@ -447,12 +443,12 @@ def execute_percentage_sell(bot, price: float) -> Optional[dict]:
             )
             return None
 
-    # Strategy A never sells at a loss on the specific lot being sold —
-    # UNLESS this is a TF-managed bot under stop-loss, trailing-stop,
-    # bearish exit, take-profit, profit-lock or gain-saturation
-    # (39a/39c/45f/45g/51b: override so all lots liquidate in one pass
-    # even when some are locally underwater).
-    if bot.strategy == "A" and price < lot_buy_price:
+    # 68a: Strategy A guard checks avg_buy_price (canonical avg-cost).
+    # See execute_sell() above for the full rationale. The lot_buy_price
+    # variable is still used by FIFO lot selection and audit logging
+    # (sell_fifo_detail event), but is no longer the economic gate —
+    # bot.state.avg_buy_price is. TF override paths unchanged.
+    if bot.strategy == "A" and price < bot.state.avg_buy_price:
         tf_override = (
             bot.managed_by in ("trend_follower", "tf_grid")
             and (bot._stop_loss_triggered
@@ -477,11 +473,11 @@ def execute_percentage_sell(bot, price: float) -> Optional[dict]:
                 reason = "BEARISH EXIT"
             logger.warning(
                 f"{reason} OVERRIDE: Pct sell at {fmt_price(price)} < "
-                f"lot buy {fmt_price(lot_buy_price)} ({bot.symbol})."
+                f"avg cost {fmt_price(bot.state.avg_buy_price)} ({bot.symbol})."
             )
         else:
             logger.info(
-                f"BLOCKED: Pct sell at {fmt_price(price)} < lot buy {fmt_price(lot_buy_price)}. "
+                f"BLOCKED: Pct sell at {fmt_price(price)} < avg cost {fmt_price(bot.state.avg_buy_price)}. "
                 f"Strategy A never sells at loss."
             )
             return None
@@ -572,7 +568,12 @@ def execute_percentage_sell(bot, price: float) -> Optional[dict]:
     # because it depends only on (avg_buy_price, holdings) — two scalars
     # the bot already maintains correctly on every buy. See
     # audits/2026-05-08_pre-clean-slate/formula_verification_s66.md.
-    cost_basis = amount * bot.state.avg_buy_price
+    # 68a: snapshot avg_buy_price before any state mutation so the reason
+    # string can reference it accurately. Without this, after a full-empty
+    # sell the avg gets reset to 0 below and the reason would log a wrong
+    # value.
+    sell_avg_cost = bot.state.avg_buy_price
+    cost_basis = amount * sell_avg_cost
     buy_fee = cost_basis * bot.FEE_RATE  # backward-compat for state.total_fees
     # 52a: paper-mode realized_pnl excludes fees (see _execute_sell comment).
     realized_pnl = revenue - cost_basis
@@ -713,9 +714,12 @@ def execute_percentage_sell(bot, price: float) -> Optional[dict]:
                 f"(age {age_min:.0f}min, tier {tp_pct}%)"
             )
         else:
+            # 68a: reason references avg_buy_price (the actual gate now),
+            # not lot_buy_price. lot_buy_price is preserved in the
+            # sell_fifo_detail audit event for forensic traceability.
             reason = (
                 f"Pct sell: price {fmt_price(price)} is {bot.sell_pct}% "
-                f"above lot buy {fmt_price(lot_buy_price)}"
+                f"above avg cost {fmt_price(sell_avg_cost)}"
             )
 
     trade_data = {
