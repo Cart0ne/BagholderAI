@@ -1,8 +1,8 @@
 # BUSINESS_STATE.md
 
-**Last updated:** 2026-05-08 — Session 67 chiusura (brief 67a shipped: testnet live, fee USDT canonical, 4 bug fix, 24h observation)
+**Last updated:** 2026-05-09 — Session 68 chiusura (filosofia "Trading minimum viable" + DB cleanup + brief 68a sell-in-loss guard shipped)
 **Updated by:** CEO
-**Basato su:** PROJECT_STATE.md aggiornato 2026-05-08 (S67 chiusura)
+**Basato su:** PROJECT_STATE.md aggiornato 2026-05-09 (S69 chiusura)
 
 ---
 
@@ -26,6 +26,8 @@ BagHolderAI è un progetto sperimentale dove un'AI (Claude) gestisce un micro-bu
 
 **Post X:** nessun post in coda (`pending_x_posts` vuoto). Scanner X automatizzato a cron settimanale dal 2026-05-04. Strategia: "variable reinforcement" — pubblica quando succede qualcosa di vero, mai calendar-driven. Posting Strategy v1.1 in `Posting_Strategy_v1_1.docx`.
 
+**Payhip:** Volume 1 + Volume 2 live, **0/30 views totali** (segnalato da Board S68 come problema di invisibilità — sito offline + zero canale promozionale, non difetto del prodotto).
+
 **Blog/contenuto:** il contenuto pubblico è il diary sul sito (/diary) e i volumi Payhip. Nessun blog esterno. Daily CEO's Log via Haiku + X posting (OAuth 1.0a) attivo.
 
 **Ads/monetizzazione:** A-Ads live sul sito (crypto-native, revenue trascurabile). Buy Me a Coffee attivo (buymeacoffee.com/bagholderai). Nessuna sponsorship in pipeline.
@@ -44,9 +46,9 @@ BagHolderAI è un progetto sperimentale dove un'AI (Claude) gestisce un micro-bu
 
 Preview rimosse da entrambi i volumi.
 
-**Volume 3** — prossimo target di pubblicazione. Coprirà sessions 53+. Nessuna struttura definita ancora. La session 63 è appena iniziata; il volume si chiuderà naturalmente quando un arco narrativo sarà completo (stima grezza: sessioni 70–80).
+**Volume 3** — prossimo target di pubblicazione. Coprirà sessions 53+. Sessioni 53+ in accumulo, **nessun lavoro attivo** (Board S68: "prima i fondamentali"). Stima grezza chiusura: sessioni 70–80.
 
-**Sessione corrente:** 67 BUILDING. Session 66 COMPLETE. Volume 3 outline aggiornato: "Operation Clean Slate" (S65-S66) + "First Contact with Binance" (S67) — arco contabilità + primo trade reale è un climax narrativo forte.
+**Sessione corrente:** 69 COMPLETE (avg-cost migration B+C + brief 69a). S68 diary "The One Where We Almost Quit" BUILDING su Supabase, docx prodotto. Volume 3 outline: "Operation Clean Slate" (S65-S66) + "First Contact with Binance" (S67) + "The Pivot" (S68 minimum viable) + "FIFO Divorce" (S69 avg-cost migration) — climax narrativo costruzione/decostruzione tecnica.
 
 **Check di congruenza diary↔DB:** nessun check automatico attivo. **Reconciliation gate (nightly script)** proposto come task Validation System: verifica ogni notte che `Realized_avg_cost + Unrealized = Total P&L` chiuda al centesimo, alert se gap > $0.01. Da implementare insieme a brief 60b respec.
 
@@ -56,7 +58,17 @@ Preview rimosse da entrambi i volumi.
 
 | Data | Decisione | Perché |
 |---|---|---|
-| 2026-05-08 (S67) | **Brief 67a Step 2-4 SHIPPED: testnet live** | Dust prevention + ccxt order execution + DB reset + restart $500 Grid-only. Prima connessione reale a Binance nella storia del progetto |
+| 2026-05-09 (S68) | **Filosofia "Trading minimum viable"** — Board | Complessità solo se valore aggiunto. 67 sessioni hanno accumulato debt strutturale (22 tabelle, 4 brain, 1627 righe in singolo file, 90 notifiche/notte). Restart concettuale del trading subsystem |
+| 2026-05-09 (S68) | **Grid only, brain off (TF/Sentinel/Sherpa stay-but-off, codice non cancellato)** — Board | Coerenza con minimum viable. Niente ricollegamento finché Grid non gira pulito |
+| 2026-05-09 (S68) | **Fix sell-in-loss guard: confronto su avg_buy_price anziché lot_buy_price** (brief 68a shipped) — CEO | Doppio standard FIFO+avg-cost causava sell in loss strutturali. Evidenza: BONK sell 2026-05-08 22:56 UTC realized −$0.152 |
+| 2026-05-09 (S68) | **Guard only, trigger per-lot invariato: no cambio regime strategico** — CEO | Vincolo "non toccare grid_bot.py" in S68a. Trigger sell rimasto FIFO ma guard avg-cost blocca tentativi vuoti |
+| 2026-05-09 (S68) | **DB cleanup: DROP feedback + sentinel_logs + portfolio + 2 view orfane + DELETE 54 bot_config inactive** — Board | "Niente backup, capitale paper, tabelle vuote o dichiarate temporanee". 22→19 tabelle, 2→0 view |
+| 2026-05-09 (S68) | **No nuove feature finché le esistenti non funzionano** (confirmation timer parcheggiato) — Board | Disciplina del minimum viable: no scope creep |
+| 2026-05-09 (S68) | **Mainnet €100 target confermato, timeline 21-24 maggio 2026** — Board | Invariato post-pivot, nonostante slip da fix 68a + brainstorming |
+| 2026-05-09 (S68) | **Refactor 68b (folder rename + managed_by cleanup) shipped ma non applicato su Mac Mini** — Board pending | Cosmetico, può aspettare insieme al prossimo restart bot |
+| 2026-05-09 (S69) | **Budget testnet $500 confermato (no passaggio a $10K)** — Board | Niente vantaggio tangibile a scalare. Allocazioni invariate (BTC $200, SOL $150, BONK $150) |
+| 2026-05-09 (S69) | **FIFO contabile rimosso da tutte le dashboard + commentary + health check** (BLOCCO 1 B+C shipped) — CEO/Board | Dashboard pre-S69 mentivano (FIFO replay client-side ricostruiva una formula non più scritta dal bot post-S66 avg-cost). Coerenza totale bot ↔ dashboard ↔ Binance |
+| 2026-05-09 (S67) | **Brief 67a Step 2-4 SHIPPED: testnet live** | Dust prevention + ccxt order execution + DB reset + restart $500 Grid-only. Prima connessione reale a Binance nella storia del progetto |
 | 2026-05-08 (S67) | **Fee design: opzione A (USDT-equivalent canonical)** | Il primo BONK buy ha mostrato −$3,419 P&L (raw 3,419.97 BONK letto come USDT). Una sola fonte di verità in USDT per dashboard/P&L/reconciliation |
 | 2026-05-08 (S67) | **ccxt confermato come libreria Binance** (brief diceva python-binance) | Codebase già dipende da ccxt (TF, scanner, counterfactual). Zero rework |
 | 2026-05-08 (S67) | **$500 testnet, stesso schema paper** | Max: "soldi finti, nessun motivo di downscalare". Più volume = più dati per validazione |
@@ -95,6 +107,26 @@ Preview rimosse da entrambi i volumi.
 ---
 
 ## 5. Domande Aperte per CC (idee tech non ancora in brief)
+
+**[S68 Board open questions]**
+
+- **Apply 68b sul Mac Mini: quando?** — refactor folder + managed_by cleanup, richiede restart bot. Risposta S69: incluso nel deploy 69a (finestra unica con TRUNCATE+restart).
+- **Budget testnet $10K vs $500: decidere prima del prossimo restart** — Risposta S69: **$500 confermato** (Board 2026-05-09).
+- **Rimozione fixed mode Grid (~500-800 righe codice morto)** — In progress: BLOCCO 2 parziale shipped S69 (`main_old.py` + `grid_runner.py` sync via). Refactor pesante (`grid_bot.py` ~200 righe + DROP COLUMN DB) in brief 69a.
+- **Rimozione `main_old.py`** — RISOLTO S69 BLOCCO 2 (commit `ad048b6`).
+- **grid.html rebuild card-by-card (primo task S69)** — RISOLTO S69 BLOCCO 1 (commit `6335633`). Portfolio overview 9 card 3+3+3 con formule esplicite, Coin status con Avg buy/Current price/Diff%, Recent trades con colonna Fee.
+- **check_price logging in trades (parcheggiato a S69+)** — Ancora aperto. Necessario per misurare slippage testnet post-hoc (oggi reason mente con fill_price).
+
+**[S69 NEW open questions]**
+
+1. **Data deploy brief 69a** (avg-cost trading + DROP COLUMN DB + apply 68b + TRUNCATE+restart): earliest 2026-05-10, latest 2026-05-15 per non slippare go-live €100 mainnet (target 21-24 maggio).
+2. **Brief 67a Step 5 (reconciliation gate nightly)**: shipped insieme a 69a (stessa finestra) o sessione separata post-69a observation?
+3. **Reconciliation Binance (DB ↔ `fetch_my_trades`)**: brief separato post go-live €100 mainnet baseline. Sostituisce il pannello "Reconciliation FIFO vs DB" rimosso da `/admin` in S69. Stima ~3-4h.
+4. **Reset mensile testnet Binance**: verifica formale prima del deploy 69a (per pianificare la finestra)?
+
+---
+
+**[S65/S67 legacy open questions]**
 
 1. **Equity P&L nella home** — proposta 1 del report CC 05/05: secondo numero "Equity P&L" affiancato al FIFO realized. Stima CC: 1–2 ore. Aspetta decisione CEO (§6).
 
@@ -156,7 +188,7 @@ Preview rimosse da entrambi i volumi.
 
 ## 6. Vincoli / Deadline Non-Tecnici
 
-**Go-live €100 — target aggiornato 16-20 maggio 2026** (decision CEO 2026-05-08). Sito **OFFLINE / maintenance** durante questo periodo finché brief 65c testnet non chiarisce la convenzione Binance.
+**Go-live €100 — target confermato 21-24 maggio 2026** (Board S68, slip da 16-20 originario causa fix 68a + brainstorming). Sito **OFFLINE / maintenance** finché baseline testnet pulito post-deploy 69a.
 
 **Pre-requisiti go-live (versione S67 chiusura):**
 1. ✅ Opzione A (DB-based dashboards)
@@ -213,6 +245,13 @@ I 3 bug calibrazione Sentinel rilevati 2026-05-07 grazie alla dashboard `/admin`
 
 | Cosa | Perché no |
 |---|---|
+| **Marketing zero attività** (sito offline, niente post X, niente outreach) — S68 update | "Prima i fondamentali" (Board). Pre-traction. Il prodotto (story) è in costruzione. Spingere traffico ora = mostrare un cantiere incompleto |
+| **Sentinel/Sherpa/TF spenti, codice presente ma inattivo** — S68 | Filosofia minimum viable: solo Grid attivo finché non gira pulito |
+| **Vendite Payhip 0/30 views** — S68 | Invisibilità (sito offline + zero canale promozionale), non difetto del prodotto |
+| **Reconciliation gate Step 5 parcheggiato** — S68 | Era in scope S68 ma superato dalla priorità sell-in-loss guard. Candidato 69a o post |
+| **Phase 2 Grid split (`grid_runner.py` 1627 righe)** — S68 | Parcheggiata post-go-live (BUSINESS_STATE §28 storico) |
+| **Pannello Reconciliation FIFO in `/admin`** — S69 | Rimosso (audit S65 obsoleto post-S66 avg-cost). Sostituito da TODO Reconciliation Binance brief futuro post go-live |
+| **Health check FIFO Check 1+2** — S69 | Rimosso ("non voglio più sentire parlare di FIFO" — Board) |
 | **Nessun marketing attivo** | Pre-traction. Il prodotto (story) è in costruzione. Spingere traffico ora = mostrare un cantiere incompleto. Strategia flag-it-when-it-happens |
 | **Nessun Volume 3 in lavorazione** | Le sessions 53+ sono in corso. Il volume si chiuderà naturalmente su un arco narrativo chiuso |
 | **Nessuna dashboard /sentinel pubblica** | Sprint 2+. DRY_RUN non ha dati sufficienti per un'interfaccia utile. Design approvato, codice bloccato fino a post-replay (~13 maggio) |
@@ -227,4 +266,4 @@ I 3 bug calibrazione Sentinel rilevati 2026-05-07 grazie alla dashboard `/admin`
 
 ---
 
-*Prossimo aggiornamento: a fine sessione 68 o alla prossima sessione strategica.*
+*Prossimo aggiornamento: post deploy 69a o alla prossima sessione strategica.*
