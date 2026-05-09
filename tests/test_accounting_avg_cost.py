@@ -107,9 +107,12 @@ def assert_close(actual, expected, tol=1e-6, label=""):
 # ----------------------------------------------------------------------
 
 def test_a_simple_buy_then_sell():
-    """1 buy + 1 sell totale: avg = price del buy, realized = (sell-buy)*qty."""
+    """1 buy + 1 sell totale: avg = price del buy, realized = (sell-buy)*qty.
+
+    Brief s70 FASE 1: sell totale via force_all=True (TF override path).
+    """
     print("=" * 70)
-    print("TEST A: simple buy → sell totale")
+    print("TEST A: simple buy → sell totale (force_all=True)")
     print("=" * 70)
     bot = make_bot()
 
@@ -117,7 +120,7 @@ def test_a_simple_buy_then_sell():
     assert_close(bot.state.avg_buy_price, 5.0, label="avg after buy")
     assert_close(bot.state.holdings, 10.0, label="holdings after buy")
 
-    trade = bot._execute_percentage_sell(price=6.0)
+    trade = bot._execute_percentage_sell(price=6.0, force_all=True)
     assert trade is not None, "sell must execute"
     assert_close(trade["realized_pnl"], 10.0, label="realized = (6-5)*10 = $10")
     assert_close(bot.state.holdings, 0.0, label="holdings after full sell")
@@ -142,11 +145,11 @@ def test_b_multi_buy_partial_sell():
     assert_close(bot.state.holdings, expected_qty, label="holdings after 2 buys")
     print(f"  after 2 buys: avg=${bot.state.avg_buy_price:.4f}  qty={bot.state.holdings} ✓")
 
-    # Manually trigger a sell of the first lot (10 qty) at $9
-    # _execute_percentage_sell sells the first lot's amount
+    # Brief s70 FASE 1: sell explicit amount=10 to replicate the legacy
+    # FIFO lot1 sell. avg-cost mode: avg unchanged on partial sell.
     avg_before_sell = bot.state.avg_buy_price
-    trade = bot._execute_percentage_sell(price=9.0)
-    expected_realized = (9.0 - avg_before_sell) * 10.0  # sell qty = lot1.amount = 10
+    trade = bot._execute_percentage_sell(price=9.0, sell_amount=10.0)
+    expected_realized = (9.0 - avg_before_sell) * 10.0
     assert_close(trade["realized_pnl"], expected_realized,
                  label=f"realized = (9 - {avg_before_sell:.4f}) * 10")
     # CRITICAL: avg must NOT change on sell (still $6.67)
@@ -166,12 +169,8 @@ def test_c_full_sell_then_buy_resets_avg():
 
     bot._execute_percentage_buy(price=5.0)   # qty=10 @ avg=$5
     bot._execute_percentage_buy(price=10.0)  # qty=15 @ avg=$6.667
-    # Need to sell BOTH lots to fully empty. Use last-lot logic by selling
-    # lot1 first, then lot2.
-    bot._execute_percentage_sell(price=12.0)  # sells lot1 (10 qty)
-    assert bot.state.holdings == 5.0, "after sell1: 5 qty left"
-    # avg STILL = 6.667 (unchanged) — this is the canonical avg-cost behaviour
-    bot._execute_percentage_sell(price=12.0)  # sells last 5
+    # Brief s70 FASE 1: full liquidation in one call via force_all=True.
+    bot._execute_percentage_sell(price=12.0, force_all=True)
     assert_close(bot.state.holdings, 0.0, label="holdings empty")
     assert_close(bot.state.avg_buy_price, 0.0, label="avg resets to 0 on full empty")
 
@@ -256,17 +255,11 @@ def test_e_random_sequence_identity():
             price = round(random.uniform(min_sell, min_sell * 1.5), 4)
             bot._execute_percentage_sell(price=price)
 
-    # Force-close any residual holdings to test pure identity
-    while bot.state.holdings > 1e-9 and bot._pct_open_positions:
-        # 68a: Strategy A guard now checks avg_buy_price, so sell_price must be > avg.
-        # We keep the oldest_lot_price > sell_price safety as well, in case some
-        # future code path re-introduces a lot-level check.
+    # Brief s70 FASE 1: force-close residual holdings via force_all=True.
+    # Pure identity test (Realized + Unrealized = Revenue − Invested).
+    if bot.state.holdings > 1e-9:
         sell_price = bot.state.avg_buy_price * 1.001 if bot.state.avg_buy_price > 0 else 1.0
-        oldest_lot_price = bot._pct_open_positions[0]["price"]
-        sell_price = max(sell_price, oldest_lot_price * 1.001)
-        result = bot._execute_percentage_sell(price=sell_price)
-        if result is None:
-            break  # safety to avoid infinite loop
+        bot._execute_percentage_sell(price=sell_price, force_all=True)
 
     revenue_total = bot.state.total_received
     invested_total = bot.state.total_invested
@@ -317,31 +310,27 @@ def test_f_dust_prevention_residual_below_min_sellable():
         "min_qty": 0.0,
         "min_notional": 5.0,
     }
-    # Two lots simulating a state with a small residual lot:
-    # lot1 = 10 @ $5, lot2 = 0.4 @ $9, holdings = 10.4
-    bot._pct_open_positions = [
-        {"amount": 10.0, "price": 5.0},
-        {"amount": 0.4, "price": 9.0},
-    ]
+    # State with a small residual: holdings=10.4, avg ≈ $5.154
+    # (the FIFO queue is no longer consulted in avg-cost mode; only
+    # state.holdings + state.avg_buy_price drive the dust prevention).
     bot.state.holdings = 10.4
     bot.state.avg_buy_price = (10.0 * 5.0 + 0.4 * 9.0) / 10.4
     bot.state.total_invested = 10.0 * 5.0 + 0.4 * 9.0  # 53.6
 
-    # Sell at $10. Without dust prevention: amount=lot1.amount=10, residual=0.4.
+    # Sell at $10 with explicit sell_amount=10. residual = 10.4 - 10 = 0.4.
     # min_sellable = max(0.001, 0, 5/10=0.5) = 0.5. residual=0.4 < 0.75 → trigger.
     # New amount = 10.4 (sell all). cost = 10.4 * avg ≈ 53.6, rev = 104, pnl ≈ +50.4.
     avg_before = bot.state.avg_buy_price
-    trade = bot._execute_percentage_sell(price=10.0)
+    trade = bot._execute_percentage_sell(price=10.0, sell_amount=10.0)
     assert trade is not None, "sell must execute"
     assert_close(trade["amount"], 10.4, label="amount sold = all holdings")
-    assert len(bot._pct_open_positions) == 0, "queue must be empty post sell-all"
     assert_close(bot.state.holdings, 0.0, label="holdings empty")
     assert_close(bot.state.avg_buy_price, 0.0, label="avg resets to 0")
 
     expected_pnl = (10.0 - avg_before) * 10.4
     assert_close(trade["realized_pnl"], expected_pnl, tol=1e-6, label="realized_pnl")
     print(f"  amount = {trade['amount']:.4f} (expected 10.4) ✓")
-    print(f"  queue empty, holdings=0, avg=0 ✓")
+    print(f"  holdings=0, avg=0 ✓")
     print(f"  realized = ${trade['realized_pnl']:+.4f} (expected ${expected_pnl:+.4f}) ✓")
 
     # Identity check: revenue − invested = realized (fully closed)
@@ -424,23 +413,17 @@ def test_g_dust_prevention_no_trigger_when_residual_healthy():
         "min_qty": 0.0,
         "min_notional": 5.0,
     }
-    # Two lots: 10 @ $5, 5 @ $9. Holdings = 15. Residual after lot1 sell = 5 (healthy).
-    bot._pct_open_positions = [
-        {"amount": 10.0, "price": 5.0},
-        {"amount": 5.0, "price": 9.0},
-    ]
+    # State: holdings=15 with avg ≈ $6.333. Residual after sell of 10 = 5 (healthy).
     bot.state.holdings = 15.0
     bot.state.avg_buy_price = (10.0 * 5.0 + 5.0 * 9.0) / 15.0
     bot.state.total_invested = 10.0 * 5.0 + 5.0 * 9.0  # 95.0
 
-    # Sell at $10. amount = lot1.amount = 10. residual = 5 > 0.75 → no trigger.
+    # Sell at $10 with explicit sell_amount=10. residual = 5 > 0.75 → no trigger.
     # cost_basis = 10 * avg ≈ 63.33. revenue = 100. pnl ≈ +36.67.
     avg_before = bot.state.avg_buy_price
-    trade = bot._execute_percentage_sell(price=10.0)
+    trade = bot._execute_percentage_sell(price=10.0, sell_amount=10.0)
     assert trade is not None, "sell must execute"
-    assert_close(trade["amount"], 10.0, label="amount sold = lot1 only (no dust trigger)")
-    assert len(bot._pct_open_positions) == 1, "lot2 must remain in queue"
-    assert_close(bot._pct_open_positions[0]["amount"], 5.0, label="lot2 amount untouched")
+    assert_close(trade["amount"], 10.0, label="amount sold = sell_amount (no dust trigger)")
     assert_close(bot.state.holdings, 5.0, label="holdings = 5 after partial sell")
     # avg unchanged on partial sell (canonical avg-cost)
     assert_close(bot.state.avg_buy_price, avg_before, label="avg unchanged on partial sell")
@@ -448,9 +431,78 @@ def test_g_dust_prevention_no_trigger_when_residual_healthy():
     expected_pnl = (10.0 - avg_before) * 10.0
     assert_close(trade["realized_pnl"], expected_pnl, tol=1e-6, label="realized_pnl")
     print(f"  amount = {trade['amount']:.4f} (expected 10.0) ✓")
-    print(f"  lot2 untouched ({bot._pct_open_positions[0]['amount']}), holdings={bot.state.holdings} ✓")
+    print(f"  holdings={bot.state.holdings} ✓")
     print(f"  avg unchanged = ${bot.state.avg_buy_price:.4f} ✓")
     print(f"  realized = ${trade['realized_pnl']:+.4f} (expected ${expected_pnl:+.4f}) ✓")
+
+
+def test_i_sell_trigger_uses_avg_buy_price():
+    """Brief s70 FASE 1: sell trigger gates on state.avg_buy_price, not on
+    individual lot prices. Two buys at very different prices give an avg
+    between them. The trigger fires when current_price >= avg × (1 +
+    sell_pct/100), irrespective of where each lot was bought.
+
+    Pre-fix the trigger was per-lot: a price above the oldest lot.price ×
+    (1 + sell_pct/100) (but below the avg-based threshold) would fire a
+    sell. Post-fix only avg matters.
+    """
+    print("=" * 70)
+    print("TEST I: avg-cost sell trigger fires on avg_buy_price (not per-lot)")
+    print("=" * 70)
+    bot = make_bot()
+    bot.sell_pct = 5.0  # threshold = 5%
+
+    # Two buys at different prices: $5 (qty=10) and $15 (qty=$50/$15≈3.333).
+    # avg = ($50 + $50) / (10 + 3.333) = $100 / 13.333 = $7.50.
+    bot._execute_percentage_buy(price=5.0)
+    bot._execute_percentage_buy(price=15.0)
+    avg = bot.state.avg_buy_price
+    assert avg > 7.0, f"setup sanity: avg should be ~7.50, got {avg:.4f}"
+    print(f"  setup: 2 buys → avg=${avg:.4f}, holdings={bot.state.holdings:.4f}")
+
+    # Disable the buy path so check_price_and_execute exercises only the
+    # sell trigger in isolation. buy_pct=99 makes the buy threshold so
+    # low that no realistic price re-entry can fire.
+    bot.buy_pct = 99.0
+    bot.idle_reentry_hours = 0.0  # disable idle re-entry path too
+
+    # Pre-fix: price=$5.30 (above oldest lot $5 × 1.05) would have FIRED sell.
+    # Post-fix: $5.30 < avg × 1.05 = $7.875 → must NOT sell.
+    sells_before = sum(1 for t in bot.trade_logger.trades if t.get("side") == "sell")
+    bot.check_price_and_execute(current_price=5.30)
+    sells_after = sum(1 for t in bot.trade_logger.trades if t.get("side") == "sell")
+    assert sells_after == sells_before, (
+        f"Pre-fix would have fired (price > oldest lot × 1.05), post-fix must NOT sell. "
+        f"Got {sells_after - sells_before} extra sells."
+    )
+    print(f"  $5.30 (above oldest lot+5% but below avg+5%): no sell ✓")
+
+    # Now at $7.90 (above avg × 1.05 = $7.875) the trigger fires.
+    avg_before_sell = bot.state.avg_buy_price
+    bot.check_price_and_execute(current_price=7.90)
+    sells_after_trigger = [t for t in bot.trade_logger.trades if t.get("side") == "sell"]
+    assert len(sells_after_trigger) >= 1, "trigger must fire above avg × (1 + sell_pct/100)"
+    sell_trade = sells_after_trigger[-1]
+    print(
+        f"  $7.90 (above avg+5%): sell fired, amount={sell_trade['amount']:.4f}, "
+        f"realized=${sell_trade['realized_pnl']:+.4f} ✓"
+    )
+
+    # Sell amount must be capital_per_trade / current_price ≈ $50/$7.90 = 6.329
+    expected_amount = bot.capital_per_trade / 7.90
+    assert_close(
+        sell_trade["amount"], expected_amount, tol=1e-3,
+        label=f"sell amount = capital_per_trade / price = $50 / $7.90"
+    )
+    print(f"  sell amount = {sell_trade['amount']:.4f} (= ${bot.capital_per_trade}/$7.90) ✓")
+
+    # Realized must use avg (snapshot at sell-time) as cost basis, not lot price.
+    expected_pnl = (7.90 - avg_before_sell) * sell_trade["amount"]
+    assert_close(
+        sell_trade["realized_pnl"], expected_pnl, tol=1e-6,
+        label="realized = (price − avg) × amount"
+    )
+    print(f"  realized identity uses avg (not lot price): ✓")
 
 
 # ----------------------------------------------------------------------
@@ -467,6 +519,7 @@ def main():
         test_f_dust_prevention_residual_below_min_sellable,
         test_g_dust_prevention_no_trigger_when_residual_healthy,
         test_h_guard_blocks_sell_below_avg_even_above_lot_buy,
+        test_i_sell_trigger_uses_avg_buy_price,
     ]
     passed = 0
     failed = []

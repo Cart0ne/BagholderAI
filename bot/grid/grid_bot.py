@@ -693,43 +693,17 @@ class GridBot:
                     },
                 )
 
-        # --- SELL CHECK ---
-        # Iterate ALL open lots; sell any whose trigger is hit.
-        # FIFO order: among triggered lots, sell oldest first.
-        # A lot can sell even if an older lot hasn't triggered yet.
-        if self.state.holdings > 0 and not self._pct_open_positions and not self._self_heal_attempted:
-            # Self-heal: holdings exist but open-positions queue is empty → state diverged.
-            # Re-init from DB so the sell check can fire correctly.
-            # Only attempt once: if DB replay still yields no positions (e.g. dust residual),
-            # retrying every cycle is futile and clobbers in-memory state set by idle recalibrate.
-            self._self_heal_attempted = True
-            logger.warning(
-                f"[{self.symbol}] WARN: holdings={self.state.holdings:.6f} ma _pct_open_positions è vuota. "
-                f"Re-init dal DB..."
-            )
-            self.init_percentage_state_from_db()
-            if not self._pct_open_positions:
-                logger.warning(
-                    f"[{self.symbol}] Self-heal: DB replay still yielded no open positions (dust residual). "
-                    f"Will not retry until next real trade."
-                )
-
-        if self.state.holdings > 0 and self._pct_open_positions:
-            # 57a: integrity gate — re-derive the FIFO queue from DB and
-            # rebuild on drift before any sell decision is taken. If the
-            # in-memory queue had diverged (float dust, restart edge,
-            # mid-op re-init), the next sell would consume the wrong lots
-            # and write a wrong realized_pnl. This call is the only thing
-            # standing between a corrupted queue and a Strategy-A
-            # violation on mainnet.
-            self.verify_fifo_queue()
-
-            # 39a/39c/45f/45g/51b: stop-loss, trailing-stop, take-profit,
-            # profit-lock, gain-saturation or pending-liquidation overrides
-            # the per-lot trigger — sell every open lot in one pass. For
-            # stop-loss/trailing/bearish this includes underwater lots; for
-            # take-profit and profit-lock it includes lots that haven't
-            # individually hit their sell_pct yet.
+        # --- SELL CHECK (avg-cost trading, brief s70 FASE 1) ---
+        # Single decision on state.avg_buy_price: if current_price >=
+        # avg_buy_price × (1 + threshold_pct/100), sell one lot of
+        # capital_per_trade / current_price (rounded to exchange step).
+        # Force-liquidate paths (TF stop-loss / trailing / take-profit /
+        # profit-lock / gain-saturation / pending_liquidation) sell
+        # everything in one trade.
+        if self.state.holdings > 0:
+            # 39a/39c/45f/45g/51b: TF override paths still fire on
+            # avg-cost, but bypass the "no sell at loss" guard via
+            # bot.strategy override in sell_pipeline.
             force_liquidate = (
                 self.managed_by in ("tf", "tf_grid")
                 and (self._stop_loss_triggered
@@ -739,58 +713,52 @@ class GridBot:
                      or self._gain_saturation_triggered
                      or self.pending_liquidation)
             )
-            if force_liquidate:
-                lots_to_sell = list(self._pct_open_positions)
-            else:
-                # 42a: for TF bots the sell threshold is the greed-decay TP of
-                # the current age tier (replaces sell_pct). Manual bots keep
-                # sell_pct unchanged. See get_effective_tp() docstring.
-                threshold_pct, _age_min, _tier = self.get_effective_tp()
-                lots_to_sell = [
-                    lot for lot in self._pct_open_positions
-                    if current_price >= lot["price"] * (1 + threshold_pct / 100)
-                ]
-            if lots_to_sell:
-                # Reorder queue: triggered lots first (FIFO), then untriggered (FIFO)
-                sell_ids = {id(lot) for lot in lots_to_sell}
-                untriggered = [l for l in self._pct_open_positions if id(l) not in sell_ids]
-                self._pct_open_positions = lots_to_sell + untriggered
-                # TODO 62a (Phase 2): this loop is the 60c double-call source.
-                # It iterates N times calling _execute_percentage_sell, but
-                # nothing here verifies that the previous call actually
-                # produced a trade. If log_trade fails (DB safety trigger),
-                # the next iteration sees state already mutated for a sell
-                # that doesn't exist in `trades`. Make the loop verify
-                # progress and short-circuit on failure in Phase 2.
-                for _ in lots_to_sell:
-                    trade = self._execute_percentage_sell(current_price)
-                    if trade:
-                        trades.append(trade)
-                # 39a/39c/39h: after a forced liquidation (stop-loss or
-                # take-profit), flag for cleanup so the grid_runner closes
-                # the bot and the TF deallocates next scan.
-                #
-                # 39h: the old check was holdings <= 1e-10, which missed the
-                # common case where a sub-step dust residual remains
-                # (e.g. 0.1 TST stuck because Binance step_size=0.1 but the
-                # lot's float holdings drift to 0.1 via round_to_step).
-                # Without this flag, the bot would re-buy on the next tick
-                # and thrash through more stop-losses in the same cycle
-                # (PHB/TST observed before 39f/39h).
-                #
-                # New condition: queue empty after the cascade OR residual
-                # holdings below Binance MIN_NOTIONAL (economic dust, not
-                # sellable anyway). Either way the cycle is over.
+
+            # 42a: for TF bots the sell threshold is the greed-decay TP
+            # of the current age tier (replaces sell_pct). Manual bots
+            # keep sell_pct unchanged. See get_effective_tp() docstring.
+            threshold_pct, _age_min, _tier = self.get_effective_tp()
+            avg_cost = self.state.avg_buy_price
+            sell_trigger = (
+                avg_cost * (1 + threshold_pct / 100) if avg_cost > 0 else 0.0
+            )
+
+            should_sell = force_liquidate or (
+                avg_cost > 0 and current_price >= sell_trigger
+            )
+
+            if should_sell:
+                if force_liquidate:
+                    sell_amount = self.state.holdings
+                else:
+                    sell_amount = (
+                        self.capital_per_trade / current_price
+                        if self.capital_per_trade > 0 and current_price > 0
+                        else self.state.holdings
+                    )
+                    sell_amount = min(sell_amount, self.state.holdings)
+
+                trade = self._execute_percentage_sell(
+                    current_price,
+                    sell_amount=sell_amount,
+                    force_all=force_liquidate,
+                )
+                if trade:
+                    trades.append(trade)
+
+                # 39a/39c/39h: after a forced liquidation, flag for
+                # cleanup so the grid_runner closes the bot and the TF
+                # deallocates next scan. Cycle closed when holdings drop
+                # below 1e-10 OR residual notional below MIN_NOTIONAL
+                # (economic dust, not sellable on Binance).
                 cycle_closed = False
-                if not self._pct_open_positions:
+                if self.state.holdings <= 1e-10:
                     cycle_closed = True
-                elif self._exchange_filters and self.state.holdings > 0:
+                elif self._exchange_filters:
                     residual_notional = self.state.holdings * current_price
                     min_notional = float(self._exchange_filters.get("min_notional", 0) or 0)
                     if min_notional > 0 and residual_notional < min_notional:
                         cycle_closed = True
-                elif self.state.holdings <= 1e-10:
-                    cycle_closed = True
 
                 if ((self._stop_loss_triggered
                      or self._trailing_stop_triggered
@@ -811,22 +779,16 @@ class GridBot:
                         trigger = "Gain-saturation"
                     logger.warning(
                         f"[{self.symbol}] {trigger} liquidation complete "
-                        f"(holdings={self.state.holdings:.6f}, queue={len(self._pct_open_positions)} lots). "
+                        f"(holdings={self.state.holdings:.6f}). "
                         f"Flagging pending_liquidation for TF cleanup."
                     )
                     self.pending_liquidation = True
             else:
-                # 42a: same threshold used above for the sell decision
-                log_threshold, log_age, _ = self.get_effective_tp()
-                nearest_trigger = min(
-                    lot["price"] * (1 + log_threshold / 100)
-                    for lot in self._pct_open_positions
-                )
-                age_str = f", age={log_age:.0f}min" if log_age is not None else ""
+                age_str = f", age={_age_min:.0f}min" if _age_min is not None else ""
                 logger.debug(
                     f"[{self.symbol}] Nessuna sell: prezzo {fmt_price(current_price)} < "
-                    f"trigger più vicino {fmt_price(nearest_trigger)} "
-                    f"(threshold={log_threshold}%{age_str}, {len(self._pct_open_positions)} lotti)"
+                    f"trigger {fmt_price(sell_trigger)} "
+                    f"(avg cost {fmt_price(avg_cost)}, threshold={threshold_pct}%{age_str})"
                 )
 
         # --- BUY CHECK ---
@@ -940,8 +902,15 @@ class GridBot:
     def _execute_sell(self, level: GridLevel, price: float) -> Optional[dict]:
         return sell_pipeline.execute_sell(self, level, price)
 
-    def _execute_percentage_sell(self, price: float) -> Optional[dict]:
-        return sell_pipeline.execute_percentage_sell(self, price)
+    def _execute_percentage_sell(
+        self,
+        price: float,
+        sell_amount: Optional[float] = None,
+        force_all: bool = False,
+    ) -> Optional[dict]:
+        return sell_pipeline.execute_percentage_sell(
+            self, price, sell_amount=sell_amount, force_all=force_all
+        )
 
     def _activate_sell_level(self, buy_level: GridLevel, amount: float):
         return buy_pipeline.activate_sell_level(self, buy_level, amount)

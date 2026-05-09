@@ -655,11 +655,11 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
 
     bot.setup_grid(price)
     if cfg.grid_mode == "percentage":
+        # Brief s70 FASE 1: boot replay populates state.holdings +
+        # state.avg_buy_price from canonical avg-cost. The FIFO queue
+        # field is also touched by the legacy replay but no longer
+        # consulted in the hot path (avg-cost trading).
         bot.init_percentage_state_from_db()
-        # 57a: belt+suspenders — re-derive the queue and confirm the boot
-        # replay matches itself. Under no drift this is a no-op; if it
-        # flags drift here, the boot init has a bug we want to catch.
-        bot.verify_fifo_queue()
     else:
         bot.restore_state_from_db()
 
@@ -672,13 +672,15 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
             logger.info(f"  Buy trigger:    {fmt_price(buy_trigger)}  (ref {fmt_price(ref)} -{bot.buy_pct}%)")
         else:
             logger.info(f"  Buy trigger:    immediate  (no reference — first entry)")
-        open_lots = bot._pct_open_positions
-        if open_lots:
-            for i, lot in enumerate(open_lots, 1):
-                sell_trigger = lot["price"] * (1 + bot.sell_pct / 100)
-                logger.info(f"  Sell lot {i}:     {fmt_price(sell_trigger)}  (bought {fmt_price(lot['price'])} +{bot.sell_pct}%)")
+        if bot.state.holdings > 0 and bot.state.avg_buy_price > 0:
+            sell_trigger = bot.state.avg_buy_price * (1 + bot.sell_pct / 100)
+            logger.info(
+                f"  Sell trigger:   {fmt_price(sell_trigger)}  "
+                f"(avg cost {fmt_price(bot.state.avg_buy_price)} +{bot.sell_pct}%, "
+                f"holdings {bot.state.holdings:.6f})"
+            )
         else:
-            logger.info(f"  Open lots:      none")
+            logger.info(f"  Holdings:       none")
         logger.info(f"  Current price:  {fmt_price(price)}")
     else:
         logger.info("Grid levels (fixed mode):")

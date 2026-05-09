@@ -412,26 +412,37 @@ def execute_sell(bot, level, price: float) -> Optional[dict]:
 # Percentage-mode sell (HOT PATH — used by all v3 bots).
 # ----------------------------------------------------------------------
 
-def execute_percentage_sell(bot, price: float) -> Optional[dict]:
-    """Execute a percentage-mode sell: sell oldest open lot (FIFO)."""
-    from bot.grid.dust_handler import handle_step_size_dust, handle_economic_dust
+def execute_percentage_sell(
+    bot,
+    price: float,
+    sell_amount: Optional[float] = None,
+    force_all: bool = False,
+) -> Optional[dict]:
+    """Execute a percentage-mode sell on avg-cost (brief s70 FASE 1).
 
-    if not bot._pct_open_positions:
-        return None
+    Caller (grid_bot.check_price_and_execute) computes sell_amount from
+    capital_per_trade / current_price. If force_all=True (TF stop-loss /
+    trailing / take-profit / profit-lock / gain-saturation / bearish
+    rotation), sells the full state.holdings in one trade.
+    """
+    from bot.grid.dust_handler import handle_step_size_dust, handle_economic_dust
 
     if bot.state.holdings <= 0:
         logger.info(f"No holdings left to sell {bot.symbol}, skipping pct sell.")
         return None
 
-    # Resolve the lot first so guards can reference the actual lot price
-    lot = bot._pct_open_positions[0]
-    lot_buy_price = lot["price"]
-
-    # Last-lot logic: if holdings are <= lot size, sell everything in one trade
-    if bot.state.holdings <= lot["amount"] + 1e-10:
+    # Determine sell amount. force_all (TF override) wins; otherwise the
+    # caller-provided amount (default capital_per_trade / price); fallback
+    # to all holdings if no per-trade size configured. Always clamp to
+    # current holdings so we never oversell.
+    if force_all:
         amount = bot.state.holdings
+    elif sell_amount is not None and sell_amount > 0:
+        amount = min(sell_amount, bot.state.holdings)
+    elif bot.capital_per_trade > 0 and price > 0:
+        amount = min(bot.capital_per_trade / price, bot.state.holdings)
     else:
-        amount = lot["amount"]
+        amount = bot.state.holdings
 
     # Mirror the same guards as _execute_sell
     if bot.min_profit_pct > 0 and bot.state.avg_buy_price > 0:
@@ -444,10 +455,10 @@ def execute_percentage_sell(bot, price: float) -> Optional[dict]:
             return None
 
     # 68a: Strategy A guard checks avg_buy_price (canonical avg-cost).
-    # See execute_sell() above for the full rationale. The lot_buy_price
-    # variable is still used by FIFO lot selection and audit logging
-    # (sell_fifo_detail event), but is no longer the economic gate —
-    # bot.state.avg_buy_price is. TF override paths unchanged.
+    # Brief s70 FASE 1: redundant safety net — the new trigger in
+    # check_price_and_execute already gates on price >= avg×(1+sell_pct/100),
+    # so price < avg can only reach here via TF force-liquidate path.
+    # Kept anyway: cheap, preserves invariant for any future caller.
     if bot.strategy == "A" and price < bot.state.avg_buy_price:
         tf_override = (
             bot.managed_by in ("tf", "tf_grid")
@@ -481,19 +492,6 @@ def execute_percentage_sell(bot, price: float) -> Optional[dict]:
                 f"Strategy A never sells at loss."
             )
             return None
-
-    if amount > bot.state.holdings + 1e-10:
-        logger.warning(
-            f"Insufficient holdings for SELL {bot.symbol}: "
-            f"need {amount:.6f}, have {bot.state.holdings:.6f}. Skipping pct sell."
-        )
-        bot.skipped_sells.append({
-            "symbol": bot.symbol,
-            "level_price": price,
-            "amount_needed": amount,
-            "holdings": bot.state.holdings,
-        })
-        return None
 
     # Round to valid step size and validate against exchange filters
     if bot._exchange_filters:
@@ -578,10 +576,9 @@ def execute_percentage_sell(bot, price: float) -> Optional[dict]:
     # 52a: paper-mode realized_pnl excludes fees (see _execute_sell comment).
     realized_pnl = revenue - cost_basis
 
-    # 57a: forensic audit trail. One row per percentage-mode sell with
-    # the FIFO numbers as they were at decision time. ~20 sells/day
-    # cluster-wide; cheap. If a future report disagrees with the
-    # broker, we can replay these events to find which trade
+    # Brief s70 FASE 1: forensic audit trail on avg-cost.
+    # ~20 sells/day cluster-wide; cheap. If a future report disagrees
+    # with the broker, we can replay these events to find which trade
     # introduced drift. Best-effort — log_event swallows DB errors.
     #
     # TODO 62a (Phase 2): this audit is written before log_trade. If
@@ -591,38 +588,28 @@ def execute_percentage_sell(bot, price: float) -> Optional[dict]:
         log_event(
             severity="info",
             category="trade_audit",
-            event="sell_fifo_detail",
+            event="sell_avg_cost_detail",
             symbol=bot.symbol,
             message=(
-                f"Sell lot: buy@{lot_buy_price}, "
+                f"Sell @ avg cost {fmt_price(sell_avg_cost)}, "
                 f"amount={amount}, pnl=${realized_pnl:.4f}"
             ),
             details={
-                "lot_buy_price": float(lot_buy_price),
+                "avg_buy_price": float(sell_avg_cost),
                 "sell_price": float(price),
                 "amount": float(amount),
                 "cost_basis": float(cost_basis),
                 "revenue": float(revenue),
                 "realized_pnl": float(realized_pnl),
-                "queue_depth": len(bot._pct_open_positions),
                 "managed_by": getattr(bot, "managed_by", "grid"),
             },
         )
     except Exception:
         pass
 
-    # Now consume the queue to match what we just sold.
+    # Brief s70 FASE 1: avg-cost trading — no FIFO queue to consume.
     # TODO 62a (Phase 2): these state mutations happen BEFORE log_trade.
     # If log_trade fails (60c), state is desynced from DB. Make atomic.
-    remaining = amount
-    while remaining > 1e-9 and bot._pct_open_positions:
-        lot = bot._pct_open_positions[0]
-        if lot["amount"] <= remaining + 1e-9:
-            remaining -= lot["amount"]
-            bot._pct_open_positions.pop(0)
-        else:
-            lot["amount"] -= remaining
-            remaining = 0
     bot.state.total_received += revenue
     bot.state.total_fees += fee + buy_fee
     bot.state.holdings -= amount
@@ -647,16 +634,17 @@ def execute_percentage_sell(bot, price: float) -> Optional[dict]:
             details={"realized_pnl": realized_pnl},
         )
 
+    # Brief s70 FASE 1: reset state when fully sold out. Single
+    # condition: holdings → 0. _pct_last_buy_price reset only fires on
+    # full exit (was tied to empty queue pre-fix; now tied to scalar
+    # holdings). After a partial avg-cost sell holdings stay positive
+    # and the buy reference is preserved.
     if bot.state.holdings <= 0:
         bot.state.holdings = 0
         bot.state.avg_buy_price = 0
-
-    # After selling all lots, reset buy reference to sell price so next
-    # buy triggers correctly (buy_pct% drop from here, not from old buy price)
-    if not bot._pct_open_positions:
         bot._pct_last_buy_price = price
         logger.info(
-            f"[{bot.symbol}] All lots sold. Buy reference reset to {fmt_price(price)}"
+            f"[{bot.symbol}] Fully sold out. Buy reference reset to {fmt_price(price)}"
         )
 
     bot._daily_trade_count += 1
@@ -670,37 +658,37 @@ def execute_percentage_sell(bot, price: float) -> Optional[dict]:
     if bot._stop_loss_triggered:
         reason = (
             f"STOP-LOSS: price {fmt_price(price)} forces liquidation "
-            f"(lot buy {fmt_price(lot_buy_price)}, threshold {bot.tf_stop_loss_pct:.0f}% of open value)"
+            f"(avg cost {fmt_price(sell_avg_cost)}, threshold {bot.tf_stop_loss_pct:.0f}% of open value)"
         )
     elif bot._trailing_stop_triggered:
         reason = (
             f"TRAILING-STOP: price {fmt_price(price)} dropped {bot.tf_trailing_stop_pct:.1f}% from "
-            f"peak {fmt_price(bot._trailing_peak_price)} (lot buy {fmt_price(lot_buy_price)})"
+            f"peak {fmt_price(bot._trailing_peak_price)} (avg cost {fmt_price(sell_avg_cost)})"
         )
     elif bot._take_profit_triggered:
         reason = (
             f"TAKE-PROFIT: price {fmt_price(price)} crystallizes gains "
-            f"(lot buy {fmt_price(lot_buy_price)}, threshold {bot.tf_take_profit_pct:.0f}% of open value)"
+            f"(avg cost {fmt_price(sell_avg_cost)}, threshold {bot.tf_take_profit_pct:.0f}% of open value)"
         )
     elif bot._profit_lock_triggered:
         reason = (
             f"PROFIT-LOCK: price {fmt_price(price)} locks net gain "
-            f"(lot buy {fmt_price(lot_buy_price)}, threshold {bot.tf_profit_lock_pct:.1f}% of alloc on net PnL)"
+            f"(avg cost {fmt_price(sell_avg_cost)}, threshold {bot.tf_profit_lock_pct:.1f}% of alloc on net PnL)"
         )
     elif bot._gain_saturation_triggered:
         reason = (
             f"GAIN-SATURATION: N positive sells reached, exit at {fmt_price(price)} "
-            f"(lot buy {fmt_price(lot_buy_price)})"
+            f"(avg cost {fmt_price(sell_avg_cost)})"
         )
     elif bot.pending_liquidation and bot.managed_by == "tf":
         reason = (
             f"BEARISH EXIT: TF rotation, sell at {fmt_price(price)} "
-            f"(lot buy {fmt_price(lot_buy_price)})"
+            f"(avg cost {fmt_price(sell_avg_cost)})"
         )
     elif bot.pending_liquidation and bot.managed_by == "tf_grid":
         reason = (
             f"MANUAL EXIT (tf_grid): sell at {fmt_price(price)} "
-            f"(lot buy {fmt_price(lot_buy_price)})"
+            f"(avg cost {fmt_price(sell_avg_cost)})"
         )
     else:
         # 42a: for TF bots, the sell threshold was the greed-decay TP;
@@ -709,14 +697,11 @@ def execute_percentage_sell(bot, price: float) -> Optional[dict]:
         tp_pct, age_min, tier = get_effective_tp(bot)
         if bot.managed_by in ("tf", "tf_grid") and age_min is not None:
             reason = (
-                f"Greed decay sell: price {fmt_price(price)} >= lot buy "
-                f"{fmt_price(lot_buy_price)} * (1 + {tp_pct}%) "
+                f"Greed decay sell: price {fmt_price(price)} >= avg cost "
+                f"{fmt_price(sell_avg_cost)} * (1 + {tp_pct}%) "
                 f"(age {age_min:.0f}min, tier {tp_pct}%)"
             )
         else:
-            # 68a: reason references avg_buy_price (the actual gate now),
-            # not lot_buy_price. lot_buy_price is preserved in the
-            # sell_fifo_detail audit event for forensic traceability.
             reason = (
                 f"Pct sell: price {fmt_price(price)} is {bot.sell_pct}% "
                 f"above avg cost {fmt_price(sell_avg_cost)}"
