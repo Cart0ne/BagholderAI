@@ -8,14 +8,15 @@ Paper trading mode: uses real market prices, simulates fills.
 Phase 1 refactor (2026-05-07, brief 62a):
 This file used to be a 2200-line monolith. It now coordinates calls into
 focused modules:
-- fifo_queue.py: FIFO queue replay + drift verify.
 - state_manager.py: boot-time state restoration from DB.
 - buy_pipeline.py: buy execution (fixed + pct).
 - sell_pipeline.py: sell execution + greed-decay TP + gain-saturation.
 - dust_handler.py: dust-lot pop helpers (with documented bug intact).
-GridBot's public API is unchanged — every method that grid_runner or tests
-call still exists and behaves identically. Internals are wrappers that
-delegate to the modules above.
+
+Brief s70 FASE 2 (2026-05-09): fifo_queue module no longer imported.
+verify_fifo_queue() wrapper removed. Avg-cost trading does not consult
+the FIFO queue in the hot path; the file fifo_queue.py is kept as a
+fossile until the full fixed-mode cleanup (deferred to S71+).
 """
 
 import time
@@ -27,7 +28,6 @@ from utils.formatting import fmt_price
 from db.event_logger import log_event
 
 from bot.grid import (
-    fifo_queue,
     state_manager,
     buy_pipeline,
     sell_pipeline,
@@ -326,7 +326,7 @@ class GridBot:
         return self.state
 
     # ------------------------------------------------------------------
-    # State restoration — wrappers around state_manager / fifo_queue.
+    # State restoration — wrappers around state_manager.
     # ------------------------------------------------------------------
 
     def restore_state_from_db(self):
@@ -334,12 +334,10 @@ class GridBot:
         return state_manager.restore_state_from_db(self)
 
     def init_percentage_state_from_db(self):
-        """v3 pct-mode FIFO replay from DB. Delegates to state_manager."""
+        """v3 pct-mode replay from DB. Delegates to state_manager.
+        Brief s70 FASE 2: queue replay still happens in state_manager but
+        is no longer consulted by the hot path (avg-cost trading)."""
         return state_manager.init_percentage_state_from_db(self)
-
-    def verify_fifo_queue(self) -> bool:
-        """57a integrity gate. Delegates to fifo_queue.verify_fifo_queue."""
-        return fifo_queue.verify_fifo_queue(self)
 
     # ------------------------------------------------------------------
     # Main dispatcher — kept here, the central decision flow.
