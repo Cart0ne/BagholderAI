@@ -1,8 +1,8 @@
 # BUSINESS_STATE.md
 
-**Last updated:** 2026-05-09 — Session 68 chiusura (filosofia "Trading minimum viable" + DB cleanup + brief 68a sell-in-loss guard shipped)
+**Last updated:** 2026-05-09 — Session 69 chiusura (avg-cost trading completo, FIFO rimosso ovunque, Strategy A simmetrico, ~880 righe via, DROP COLUMN × 5)
 **Updated by:** CEO
-**Basato su:** PROJECT_STATE.md aggiornato 2026-05-09 (S69 chiusura)
+**Basato su:** PROJECT_STATE.md aggiornato 2026-05-09 (S69 chiusura serale, commit cb21179)
 
 ---
 
@@ -48,7 +48,7 @@ Preview rimosse da entrambi i volumi.
 
 **Volume 3** — prossimo target di pubblicazione. Coprirà sessions 53+. Sessioni 53+ in accumulo, **nessun lavoro attivo** (Board S68: "prima i fondamentali"). Stima grezza chiusura: sessioni 70–80.
 
-**Sessione corrente:** 69 COMPLETE (avg-cost migration B+C + brief 69a). S68 diary "The One Where We Almost Quit" BUILDING su Supabase, docx prodotto. Volume 3 outline: "Operation Clean Slate" (S65-S66) + "First Contact with Binance" (S67) + "The Pivot" (S68 minimum viable) + "FIFO Divorce" (S69 avg-cost migration) — climax narrativo costruzione/decostruzione tecnica.
+**Sessione corrente:** 69 BUILDING (avg-cost trading completo + Strategy A simmetrico + cleanup FIFO/fixed mode totale). S68 diary "The One Where We Almost Quit" COMPLETE su Supabase, docx prodotto. Volume 3 outline: "Operation Clean Slate" (S65-S66) + "First Contact with Binance" (S67) + "The Pivot" (S68 minimum viable) + "FIFO Divorce" (S69 avg-cost migration + Strategy A) — climax narrativo costruzione/decostruzione tecnica.
 
 **Check di congruenza diary↔DB:** nessun check automatico attivo. **Reconciliation gate (nightly script)** proposto come task Validation System: verifica ogni notte che `Realized_avg_cost + Unrealized = Total P&L` chiuda al centesimo, alert se gap > $0.01. Da implementare insieme a brief 60b respec.
 
@@ -58,6 +58,12 @@ Preview rimosse da entrambi i volumi.
 
 | Data | Decisione | Perché |
 |---|---|---|
+| 2026-05-09 (S69) | **Avg-cost trading puro deployed** — trigger sell su avg_buy_price, FIFO queue rimossa, sell amount = capital_per_trade/price | Chiusura completa del debito FIFO. Dashboard, accounting, trigger ora tutti su avg-cost |
+| 2026-05-09 (S69) | **Strategy A simmetrico: no sell below avg + no buy above avg** | Sell guard da S68a + buy guard nuovo. Ogni buy deve abbassare la media, ogni sell deve essere profittevole |
+| 2026-05-09 (S69) | **IDLE recalibrate guard: skip se price > avg** | Impedisce al bot di riposizionare il buy reference sopra l'avg in mercati laterali/rialzisti |
+| 2026-05-09 (S69) | **sell_pct net-of-fees DEFERRED** — Board | Max ha calcolato che le fee mangiano 37% del profitto lordo su BTC. Proposta parcheggiata: richiede decisione semantica + BNB-discount |
+| 2026-05-09 (S69) | **No DELETE Supabase pre-restart** — Board | Bot ripartito sopra DB esistente. Fossili BONK pre-S68a restano come record storico |
+| 2026-05-09 (S69) | **DROP COLUMN bot_config × 5** (grid_mode, grid_levels, grid_lower, grid_upper, reserve_floor_pct) | Schema cleanup fixed mode. DDL eseguito da CC via Supabase MCP |
 | 2026-05-09 (S68) | **Filosofia "Trading minimum viable"** — Board | Complessità solo se valore aggiunto. 67 sessioni hanno accumulato debt strutturale (22 tabelle, 4 brain, 1627 righe in singolo file, 90 notifiche/notte). Restart concettuale del trading subsystem |
 | 2026-05-09 (S68) | **Grid only, brain off (TF/Sentinel/Sherpa stay-but-off, codice non cancellato)** — Board | Coerenza con minimum viable. Niente ricollegamento finché Grid non gira pulito |
 | 2026-05-09 (S68) | **Fix sell-in-loss guard: confronto su avg_buy_price anziché lot_buy_price** (brief 68a shipped) — CEO | Doppio standard FIFO+avg-cost causava sell in loss strutturali. Evidenza: BONK sell 2026-05-08 22:56 UTC realized −$0.152 |
@@ -207,13 +213,22 @@ Preview rimosse da entrambi i volumi.
 - ~~7 giorni clean health check~~ → cancellato, idem
 - ~~Sell-decision alignment a FIFO globale (proposta 2 CC del 5 maggio)~~ → superata, abbandonato strict-FIFO
 
-**Pre-live gates (Validation System §6):**
-- FIFO integrity: ✅
-- DB retention stabile: ✅
-- Convenzione contabile bot ≡ Binance: 🔲 (brief 65c testnet verifica + 60b respec)
-- Identità contabile chiude al centesimo: 🔲 (brief 60b respec)
-- Reconciliation gate live: 🔲 (post 60b)
-- Board approval (Max): 🔲
+**Pre-live gates (Validation System — aggiornamento S69):**
+- ✅ Contabilità avg-cost (S66)
+- ✅ Fee USDT canonical (S67)
+- ✅ Dust prevention (S67)
+- ✅ Sell-in-loss guard avg_cost (S68a)
+- ✅ DB schema cleanup (S68 + S69 DROP COLUMN)
+- ✅ FIFO contabile via dashboard (S69)
+- ✅ Avg-cost trading completo (S69)
+- ✅ Strategy A simmetrico (S69)
+- ✅ IDLE recalibrate guard (S69)
+- ⬜ sell_pct net-of-fees (brief separato, pre-mainnet)
+- ⬜ Reconciliation gate nightly (post-24h observation)
+- ⬜ Wallet reconciliation Binance (post go-live)
+- ⬜ 24h testnet observation clean (in corso da stasera 2026-05-09)
+- ⬜ Sito online con numeri certificati
+- ⬜ Board approval finale (Max)
 
 **Obiettivo go-live**: dimostrare che gap dashboard ↔ Binance ≤ 5%. Con bot biased (no brief 60b) il gap sarebbe ~28%, fuori soglia. Con brief 65c testnet, sapremo davvero se il bot oggi è già allineato a Binance o quanto deve migrare.
 
@@ -257,7 +272,8 @@ I 3 bug calibrazione Sentinel rilevati 2026-05-07 grazie alla dashboard `/admin`
 | **Nessun Sentinel slow loop (F&G + CMC)** | Sprint 2. Sprint 1 (fast loop BTC + funding) deve raccogliere dati e fare replay counterfactual prima |
 | **Nessun go-live €100** | Pre-live gates non superate. Phase 2 Grid ancora da fare. Architettura completa (TF + Sentinel maturo + orchestrator superiore) richiede mesi, non settimane |
 | **Nessuna partnership esterna** | Il progetto non ha traction. Prematuro cercare partner senza prodotto finito e traffico organico |
-| **Strict-FIFO come metodo contabile** | Abbandonato in S65. Fix avg-cost shipped S66. Fee USDT canonical S67. **Chiuso.** |
+| **sell_pct net-of-fees** | Proposta Max parcheggiata: richiede decisione semantica (sell_pct lordo→netto) + parametrizzazione FEE_RATE per BNB-discount. Brief separato pre-mainnet |
+| **Strict-FIFO come sistema di trading** | Abbandonato definitivamente in S69. fifo_queue.py cancellato dal repo. Closed. |
 | **Sito pubblico online** | In maintenance da S65. Riapriamo dopo 24h testnet pulito (decisione CEO S67) |
 | **Nessun cambio prezzo volumi** | €4.99 è il prezzo di lancio. Nessun dato di vendita su cui ragionare |
 | **BTC in portafoglio live** | Costi di conversione USDT→BTC troppo alti per budget €100. Decisione differita |
