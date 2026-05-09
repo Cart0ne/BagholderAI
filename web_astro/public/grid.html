@@ -1001,7 +1001,7 @@
 
         status.textContent = auditOk ? 'Saved ✓' : 'Saved (audit log failed)';
         status.style.color = auditOk ? 'var(--green)' : 'var(--yellow)';
-        allFields.forEach(function(f) {
+        GRID_CONFIG_FIELDS.forEach(function(f) {
           var input = document.getElementById('cfg-' + short + '-' + f);
           if (input) { input.dataset.original = input.value; input.classList.remove('changed'); }
         });
