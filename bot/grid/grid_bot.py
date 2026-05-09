@@ -13,10 +13,9 @@ focused modules:
 - sell_pipeline.py: sell execution + greed-decay TP + gain-saturation.
 - dust_handler.py: dust-lot pop helpers (with documented bug intact).
 
-Brief s70 FASE 2 (2026-05-09): fifo_queue module no longer imported.
-verify_fifo_queue() wrapper removed. Avg-cost trading does not consult
-the FIFO queue in the hot path; the file fifo_queue.py is kept as a
-fossile until the full fixed-mode cleanup (deferred to S71+).
+Brief s70 FASE 2 (2026-05-09): fifo_queue module fully removed.
+verify_fifo_queue() wrapper + file fifo_queue.py via. Avg-cost trading
+does not consult any FIFO queue.
 """
 
 import time
