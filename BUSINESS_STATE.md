@@ -1,8 +1,8 @@
 # BUSINESS_STATE.md
 
-**Last updated:** 2026-05-09 — Session 69 chiusura (avg-cost trading completo, FIFO rimosso ovunque, Strategy A simmetrico, ~880 righe via, DROP COLUMN × 5)
+**Last updated:** 2026-05-10 — Session 70 chiusura (sell ladder + net-of-fees, Sentinel ricalibrato, reconciliation 26/26, sito online, TF dal dottore, Haiku fix)
 **Updated by:** CEO
-**Basato su:** PROJECT_STATE.md aggiornato 2026-05-09 (S69 chiusura serale, commit cb21179)
+**Basato su:** PROJECT_STATE.md aggiornato 2026-05-10 (S70c chiusura, commits 77d4090 + 6f653b5 + 4987328)
 
 ---
 
@@ -23,6 +23,9 @@ BagHolderAI è un progetto sperimentale dove un'AI (Claude) gestisce un micro-bu
 ---
 
 ## 2. Marketing In-Flight
+
+**Post X S69+S70 (S70):** thread 2 post in coda (FIFO removal + testnet verified + site back online + TF hospitalized). 🤖+👤 firma. Da pubblicare stasera 2026-05-10.
+**Sito online (S70c):** maintenance rimossa dopo 5 giorni. TestnetBanner globale, Reconciliation table pubblica su /dashboard, TF "dal dottore" SVG inline, Sentinel/Sherpa badge TEST MODE colorati. Public dashboard certificata vs Binance.
 
 **Post X:** nessun post in coda (`pending_x_posts` vuoto). Scanner X automatizzato a cron settimanale dal 2026-05-04. Strategia: "variable reinforcement" — pubblica quando succede qualcosa di vero, mai calendar-driven. Posting Strategy v1.1 in `Posting_Strategy_v1_1.docx`.
 
@@ -58,6 +61,15 @@ Preview rimosse da entrambi i volumi.
 
 | Data | Decisione | Perché |
 |---|---|---|
+| 2026-05-10 (S70) | **FEE_RATE = 0.001 hardcoded** | Worst-case Binance. Se BNB discount, guadagno extra senza toccare codice |
+| 2026-05-10 (S70) | **Sell graduale a scala (sell ladder)** | Speculare ai buy DCA. Ogni sell richiede +sell_pct% sopra l'ultimo. `_last_sell_price` traccia la scala |
+| 2026-05-10 (S70) | **Timer patience parcheggiato** | Servono dati reali dal sell ladder prima di calibrare un timeout |
+| 2026-05-10 (S70) | **Sentinel ricalibrato + Sentinel/Sherpa DRY_RUN riaccesi** | 3 bug calibrazione fixati. Telegram OFF di default. 7 giorni raccolta dati |
+| 2026-05-10 (S70) | **Reconciliation Binance Step A+B shipped** | 26/26 matched zero drift. Script manuale + pannello /admin + tabella pubblica |
+| 2026-05-10 (S70c) | **Sito online con disclaimer testnet** | "Real orders, simulated money." Reconciliation pubblica come prova di trasparenza |
+| 2026-05-10 (S70c) | **"The story is the process, not the numbers"** | Board: cambi contabili retroattivi = materiale narrativo, non rischio reputazionale |
+| 2026-05-10 (S70c) | **Net Realized Profit parcheggiato** | Bug strutturale realized_pnl gross scoperto. Brief dedicato "Strada 2" pre-mainnet |
+| 2026-05-10 (S70c) | **Haiku commentary prompt riscritto** | Day counter da 8 maggio, contesto post-reset, brain status esplicito |
 | 2026-05-09 (S69) | **Avg-cost trading puro deployed** — trigger sell su avg_buy_price, FIFO queue rimossa, sell amount = capital_per_trade/price | Chiusura completa del debito FIFO. Dashboard, accounting, trigger ora tutti su avg-cost |
 | 2026-05-09 (S69) | **Strategy A simmetrico: no sell below avg + no buy above avg** | Sell guard da S68a + buy guard nuovo. Ogni buy deve abbassare la media, ogni sell deve essere profittevole |
 | 2026-05-09 (S69) | **IDLE recalibrate guard: skip se price > avg** | Impedisce al bot di riposizionare il buy reference sopra l'avg in mercati laterali/rialzisti |
@@ -113,6 +125,14 @@ Preview rimosse da entrambi i volumi.
 ---
 
 ## 5. Domande Aperte per CC (idee tech non ancora in brief)
+
+**[S70 Board open questions]**
+
+- **Reconciliation Step C (cron notturno Mac Mini)** — ~30 min. Wrapper `scripts/cron_reconcile.sh` + crontab `0 3 * * *`. Test TCC Full Disk Access. Deferred a S71.
+- **Brief "P&L netto canonico (Strada 2)"** — pre go-live €100. Fix `realized_pnl` per-trade gross + cambio formula `avg_buy_price` per usare cost USDT vero + backfill cumulato + verifica identità S66-style. ~3-4h.
+- **Slippage_buffer parametrico per coin** — BONK ha bisogno di buffer maggiore (slippage testnet 2.46%) rispetto a BTC/SOL. Brief separato pre-mainnet.
+- **LAST SHOT path bypassa lot_step_size** — cosmetico (genera 1 retry rifiutato + 1 success), pre-mainnet vale arrotondare.
+- **Sito mobile review** — smoke test desktop 10/10 OK, layout mobile non verificato. iPhone/Android pass su Reconciliation table + bot cards + TF dottore.
 
 **[S68 Board open questions]**
 
@@ -193,7 +213,9 @@ Preview rimosse da entrambi i volumi.
 
 ## 6. Vincoli / Deadline Non-Tecnici
 
-**Go-live €100 — target confermato 21-24 maggio 2026** (Board S68, slip da 16-20 originario causa fix 68a + brainstorming). Sito **OFFLINE / maintenance** finché baseline testnet pulito post-deploy 69a.
+**Go-live €100 — target confermato 21-24 maggio 2026** (invariato Board S68→S70). Sito **ONLINE** dal S70c (2026-05-10) con disclaimer testnet + Reconciliation pubblica.
+
+**Orchestrator restart eseguito S70c sera (2026-05-10 21:45 UTC)** — PID parent 4795. Nuovo prompt Haiku attivo da prossimo run 18:00 UTC (Day 4 testnet). Caffeine GUI Max-side previene macOS sleep.
 
 **Pre-requisiti go-live (versione S67 chiusura):**
 1. ✅ Opzione A (DB-based dashboards)
@@ -259,6 +281,10 @@ I 3 bug calibrazione Sentinel rilevati 2026-05-07 grazie alla dashboard `/admin`
 
 | Cosa | Perché no |
 |---|---|
+| **TF trading attivo** — S70 | Spento, in "osservazione" (dal dottore). Richiede brainstorming completo pre-riaccensione. Vedi `config/TF_RESTORE_INSTRUCTIONS.md` |
+| **Volume 3 in lavorazione** — S70 | Non iniziato. Materiale si accumula (S65→S70 è un arco narrativo forte: Clean Slate + Testnet + FIFO Divorce + Sell Ladder + Hospital) |
+| **X scanner automation evoluta** — S70 | Parcheggiato. Priorità è go-live mainnet 21-24 maggio. Posting manuale flag-it-when-it-happens funziona |
+| **Marketing outreach attivo** — S70 | Parcheggiato fino a sito stabile con numeri mainnet. Sito testnet online è step 1, mainnet è step 2 |
 | **Marketing zero attività** (sito offline, niente post X, niente outreach) — S68 update | "Prima i fondamentali" (Board). Pre-traction. Il prodotto (story) è in costruzione. Spingere traffico ora = mostrare un cantiere incompleto |
 | **Sentinel/Sherpa/TF spenti, codice presente ma inattivo** — S68 | Filosofia minimum viable: solo Grid attivo finché non gira pulito |
 | **Vendite Payhip 0/30 views** — S68 | Invisibilità (sito offline + zero canale promozionale), non difetto del prodotto |

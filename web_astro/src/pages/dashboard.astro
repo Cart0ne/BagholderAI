@@ -154,14 +154,21 @@ const tfSubtitle   = "The breakout hunter";
       </h2>
 
       {/* ============ HORIZONTAL PIPELINE LAYOUT ============
-           Brief 70c §8: TF doctor (left, row 1) + Grid card (right, row 1).
-           Bottom row hosts grid-natives only (TF in pausa). */}
+           Hybrid: TF doctor (left) keeps Claude Design look (rounded-2xl,
+           bg-#0d1626, no internal padding — SVG is the content), Grid Bot
+           card (right) keeps the ORIGINAL look (rounded-lg, border-border,
+           bg-surface, p-6) so its internal numbers don't get diluted by a
+           huge aspect-locked frame. Shared center handoff arrow restored.
+           grid-natives (3 coin cards) back under Grid (row 2 col 3).
+           See config/TF_RESTORE_INSTRUCTIONS.md for the future TF revival. */}
       <div class="relative grid grid-cols-1 lg:grid-cols-[1fr_140px_1fr]
                   gap-x-3 gap-y-4 items-stretch">
 
-        {/* === TF "dal dottore" (left) — brief 70c §8.
-            No outer card: the SVG itself is the card (own border + bg). */}
-        <TfDoctor />
+        {/* === TF "dal dottore" (left) — matches Grid card frame (rounded-lg,
+            border-border, bg-surface) so the two cards look like siblings. */}
+        <div class="rounded-lg border border-border bg-surface overflow-hidden">
+          <TfDoctor class="h-full w-full" />
+        </div>
 
         {/* === SHARED COINS (center) === */}
         <div class="relative flex flex-col items-center justify-start
@@ -180,7 +187,8 @@ const tfSubtitle   = "The breakout hunter";
           </div>
 
           {/* Shared cards stacked vertically — populated by JS from
-              bot_config WHERE managed_by='tf_grid' AND is_active=true. */}
+              bot_config WHERE managed_by='tf_grid' AND is_active=true.
+              Currently empty (TF paused). */}
           <div id="shared-cards" class="flex flex-col gap-2 w-full"></div>
 
           <div class="mt-4 font-mono text-[9px] uppercase tracking-[0.18em] text-text-muted text-center">
@@ -188,7 +196,7 @@ const tfSubtitle   = "The breakout hunter";
           </div>
         </div>
 
-        {/* === GRID CARD (right) === */}
+        {/* === GRID BOT CARD (right) — ORIGINAL look (rounded-lg, bg-surface, p-6) === */}
         <article class="h-full rounded-lg border border-border bg-surface p-6">
           <div class="flex items-center gap-3 mb-4 flex-wrap">
             <div class="w-[3px] h-[22px] rounded-sm" style="background:#22c55e"></div>
@@ -243,12 +251,75 @@ const tfSubtitle   = "The breakout hunter";
 
         {/* === BOTTOM ROW (inside same grid):
             col 1 (sotto TF) + col 2 (centro) = vuoti, col 3 = grid natives.
-            TF natives removed (TF paused). grid-natives populated by JS:
-            bot_config WHERE managed_by='grid' AND is_active=true. */}
+            TF natives intentionally NOT here while TF is paused; see
+            TF_RESTORE_INSTRUCTIONS.md for the revival step. */}
         <div></div>
         <div></div>
         <div id="grid-natives" class="grid grid-cols-3 gap-2 h-full"></div>
       </div>
+
+      {/* ============ TEST METRIC — Net realized profit (post-fees) ============
+          Single-row test between Grid/TF and Sentinel/Sherpa. Formula from
+          brief 70c §4 (parked pending full Strada 2 fix). Kept visible so
+          the gap with raw "Total P&L" stays auditable on the public page. */}
+      <section class="reveal mt-10">
+        <div class="rounded-lg border border-border bg-surface px-5 py-4
+                    flex flex-wrap items-baseline justify-between gap-3">
+          <div class="flex flex-wrap items-baseline gap-3">
+            <span class="font-mono text-[10px] uppercase tracking-[0.16em] text-text-muted">
+              Net realized profit (post-fees)
+            </span>
+            <span class="font-mono text-[12px] text-text-dim">
+              Total P&amp;L sell − Fees =
+            </span>
+          </div>
+          <span id="net-realized-test"
+                class="font-mono text-[20px] font-semibold text-pos tabular-nums">
+            —
+          </span>
+        </div>
+      </section>
+
+      <script>
+        // Fetch sell P&L and total fees from trades v3 — aggregate client-side.
+        // Single anon-key request; PostgREST max 1000 rows enough at testnet scale.
+        (async () => {
+          const SB_URL = "https://pxdhtmqfwjwjhtcoacsn.supabase.co";
+          const SB_KEY =
+            "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9." +
+            "eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB4ZGh0bXFmd2p3amh0Y29hY3NuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4NDI1OTIsImV4cCI6MjA4OTQxODU5Mn0." +
+            "G76lvYWrqlM0z2RoSkU1uAglfMBKN_rXvBGOQhb4kdg";
+          const url =
+            SB_URL +
+            "/rest/v1/trades?config_version=eq.v3&select=side,realized_pnl,fee";
+          const el = document.getElementById("net-realized-test");
+          if (!el) return;
+          try {
+            const r = await fetch(url, {
+              headers: { apikey: SB_KEY, Authorization: "Bearer " + SB_KEY },
+            });
+            if (!r.ok) throw new Error(String(r.status));
+            const rows = (await r.json()) as Array<{
+              side: string;
+              realized_pnl: number | null;
+              fee: number | null;
+            }>;
+            let pnlSell = 0;
+            let fees = 0;
+            for (const t of rows) {
+              if (t.side === "sell") pnlSell += Number(t.realized_pnl) || 0;
+              fees += Number(t.fee) || 0;
+            }
+            const net = pnlSell - fees;
+            const sign = net >= 0 ? "+" : "−";
+            el.textContent = sign + "$" + Math.abs(net).toFixed(2);
+            el.classList.remove("text-pos", "text-neg");
+            el.classList.add(net >= 0 ? "text-pos" : "text-neg");
+          } catch {
+            el.textContent = "—";
+          }
+        })();
+      </script>
 
       {/* ============ SENTINEL + SHERPA staged — 2 colonne affiancate ============ */}
       <div class="reveal mt-14 grid grid-cols-2 gap-5">
