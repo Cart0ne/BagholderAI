@@ -47,6 +47,11 @@ TELEGRAM_THROTTLE_S = 10 * 60   # 1 message per kind per bot per 10 min
 PROPOSED_PARAMS = ("buy_pct", "sell_pct", "idle_reentry_hours")
 RISK_STOP_BUY_THRESHOLD = 90    # would-have-activated stop_buy on Grid
 
+# Brief 70b (S70 2026-05-10): default OFF al riavvio post-DRY_RUN per
+# evitare spam Telegram durante calibrazione. Max abilita via env quando
+# vuole. Memoria `feedback_no_telegram_alerts`.
+TELEGRAM_ENABLED = os.getenv("SHERPA_TELEGRAM_ENABLED", "false").lower() == "true"
+
 
 def _silence_third_party_loggers() -> None:
     for name in ("httpx", "httpcore", "telegram", "telegram.ext"):
@@ -453,6 +458,8 @@ def _alert_dry_run(
     current: dict,
     proposed: dict,
 ) -> None:
+    if not TELEGRAM_ENABLED:
+        return  # Brief 70b: silenzioso al riavvio post-DRY_RUN
     key = f"dry_run:{symbol}"
     now = time.time()
     if now - last_alert_ts.get(key, 0) < TELEGRAM_THROTTLE_S:
@@ -475,6 +482,8 @@ def _alert_live(
     current: dict,
     proposed: dict,
 ) -> None:
+    if not TELEGRAM_ENABLED:
+        return  # Brief 70b: silenzioso al riavvio post-DRY_RUN
     key = f"live:{symbol}"
     now = time.time()
     if now - last_alert_ts.get(key, 0) < TELEGRAM_THROTTLE_S:
@@ -497,6 +506,8 @@ def _alert_cooldown(
     parameter: str,
     manual_change: Optional[dict],
 ) -> None:
+    if not TELEGRAM_ENABLED:
+        return  # Brief 70b: silenzioso al riavvio post-DRY_RUN
     key = f"cooldown:{symbol}:{parameter}"
     now = time.time()
     if now - last_alert_ts.get(key, 0) < TELEGRAM_THROTTLE_S:

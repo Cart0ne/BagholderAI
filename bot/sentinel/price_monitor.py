@@ -35,6 +35,12 @@ _WINDOWS = {
 }
 # Sub-window used by speed_of_fall: last 20 minutes of the 1h window.
 _SOF_SUBWINDOW_S = 20 * 60
+# Brief 70b (S70 2026-05-10): floor sul change_1h per evitare falsi
+# positivi su mercato laterale. Su 2,827 tick raccolti 6-8 maggio la
+# vecchia formula scattava 30% delle volte per pure micro-oscillazioni
+# (BTC range ±1%). Solo se l'ora intera è in vero calo (≤ floor)
+# valutiamo l'accelerazione della caduta.
+_SOF_MIN_DROP_1H_PCT = -0.5
 
 
 class PriceMonitor:
@@ -118,7 +124,11 @@ class PriceMonitor:
         self, latest_ts: float, latest_price: float
     ) -> bool:
         """True when the drop in the last 20 minutes is >= 1.5x the
-        average drop across the full hour, AND the 20m move is negative.
+        average drop across the full hour, AND the 20m move is negative,
+        AND the 1h move itself is a vero calo (<= _SOF_MIN_DROP_1H_PCT).
+
+        Brief 70b: floor su change_1h aggiunto per evitare falsi positivi
+        su mercato laterale (vecchio scatto 30% su rumore ±1%).
         """
         ref_1h = self._price_at_or_before(latest_ts - _WINDOWS["1h"])
         ref_20m = self._price_at_or_before(latest_ts - _SOF_SUBWINDOW_S)
@@ -128,6 +138,8 @@ class PriceMonitor:
         change_20m = _pct_change(ref_20m, latest_price)
         if change_20m >= 0:
             return False
+        if change_1h > _SOF_MIN_DROP_1H_PCT:
+            return False  # 70b: ignora accelerazione su mercato sostanzialmente piatto/up
         # change_1h / 3 = average drop per 20m segment of the hour.
         return abs(change_20m) >= 1.5 * abs(change_1h / 3.0)
 

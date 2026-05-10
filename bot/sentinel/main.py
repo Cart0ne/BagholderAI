@@ -17,6 +17,7 @@ the gap, Sherpa keeps using the last score it can read from the DB.
 from __future__ import annotations
 
 import logging
+import os
 import signal
 import sys
 import time
@@ -35,6 +36,12 @@ SCAN_INTERVAL_S = 60
 TELEGRAM_THROTTLE_S = 10 * 60  # max 1 alert of each type per 10 min
 RISK_ALERT_THRESHOLD = 70
 RISK_CRITICAL_THRESHOLD = 90
+
+# Brief 70b (S70 2026-05-10): default OFF al riavvio post-DRY_RUN per
+# evitare spam Telegram durante calibrazione. Max abilita via env quando
+# vuole. Memoria `feedback_no_telegram_alerts`: feature di monitoring
+# vanno in /admin, non Telegram.
+TELEGRAM_ENABLED = os.getenv("SENTINEL_TELEGRAM_ENABLED", "false").lower() == "true"
 
 
 def _silence_third_party_loggers() -> None:
@@ -162,7 +169,12 @@ def _maybe_alert(
     risk: int,
     snapshot: dict,
 ) -> None:
-    """Throttled Telegram alert when risk crosses warn/critical thresholds."""
+    """Throttled Telegram alert when risk crosses warn/critical thresholds.
+
+    Brief 70b: silenzioso se SENTINEL_TELEGRAM_ENABLED=false (default).
+    """
+    if not TELEGRAM_ENABLED:
+        return
     now = time.time()
     change_1h = snapshot.get("btc_change_1h")
     change_str = f"{change_1h:+.2f}%" if change_1h is not None else "n/a"
