@@ -78,6 +78,7 @@ Comm Sentinel↔Sherpa↔Grid via Supabase only. Telegram alerts: solo Grid trad
 - **🟡 [S69 NEW]** 2 BONK sells fossili pre-S68a con `buy_trade_id NULL` — restano in DB ma niente più check che li flagga.
 - **🟡 [S68 NEW]** `grid_runner.py` 1591 righe (di cui ~830 in `run_grid_bot()`). Phase 2 split (brief `62b`) post go-live.
 - **🟡 [S70 NEW]** Sherpa propone abbassare BONK sell_pct 4→1.5 in DRY_RUN (ignora hotfix slippage). Quando SHERPA_MODE=live, rule engine deve preservare buffer per-coin. Tracciato in §6.
+- **🟡 [S70 NEW]** **LAST SHOT path bypassa lot_step_size rounding** — BUY BONK 11:52:12 UTC rejected da Binance (`code -2010`, "Order book liquidity is less than LOT_SIZE filter minimum quantity"); retry LAST SHOT a 11:52:33 ha avuto successo. Reconcile DB↔Binance OK 12/12 (rejected non scritto in DB, success regolare). Cosmetico (genera 1 Telegram + warn ORDER_REJECTED), ma pre-mainnet vale arrotondare l'amount a `lot_step_size` anche nel path LAST SHOT per evitare il primo tentativo destinato a fallire.
 - **TF distance filter 12% fisso vs EMA20** (CEO 2026-05-07): cross-tema Sentinel/Sherpa, post-go-live.
 
 ## 6. Domande aperte per CEO
