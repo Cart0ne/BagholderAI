@@ -117,6 +117,18 @@ body {
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4),
               inset 0 0 30px rgba(245, 158, 11, 0.06);
 }
+/* Brief 70c §7 — Sentinel/Sherpa cornice colorata in TEST MODE.
+   Stesso pattern di grid-active/tf-active, colori per-bot. */
+.bot-card.sentinel-active {
+  border-color: #3b82f6;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4),
+              inset 0 0 30px rgba(59, 130, 246, 0.06);
+}
+.bot-card.sherpa-active {
+  border-color: #ef4444;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4),
+              inset 0 0 30px rgba(239, 68, 68, 0.06);
+}
 
 .bot-pill {
   position: absolute;
@@ -132,6 +144,20 @@ body {
 .bot-pill.live-grid { border: 1px solid #22c55e; color: #22c55e; }
 .bot-pill.live-tf   { border: 1px solid #f59e0b; color: #f59e0b; }
 .bot-pill.soon      { border: 1px solid rgba(255, 255, 255, 0.2); color: rgba(255, 255, 255, 0.6); }
+/* Brief 70c §7 fix: background composito (tint colorato sopra opaco)
+   per coprire la cornice della card che altrimenti attraversa la pill. */
+.bot-pill.testmode-sentinel {
+  border: 1px solid #3b82f6; color: #3b82f6;
+  background: linear-gradient(rgba(59, 130, 246, 0.15), rgba(59, 130, 246, 0.15)), #0a0e17;
+}
+.bot-pill.testmode-sherpa {
+  border: 1px solid #ef4444; color: #ef4444;
+  background: linear-gradient(rgba(239, 68, 68, 0.15), rgba(239, 68, 68, 0.15)), #0a0e17;
+}
+.bot-pill.paused-tf {
+  border: 1px solid #f59e0b; color: #f59e0b;
+  background: linear-gradient(rgba(245, 158, 11, 0.15), rgba(245, 158, 11, 0.15)), #0a0e17;
+}
 
 .bot-head {
   display: flex;

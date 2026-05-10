@@ -10,8 +10,11 @@ import MixerSVG  from "./MixerSVG.astro";
 import MugSVG    from "./MugSVG.astro";
 import RadarSVG  from "./RadarSVG.astro";
 
+type Mode = "live" | "testmode" | "paused";
+
 interface Props {
   variant: "grid" | "tf" | "sentinel" | "sherpa";
+  mode?: Mode;
   patience: number;
   speed: number;
   capital: number;
@@ -19,23 +22,37 @@ interface Props {
   losses: number;
   maxStat?: number;
   description: string;
+  recoveryHref?: string;
 }
 
 const {
   variant,
+  mode = (variant === "sentinel" || variant === "sherpa") ? "testmode" : "live",
   patience, speed, capital, wins, losses,
   maxStat = 200,
   description,
+  recoveryHref,
 } = Astro.props;
 
 const meta = {
-  grid:     { name: "GRID BOT",       sub: "Methodical Trader", color: "#22c55e", build: "stocky" as const, expression: "focused" as const,  uid: "gridmain",     statusLabel: "LIVE", tilt: "tilt-l" as const, frameKind: "grid"     },
-  tf:       { name: "TREND FOLLOWER", sub: "Market Scanner",    color: "#f59e0b", build: "lanky"  as const, expression: "scanning" as const, uid: "tfmain",       statusLabel: "LIVE", tilt: "tilt-r" as const, frameKind: "tf"       },
-  sentinel: { name: "SENTINEL",       sub: "Risk Watcher",      color: "#3b82f6", build: "stocky" as const, expression: "focused" as const,  uid: "sentinelmain", statusLabel: "SOON", tilt: "tilt-l" as const, frameKind: "sentinel" },
-  sherpa:   { name: "SHERPA",         sub: "Bot Coordinator",   color: "#ef4444", build: "lanky"  as const, expression: "curious" as const,  uid: "sherpamain",   statusLabel: "SOON", tilt: "tilt-r" as const, frameKind: "sherpa"   },
+  grid:     { name: "GRID BOT",       sub: "Methodical Trader", color: "#22c55e", build: "stocky" as const, expression: "focused" as const,  uid: "gridmain",     tilt: "tilt-l" as const, frameKind: "grid"     },
+  tf:       { name: "TREND FOLLOWER", sub: "Market Scanner",    color: "#f59e0b", build: "lanky"  as const, expression: "scanning" as const, uid: "tfmain",       tilt: "tilt-r" as const, frameKind: "tf"       },
+  sentinel: { name: "SENTINEL",       sub: "Risk Watcher",      color: "#3b82f6", build: "stocky" as const, expression: "focused" as const,  uid: "sentinelmain", tilt: "tilt-l" as const, frameKind: "sentinel" },
+  sherpa:   { name: "SHERPA",         sub: "Bot Coordinator",   color: "#ef4444", build: "lanky"  as const, expression: "curious" as const,  uid: "sherpamain",   tilt: "tilt-r" as const, frameKind: "sherpa"   },
 }[variant];
 
-const dim = variant === "sentinel" || variant === "sherpa";
+const labels: Record<Mode, { pill: string; rarity: string }> = {
+  live:     { pill: "LIVE",      rarity: "ACTIVE · v3"  },
+  testmode: { pill: "TEST MODE", rarity: "DRY_RUN · v3" },
+  paused:   { pill: "ON HOLD",   rarity: "PAUSED · v3"  },
+};
+const modeLabel = labels[mode];
+
+/* Visual state:
+   - dim   = silhouette + "?" (Sentinel/Sherpa, mode=testmode)
+   - paused = full frame but stats panel replaced by recovery link (TF) */
+const dim    = mode === "testmode";
+const paused = mode === "paused";
 
 const pct = (val: number, max: number) =>
   max ? Math.min(100, (val / max) * 100) : 0;
@@ -50,27 +67,37 @@ const stats = [
   { label: "LOSSES",   value: losses,   color: RED,        max: maxStat },
 ];
 
-/* Class composition — replicates original .bot-card.{grid|tf}-active|.dim + .tilt-l|r */
+/* Class composition — brief 70c §7: pill + cornice colorate per-bot anche
+   in testmode/paused (prima erano grey "LOCKED"). Mantengo `dim` per
+   Sentinel/Sherpa (silhouette + ?) ma con cornice colorata sopra. */
 const cardClass = [
   "bot-card",
-  meta.frameKind === "grid" ? "grid-active" :
-  meta.frameKind === "tf"   ? "tf-active"   : "dim",
+  mode === "live"     && meta.frameKind === "grid" ? "grid-active"        :
+  mode === "live"     && meta.frameKind === "tf"   ? "tf-active"          :
+  mode === "testmode" && variant === "sentinel"    ? "sentinel-active dim":
+  mode === "testmode" && variant === "sherpa"      ? "sherpa-active dim"  :
+  mode === "paused"   && variant === "tf"          ? "tf-active"          :
+                                                      "dim",
   meta.tilt,
 ].join(" ");
 
 const pillClass = [
   "bot-pill",
-  meta.frameKind === "grid" ? "live-grid" :
-  meta.frameKind === "tf"   ? "live-tf"   : "soon",
+  mode === "live"     && meta.frameKind === "grid" ? "live-grid"         :
+  mode === "live"     && meta.frameKind === "tf"   ? "live-tf"           :
+  mode === "testmode" && variant === "sentinel"    ? "testmode-sentinel" :
+  mode === "testmode" && variant === "sherpa"      ? "testmode-sherpa"   :
+  mode === "paused"   && variant === "tf"          ? "paused-tf"         :
+                                                      "soon",
 ].join(" ");
 ---
 
 <article class={cardClass}>
-  <span class={pillClass}>{meta.statusLabel}</span>
+  <span class={pillClass}>{modeLabel.pill}</span>
 
   <div class="bot-head">
     <span class={`bot-name ${meta.frameKind}`}>{meta.name}</span>
-    <span class="bot-rarity">{dim ? "LOCKED" : "ACTIVE · v3"}</span>
+    <span class="bot-rarity">{modeLabel.rarity}</span>
   </div>
   <div class="bot-subtitle">{meta.sub}</div>
 
@@ -117,36 +144,86 @@ const pillClass = [
     )}
   </div>
 
-  <div>
-    {stats.map(s => {
-      const display = dim ? "0" : (s.format === "capital" ? `$${s.value}` : `${s.value}`);
-      const fillW = pct(s.value, s.max);
-      /* IDs only on live bots' wins/losses — those get hot-swapped from
-         Supabase by /scripts/live-stats.ts. */
-      const liveKey =
-        (variant === "grid" || variant === "tf") &&
-        (s.label === "WINS" || s.label === "LOSSES")
-          ? `bot-${variant}-${s.label.toLowerCase()}`
-          : null;
-      return (
-        <div class:list={["bot-stat-row", dim && "dim"]}>
-          <span class="bot-stat-label">{s.label}</span>
-          <div class="bot-stat-bar-track">
-            <div
-              id={liveKey ? `${liveKey}-bar` : undefined}
-              class="bot-stat-bar-fill"
-              style={`width:${fillW}%; background:${dim ? 'rgba(255,255,255,0.15)' : s.color};`}
-            ></div>
+  {paused ? (
+    <div class="bot-paused-body">
+      <div class="bot-paused-icon">🩺</div>
+      <p class="bot-paused-text">{description}</p>
+      {recoveryHref && (
+        <a href={recoveryHref} class={`bot-paused-link ${meta.frameKind}`}>
+          → see the doctor
+        </a>
+      )}
+    </div>
+  ) : (
+    <div>
+      {stats.map(s => {
+        const display = dim ? "0" : (s.format === "capital" ? `$${s.value}` : `${s.value}`);
+        const fillW = pct(s.value, s.max);
+        /* IDs only on live bots' wins/losses — those get hot-swapped from
+           Supabase by /scripts/live-stats.ts. */
+        const liveKey =
+          mode === "live" &&
+          (variant === "grid" || variant === "tf") &&
+          (s.label === "WINS" || s.label === "LOSSES")
+            ? `bot-${variant}-${s.label.toLowerCase()}`
+            : null;
+        return (
+          <div class:list={["bot-stat-row", dim && "dim"]}>
+            <span class="bot-stat-label">{s.label}</span>
+            <div class="bot-stat-bar-track">
+              <div
+                id={liveKey ? `${liveKey}-bar` : undefined}
+                class="bot-stat-bar-fill"
+                style={`width:${fillW}%; background:${dim ? 'rgba(255,255,255,0.15)' : s.color};`}
+              ></div>
+            </div>
+            <span
+              id={liveKey || undefined}
+              class="bot-stat-value"
+              style={`color:${dim ? 'rgba(255,255,255,0.35)' : s.color};`}
+            >{display}</span>
           </div>
-          <span
-            id={liveKey || undefined}
-            class="bot-stat-value"
-            style={`color:${dim ? 'rgba(255,255,255,0.35)' : s.color};`}
-          >{display}</span>
-        </div>
-      );
-    })}
-  </div>
+        );
+      })}
+    </div>
+  )}
 
-  <div class="bot-footer"><span class={`arrow ${meta.frameKind}`}>▸ </span>{description}</div>
+  {!paused && (
+    <div class="bot-footer"><span class={`arrow ${meta.frameKind}`}>▸ </span>{description}</div>
+  )}
 </article>
+
+<style>
+  /* TF paused-mode body — replaces the stats grid + footer with a
+     compact recovery link. Coherent with the dashboard's TfDoctor SVG. */
+  .bot-paused-body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.55rem;
+    padding: 0.5rem 0.75rem 0.25rem;
+    text-align: center;
+  }
+  .bot-paused-icon { font-size: 1.4rem; line-height: 1; }
+  .bot-paused-text {
+    font-size: 12px;
+    line-height: 1.5;
+    color: rgba(245, 245, 245, 0.7);
+    max-width: 90%;
+  }
+  .bot-paused-link {
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: #f59e0b;
+    text-decoration: none;
+    border-bottom: 1px dashed rgba(245, 158, 11, 0.4);
+    padding-bottom: 1px;
+    transition: color 0.2s, border-color 0.2s;
+  }
+  .bot-paused-link:hover {
+    color: #fcd34d;
+    border-color: #fcd34d;
+  }
+</style>

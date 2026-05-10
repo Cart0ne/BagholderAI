@@ -1,0 +1,317 @@
+---
+/* Brief 70c §8 — TF "dal dottore" placeholder.
+   Inline SVG (Claude Design recommendation) so we can animate the
+   heartbeat monitor via CSS and trigger the easter-egg via JS without
+   <object>/<img> sandboxing. Source asset preserved at
+   public/tf-maintenance-dottore.svg. */
+interface Props { class?: string }
+const { class: className } = Astro.props;
+---
+
+<div id="tf-recovery" class:list={[
+  "tf-doctor relative flex h-full items-center justify-center overflow-hidden",
+  className,
+]} style="background:#0a1020;">
+  <svg xmlns="http://www.w3.org/2000/svg"
+       viewBox="0 0 768 720"
+       preserveAspectRatio="xMidYMid meet"
+       class="block w-full h-auto max-h-full"
+       font-family="ui-monospace, 'SF Mono', Menlo, monospace">
+
+    <defs>
+      <linearGradient id="tfShade" x1="0" x2="1" y1="0" y2="1">
+        <stop offset="0" stop-color="#ffffff"></stop>
+        <stop offset="1" stop-color="#000000"></stop>
+      </linearGradient>
+      <radialGradient id="stageGlow" cx="50%" cy="30%" r="60%">
+        <stop offset="0%" stop-color="#ef4444" stop-opacity="0.10"></stop>
+        <stop offset="60%" stop-color="#ef4444" stop-opacity="0"></stop>
+      </radialGradient>
+      <pattern id="floorTiles" width="28" height="28" patternUnits="userSpaceOnUse">
+        <path d="M 28 0 L 0 0 0 28" fill="none" stroke="#ffffff" stroke-opacity="0.04" stroke-width="1"></path>
+      </pattern>
+      <clipPath id="stageClip"><rect x="36" y="172" width="696" height="240" rx="8"></rect></clipPath>
+      <clipPath id="footClip"><rect x="40" y="650" width="688" height="6" rx="3"></rect></clipPath>
+
+      <symbol id="tfMascotDoctor" viewBox="0 0 200 260">
+        <rect x="62" y="92" width="10" height="80" rx="3" fill="#7a4506"></rect>
+        <rect x="128" y="92" width="10" height="80" rx="3" fill="#7a4506"></rect>
+        <rect x="78" y="190" width="16" height="44" rx="6" fill="#7a4506"></rect>
+        <rect x="106" y="190" width="16" height="44" rx="6" fill="#7a4506"></rect>
+        <ellipse cx="86" cy="240" rx="16" ry="6" fill="#1a1208"></ellipse>
+        <ellipse cx="114" cy="240" rx="16" ry="6" fill="#1a1208"></ellipse>
+        <rect x="42" y="120" width="14" height="60" rx="6" fill="#7a4506"></rect>
+        <rect x="144" y="120" width="14" height="60" rx="6" fill="#7a4506"></rect>
+        <circle cx="49" cy="186" r="9" fill="#7a4506"></circle>
+        <circle cx="151" cy="186" r="9" fill="#7a4506"></circle>
+        <rect x="56" y="86" width="88" height="116" rx="10" fill="#f59e0b"></rect>
+        <rect x="56" y="86" width="88" height="116" rx="10" fill="url(#tfShade)" opacity="0.18"></rect>
+        <rect x="60" y="92" width="6" height="100" rx="3" fill="#fcd34d" opacity="0.6"></rect>
+        <rect x="74" y="148" width="52" height="32" rx="4" fill="#7a4506" opacity="0.55"></rect>
+        <line x1="100" y1="148" x2="100" y2="180" stroke="#7a4506" stroke-width="1" opacity="0.6"></line>
+        <rect x="68" y="44" width="64" height="50" rx="10" fill="#f59e0b"></rect>
+        <rect x="68" y="44" width="64" height="50" rx="10" fill="url(#tfShade)" opacity="0.15"></rect>
+        <rect x="74" y="60" width="52" height="18" rx="4" fill="#0a0e17"></rect>
+        <path d="M 84 70 L 92 70 M 84 70 L 92 64 M 84 70 L 92 76" stroke="#f5f5f5" stroke-width="1.6" stroke-linecap="round" fill="none"></path>
+        <path d="M 108 70 L 116 70 M 108 70 L 116 64 M 108 70 L 116 76" stroke="#f5f5f5" stroke-width="1.6" stroke-linecap="round" fill="none"></path>
+        <rect x="98" y="22" width="4" height="22" fill="#7a4506"></rect>
+        <circle cx="100" cy="20" r="5" fill="#fcd34d"></circle>
+        <rect x="56" y="132" width="88" height="6" fill="#7a4506"></rect>
+        <rect x="92" y="128" width="16" height="14" rx="2" fill="#0a0e17"></rect>
+        <text x="100" y="138" fill="#f59e0b" font-size="7" font-weight="700" text-anchor="middle">TF</text>
+      </symbol>
+    </defs>
+
+    <rect width="768" height="720" fill="#0a1020"></rect>
+    <rect x="8" y="8" width="752" height="704" rx="14" fill="#0d1626" stroke="#ffffff" stroke-opacity="0.06"></rect>
+
+    <rect x="40" y="42" width="4" height="22" rx="2" fill="#f59e0b"></rect>
+    <text x="60" y="60" fill="#ffffff" font-size="18" font-weight="700" letter-spacing="2.6">TREND FOLLOWER</text>
+    <text x="290" y="60" fill="#ffffff" fill-opacity="0.42" font-size="14">— $100 · beta</text>
+
+    <g transform="translate(560, 44)">
+      <rect width="170" height="22" rx="11" fill="#ef4444" fill-opacity="0.10" stroke="#ef4444" stroke-opacity="0.35"></rect>
+      <circle cx="14" cy="11" r="3.2" fill="#ef4444" class="tf-pulse-red"></circle>
+      <text x="26" y="15" fill="#ef4444" font-size="10" font-weight="700" letter-spacing="1.8">IN OSSERVAZIONE</text>
+    </g>
+
+    <text x="40" y="118" fill="#ffffff" fill-opacity="0.30" font-family="ui-serif, Georgia, serif" font-style="italic" font-size="16">Vital signs steady. Bot resting. Don't poke him.</text>
+
+    <rect x="40" y="148" width="688" height="1" fill="#ffffff" fill-opacity="0.06"></rect>
+
+    <g clip-path="url(#stageClip)">
+      <rect x="36" y="172" width="696" height="240" fill="#06090f"></rect>
+      <rect x="36" y="172" width="696" height="240" fill="url(#stageGlow)"></rect>
+      <rect x="36" y="172" width="696" height="240" fill="url(#floorTiles)"></rect>
+
+      <g transform="translate(50, 188)">
+        <path class="tf-ekg-glow"
+              d="M 0 13 L 80 13 L 92 13 L 100 4 L 108 22 L 116 9 L 124 13 L 220 13 L 232 13 L 240 4 L 248 22 L 256 9 L 264 13 L 360 13 L 372 13 L 380 4 L 388 22 L 396 9 L 404 13 L 500 13 L 668 13"
+              fill="none" stroke="#22c55e" stroke-width="4" stroke-opacity="0.25"></path>
+        <path class="tf-ekg-line"
+              d="M 0 13 L 80 13 L 92 13 L 100 4 L 108 22 L 116 9 L 124 13 L 220 13 L 232 13 L 240 4 L 248 22 L 256 9 L 264 13 L 360 13 L 372 13 L 380 4 L 388 22 L 396 9 L 404 13 L 500 13 L 668 13"
+              fill="none" stroke="#22c55e" stroke-width="1.6"></path>
+      </g>
+
+      {/* IV stand + bag */}
+      <rect x="678" y="220" width="3" height="160" fill="#cbd5e1" rx="1"></rect>
+      <rect x="668" y="220" width="23" height="3" fill="#cbd5e1" rx="1"></rect>
+      <rect x="664" y="226" width="30" height="44" rx="4" fill="none" stroke="#22c55e" stroke-opacity="0.7" stroke-width="1.5"></rect>
+      <rect x="665.5" y="240" width="27" height="29" rx="3" fill="#22c55e" fill-opacity="0.55"></rect>
+      <line x1="679" y1="270" x2="679" y2="380" stroke="#22c55e" stroke-opacity="0.55" stroke-width="1.5"></line>
+      <circle cx="679" cy="290" r="2" fill="#22c55e" class="tf-iv-drop"></circle>
+
+      {/* Doctor's clipboard / Rx pad */}
+      <g transform="translate(74, 286) rotate(-6 32 40)">
+        <rect width="64" height="80" rx="4" fill="#1a1f2a" stroke="#ffffff" stroke-opacity="0.12"></rect>
+        <rect x="22" y="-6" width="20" height="8" rx="2" fill="#cbd5e1"></rect>
+        <text x="32" y="36" font-family="ui-serif, Georgia, serif" font-style="italic" font-size="24" font-weight="700" fill="#ef4444" text-anchor="middle">Rx</text>
+        <rect x="8" y="46" width="48" height="2" rx="1" fill="#ffffff" fill-opacity="0.18"></rect>
+        <rect x="8" y="52" width="38" height="2" rx="1" fill="#ffffff" fill-opacity="0.18"></rect>
+        <rect x="8" y="58" width="28" height="2" rx="1" fill="#ffffff" fill-opacity="0.18"></rect>
+      </g>
+
+      {/* Pillow */}
+      <rect x="262" y="324" width="60" height="14" rx="7" fill="#f5f5f5" fill-opacity="0.85" transform="rotate(-2 292 331)"></rect>
+
+      {/* Patient (mascot lying down) */}
+      <g transform="translate(348, 344) rotate(-90)">
+        <use href="#tfMascotDoctor" x="-100" y="-130" width="200" height="260"></use>
+        <g transform="rotate(90)">
+          <rect x="-14" y="-126" width="28" height="28" rx="4" fill="#f5f5f5"></rect>
+          <rect x="-10" y="-114" width="20" height="4" fill="#ef4444"></rect>
+          <rect x="-2" y="-122" width="4" height="20" fill="#ef4444"></rect>
+        </g>
+      </g>
+
+      {/* Blanket */}
+      <rect x="370" y="330" width="130" height="28" rx="4" fill="#ef4444" fill-opacity="0.5"></rect>
+      <g opacity="0.4">
+        <line x1="378" y1="332" x2="498" y2="356" stroke="#ef4444" stroke-width="1"></line>
+        <line x1="394" y1="332" x2="498" y2="346" stroke="#ef4444" stroke-width="1"></line>
+        <line x1="410" y1="332" x2="498" y2="340" stroke="#ef4444" stroke-width="1"></line>
+      </g>
+
+      {/* Stethoscope */}
+      <g transform="translate(228, 320) rotate(20 4 28)">
+        <rect width="8" height="56" rx="4" fill="#f5f5f5" stroke="#000" stroke-opacity="0.3"></rect>
+        <rect y="40" width="8" height="16" rx="4" fill="#ef4444"></rect>
+        <circle cx="4" cy="60" r="8" fill="#ef4444"></circle>
+      </g>
+
+      {/* Bed frame */}
+      <rect x="244" y="368" width="240" height="14" rx="3" fill="#1a1f2a" stroke="#ffffff" stroke-opacity="0.10"></rect>
+      <rect x="272" y="382" width="4" height="22" fill="#1a1f2a" stroke="#ffffff" stroke-opacity="0.08"></rect>
+      <rect x="452" y="382" width="4" height="22" fill="#1a1f2a" stroke="#ffffff" stroke-opacity="0.08"></rect>
+      <circle cx="274" cy="406" r="3" fill="#1a1f2a" stroke="#ffffff" stroke-opacity="0.12"></circle>
+      <circle cx="454" cy="406" r="3" fill="#1a1f2a" stroke="#ffffff" stroke-opacity="0.12"></circle>
+
+      <rect x="36" y="411" width="696" height="1" fill="#ffffff" fill-opacity="0.08"></rect>
+    </g>
+
+    <rect x="40" y="436" width="688" height="1" fill="#ffffff" fill-opacity="0.06"></rect>
+
+    {/* Vitals panel */}
+    <g transform="translate(40, 452)">
+      <rect width="688" height="138" rx="6" fill="#06090f" stroke="#ffffff" stroke-opacity="0.06"></rect>
+      <text x="18" y="24" fill="#f59e0b" font-size="12.5">$ chart trend_follower<tspan fill="#f59e0b" font-weight="700">▌</tspan></text>
+
+      <g font-size="10.5" letter-spacing="0.6">
+        <text x="18" y="48" fill="#ffffff" fill-opacity="0.42">PATIENT</text>
+        <text x="138" y="48" fill="#ffffff" fill-opacity="0.86" font-size="12.5">
+          <tspan fill="#f59e0b">trend_follower.exe</tspan> · age 26d
+        </text>
+      </g>
+      <g font-size="10.5" letter-spacing="0.6">
+        <text x="18" y="70" fill="#ffffff" fill-opacity="0.42">VITALS</text>
+        <text x="138" y="70" fill="#ffffff" fill-opacity="0.86" font-size="12.5">
+          <tspan fill="#22c55e">heart-rate stable</tspan> · capital intact
+        </text>
+      </g>
+      <g font-size="10.5" letter-spacing="0.6">
+        <text x="18" y="92" fill="#ffffff" fill-opacity="0.42">DIAGNOSIS</text>
+        <text x="138" y="92" fill="#ffffff" fill-opacity="0.86" font-size="12.5">
+          <tspan fill="#ef4444">acute</tspan> greed-decay malfunction
+        </text>
+      </g>
+      <g font-size="10.5" letter-spacing="0.6">
+        <text x="18" y="114" fill="#ffffff" fill-opacity="0.42">Rx</text>
+        <text x="138" y="114" fill="#ffffff" fill-opacity="0.86" font-size="12.5">rest, fluids, fresh stop-loss logic</text>
+      </g>
+      <g font-size="10.5" letter-spacing="0.6">
+        <text x="18" y="132" fill="#ffffff" fill-opacity="0.42">DISCHARGE</text>
+        <text x="138" y="132" fill="#ffffff" fill-opacity="0.86" font-size="12.5">when the doctor says so</text>
+      </g>
+    </g>
+
+    <rect x="40" y="606" width="688" height="1" fill="#ffffff" fill-opacity="0.06"></rect>
+
+    <text x="40" y="634" fill="#ffffff" fill-opacity="0.42" font-size="12.5">
+      Vitals <tspan fill="#f59e0b" font-weight="700">steady</tspan> · capital parked at $100.00
+    </text>
+    <text x="728" y="634" fill="#ffffff" fill-opacity="0.42" font-size="12.5" text-anchor="end">back soon</text>
+
+    <rect x="40" y="650" width="688" height="6" rx="3" fill="#ffffff" fill-opacity="0.06"></rect>
+    <g clip-path="url(#footClip)">
+      <rect x="40" y="650" width="536" height="6" rx="3" fill="#ef4444" fill-opacity="0.75"></rect>
+      <g opacity="0.35">
+        <rect x="40" y="650" width="6" height="6" fill="#000"></rect>
+        <rect x="52" y="650" width="6" height="6" fill="#000"></rect>
+        <rect x="64" y="650" width="6" height="6" fill="#000"></rect>
+        <rect x="76" y="650" width="6" height="6" fill="#000"></rect>
+        <rect x="88" y="650" width="6" height="6" fill="#000"></rect>
+        <rect x="100" y="650" width="6" height="6" fill="#000"></rect>
+        <rect x="112" y="650" width="6" height="6" fill="#000"></rect>
+        <rect x="124" y="650" width="6" height="6" fill="#000"></rect>
+      </g>
+    </g>
+
+    {/* Easter-egg: invisible click area covering the EKG monitor + IV bag.
+        3 rapid clicks → reveals the Dr. CC dialog overlay. */}
+    <rect id="tf-monitor-hitbox"
+          x="660" y="220" width="42" height="56"
+          fill="transparent" cursor="pointer"
+          style="pointer-events:auto;"></rect>
+  </svg>
+
+  {/* Easter-egg dialog (hidden by default) */}
+  <div id="tf-doctor-dialog"
+       class="pointer-events-none absolute inset-0 flex items-center justify-center
+              opacity-0 transition-opacity duration-300">
+    <div class="rounded-lg border border-pos/40 bg-bg/95 px-5 py-4
+                shadow-xl shadow-pos/10 max-w-sm">
+      <div class="font-mono text-[10px] uppercase tracking-[0.16em] text-pos mb-2">
+        🩺 Dr. CC
+      </div>
+      <p class="text-[13.5px] leading-[1.55] text-text">
+        "Rest <span class="text-pos font-semibold">12–14 days</span>.
+        Fresh stop-loss logic. Will return smarter than when admitted."
+      </p>
+      <p class="mt-2 font-mono text-[10.5px] text-text-muted">
+        — patient discharged when the doctor says so
+      </p>
+    </div>
+  </div>
+</div>
+
+<style>
+  /* Heartbeat on EKG line — slow draw across the chart, 4s loop */
+  .tf-ekg-line {
+    stroke-dasharray: 700;
+    stroke-dashoffset: 700;
+    animation: tf-ekg-draw 4s linear infinite;
+  }
+  .tf-ekg-glow {
+    stroke-dasharray: 700;
+    stroke-dashoffset: 700;
+    animation: tf-ekg-draw 4s linear infinite;
+  }
+  @keyframes tf-ekg-draw {
+    0%   { stroke-dashoffset: 700; }
+    70%  { stroke-dashoffset: 0; }
+    100% { stroke-dashoffset: 0; opacity: 0.2; }
+  }
+
+  /* IV drip: drop slides down the line every 2.4s */
+  .tf-iv-drop {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: tf-iv-drip 2.4s ease-in infinite;
+  }
+  @keyframes tf-iv-drip {
+    0%   { transform: translateY(-30px); opacity: 0; }
+    20%  { opacity: 1; }
+    80%  { opacity: 1; }
+    100% { transform: translateY(80px); opacity: 0; }
+  }
+
+  /* IN OSSERVAZIONE pill pulse */
+  .tf-pulse-red {
+    animation: tf-pulse 1.6s ease-in-out infinite;
+  }
+  @keyframes tf-pulse {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0.35; }
+  }
+
+  /* Easter-egg dialog reveal */
+  .tf-doctor.tf-egg-open #tf-doctor-dialog {
+    opacity: 1;
+    pointer-events: auto;
+  }
+</style>
+
+<script>
+  /* Easter egg: 3 rapid clicks (within 2s) on the monitor hitbox →
+     opens Dr. CC dialog. Click outside / press Esc to close. */
+  (() => {
+    const root   = document.getElementById("tf-recovery");
+    const hitbox = document.getElementById("tf-monitor-hitbox");
+    const dialog = document.getElementById("tf-doctor-dialog");
+    if (!root || !hitbox || !dialog) return;
+
+    let clicks = 0;
+    let timer: number | null = null;
+
+    const reset = () => { clicks = 0; if (timer) { clearTimeout(timer); timer = null; } };
+
+    const open = () => root.classList.add("tf-egg-open");
+    const close = () => root.classList.remove("tf-egg-open");
+
+    hitbox.addEventListener("click", (e) => {
+      e.stopPropagation();
+      clicks += 1;
+      if (timer) clearTimeout(timer);
+      timer = window.setTimeout(reset, 2000);
+      if (clicks >= 3) {
+        open();
+        reset();
+      }
+    });
+
+    dialog.addEventListener("click", close);
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") close();
+    });
+  })();
+</script>

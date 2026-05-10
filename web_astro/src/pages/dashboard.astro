@@ -1,15 +1,558 @@
 ---
-/* Session 66 — "Operation Clean Slate". Dashboard mostrava P&L con
-   bias avg-cost (vedi decision_s65). Sostituita con maintenance landing
-   finché il rebuild + testnet non certifica i numeri. La dashboard
-   completa (HERO + bot rows + recent trades + CEO log) vive in git
-   history al commit f12f013 (S65 closing). */
 import Layout from "../layouts/Layout.astro";
-import MaintenanceLanding from "../components/MaintenanceLanding.astro";
+import TestnetBanner from "../components/TestnetBanner.astro";
+import TfDoctor from "../components/TfDoctor.astro";
+import {
+  mockSnapshot, mockGrid, mockTF, mockTools,
+  mockTrades, mockCEOLog, fmtUsd, fmtSigned, fmtPct, fmtPrice, fmtTime, fmtDate,
+} from "../data/dashboard-mock.ts";
+
+const totalNW    = mockGrid.netWorth + mockTF.netWorth;
+const totalInit  = mockGrid.initial + mockTF.initial;
+const totalPnl   = totalNW - totalInit;
+const totalPct   = (totalPnl / totalInit) * 100;
+
+/* ====== "Today" snapshot — fotografia del giorno ====== */
+const todayPnl       = mockGrid.todayPnl + mockTF.todayPnl;
+const todayTrades    = mockGrid.todayTrades + mockTF.todayTrades;
+const todayBuys      = mockGrid.todayBuys + mockTF.todayBuys;
+const todaySells     = mockGrid.todaySells + mockTF.todaySells;
+const todayAllocated = mockGrid.todayAllocated + mockTF.todayAllocated;
+
+/* Sottotitoli statici per ora — in futuro popolati da Haiku ogni sera. */
+const gridSubtitle = "The cash machine";
+const tfSubtitle   = "The breakout hunter";
+
 ---
 
-<Layout title="Dashboard — BagHolderAI"
-        description="The dashboard is paused while we rebuild the bot's accounting."
-        current="">
-  <MaintenanceLanding />
+<Layout title="Dashboard — BagHolderAI" current="dashboard">
+
+  <TestnetBanner />
+
+  {/* ============================================================ HERO (pattern /diary) */}
+  <section class="mx-auto max-w-4xl px-4 pt-10 pb-6 sm:px-6 sm:pt-14 sm:pb-8">
+
+    <h1 class="text-[28px] font-semibold leading-[1.12] tracking-tight
+               text-text sm:text-[34px] md:text-[40px] md:leading-[1.08]">
+      Lab <span class="text-primary">notebook</span>.
+    </h1>
+
+    <p class="mt-3 max-w-2xl text-[14.5px] leading-[1.55] text-text-dim sm:text-[15px]">
+      Four instruments. Two live, two staged. Capital at risk:
+      <span class="font-mono text-text">{fmtUsd(totalInit, 0)}</span>
+      <span class="font-mono text-text-muted">($500 Grid + $100 TF paused)</span>.
+      Snapshot recorded {mockSnapshot.asOfLabel}.
+    </p>
+
+    <div class="mt-5 flex flex-wrap items-center gap-3 font-mono text-[10.5px]
+                uppercase tracking-[0.16em] text-text-muted">
+      <span class="inline-flex items-center gap-1.5">
+        <span class="inline-block h-1.5 w-1.5 rounded-full bg-pos
+                     shadow-[0_0_8px_rgba(134,239,172,0.7)]"></span>
+        day <span id="hero-day">{mockSnapshot.dayNumber}</span>
+      </span>
+      <span class="text-border">·</span>
+      <span>v3 · launched 2026-03-30</span>
+      <span class="text-border">·</span>
+      <span>net worth <span id="hero-nw" class="normal-case font-semibold text-text">{fmtUsd(totalNW)}</span></span>
+      <span id="hero-pnl"
+            class={totalPnl >= 0 ? "text-pos normal-case" : "text-neg normal-case"}>
+        ({fmtSigned(totalPnl)}, {fmtPct(totalPct)})
+      </span>
+    </div>
+  </section>
+
+  {/* ============================================================ MAIN */}
+  <main class="mx-auto max-w-4xl px-4 pb-24 sm:px-6">
+
+    {/* ============ TODAY SNAPSHOT — fotografia del giorno ============ */}
+    <section class="reveal">
+      <div class="mb-3 flex items-baseline gap-3">
+        <h2 class="font-sans text-[18px] sm:text-[20px] font-semibold text-text">
+          Today
+        </h2>
+        <span id="today-date"
+              class="font-mono text-[12px] uppercase tracking-[0.16em] text-text-muted">
+          {fmtDate(mockSnapshot.asOfIso)}
+        </span>
+      </div>
+      {/* Same font hierarchy as the home live-snapshot panel:
+          label 10px uppercase + value 20px semibold. */}
+      <dl class="rounded-lg border border-border bg-surface
+                 grid grid-cols-2 sm:grid-cols-5 divide-x divide-border-soft">
+        <div class="px-4 py-3.5">
+          <dt class="font-mono text-[10px] uppercase tracking-[0.14em] text-text-muted">
+            P&amp;L
+          </dt>
+          <dd id="today-pnl"
+              class={`font-mono text-[20px] font-semibold tabular-nums mt-0.5
+                      ${todayPnl >= 0 ? "text-pos" : "text-neg"}`}>
+            {fmtSigned(todayPnl)}
+          </dd>
+        </div>
+        <div class="px-4 py-3.5">
+          <dt class="font-mono text-[10px] uppercase tracking-[0.14em] text-text-muted">
+            trades
+          </dt>
+          <dd id="today-trades"
+              class="font-mono text-[20px] font-semibold text-text tabular-nums mt-0.5">
+            {todayTrades}
+          </dd>
+        </div>
+        <div class="px-4 py-3.5">
+          <dt class="font-mono text-[10px] uppercase tracking-[0.14em] text-text-muted">
+            buys
+          </dt>
+          <dd id="today-buys"
+              class="font-mono text-[20px] font-semibold text-text-dim tabular-nums mt-0.5">
+            {todayBuys}
+          </dd>
+        </div>
+        <div class="px-4 py-3.5">
+          <dt class="font-mono text-[10px] uppercase tracking-[0.14em] text-text-muted">
+            sells
+          </dt>
+          <dd id="today-sells"
+              class="font-mono text-[20px] font-semibold text-text-dim tabular-nums mt-0.5">
+            {todaySells}
+          </dd>
+        </div>
+        <div class="px-4 py-3.5">
+          <dt class="font-mono text-[10px] uppercase tracking-[0.14em] text-text-muted">
+            allocated
+          </dt>
+          <dd id="today-allocated"
+              class="font-mono text-[20px] font-semibold text-text tabular-nums mt-0.5">
+            {fmtUsd(todayAllocated)}
+          </dd>
+        </div>
+      </dl>
+    </section>
+
+    {/* ============ § 1 — CEO LOG di oggi ============ */}
+    <hr class="mt-12 border-t border-border-soft" />
+    <section class="mt-8 reveal">
+      <h2 class="font-mono text-[12px] uppercase tracking-[0.18em] text-pos mb-5">
+        § 1 · CEO observation log
+      </h2>
+      <article id="ceo-today" class="rounded-lg border border-border bg-surface p-6">
+        <div class="font-mono text-[11px] text-text-muted mb-3 flex justify-between gap-3">
+          <span id="ceo-today-meta">Day {mockCEOLog.today.dayNumber} · {fmtDate(mockCEOLog.today.date + "T00:00:00Z")}</span>
+          <span id="ceo-today-model" class="opacity-60">via {mockCEOLog.today.model}</span>
+        </div>
+        <p id="ceo-today-text" class="text-text leading-[1.7] text-[15px] italic">
+          "{mockCEOLog.today.text}"
+        </p>
+      </article>
+    </section>
+
+    {/* ============ § 2 — INSTRUMENTS ============ */}
+    <hr class="mt-12 border-t border-border-soft" />
+    <section class="mt-8">
+      <h2 class="reveal font-mono text-[12px] uppercase tracking-[0.18em] text-pos mb-7">
+        § 2 · Instruments
+      </h2>
+
+      {/* ============ HORIZONTAL PIPELINE LAYOUT ============
+           Brief 70c §8: TF doctor (left, row 1) + Grid card (right, row 1).
+           Bottom row hosts grid-natives only (TF in pausa). */}
+      <div class="relative grid grid-cols-1 lg:grid-cols-[1fr_140px_1fr]
+                  gap-x-3 gap-y-4 items-stretch">
+
+        {/* === TF "dal dottore" (left) — brief 70c §8.
+            No outer card: the SVG itself is the card (own border + bg). */}
+        <TfDoctor />
+
+        {/* === SHARED COINS (center) === */}
+        <div class="relative flex flex-col items-center justify-start
+                    px-2 lg:px-4 self-start pt-4">
+
+          {/* Horizontal arrow with sliding-gradient shimmer.
+              "I tried, your turn" — TF's ironic handoff to GRID. */}
+          <div class="flex flex-col items-center mb-3 w-full">
+            <span class="font-mono text-[9px] uppercase tracking-[0.22em] mb-1 text-center leading-[1.4]"
+                  style="color:#38bdf8">
+              I tried,<br/>your turn
+            </span>
+            <div class="pipeline-arrow w-full max-w-[200px] h-[14px] relative">
+              <span class="pipeline-arrow-tip"></span>
+            </div>
+          </div>
+
+          {/* Shared cards stacked vertically — populated by JS from
+              bot_config WHERE managed_by='tf_grid' AND is_active=true. */}
+          <div id="shared-cards" class="flex flex-col gap-2 w-full"></div>
+
+          <div class="mt-4 font-mono text-[9px] uppercase tracking-[0.18em] text-text-muted text-center">
+            picked by TF<br/>managed by Grid
+          </div>
+        </div>
+
+        {/* === GRID CARD (right) === */}
+        <article class="h-full rounded-lg border border-border bg-surface p-6">
+          <div class="flex items-center gap-3 mb-4 flex-wrap">
+            <div class="w-[3px] h-[22px] rounded-sm" style="background:#22c55e"></div>
+            <div class="font-mono text-[14px] text-text uppercase tracking-[0.05em] font-semibold">
+              Grid Bot
+            </div>
+            <div class="font-mono text-[10px] text-text-muted">— <span id="grid-budget">…</span> · live</div>
+          </div>
+          <div class="font-sans text-[12px] text-text-muted italic mb-2">{gridSubtitle}</div>
+
+          {/* Day + Cash to reinvest — populated by JS */}
+          <div class="font-mono text-[10px] text-text-muted mb-3 flex flex-wrap gap-x-3 gap-y-1">
+            <span>Day <span id="grid-day">…</span></span>
+            <span class="text-border">·</span>
+            <span>Cash to reinvest: <span id="grid-cash-reinvest" class="text-text">…</span></span>
+          </div>
+
+          <div class="font-mono text-[11px] text-text-muted">Net worth</div>
+          <div class="flex items-baseline gap-2 flex-wrap mt-1">
+            <span id="grid-nw"
+                  class="text-[clamp(28px,5vw,38px)] font-bold tracking-tight text-text leading-none">
+              —
+            </span>
+            <span id="grid-pnl-pct" class="font-mono text-[12px] text-text-muted">
+              —
+            </span>
+          </div>
+
+          <div class="my-4 border-t border-border-soft"></div>
+          <div class="grid grid-cols-3 gap-y-3 gap-x-4 font-mono">
+            <div>
+              <div class="text-[10px] text-text-muted">Unrealized</div>
+              <div id="grid-unrealized" class="text-[14px] font-medium text-text-muted">—</div>
+            </div>
+            <div>
+              <div class="text-[10px] text-text-muted">Fees paid</div>
+              <div id="grid-fees" class="text-[14px] font-medium text-text-muted">—</div>
+            </div>
+            <div>
+              <div class="text-[10px] text-text-muted">Skim</div>
+              <div id="grid-skim" class="text-[14px] font-medium text-text-muted">—</div>
+            </div>
+          </div>
+
+          <div class="my-4 border-t border-border-soft"></div>
+          <div class="flex justify-between font-mono mb-2">
+            <span class="text-[10px] text-text-muted">Cash</span>
+            <span id="grid-cash-pct" class="text-[10px] text-text">—</span>
+          </div>
+          <div id="grid-cash-bar" class="h-2 bg-border rounded-md overflow-hidden flex"></div>
+        </article>
+
+        {/* === BOTTOM ROW (inside same grid):
+            col 1 (sotto TF) + col 2 (centro) = vuoti, col 3 = grid natives.
+            TF natives removed (TF paused). grid-natives populated by JS:
+            bot_config WHERE managed_by='grid' AND is_active=true. */}
+        <div></div>
+        <div></div>
+        <div id="grid-natives" class="grid grid-cols-3 gap-2 h-full"></div>
+      </div>
+
+      {/* ============ SENTINEL + SHERPA staged — 2 colonne affiancate ============ */}
+      <div class="reveal mt-14 grid grid-cols-2 gap-5">
+        {mockTools.filter((t) => t.status === "soon").map((tool) => (
+          <div class="opacity-60">
+            <div class="flex items-center gap-3 mb-3.5">
+              <div class="w-[3px] h-[22px] rounded-sm" style={`background:${tool.color}`}></div>
+              <div class="font-mono text-[14px] text-text uppercase tracking-[0.05em] font-semibold">
+                {tool.name}
+              </div>
+              <div class="font-mono text-[11px] text-text-muted">— staged</div>
+            </div>
+            <div class="rounded-lg border border-border-soft bg-surface/50 p-5">
+              <p class="text-text-dim text-[14px] leading-relaxed">{tool.blurb}</p>
+              <div class="mt-3 font-mono text-[11px] text-text-muted">
+                ⏳ not yet deployed
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+
+    {/* ============ § 3 — CHARTS (full-width, stacked) ============
+         One range selector controls both charts: line cumulative P&L on
+         top, stacked weekly/monthly bar chart below. Net labels for the
+         bar chart are rendered as an HTML row absolutely positioned over
+         the canvas (see dashboard-live.ts → syncNetRow). */}
+    <hr class="mt-12 border-t border-border-soft" />
+    <section class="mt-8 reveal">
+      <div class="flex items-baseline justify-between flex-wrap gap-3 mb-5">
+        <h2 class="font-mono text-[12px] uppercase tracking-[0.18em] text-pos">
+          § 3 · Performance · time series
+        </h2>
+        <div id="range-selector"
+             class="inline-flex gap-1 p-1 rounded-md bg-surface border border-border">
+          <button data-range="1M"
+                  class="range-btn px-3 py-1 rounded font-mono text-[11px]
+                         tracking-[0.06em] text-text-muted hover:text-text
+                         transition-colors is-active">1M</button>
+          <button data-range="3M"
+                  class="range-btn px-3 py-1 rounded font-mono text-[11px]
+                         tracking-[0.06em] text-text-muted hover:text-text
+                         transition-colors">3M</button>
+          <button data-range="ALL"
+                  class="range-btn px-3 py-1 rounded font-mono text-[11px]
+                         tracking-[0.06em] text-text-muted hover:text-text
+                         transition-colors">All</button>
+        </div>
+      </div>
+
+      <div class="space-y-4">
+        {/* ---- Cumulative line ---- */}
+        <div class="rounded-lg border border-border bg-surface p-5">
+          <div class="flex items-baseline justify-between mb-3">
+            <span id="cumul-label"
+                  class="font-mono text-[11px] uppercase tracking-[0.1em] text-text-dim">
+              Cumulative P&amp;L · Grid + TF
+            </span>
+            <span class="font-mono text-[10px] text-text-muted">realized + mtm</span>
+          </div>
+          <div class="h-[200px] relative">
+            <canvas id="chart-cumul"></canvas>
+          </div>
+          <div class="mt-3 flex gap-4 font-mono text-[10px] text-text-muted">
+            <span><span class="inline-block w-3 h-px align-middle bg-pos mr-1"></span>realized</span>
+            <span><span class="inline-block w-3 h-px align-middle border-t border-dashed border-pos/60 mr-1"></span>mark-to-market</span>
+          </div>
+        </div>
+
+        {/* ---- Stacked bar (weekly default) ---- */}
+        <div class="rounded-lg border border-border bg-surface p-5">
+          <div class="flex items-baseline justify-between mb-3">
+            <span id="bar-label"
+                  class="font-mono text-[11px] uppercase tracking-[0.1em] text-text-dim">
+              Weekly realized · Grid + TF stacked
+            </span>
+            <span class="font-mono text-[10px] text-text-muted">net per period</span>
+          </div>
+          <div class="bar-stack">
+            <div id="net-row" class="net-row"></div>
+            <div class="h-[180px] relative">
+              <canvas id="chart-daily"></canvas>
+            </div>
+          </div>
+          <div class="mt-3 flex gap-4 font-mono text-[10px] text-text-muted">
+            <span><span class="inline-block w-2 h-2 align-middle mr-1" style="background:#22c55e"></span>grid</span>
+            <span><span class="inline-block w-2 h-2 align-middle mr-1" style="background:#f59e0b"></span>tf</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <style is:inline>
+      /* § 3 charts — range selector active state + net-row layout.
+         Net labels are absolutely positioned spans aligned to bar centers
+         via JS (see syncNetRow in dashboard-live.ts). */
+      #range-selector .range-btn.is-active {
+        background: rgba(255,255,255,0.08);
+        color: #fff;
+      }
+      .bar-stack { display: block; }
+      .net-row {
+        position: relative;
+        height: 16px;
+        margin-bottom: 4px;
+        display: none;
+      }
+      .net-row.show { display: block; }
+      .net-row .net-label {
+        position: absolute;
+        transform: translateX(-50%);
+        font-family: 'JetBrains Mono', 'SF Mono', monospace;
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+        white-space: nowrap;
+        line-height: 16px;
+        pointer-events: none;
+      }
+      .net-row .net-pos { color: #4ade80; }
+      .net-row .net-neg { color: #f87171; }
+      .net-row .net-flat { color: rgba(255,255,255,0.55); }
+      .net-row .net-inprog { opacity: 0.55; }
+    </style>
+
+    {/* ============ § 4 — RECENT TRADES — 2 tabelle: Grid + TF ============
+         Grid = managed_by='manual' only.
+         TF   = managed_by IN ('trend_follower', 'tf_grid') (tf_grid stays
+                under TF for coherence with brief 46b: TF capital). */}
+    <hr class="mt-12 border-t border-border-soft" />
+    <section class="mt-8 reveal">
+      <div class="flex items-baseline justify-between flex-wrap gap-3 mb-5">
+        <h2 class="font-mono text-[12px] uppercase tracking-[0.18em] text-pos">
+          § 4 · Recent activity
+        </h2>
+        <span class="font-mono text-[11px] text-text-muted">last 6 per bot</span>
+      </div>
+
+      <div class="space-y-6">
+        {/* ---- GRID table ---- */}
+        <div>
+          <div class="flex items-center gap-2 mb-2">
+            <div class="w-[3px] h-[14px] rounded-sm" style="background:#22c55e"></div>
+            <span class="font-mono text-[11px] uppercase tracking-[0.14em] text-text-dim">
+              Grid Bot
+            </span>
+          </div>
+          <div class="overflow-x-auto rounded-lg border border-border bg-surface">
+            <table class="w-full table-fixed font-mono text-[12.5px]">
+              {/* Fixed column widths so Grid and TF tables align identically.
+                 Without this, each <table> auto-sizes from its own content
+                 (e.g. TF p&l shows "@ buy avg", Grid often doesn't), giving
+                 different column widths between the two tables. */}
+              <colgroup>
+                <col style="width:24%" />
+                <col style="width:11%" />
+                <col style="width:18%" />
+                <col style="width:17%" />
+                <col style="width:30%" />
+              </colgroup>
+              <thead class="border-b border-border-soft">
+                <tr class="text-text-muted uppercase tracking-[0.1em] text-[10px]">
+                  <th class="px-3 py-2.5 text-left">when</th>
+                  <th class="px-3 py-2.5 text-left">side</th>
+                  <th class="px-3 py-2.5 text-left">coin</th>
+                  <th class="px-3 py-2.5 text-right">cost</th>
+                  <th class="px-3 py-2.5 text-right">p&amp;l</th>
+                </tr>
+              </thead>
+              <tbody id="grid-trades-body">
+                <tr><td colspan="5" class="px-3 py-6 text-center text-text-muted">Loading…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* ---- TF table ---- */}
+        <div>
+          <div class="flex items-center gap-2 mb-2">
+            <div class="w-[3px] h-[14px] rounded-sm" style="background:#f59e0b"></div>
+            <span class="font-mono text-[11px] uppercase tracking-[0.14em] text-text-dim">
+              Trend Follower
+            </span>
+            <span class="font-mono text-[9px] text-text-muted">incl. tf_grid</span>
+          </div>
+          <div class="overflow-x-auto rounded-lg border border-border bg-surface">
+            <table class="w-full table-fixed font-mono text-[12.5px]">
+              <colgroup>
+                <col style="width:24%" />
+                <col style="width:11%" />
+                <col style="width:18%" />
+                <col style="width:17%" />
+                <col style="width:30%" />
+              </colgroup>
+              <thead class="border-b border-border-soft">
+                <tr class="text-text-muted uppercase tracking-[0.1em] text-[10px]">
+                  <th class="px-3 py-2.5 text-left">when</th>
+                  <th class="px-3 py-2.5 text-left">side</th>
+                  <th class="px-3 py-2.5 text-left">coin</th>
+                  <th class="px-3 py-2.5 text-right">cost</th>
+                  <th class="px-3 py-2.5 text-right">p&amp;l</th>
+                </tr>
+              </thead>
+              <tbody id="tf-trades-body">
+                <tr><td colspan="5" class="px-3 py-6 text-center text-text-muted">Loading…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    {/* ============ § 5 — CEO LOG ARCHIVE ============ */}
+    <hr class="mt-12 border-t border-border-soft" />
+    <section class="mt-8 reveal">
+      <h2 class="font-mono text-[12px] uppercase tracking-[0.18em] text-pos mb-6">
+        § 5 · Earlier from the log
+      </h2>
+      {/* Scrollable archive window — pattern from web/dashboard.html
+          (.commentary-history): fixed max-height with overflow scroll,
+          smaller font for the entries since they're ancillary. */}
+      <div id="ceo-archive"
+           class="rounded-lg border border-border bg-surface
+                  max-h-[320px] overflow-y-auto
+                  divide-y divide-border-soft">
+        {mockCEOLog.archive.map((e) => (
+          <article class="px-4 py-3">
+            <div class="font-mono text-[10px] uppercase tracking-[0.16em] text-pos/60 mb-1">
+              Day {e.dayNumber} · {fmtDate(e.date + "T00:00:00Z")}
+            </div>
+            <p class="text-text-dim text-[13px] leading-[1.6] italic">"{e.text}"</p>
+          </article>
+        ))}
+      </div>
+    </section>
+
+    {/* ============ RECONCILIATION — brief 70c §5 ============ */}
+    {/* Trust statement: every trade above is verified against Binance.
+        Data populated client-side from `reconciliation_runs` (latest run
+        per symbol) by dashboard-reconciliation.ts. */}
+    <section class="reveal mt-10 sm:mt-12">
+      <div class="mb-3 flex items-baseline gap-3">
+        <h2 class="font-sans text-[18px] sm:text-[20px] font-semibold text-text">
+          Reconciliation
+        </h2>
+        <span class="font-mono text-[12px] uppercase tracking-[0.16em] text-text-muted">
+          binance ↔ db
+        </span>
+      </div>
+
+      <div class="rounded-lg border border-border bg-surface overflow-hidden">
+        <table class="w-full text-left">
+          <thead class="bg-surface/60 border-b border-border-soft">
+            <tr class="font-mono text-[10px] uppercase tracking-[0.14em] text-text-muted">
+              <th class="px-4 py-2.5 font-medium">Bot</th>
+              <th class="px-4 py-2.5 font-medium">Status</th>
+              <th class="px-4 py-2.5 font-medium">Trades verified</th>
+              <th class="px-4 py-2.5 font-medium">Drift</th>
+              <th class="px-4 py-2.5 font-medium">Last run</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-border-soft">
+            <tr>
+              <td class="px-4 py-3 font-mono text-[12px] font-semibold text-text">BTC</td>
+              <td class="px-4 py-3" id="recon-btc-status">—</td>
+              <td class="px-4 py-3" id="recon-btc-verified">—</td>
+              <td class="px-4 py-3" id="recon-btc-drift">—</td>
+              <td class="px-4 py-3" id="recon-btc-ts">—</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-3 font-mono text-[12px] font-semibold text-text">SOL</td>
+              <td class="px-4 py-3" id="recon-sol-status">—</td>
+              <td class="px-4 py-3" id="recon-sol-verified">—</td>
+              <td class="px-4 py-3" id="recon-sol-drift">—</td>
+              <td class="px-4 py-3" id="recon-sol-ts">—</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-3 font-mono text-[12px] font-semibold text-text">BONK</td>
+              <td class="px-4 py-3" id="recon-bonk-status">—</td>
+              <td class="px-4 py-3" id="recon-bonk-verified">—</td>
+              <td class="px-4 py-3" id="recon-bonk-drift">—</td>
+              <td class="px-4 py-3" id="recon-bonk-ts">—</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p class="mt-3 text-[13px] leading-[1.55] text-text-dim">
+        Every trade on this dashboard is reconciled against Binance.
+        <span id="recon-claim-tail" class="text-pos font-semibold">Zero discrepancies.</span>
+      </p>
+    </section>
+
+  </main>
+
+  {/* Live data wiring — replaces mock values element by element. */}
+  <script>
+    import "../scripts/dashboard-live.ts";
+    import "../scripts/dashboard-reconciliation.ts";
+  </script>
+
+  {/* § 3 charts: Chart.js loaded via CDN, rendering done in dashboard-live.ts
+      (waits for window.Chart before initializing). */}
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" is:inline></script>
+
 </Layout>
