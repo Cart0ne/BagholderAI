@@ -49,6 +49,7 @@ def init_avg_cost_state_from_db(bot):
         return
 
     last_buy_price = 0.0
+    last_sell_price = 0.0  # Brief 70a Parte 3: sell ladder reference (Grid manual)
     total_invested = 0.0
     total_received = 0.0
     avg = 0.0
@@ -76,8 +77,12 @@ def init_avg_cost_state_from_db(bot):
                 if qty <= 1e-9:
                     qty = 0.0
                     avg = 0.0  # reset on full sell-out
+                    last_sell_price = 0.0  # 70a: reset ladder on full exit
+                else:
+                    last_sell_price = price  # 70a: partial sell → next ladder step
 
     bot._pct_last_buy_price = last_buy_price
+    bot._last_sell_price = last_sell_price
 
     # Restore last trade time so idle re-entry countdown is correct.
     # Convert to UTC-naive so comparison with datetime.utcnow() is always correct
@@ -125,11 +130,15 @@ def init_avg_cost_state_from_db(bot):
         except Exception as e:
             logger.warning(f"[{bot.symbol}] Could not fetch reserve total for cash log: {e}")
 
+    last_sell_log = (
+        f", last sell {fmt_price(last_sell_price)} (ladder active)"
+        if last_sell_price > 0 else ""
+    )
     logger.info(
         f"[{bot.symbol}] Avg-cost state restored: holdings={bot.state.holdings:.6f}, "
         f"avg_buy={fmt_price(bot.state.avg_buy_price)}, "
         f"realized=${bot.state.realized_pnl:.4f}, "
-        f"last buy {fmt_price(last_buy_price)}"
+        f"last buy {fmt_price(last_buy_price)}{last_sell_log}"
     )
     logger.info(
         f"[{bot.symbol}] Cash restored: ${bot.capital:.2f} allocated"

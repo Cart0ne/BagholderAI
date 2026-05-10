@@ -615,6 +615,225 @@ def test_j_idle_recalibrate_skipped_above_avg():
 
 
 # ----------------------------------------------------------------------
+# Brief 70a tests (S70 2026-05-10)
+# ----------------------------------------------------------------------
+
+def test_l_sell_trigger_includes_fee_buffer_grid_only():
+    """Brief 70a Parte 2: Grid manual sell trigger include fee buffer.
+    Formula: avg × (1 + sell_pct/100 + FEE) / (1 - FEE) (uniforme).
+    TF/tf_grid mantengono formula vecchia: avg × (1 + threshold/100).
+    """
+    print("=" * 70)
+    print("TEST L: brief 70a — Grid sell trigger include fee buffer; TF no")
+    print("=" * 70)
+    from bot.grid.grid_bot import GridBot
+
+    # --- Grid manual: trigger = avg × (1.02 + 0.001) / 0.999
+    bot = make_bot()
+    bot.managed_by = "grid"
+    bot.sell_pct = 2.0
+    bot.buy_pct = 99.0  # disable buy path
+    bot.idle_reentry_hours = 0.0
+    bot._execute_percentage_buy(price=100.0)
+    avg = bot.state.avg_buy_price
+    expected_trigger = avg * (1 + 0.02 + GridBot.FEE_RATE) / (1 - GridBot.FEE_RATE)
+    print(f"  Grid: avg={avg:.4f}, expected trigger ≈ {expected_trigger:.4f}")
+
+    # Below trigger: must NOT sell
+    sells_before = sum(1 for t in bot.trade_logger.trades if t.get("side") == "sell")
+    bot.check_price_and_execute(current_price=expected_trigger * 0.999)
+    sells_after = sum(1 for t in bot.trade_logger.trades if t.get("side") == "sell")
+    assert sells_after == sells_before, (
+        f"Grid: price below trigger should not sell"
+    )
+    print(f"  Grid @ {expected_trigger*0.999:.4f} (below trigger): no sell ✓")
+
+    # Above trigger: must sell
+    bot.check_price_and_execute(current_price=expected_trigger * 1.001)
+    sells_after = sum(1 for t in bot.trade_logger.trades if t.get("side") == "sell")
+    assert sells_after == sells_before + 1, "Grid: price above trigger must sell"
+    print(f"  Grid @ {expected_trigger*1.001:.4f} (above trigger): sell ✓")
+
+    # --- TF: trigger = avg × 1.02 (no fee buffer)
+    bot2 = make_bot()
+    bot2.managed_by = "tf"
+    bot2.sell_pct = 2.0
+    bot2.buy_pct = 99.0
+    bot2.idle_reentry_hours = 0.0
+    bot2._execute_percentage_buy(price=100.0)
+    avg2 = bot2.state.avg_buy_price
+    expected_trigger_tf = avg2 * 1.02
+    expected_trigger_grid = avg2 * (1 + 0.02 + GridBot.FEE_RATE) / (1 - GridBot.FEE_RATE)
+
+    # Price right between TF trigger and Grid trigger: TF must sell, Grid wouldn't
+    mid_price = (expected_trigger_tf + expected_trigger_grid) / 2
+    sells_before = sum(1 for t in bot2.trade_logger.trades if t.get("side") == "sell")
+    bot2.check_price_and_execute(current_price=mid_price)
+    sells_after = sum(1 for t in bot2.trade_logger.trades if t.get("side") == "sell")
+    assert sells_after == sells_before + 1, (
+        f"TF: must sell at {mid_price} > avg×1.02 ({expected_trigger_tf:.4f}). "
+        f"Got {sells_after - sells_before} sells."
+    )
+    print(f"  TF @ {mid_price:.4f} (TF sells but Grid wouldn't @ same price): sell ✓")
+
+
+def test_m_sell_ladder_three_steps():
+    """Brief 70a Parte 3: sell graduale — 3 lotti venduti a 3 prezzi crescenti.
+    Step N+1 trigger usa _last_sell_price come reference (non avg).
+    Formula uniforme (decisione Max iii): reference × (1+sell_pct/100+FEE)/(1-FEE).
+    """
+    print("=" * 70)
+    print("TEST M: brief 70a — sell ladder 3 step crescenti")
+    print("=" * 70)
+    from bot.grid.grid_bot import GridBot
+
+    bot = make_bot(capital=1000.0, capital_per_trade=20.0)
+    bot.managed_by = "grid"
+    bot.sell_pct = 2.0
+    bot.buy_pct = 99.0
+    bot.idle_reentry_hours = 0.0
+
+    # 3 buy: total $60 → avg=$100, holdings=0.6
+    for _ in range(3):
+        bot._execute_percentage_buy(price=100.0)
+    assert bot.state.holdings > 0
+    assert bot._last_sell_price == 0.0, "ladder reset at start"
+    avg = bot.state.avg_buy_price
+
+    # Step 1 trigger: avg × 1.021 / 0.999
+    s1_trigger = avg * (1 + 0.02 + GridBot.FEE_RATE) / (1 - GridBot.FEE_RATE)
+    bot.check_price_and_execute(current_price=s1_trigger * 1.0001)
+    sells = [t for t in bot.trade_logger.trades if t.get("side") == "sell"]
+    assert len(sells) == 1, f"step 1 should fire 1 sell, got {len(sells)}"
+    assert bot._last_sell_price > 0, "ladder should be set after partial sell"
+    s1_price = bot._last_sell_price
+    print(f"  Step 1: trigger @ {s1_trigger:.4f}, fill {s1_price:.4f}, ladder set ✓")
+
+    # Step 2 trigger: last_sell × 1.021 / 0.999 (NOT avg-based)
+    s2_trigger = s1_price * (1 + 0.02 + GridBot.FEE_RATE) / (1 - GridBot.FEE_RATE)
+    # Price between s1_trigger and s2_trigger should NOT fire (ladder up)
+    bot.check_price_and_execute(current_price=s1_trigger * 1.001)
+    sells = [t for t in bot.trade_logger.trades if t.get("side") == "sell"]
+    assert len(sells) == 1, "ladder must wait for s2_trigger, not re-fire at s1"
+    print(f"  Step 2 wait: price near s1 doesn't fire (ladder up) ✓")
+
+    # Above s2_trigger fires
+    bot.check_price_and_execute(current_price=s2_trigger * 1.0001)
+    sells = [t for t in bot.trade_logger.trades if t.get("side") == "sell"]
+    assert len(sells) == 2, f"step 2 should fire, got {len(sells)} sells"
+    s2_price = bot._last_sell_price
+    assert s2_price > s1_price, "ladder must climb"
+    print(f"  Step 2: trigger @ {s2_trigger:.4f}, fill {s2_price:.4f}, ladder climbed ✓")
+
+    # Step 3
+    s3_trigger = s2_price * (1 + 0.02 + GridBot.FEE_RATE) / (1 - GridBot.FEE_RATE)
+    bot.check_price_and_execute(current_price=s3_trigger * 1.0001)
+    sells = [t for t in bot.trade_logger.trades if t.get("side") == "sell"]
+    assert len(sells) == 3, f"step 3 should fire, got {len(sells)} sells"
+    print(f"  Step 3: trigger @ {s3_trigger:.4f}, ladder = {bot._last_sell_price:.4f} ✓")
+    assert bot._last_sell_price > s2_price, "ladder must climb again"
+
+
+def test_n_ladder_resets_on_full_selloff():
+    """Brief 70a Parte 3: _last_sell_price reset a 0 quando holdings → 0.
+    Nuovo ciclo (buy successivo) parte di nuovo dal trigger basato su avg.
+    """
+    print("=" * 70)
+    print("TEST N: brief 70a — ladder reset on full sell-out")
+    print("=" * 70)
+    bot = make_bot(capital=1000.0, capital_per_trade=20.0)
+    bot.managed_by = "grid"
+    bot.sell_pct = 2.0
+
+    # 1 buy + force_all sell (vende tutto)
+    bot._execute_percentage_buy(price=100.0)
+    assert bot._last_sell_price == 0.0, "fresh state"
+    bot._execute_percentage_sell(price=110.0, force_all=True)
+    assert bot.state.holdings == 0, "must be fully sold out"
+    assert bot._last_sell_price == 0.0, (
+        f"ladder must reset on full exit, got {bot._last_sell_price}"
+    )
+    print(f"  Sell-out: holdings=0, _last_sell_price=0 ✓")
+
+    # Partial sell deve INVECE settare last_sell
+    bot._execute_percentage_buy(price=100.0)
+    bot._execute_percentage_buy(price=100.0)
+    bot._execute_percentage_buy(price=100.0)
+    assert bot.state.holdings > 0
+    bot._execute_percentage_sell(price=110.0)  # partial
+    assert bot.state.holdings > 0, "must still hold after partial sell"
+    assert bot._last_sell_price == 110.0, (
+        f"partial sell must set ladder = {110.0}, got {bot._last_sell_price}"
+    )
+    print(f"  Partial sell: _last_sell_price set to {bot._last_sell_price} ✓")
+
+
+def test_o_post_fill_warning_slippage_below_avg():
+    """Brief 70a Parte 4: warning loggato quando fill_price < avg_buy_price.
+    NON loggato per TF force-liquidate path. Trade NON bloccato (è già eseguito).
+    """
+    print("=" * 70)
+    print("TEST O: brief 70a — post-fill warning slippage_below_avg")
+    print("=" * 70)
+    import bot.grid.sell_pipeline as sp
+
+    captured = []
+    original_log_event = sp.log_event
+
+    def mock_log_event(severity=None, category=None, event=None, **kwargs):
+        captured.append({"severity": severity, "category": category, "event": event, **kwargs})
+
+    sp.log_event = mock_log_event
+    try:
+        # --- CASE 1: Grid manual con fill < avg → warning loggato
+        bot = make_bot(capital=1000.0, capital_per_trade=50.0)
+        bot.managed_by = "grid"
+        bot.strategy = "B"  # bypass guard 282 per testare specificamente Parte 4
+        bot._execute_percentage_buy(price=100.0)
+        captured.clear()
+        # Force a sell at price < avg via _execute_percentage_sell.
+        # Strategy "B" bypassa la guard 282 (Strategy A only).
+        result = bot._execute_percentage_sell(price=99.0, sell_amount=0.1)
+        assert result is not None, "sell must execute (Strategy B, no guard)"
+        warnings = [c for c in captured if c.get("event") == "slippage_below_avg"]
+        assert len(warnings) == 1, (
+            f"expected 1 slippage_below_avg warning, got {len(warnings)}: "
+            f"{[c.get('event') for c in captured]}"
+        )
+        w = warnings[0]
+        assert w["severity"] == "warn", f"severity should be warn, got {w['severity']}"
+        details = w.get("details", {})
+        assert details.get("gap_pct") < 0, f"gap_pct should be negative, got {details.get('gap_pct')}"
+        print(f"  Grid fill 99 < avg 100: warning logged (gap {details.get('gap_pct'):.2f}%) ✓")
+
+        # --- CASE 2: TF force-liquidate path → NO warning
+        bot2 = make_bot()
+        bot2.managed_by = "tf"
+        bot2.strategy = "B"  # bypass guard 282
+        bot2._stop_loss_triggered = True  # TF force path
+        bot2._execute_percentage_buy(price=100.0)
+        captured.clear()
+        bot2._execute_percentage_sell(price=99.0, sell_amount=0.1, force_all=False)
+        warnings = [c for c in captured if c.get("event") == "slippage_below_avg"]
+        assert len(warnings) == 0, (
+            f"TF force-liquidate must NOT log warning, got {len(warnings)}"
+        )
+        print(f"  TF stop-loss: no warning (force-liquidate path) ✓")
+
+        # --- CASE 3: fill >= avg → no warning
+        bot3 = make_bot()
+        bot3.managed_by = "grid"
+        bot3._execute_percentage_buy(price=100.0)
+        captured.clear()
+        bot3._execute_percentage_sell(price=110.0, sell_amount=0.1)
+        warnings = [c for c in captured if c.get("event") == "slippage_below_avg"]
+        assert len(warnings) == 0, "fill above avg must not log warning"
+        print(f"  Grid fill 110 > avg 100: no warning ✓")
+    finally:
+        sp.log_event = original_log_event
+
+
+# ----------------------------------------------------------------------
 # Runner
 # ----------------------------------------------------------------------
 
@@ -631,6 +850,10 @@ def main():
         test_i_sell_trigger_uses_avg_buy_price,
         test_j_idle_recalibrate_skipped_above_avg,
         test_k_buy_guard_above_avg_when_holdings,
+        test_l_sell_trigger_includes_fee_buffer_grid_only,
+        test_m_sell_ladder_three_steps,
+        test_n_ladder_resets_on_full_selloff,
+        test_o_post_fill_warning_slippage_below_avg,
     ]
     passed = 0
     failed = []

@@ -658,6 +658,30 @@
       var lastBuyTrade = coinTrades.find(function(t) { return t.side === 'buy'; });
       var lastBuyPrice = lastBuyTrade ? Number(lastBuyTrade.price) : 0;
 
+      // Brief 70a Parte 3 (S70): replay cronologico per ricostruire
+      // _last_sell_price del ciclo corrente (sell ladder reference).
+      // Identico a bot/grid/state_manager.init_avg_cost_state_from_db.
+      // Set su sell parziale (holdings residue > 0), reset su full sell-out.
+      var ascTrades = coinTrades.slice().reverse();
+      var ladderQty = 0, lastSellPrice = 0;
+      for (var i = 0; i < ascTrades.length; i++) {
+        var tr = ascTrades[i];
+        var amt = Number(tr.amount);
+        if (tr.side === 'buy') {
+          ladderQty += amt;
+        } else if (tr.side === 'sell') {
+          if (ladderQty > 1e-12) {
+            ladderQty -= amt;
+            if (ladderQty <= 1e-9) {
+              ladderQty = 0;
+              lastSellPrice = 0;
+            } else {
+              lastSellPrice = Number(tr.price);
+            }
+          }
+        }
+      }
+
       return {
         alloc: alloc, costPerTrade: costPerTrade,
         realizedPnl: s.realized,
@@ -669,7 +693,8 @@
         cashLeft: cashLeft,
         buysLeft: buysLeft, capacityPct: Math.min(capacityPct, 100),
         maxCapacity: maxCapacity, lastTrade: lastTrade,
-        lastBuyPrice: lastBuyPrice
+        lastBuyPrice: lastBuyPrice,
+        lastSellPrice: lastSellPrice
       };
     }
 
@@ -810,15 +835,22 @@
         var diffColor = !hasLive ? 'var(--text-dim)' : (diffPct >= 0 ? 'var(--green)' : 'var(--red)');
         var diffStr = !hasLive ? '—' : (diffPct >= 0 ? '+' : '') + diffPct.toFixed(2) + '%';
 
-        // S70 FASE 2: trigger widgets — "Next buy if ↓" + "Next sell if ↑".
+        // S70 FASE 2 + brief 70a: trigger widgets — "Next buy if ↓" + "Next sell if ↑".
         // Buy:  last_buy × (1 − buy_pct/100).
-        // Sell: avg_buy × (1 + sell_pct/100).
+        // Sell (Grid manual, brief 70a): reference × (1 + sell_pct/100 + FEE) / (1 − FEE)
+        //   reference = lastSellPrice del ciclo corrente se > 0 (sell ladder),
+        //   altrimenti avg_buy_price (primo sell del ciclo).
+        // FEE_RATE keep in sync with bot/grid/grid_bot.py FEE_RATE.
+        var FEE_RATE = 0.001;
         var buyPct = Number(cfg.buy_pct) || 0;
         var sellPct = Number(cfg.sell_pct) || 0;
         var hasBuyRef = a.lastBuyPrice > 0 && buyPct > 0;
         var hasSellRef = a.avgBuyPrice > 0 && sellPct > 0 && !positionClosed;
         var nextBuyTrigger = hasBuyRef ? a.lastBuyPrice * (1 - buyPct / 100) : 0;
-        var nextSellTrigger = hasSellRef ? a.avgBuyPrice * (1 + sellPct / 100) : 0;
+        var sellRef = a.lastSellPrice > 0 ? a.lastSellPrice : a.avgBuyPrice;
+        var nextSellTrigger = hasSellRef
+          ? sellRef * (1 + sellPct / 100 + FEE_RATE) / (1 - FEE_RATE)
+          : 0;
         var nextBuyStr = hasBuyRef ? fmtPrice(nextBuyTrigger) : '—';
         var nextSellStr = hasSellRef ? fmtPrice(nextSellTrigger) : '—';
         var buySellPctStr = (buyPct > 0 || sellPct > 0)

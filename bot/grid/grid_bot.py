@@ -73,8 +73,14 @@ class GridBot:
     In live mode: places real orders via exchange API (future).
     """
 
-    # Fee rate for Binance spot with BNB discount
-    FEE_RATE = 0.00075  # 0.075%
+    # Fee rate for Binance spot.
+    # 0.001 (0.1%) is the testnet/mainnet base spot fee per side. BNB discount
+    # would lower it to 0.00075 but we hardcode the conservative worst-case
+    # so the sell trigger fee buffer (brief 70a) doesn't under-shoot. In live
+    # mode the actual fill fee is read from the Binance response, this constant
+    # is used only for: (a) paper-mode fills, (b) sell trigger fee buffer,
+    # (c) total_fees fallback. See `reference_binance_testnet_fee` memory.
+    FEE_RATE = 0.001  # 0.1% (brief 70a Parte 1, S70 2026-05-10, was 0.00075)
 
     def __init__(
         self,
@@ -158,6 +164,11 @@ class GridBot:
         self._idle_logged_hour: int = -1     # last elapsed-hour mark already logged (avoids spam)
         # Percentage mode state (avg-cost trading post-S70 FASE 2)
         self._pct_last_buy_price: float = 0.0
+        # Brief 70a Parte 3 (S70 2026-05-10): last sell price del ciclo
+        # corrente. 0 = nessun sell dopo l'ultimo full sell-out → primo
+        # sell del nuovo ciclo. Restored from DB by state_manager.
+        # Reset to 0 quando holdings → 0 (sell_pipeline).
+        self._last_sell_price: float = 0.0
         # Brief s70 FASE 2: _pct_open_positions e _self_heal_attempted
         # rimossi insieme al FIFO queue. Avg-cost trading consulta solo
         # state.avg_buy_price + state.holdings nel hot path.
@@ -588,9 +599,20 @@ class GridBot:
             # keep sell_pct unchanged. See get_effective_tp() docstring.
             threshold_pct, _age_min, _tier = self.get_effective_tp()
             avg_cost = self.state.avg_buy_price
-            sell_trigger = (
-                avg_cost * (1 + threshold_pct / 100) if avg_cost > 0 else 0.0
-            )
+            # Brief 70a Parte 2+3 (S70): Grid manual usa formula uniforme
+            # con fee buffer + sell graduale (reference = _last_sell_price
+            # del ciclo corrente, o avg_cost se primo sell del ciclo).
+            # Garantisce sell_pct% NETTO post-fee sopra il riferimento.
+            # TF/tf_grid invariato: la formula vecchia rispetta la
+            # calibrazione greed-decay esistente (vincolo brief).
+            if avg_cost > 0:
+                if self.managed_by == "grid":
+                    reference = self._last_sell_price if self._last_sell_price > 0 else avg_cost
+                    sell_trigger = reference * (1 + threshold_pct / 100 + self.FEE_RATE) / (1 - self.FEE_RATE)
+                else:
+                    sell_trigger = avg_cost * (1 + threshold_pct / 100)
+            else:
+                sell_trigger = 0.0
 
             should_sell = force_liquidate or (
                 avg_cost > 0 and current_price >= sell_trigger

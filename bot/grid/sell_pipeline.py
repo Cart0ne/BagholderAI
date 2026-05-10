@@ -427,6 +427,48 @@ def execute_percentage_sell(
     except Exception:
         pass
 
+    # Brief 70a Parte 4 (S70 2026-05-10): post-fill warning su slippage che
+    # porta il fill sotto avg_buy_price. Il trigger pre-trade ha visto
+    # check_price >= avg × (1+sell_pct/100+FEE)/(1-FEE) e ha lasciato
+    # passare; lo slippage sul market order può comunque portare il fill
+    # sotto avg (book sottile, flash event). Non blocca il trade (ordine
+    # già eseguito su exchange), solo loggato in bot_events_log per
+    # visibility post-hoc. No Telegram. Esclude TF force-liquidate path
+    # (sell sotto avg è atteso per design su stop-loss / trailing / etc.).
+    if price < sell_avg_cost and sell_avg_cost > 0:
+        tf_force_path = (
+            getattr(bot, "managed_by", "grid") in ("tf", "tf_grid")
+            and (bot._stop_loss_triggered or bot._trailing_stop_triggered
+                 or bot._take_profit_triggered or bot._profit_lock_triggered
+                 or bot._gain_saturation_triggered or bot.pending_liquidation)
+        )
+        if not tf_force_path:
+            gap_pct = (price - sell_avg_cost) / sell_avg_cost * 100
+            try:
+                log_event(
+                    severity="warn",
+                    category="trade_audit",
+                    event="slippage_below_avg",
+                    symbol=bot.symbol,
+                    message=(
+                        f"Slippage exceeded: fill {fmt_price(price)} below avg cost "
+                        f"{fmt_price(sell_avg_cost)} ({gap_pct:+.2f}%)"
+                    ),
+                    details={
+                        "fill_price": float(price),
+                        "avg_buy_price": float(sell_avg_cost),
+                        "gap_pct": float(gap_pct),
+                        "sell_pct_config": float(getattr(bot, "sell_pct", 0) or 0),
+                        "implied_slippage_pct": float(
+                            (getattr(bot, "sell_pct", 0) or 0) - gap_pct
+                        ),
+                        "managed_by": getattr(bot, "managed_by", "grid"),
+                        "realized_pnl": float(realized_pnl),
+                    },
+                )
+            except Exception:
+                pass
+
     # Brief s70 FASE 1: avg-cost trading — no FIFO queue to consume.
     # TODO 62a (Phase 2): these state mutations happen BEFORE log_trade.
     # If log_trade fails (60c), state is desynced from DB. Make atomic.
@@ -463,9 +505,17 @@ def execute_percentage_sell(
         bot.state.holdings = 0
         bot.state.avg_buy_price = 0
         bot._pct_last_buy_price = price
+        # Brief 70a Parte 3 (S70): reset sell ladder reference on full
+        # sell-out. Next cycle's first sell will use avg_cost as reference.
+        bot._last_sell_price = 0.0
         logger.info(
             f"[{bot.symbol}] Fully sold out. Buy reference reset to {fmt_price(price)}"
         )
+    else:
+        # Brief 70a Parte 3: partial sell — track for next ladder step.
+        # Grid manual reads this in check_price_and_execute; TF/tf_grid
+        # ignore _last_sell_price (their trigger formula is unchanged).
+        bot._last_sell_price = price
 
     bot._daily_trade_count += 1
     bot._last_trade_time = datetime.utcnow()
