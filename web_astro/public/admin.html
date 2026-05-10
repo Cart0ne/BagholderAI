@@ -68,7 +68,13 @@
     h1 {
       font-size: clamp(24px, 6vw, 36px); font-weight: 700; line-height: 1.1;
       letter-spacing: -0.03em; color: #fff; margin-bottom: 4px;
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
     }
+    h1 .h1-mascot {
+      height: 1.6em; width: auto; flex-shrink: 0;
+    }
+    h1 .h1-mascot.sentinel { filter: drop-shadow(0 2px 6px rgba(80,140,255,0.30)); }
+    h1 .h1-mascot.sherpa   { filter: drop-shadow(0 2px 6px rgba(220,60,90,0.30)); }
     h1 .ai { color: var(--green); }
     h1 .badge { color: var(--purple); font-size: 0.5em; vertical-align: super; letter-spacing: 0.05em; }
 
@@ -79,6 +85,22 @@
     }
     .section-title.sherpa { color: var(--blue); }
     .section-title.db { color: var(--amber); }
+
+    /* Collapsible section (uses native <details>/<summary>). */
+    details.collapsible { margin-top: 32px; margin-bottom: 16px; }
+    details.collapsible > summary {
+      font-size: 12px; font-family: var(--mono); text-transform: uppercase;
+      letter-spacing: 0.1em; color: var(--purple); margin-bottom: 12px;
+      display: flex; align-items: center; gap: 10px;
+      cursor: pointer; list-style: none; user-select: none;
+    }
+    details.collapsible > summary::-webkit-details-marker { display: none; }
+    details.collapsible > summary::before {
+      content: '▶'; font-size: 9px; transition: transform 0.15s;
+      display: inline-block; color: var(--text-dim);
+    }
+    details.collapsible[open] > summary::before { transform: rotate(90deg); }
+    details.collapsible.sherpa > summary { color: var(--blue); }
     .section-mascot { height: 28px; width: auto; flex-shrink: 0; }
     .section-mascot.sentinel { filter: drop-shadow(0 1px 4px rgba(80,140,255,0.35)); }
     .section-mascot.sherpa   { filter: drop-shadow(0 1px 4px rgba(220,60,90,0.35)); }
@@ -185,8 +207,17 @@
     .chart-wrap {
       background: var(--surface); border: 1px solid var(--border);
       border-radius: 8px; padding: 16px; margin-bottom: 8px;
+      position: relative;
     }
     .chart-wrap canvas { width: 100%; height: 320px; display: block; }
+    .chart-overlay {
+      position: absolute; top: 18px; left: 22px;
+      font-family: var(--mono); pointer-events: none; z-index: 2;
+    }
+    .chart-overlay .price { font-size: 14px; font-weight: 700; color: #fff; }
+    .chart-overlay .change { font-size: 11px; margin-top: 1px; color: var(--text-dim); }
+    .chart-overlay .change.pos { color: var(--green); }
+    .chart-overlay .change.neg { color: var(--red); }
     .chart-legend {
       display: flex; flex-wrap: wrap; gap: 12px; margin-top: 8px;
       font-family: var(--mono); font-size: 10px; color: var(--text-dim);
@@ -240,11 +271,14 @@
     /* Stacked parameter charts */
     .param-row {
       display: flex; align-items: center; gap: 10px;
-      margin-bottom: 6px;
+      padding-bottom: 8px; margin-bottom: 8px;
     }
-    .param-row:last-child { margin-bottom: 0; }
+    .param-row:not(:last-child) {
+      border-bottom: 1px solid var(--border);
+    }
+    .param-row:last-child { margin-bottom: 0; padding-bottom: 0; }
     .param-label {
-      flex: 0 0 110px;
+      flex: 0 0 140px;
       font-family: var(--mono); font-size: 11px; color: var(--text-dim);
       text-transform: uppercase; letter-spacing: 0.05em;
     }
@@ -284,7 +318,7 @@
         <span><span class="dot">●</span> sentinel + sherpa — private</span>
         <span id="last-update">—</span>
       </div>
-      <h1>📡 BagHolder<span class="ai">AI</span> <span class="badge">ADMIN</span></h1>
+      <h1><img class="h1-mascot sentinel" src="sentinel.svg" alt="Sentinel"><img class="h1-mascot sherpa" src="sherpa.svg" alt="Sherpa"><span>BagHolder<span class="ai">AI</span> <span class="badge">ADMIN</span></span></h1>
 
       <!-- ============ SENTINEL ============ -->
       <div class="section-title"><img class="section-mascot sentinel" src="sentinel.svg" alt="Sentinel"><span>Sentinel — fast loop (60s)</span></div>
@@ -343,17 +377,22 @@
       <!-- 24h chart: risk + opp (left axis) overlaid with BTC price (right axis) -->
       <div class="section-title">📈 24h trend — Sentinel signals × BTC price</div>
       <div class="chart-wrap">
+        <div id="sentinel-overlay" class="chart-overlay">
+          <div class="price" id="sentinel-overlay-price">—</div>
+          <div class="change" id="sentinel-overlay-change">—</div>
+        </div>
         <canvas id="sentinel-chart"></canvas>
         <div class="chart-legend">
-          <span class="item"><span class="swatch" style="background: var(--red-strong);"></span> Risk score (0-100)</span>
-          <span class="item"><span class="swatch" style="background: var(--green);"></span> Opportunity score (0-100)</span>
+          <span class="item"><span class="swatch" style="background: var(--red-strong); height: 2px;"></span> Risk score (0-100)</span>
+          <span class="item"><span class="swatch" style="background: repeating-linear-gradient(90deg, var(--green) 0 6px, transparent 6px 10px); height: 3px;"></span> Opportunity score (0-100)</span>
           <span class="item"><span class="swatch" style="background: var(--blue);"></span> BTC price (right axis)</span>
           <span class="item"><span class="swatch" style="background: var(--yellow); height: 8px; border-left: 2px dashed var(--yellow);"></span> Speed of fall fired</span>
         </div>
       </div>
 
       <!-- Sentinel scoring rules — STATIC (parsed manually from score_engine.py) -->
-      <div class="section-title">📋 Sentinel scoring rules (static)</div>
+      <details class="collapsible">
+      <summary>📋 Sentinel scoring rules (static)</summary>
       <div class="card" style="overflow-x: auto;">
         <table class="rules">
           <thead>
@@ -398,6 +437,7 @@
           — parsed manually at build time.
         </div>
       </div>
+      </details>
 
       <!-- ============ SHERPA ============ -->
       <div class="section-title sherpa"><img class="section-mascot sherpa" src="sherpa.svg" alt="Sherpa"><span>Sherpa — parameter writer (loop 120s · DRY_RUN)</span></div>
@@ -445,6 +485,7 @@
         <div class="footnote">
           When Sentinel's risk_score moves, do the 3 Sherpa lines react?
           A flat market (today) shows flat lines — that's fine. A volatile market should show the 3 lines moving in response to risk spikes.
+          <br>The 3 buy_pct lines are vertically offset by ±3px (BTC up, SOL center, BONK down) so they stay visible when they coincide. Exact values are in the proposals table above.
         </div>
       </div>
 
@@ -471,7 +512,8 @@
       </div>
 
       <!-- Sherpa parameter rules — STATIC -->
-      <div class="section-title sherpa">📋 Sherpa parameter rules (static)</div>
+      <details class="collapsible sherpa">
+      <summary>📋 Sherpa parameter rules (static)</summary>
       <div class="card" style="overflow-x: auto;">
         <div style="font-family: var(--mono); font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">BASE_TABLE — base parameters per regime</div>
         <table class="rules">
@@ -535,16 +577,81 @@
           Drop ladder and pump ladder are mutually exclusive (only the strongest match fires).
         </div>
       </div>
+      </details>
 
-      <!-- ============ RECONCILIATION (Binance) — TODO ============ -->
-      <!--
-        S69: rimosso pannello "Reconciliation FIFO vs DB" (audit storico
-        S65 ormai obsoleto: bot post-S66 scrive avg-cost canonico, FIFO
-        non è più la formula di riferimento).
-        Sostituire con confronto DB ↔ Binance (fetch_my_trades API) come
-        brief separato post go-live €100 mainnet baseline pulito.
-        Vedi PROJECT_STATE.md §6.
-      -->
+      <!-- ============ RECONCILIATION (Binance) ============ -->
+      <div class="section-title" style="color: var(--amber);">⚖️ Reconciliation (Binance)</div>
+
+      <!-- Per-symbol latest -->
+      <div class="card" style="overflow-x: auto;">
+        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px;">
+          <span style="font-family: var(--mono); font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em;">Latest run per symbol</span>
+          <span id="reconcile-last-ts" style="font-family: var(--mono); font-size: 11px; color: var(--text-dim);">—</span>
+        </div>
+        <table class="proposals">
+          <thead>
+            <tr>
+              <th>Bot</th>
+              <th>Last run</th>
+              <th>Status</th>
+              <th>Bin / DB</th>
+              <th class="num">Matched</th>
+              <th class="num">Drift</th>
+              <th>Notes</th>
+            </tr>
+          </thead>
+          <tbody id="reconcile-tbody">
+            <tr><td colspan="7" style="text-align: center; color: var(--text-dim);">loading…</td></tr>
+          </tbody>
+        </table>
+        <div class="footnote">
+          Status:
+          <strong style="color: var(--green);">OK</strong> qty/price/fee within tolerance ·
+          <strong style="color: var(--yellow);">WARN_BINANCE_EMPTY</strong> Binance returned 0 trades (probable testnet reset) ·
+          <strong style="color: var(--red);">DRIFT</strong> matched orders out of tolerance ·
+          <strong style="color: var(--red-strong);">DRIFT_BINANCE_ORPHAN</strong> order on Binance not in DB.
+          <br>Manual run on Mac Mini: <code>python3.13 scripts/reconcile_binance.py --write</code>. Nightly cron (Step C) — pending S71+.
+        </div>
+      </div>
+
+      <!-- Trade-by-trade compare (latest) collapsible -->
+      <details class="collapsible">
+      <summary style="color: var(--amber);">📊 Trade-by-trade compare (latest)</summary>
+      <div class="card" style="overflow-x: auto;">
+        <table class="rules">
+          <thead>
+            <tr>
+              <th>ts (UTC)</th>
+              <th>sym</th>
+              <th>side</th>
+              <th class="num">qty Bin</th>
+              <th class="num">qty DB</th>
+              <th class="num">Δ% qty</th>
+              <th class="num">px Bin</th>
+              <th class="num">px DB</th>
+              <th class="num">Δ% px</th>
+              <th class="num">fee Bin</th>
+              <th class="num">fee DB</th>
+              <th class="num">Δ fee</th>
+            </tr>
+          </thead>
+          <tbody id="reconcile-compare-tbody">
+            <tr><td colspan="12" style="text-align: center; color: var(--text-dim);">loading…</td></tr>
+          </tbody>
+        </table>
+        <div class="footnote">
+          Snapshot of the latest run per symbol — every Binance↔DB matched order side-by-side. All deltas should be 0 in normal operation; non-zero deltas above tolerance trigger DRIFT status.
+        </div>
+      </div>
+      </details>
+
+      <!-- Drift details collapsible (auto-shown only when DRIFT exists) -->
+      <details class="collapsible" id="drift-details-section" style="display: none;">
+      <summary style="color: var(--red);">⚠ Drift details</summary>
+      <div class="card">
+        <pre id="drift-details-content" style="font-family: var(--mono); font-size: 11px; color: var(--text); white-space: pre-wrap; word-break: break-word; margin: 0;"></pre>
+      </div>
+      </details>
 
       <!-- ============ DB MONITOR ============ -->
       <div class="section-title db">💾 DB monitor</div>
@@ -580,6 +687,7 @@
         <div class="footnote">
           Sentinel retention: 30d. Sherpa retention: 60d. Events log: 14d. Snapshots: 7d.
           Cleanup runs daily at 04:00 UTC via <code>db_maintenance.py</code> (brief 59b).
+          <br>Sizes live via RPC <code>public.get_table_sizes()</code> (S70b). Rows: exact for tables with <code>created_at</code>; <code>~</code>prefix means <code>pg_class.reltuples</code> estimate (refreshes on next <code>ANALYZE</code>).
         </div>
       </div>
 
@@ -627,6 +735,22 @@
         headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY }
       });
       if (!res.ok) throw new Error('Supabase ' + res.status + ' on ' + path);
+      return res.json();
+    }
+
+    // RPC helper for Postgres functions (POST). Used by the DB monitor to
+    // call public.get_table_sizes() — see migration s70b_get_table_sizes_rpc.
+    async function sbRpc(fnName, args) {
+      var res = await fetch(SB_URL + '/rest/v1/rpc/' + fnName, {
+        method: 'POST',
+        headers: {
+          'apikey': SB_KEY,
+          'Authorization': 'Bearer ' + SB_KEY,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(args || {}),
+      });
+      if (!res.ok) throw new Error('Supabase RPC ' + res.status + ' on ' + fnName);
       return res.json();
     }
 
@@ -690,6 +814,16 @@
       var c24el = document.getElementById('s-btc-24h');
       c24el.textContent = '24h ' + fmtPct(c24);
       c24el.style.color = c24 >= 0 ? 'var(--green)' : 'var(--red)';
+
+      // Chart overlay (top-left): live BTC price + 24h change.
+      var overlayPrice = document.getElementById('sentinel-overlay-price');
+      var overlayChange = document.getElementById('sentinel-overlay-change');
+      if (overlayPrice && overlayChange) {
+        overlayPrice.textContent = fmtUSD(row.btc_price);
+        overlayChange.textContent = fmtPct(c24) + ' 24h';
+        overlayChange.classList.toggle('pos', c24 >= 0);
+        overlayChange.classList.toggle('neg', c24 < 0);
+      }
 
       var c1 = Number(row.btc_change_1h);
       var c1el = document.getElementById('s-btc-1h');
@@ -835,24 +969,30 @@
       }
       ctx.stroke();
 
-      // Risk line (left axis, red)
-      ctx.strokeStyle = '#ef4444';
-      ctx.lineWidth = 1.8;
+      // Opportunity line — BOTTOM layer (drawn first): thick + dashed + alpha
+      // so the line above (Risk) leaves a visible green "halo" around itself
+      // even when both scores coincide (e.g. flat market: risk=opp=20).
+      ctx.save();
+      ctx.strokeStyle = '#22c55e';
+      ctx.lineWidth = 6;
+      ctx.globalAlpha = 0.65;
+      ctx.setLineDash([6, 4]);
       ctx.beginPath();
       for (var i = 0; i < rows.length; i++) {
-        var v = Number(rows[i].risk_score);
+        var v = Number(rows[i].opportunity_score);
         var x = tx(new Date(rows[i].created_at).getTime());
         var y = tyScore(v);
         if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
       }
       ctx.stroke();
+      ctx.restore();
 
-      // Opportunity line (left axis, green)
-      ctx.strokeStyle = '#22c55e';
+      // Risk line — TOP layer (drawn last): thin + solid + opaque
+      ctx.strokeStyle = '#ef4444';
       ctx.lineWidth = 1.8;
       ctx.beginPath();
       for (var i = 0; i < rows.length; i++) {
-        var v = Number(rows[i].opportunity_score);
+        var v = Number(rows[i].risk_score);
         var x = tx(new Date(rows[i].created_at).getTime());
         var y = tyScore(v);
         if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
@@ -988,12 +1128,19 @@
       ctx.beginPath(); ctx.moveTo(pad.l, tyScore(70)); ctx.lineTo(W - pad.r, tyScore(70)); ctx.stroke();
       ctx.setLineDash([]);
 
-      // Sherpa proposed_buy_pct lines (right axis), one per symbol
+      // Sherpa proposed_buy_pct lines (right axis), one per symbol.
+      // Vertical jitter of ±3px keeps the 3 lines visually distinct when they
+      // numerically coincide (flat regime — Sprint 1 always proposes the same
+      // base "neutral" triplet for all bots). Trade-off: rendered y-values
+      // are offset from real values by up to 3px (~0.03 buy_pct on a 0.3-3.0
+      // axis, well below the 0.1 step proposed by Sherpa).
+      var Y_JITTER = { 'BTC/USDT': -3, 'SOL/USDT': 0, 'BONK/USDT': 3 };
       ['BTC/USDT', 'SOL/USDT', 'BONK/USDT'].forEach(function(sym) {
         var rows = (sherpaRowsBySymbol[sym] || []).slice().sort(function(a, b) {
           return new Date(a.created_at) - new Date(b.created_at);
         });
         if (!rows.length) return;
+        var dy = Y_JITTER[sym] || 0;
         ctx.strokeStyle = SYMBOL_COLOR[sym];
         ctx.lineWidth = 1.5;
         ctx.beginPath();
@@ -1001,7 +1148,7 @@
           var v = Number(r.proposed_buy_pct);
           if (isNaN(v)) return;
           var x = tx(new Date(r.created_at).getTime());
-          var y = tyBuy(v);
+          var y = tyBuy(v) + dy;
           if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
         });
         ctx.stroke();
@@ -1044,7 +1191,12 @@
     }
 
     // === SHERPA: PARAMETERS HISTORY (3 stacked mini-charts) ===
-    function renderParamChart(canvasId, sherpaRowsBySymbol, fieldName, yMin, yMax) {
+    // yMin is forced to 0 (integer scale starts at zero).
+    // Left y-axis: integer ticks 0..yMax. Right y-axis: 3 colored live values
+    // for BTC/SOL/BONK, stacked top-down with anti-collision. unit is appended
+    // to every label (e.g. "h" for idle_reentry_hours).
+    function renderParamChart(canvasId, sherpaRowsBySymbol, fieldName, yMax, unit) {
+      unit = unit || '';
       var canvas = document.getElementById(canvasId);
       var ctx = canvas.getContext('2d');
       var dpr = window.devicePixelRatio || 1;
@@ -1064,22 +1216,31 @@
       var t1 = Math.max.apply(null, allTs);
       var span = t1 - t0 || 1;
 
-      var pad = { l: 30, r: 10, t: 4, b: 4 };
+      var yMin = 0;  // integer scale starts at 0
+      var pad = { l: 30, r: 60, t: 4, b: 4 };  // wider right pad for live-value labels
       var plotW = W - pad.l - pad.r;
       var plotH = H - pad.t - pad.b;
 
       function tx(ts) { return pad.l + (ts - t0) / span * plotW; }
       function ty(v) { return pad.t + plotH - (v - yMin) / (yMax - yMin) * plotH; }
 
-      // baseline
+      // Light grid lines at every integer tick
       ctx.strokeStyle = 'rgba(255,255,255,0.04)';
-      ctx.beginPath(); ctx.moveTo(pad.l, pad.t + plotH / 2); ctx.lineTo(W - pad.r, pad.t + plotH / 2); ctx.stroke();
+      ctx.lineWidth = 1;
+      for (var k = 0; k <= yMax; k++) {
+        var y = ty(k);
+        ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(W - pad.r, y); ctx.stroke();
+      }
 
+      // Same vertical jitter convention as the reaction chart.
+      var Y_JITTER = { 'BTC/USDT': -3, 'SOL/USDT': 0, 'BONK/USDT': 3 };
+      var lastValueBySym = {};
       ['BTC/USDT', 'SOL/USDT', 'BONK/USDT'].forEach(function(sym) {
         var rows = (sherpaRowsBySymbol[sym] || []).slice().sort(function(a, b) {
           return new Date(a.created_at) - new Date(b.created_at);
         });
         if (!rows.length) return;
+        var dy = Y_JITTER[sym] || 0;
         ctx.strokeStyle = SYMBOL_COLOR[sym];
         ctx.lineWidth = 1.3;
         ctx.beginPath();
@@ -1087,18 +1248,199 @@
           var v = Number(r[fieldName]);
           if (isNaN(v)) return;
           var x = tx(new Date(r.created_at).getTime());
-          var y = ty(Math.max(yMin, Math.min(yMax, v)));
+          var y = ty(Math.max(yMin, Math.min(yMax, v))) + dy;
           if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
         });
         ctx.stroke();
+        var lastV = Number(rows[rows.length - 1][fieldName]);
+        if (!isNaN(lastV)) lastValueBySym[sym] = lastV;
       });
 
-      // y-axis range labels
+      // Left y-axis: integer tick labels
       ctx.fillStyle = '#9aa3b8';
       ctx.font = '9px monospace';
       ctx.textAlign = 'right';
-      ctx.fillText(yMax.toFixed(1), pad.l - 4, pad.t + 8);
-      ctx.fillText(yMin.toFixed(1), pad.l - 4, pad.t + plotH);
+      for (var k = 0; k <= yMax; k++) {
+        ctx.fillText(k + unit, pad.l - 4, ty(k) + 3);
+      }
+
+      // Right y-axis: 3 stacked colored live values with anti-collision
+      var labels = ['BTC/USDT', 'SOL/USDT', 'BONK/USDT']
+        .filter(function(s) { return lastValueBySym[s] != null; })
+        .map(function(s) {
+          return { sym: s, v: lastValueBySym[s], y: ty(Math.max(yMin, Math.min(yMax, lastValueBySym[s]))) };
+        })
+        .sort(function(a, b) { return a.y - b.y; });
+      var MIN_GAP = 12;
+      for (var i = 1; i < labels.length; i++) {
+        if (labels[i].y - labels[i - 1].y < MIN_GAP) {
+          labels[i].y = labels[i - 1].y + MIN_GAP;
+        }
+      }
+      // If the bottom label overflows the plot area, shift the whole stack up
+      if (labels.length) {
+        var overflow = labels[labels.length - 1].y - (pad.t + plotH);
+        if (overflow > 0) for (var i = 0; i < labels.length; i++) labels[i].y -= overflow;
+      }
+      ctx.font = '10px monospace';
+      ctx.textAlign = 'left';
+      labels.forEach(function(lbl) {
+        ctx.fillStyle = SYMBOL_COLOR[lbl.sym];
+        ctx.fillText(lbl.v.toFixed(1) + unit, W - pad.r + 4, lbl.y + 3);
+      });
+    }
+
+    // === RECONCILIATION (Binance) ===
+    var RECONCILE_STATUS_COLOR = {
+      'OK': 'var(--green)',
+      'WARN_BINANCE_EMPTY': 'var(--yellow)',
+      'DRIFT': 'var(--red)',
+      'DRIFT_BINANCE_ORPHAN': 'var(--red-strong)',
+    };
+    var RECONCILE_STATUS_ICON = {
+      'OK': '✓',
+      'WARN_BINANCE_EMPTY': '⚠',
+      'DRIFT': '✗',
+      'DRIFT_BINANCE_ORPHAN': '✗',
+    };
+
+    function reconcileStatusBadge(status) {
+      var color = RECONCILE_STATUS_COLOR[status] || 'var(--text-dim)';
+      var icon = RECONCILE_STATUS_ICON[status] || '?';
+      return '<span style="color: ' + color + ';">' + icon + ' ' + (status || '—') + '</span>';
+    }
+
+    function fmtDeltaPct(a, b) {
+      if (a == null || b == null) return '—';
+      var na = Number(a), nb = Number(b);
+      if (na === 0 && nb === 0) return '0.00%';
+      var base = Math.abs(nb) > 0 ? Math.abs(nb) : Math.abs(na);
+      if (base === 0) return '0.00%';
+      var pct = Math.abs(na - nb) / base * 100;
+      var color = pct === 0 ? 'var(--text-dim)' : (pct > 0.5 ? 'var(--red)' : 'var(--text)');
+      return '<span style="color: ' + color + ';">' + pct.toFixed(2) + '%</span>';
+    }
+    function fmtDeltaAbs(a, b, decimals) {
+      if (a == null || b == null) return '—';
+      var d = Math.abs(Number(a) - Number(b));
+      var color = d === 0 ? 'var(--text-dim)' : (d > 0.01 ? 'var(--red)' : 'var(--text)');
+      return '<span style="color: ' + color + ';">$' + d.toFixed(decimals == null ? 4 : decimals) + '</span>';
+    }
+    function fmtPriceShort(v) {
+      if (v == null) return '—';
+      var n = Number(v);
+      if (n >= 1000) return n.toFixed(2);
+      if (n >= 1) return n.toFixed(4);
+      return n.toExponential(2);
+    }
+    function fmtQtyShort(v) {
+      if (v == null) return '—';
+      var n = Number(v);
+      if (n >= 1000) return n.toLocaleString('en-US', { maximumFractionDigits: 0 });
+      if (n >= 1) return n.toFixed(4);
+      return n.toFixed(8);
+    }
+
+    function renderReconciliation(runs) {
+      var tbodyLatest = document.getElementById('reconcile-tbody');
+      var tbodyCompare = document.getElementById('reconcile-compare-tbody');
+      var driftSection = document.getElementById('drift-details-section');
+
+      if (!runs || !runs.length) {
+        tbodyLatest.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--text-dim);">no reconciliation runs yet — run <code>python3.13 scripts/reconcile_binance.py --write</code> on Mac Mini</td></tr>';
+        tbodyCompare.innerHTML = '<tr><td colspan="12" style="text-align: center; color: var(--text-dim);">no data</td></tr>';
+        driftSection.style.display = 'none';
+        document.getElementById('reconcile-last-ts').textContent = '—';
+        return;
+      }
+
+      // Latest per symbol — runs comes ordered by ts.desc, so first hit per symbol wins.
+      var latestBySym = {};
+      runs.forEach(function(r) {
+        if (!latestBySym[r.symbol]) latestBySym[r.symbol] = r;
+      });
+
+      var symbols = ['BTC/USDT', 'SOL/USDT', 'BONK/USDT'];
+      tbodyLatest.innerHTML = '';
+      var newest = null;
+      symbols.forEach(function(sym) {
+        var r = latestBySym[sym];
+        var tr = document.createElement('tr');
+        if (!r) {
+          tr.innerHTML = '<td><span class="sym" style="color:' + SYMBOL_COLOR[sym] + '">' + SYMBOL_SHORT[sym] + '</span></td>' +
+                         '<td colspan="6" style="color: var(--text-dim);">no data</td>';
+          tbodyLatest.appendChild(tr);
+          return;
+        }
+        if (!newest || new Date(r.ts) > new Date(newest)) newest = r.ts;
+        var driftCell = (r.drift_count > 0)
+          ? '<span style="color: var(--red);">' + r.drift_count + '</span>'
+          : '0';
+        tr.innerHTML =
+          '<td><span class="sym" style="color:' + SYMBOL_COLOR[sym] + '">' + SYMBOL_SHORT[sym] + '</span></td>' +
+          '<td>' + fmtAge(r.ts) + '</td>' +
+          '<td>' + reconcileStatusBadge(r.status) + '</td>' +
+          '<td>' + (r.binance_count != null ? r.binance_count : '—') + ' / ' + (r.db_count != null ? r.db_count : '—') + '</td>' +
+          '<td class="num">' + (r.matched_count != null ? r.matched_count : '—') + '</td>' +
+          '<td class="num">' + driftCell + '</td>' +
+          '<td style="color: var(--text-dim); font-size: 10px;">' + (r.notes || '') + '</td>';
+        tbodyLatest.appendChild(tr);
+      });
+      document.getElementById('reconcile-last-ts').textContent = newest
+        ? (fmtAge(newest) + ' · ' + new Date(newest).toLocaleString())
+        : '—';
+
+      // Trade-by-trade compare — concat matched_details from latest run per symbol
+      var compareRows = [];
+      symbols.forEach(function(sym) {
+        var r = latestBySym[sym];
+        if (!r || !r.matched_details) return;
+        r.matched_details.forEach(function(m) {
+          compareRows.push({ sym: sym, m: m });
+        });
+      });
+      compareRows.sort(function(a, b) { return b.m.ts_ms - a.m.ts_ms; });
+
+      if (!compareRows.length) {
+        tbodyCompare.innerHTML = '<tr><td colspan="12" style="text-align: center; color: var(--text-dim);">no matched orders in latest runs</td></tr>';
+      } else {
+        tbodyCompare.innerHTML = '';
+        compareRows.forEach(function(row) {
+          var m = row.m;
+          var tr = document.createElement('tr');
+          var sideColor = m.side === 'buy' ? 'var(--green)' : 'var(--red)';
+          var dateStr = new Date(m.ts_ms).toLocaleString();
+          tr.innerHTML =
+            '<td style="font-size: 10px;">' + dateStr + '</td>' +
+            '<td><span style="color: ' + (SYMBOL_COLOR[row.sym] || 'var(--text)') + ';">' + (SYMBOL_SHORT[row.sym] || row.sym) + '</span></td>' +
+            '<td><span style="color: ' + sideColor + '; text-transform: uppercase;">' + m.side + '</span></td>' +
+            '<td class="num">' + fmtQtyShort(m.qty_binance) + '</td>' +
+            '<td class="num">' + fmtQtyShort(m.qty_db) + '</td>' +
+            '<td class="num">' + fmtDeltaPct(m.qty_binance, m.qty_db) + '</td>' +
+            '<td class="num">' + fmtPriceShort(m.price_binance) + '</td>' +
+            '<td class="num">' + fmtPriceShort(m.price_db) + '</td>' +
+            '<td class="num">' + fmtDeltaPct(m.price_binance, m.price_db) + '</td>' +
+            '<td class="num">$' + Number(m.fee_binance_usdt).toFixed(4) + '</td>' +
+            '<td class="num">$' + Number(m.fee_db_usdt).toFixed(4) + '</td>' +
+            '<td class="num">' + fmtDeltaAbs(m.fee_binance_usdt, m.fee_db_usdt, 4) + '</td>';
+          tbodyCompare.appendChild(tr);
+        });
+      }
+
+      // Drift details — show section only when at least one DRIFT/ORPHAN run exists
+      var driftRuns = runs.filter(function(r) {
+        return (r.status === 'DRIFT' || r.status === 'DRIFT_BINANCE_ORPHAN') && r.drift_details;
+      });
+      if (driftRuns.length > 0) {
+        driftSection.style.display = 'block';
+        var content = driftRuns.map(function(r) {
+          return '[' + new Date(r.ts).toLocaleString() + '] ' + r.symbol + ' — ' + r.status + '\n' +
+                 JSON.stringify(r.drift_details, null, 2);
+        }).join('\n\n---\n\n');
+        document.getElementById('drift-details-content').textContent = content;
+      } else {
+        driftSection.style.display = 'none';
+      }
     }
 
     // === DB MONITOR ===
@@ -1115,7 +1457,16 @@
       tbody.innerHTML = '';
       tableSizes.slice(0, 8).forEach(function(t) {
         var rc = rowCounts[t.tablename];
-        var rowsLabel = (rc && rc.total != null) ? rc.total.toLocaleString() : '—';
+        // Exact count from REST (tables with created_at) wins over the
+        // pg_class.reltuples estimate from the RPC (stale until next ANALYZE).
+        var rowsLabel;
+        if (rc && rc.total != null) {
+          rowsLabel = rc.total.toLocaleString();
+        } else if (t.row_estimate != null) {
+          rowsLabel = '~' + Number(t.row_estimate).toLocaleString();
+        } else {
+          rowsLabel = '—';
+        }
         var lastLabel = (rc && rc.last) ? fmtAge(rc.last) : '—';
         var sizeMB = (t.bytes / (1024 * 1024)).toFixed(2) + ' MB';
         var tr = document.createElement('tr');
@@ -1159,21 +1510,33 @@
 
         renderProposals(latestBySym);
         renderReactionChart(sentinelRows, bySym);
-        renderParamChart('param-buy-chart', bySym, 'proposed_buy_pct', 0.3, 3.0);
-        renderParamChart('param-sell-chart', bySym, 'proposed_sell_pct', 0.8, 4.0);
-        renderParamChart('param-idle-chart', bySym, 'proposed_idle_reentry_hours', 0.5, 6.0);
+        renderParamChart('param-buy-chart', bySym, 'proposed_buy_pct', 3, '');
+        renderParamChart('param-sell-chart', bySym, 'proposed_sell_pct', 4, '');
+        renderParamChart('param-idle-chart', bySym, 'proposed_idle_reentry_hours', 6, 'h');
 
-        // S69: rimosso loadReconciliation() (audit FIFO obsoleto post-S66).
-        // Il prossimo Reconciliation sarà DB ↔ Binance via fetch_my_trades —
-        // brief separato post go-live €100. Vedi PROJECT_STATE.md §6.
+        // --- Reconciliation Binance (Step B, S70b) ---
+        // Reads reconciliation_runs (S70 Step A schema). Empty until reconcile_binance.py
+        // is run with --write on Mac Mini. Step C (nightly cron) pending S71+.
+        try {
+          var reconcileRuns = await sbFetch('reconciliation_runs?select=*&order=ts.desc&limit=50');
+          renderReconciliation(reconcileRuns);
+        } catch (e) {
+          console.error('reconciliation fetch failed:', e);
+          renderReconciliation([]);
+        }
 
         // --- DB monitor ---
-        // Row counts via Supabase REST exact count headers
-        var tablesToCount = ['sentinel_scores', 'sherpa_proposals', 'trades', 'bot_events_log', 'bot_state_snapshots', 'trend_scans', 'trend_decisions_log', 'counterfactual_log', 'reserve_ledger', 'daily_pnl', 'daily_commentary', 'diary_entries'];
+        // Row counts via Supabase REST exact count headers (Last activity = max created_at).
+        // Tables here only need to be ones with a created_at column — others
+        // will still show in the size table but with row count from the RPC's
+        // pg_class.reltuples estimate (stale until next ANALYZE).
+        var tablesToCount = ['sentinel_scores', 'sherpa_proposals', 'trades', 'bot_events_log', 'bot_state_snapshots', 'trend_scans', 'trend_decisions_log', 'counterfactual_log', 'reserve_ledger', 'daily_pnl', 'daily_commentary', 'diary_entries', 'reconciliation_runs'];
         var rowCounts = {};
         await Promise.all(tablesToCount.map(async function(t) {
           try {
-            var r = await fetch(SB_URL + '/rest/v1/' + t + '?select=created_at&order=created_at.desc&limit=1', {
+            // reconciliation_runs uses 'ts' instead of 'created_at'.
+            var orderCol = (t === 'reconciliation_runs') ? 'ts' : 'created_at';
+            var r = await fetch(SB_URL + '/rest/v1/' + t + '?select=' + orderCol + '&order=' + orderCol + '.desc&limit=1', {
               headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Prefer': 'count=exact', 'Range': '0-0' }
             });
             var contentRange = r.headers.get('content-range') || '';
@@ -1182,32 +1545,23 @@
             var data = await r.json();
             rowCounts[t] = {
               total: total,
-              last: (data && data[0] && data[0].created_at) ? data[0].created_at : null,
-              toLocaleString: function() { return total != null ? total.toLocaleString() : '—'; }
+              last: (data && data[0] && data[0][orderCol]) ? data[0][orderCol] : null,
             };
           } catch (e) {
             rowCounts[t] = null;
           }
         }));
 
-        // Sizes: Supabase REST cannot report pg_total_relation_size without a custom RPC.
-        // We embed a static-ish snapshot from the last query CC ran during pre-validation;
-        // this gets refreshed each time the page is rebuilt. For a real-time view we'd need
-        // an RPC like create_function get_table_sizes(). Acceptable for Sprint 1 monitoring.
-        var tableSizes = [
-          { tablename: 'trend_scans',          bytes: 8609792 },
-          { tablename: 'bot_state_snapshots',  bytes: 3063808 },
-          { tablename: 'bot_events_log',       bytes: 1384448 },
-          { tablename: 'sentinel_scores',      bytes: 892928 },
-          { tablename: 'sherpa_proposals',     bytes: 835584 },
-          { tablename: 'trend_decisions_log',  bytes: 622592 },
-          { tablename: 'trades',               bytes: 540672 },
-          { tablename: 'counterfactual_log',   bytes: 278528 },
-          { tablename: 'daily_commentary',     bytes: 180224 },
-          { tablename: 'reserve_ledger',       bytes: 155648 },
-          { tablename: 'diary_entries',        bytes: 147456 },
-          { tablename: 'daily_pnl',            bytes: 114688 },
-        ];
+        // Sizes: live from public.get_table_sizes() RPC (migration s70b).
+        // Replaces the hardcoded snapshot which drifted ~90% on some tables
+        // post-S69 retention cleanup and was missing reconciliation_runs.
+        var tableSizes;
+        try {
+          tableSizes = await sbRpc('get_table_sizes');
+        } catch (e) {
+          console.error('get_table_sizes RPC failed:', e);
+          tableSizes = [];
+        }
         renderDbMonitor(rowCounts, tableSizes);
 
         document.getElementById('last-update').textContent = 'updated ' + new Date().toLocaleTimeString();

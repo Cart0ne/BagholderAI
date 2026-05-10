@@ -270,6 +270,7 @@ def reconcile_symbol(exchange, client, symbol):
             "unmatched_binance_count": 0,
             "drift_count": 0,
             "drift_details": None,
+            "matched_details": None,
             "notes": "Binance returned 0 trades; DB unchanged.",
         }
 
@@ -322,6 +323,24 @@ def reconcile_symbol(exchange, client, symbol):
             "db_only_count": len(un_db),
         }
 
+    # S70b: snapshot the full Binance↔DB matched list so /admin can render the
+    # trade-by-trade compare table. Frontend uses ts_ms (Binance side) to sort.
+    matched_details = [
+        {
+            "side": d["side"],
+            "db_id": d["db_id"],
+            "exchange_order_id": b["order_id"],
+            "ts_ms": b["ts_ms"],
+            "qty_db": d["qty"],
+            "qty_binance": b["qty"],
+            "price_db": d["price"],
+            "price_binance": b["price"],
+            "fee_db_usdt": d["fee_usdt"],
+            "fee_binance_usdt": b["fee_usdt"],
+        }
+        for d, b in matched
+    ] or None
+
     return {
         "symbol": symbol,
         "status": status,
@@ -332,6 +351,7 @@ def reconcile_symbol(exchange, client, symbol):
         "unmatched_binance_count": len(un_bn),
         "drift_count": len(drift_rows),
         "drift_details": drift_details,
+        "matched_details": matched_details,
         "notes": None,
     }
 
@@ -351,6 +371,7 @@ def write_results(client, results):
         "unmatched_binance_count": r["unmatched_binance_count"],
         "drift_count": r["drift_count"],
         "drift_details": r["drift_details"],
+        "matched_details": r.get("matched_details"),
         "notes": r["notes"],
     } for r in results]
 

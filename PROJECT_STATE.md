@@ -1,6 +1,6 @@
 # PROJECT_STATE.md
 
-**Ultimo aggiornamento:** 2026-05-10 — sessione 70 (chiusura serale: brief 70a sell_pct net-of-fees + sell ladder + post-fill warning shipped, brief 70b Sentinel ricalibrazione + DRY_RUN riacceso, reconciliation Binance Step A live, rename `manual→grid` chiuso open question 19, BONK hotfix sell_pct 2→4 per slippage testnet)
+**Ultimo aggiornamento:** 2026-05-10 — sessione 70b (chiusura: /admin overhaul completo — mascot in titolo, Opp chart dashed-overlay, scoring/sherpa rules collapsed, Parameters history rebuild scala intera 0→max + asse Y dx live, RPC `get_table_sizes()` per DB monitor live, Reconciliation Binance Step B shipped con trade-by-trade compare side-by-side, BTC overlay sul 24h chart). Reconciliation Step C (cron) e ripristino sito pubblico → S70c.
 **Owner del file:** Claude Code (Intern). Rigenerato a ogni fine sessione.
 
 ---
@@ -45,17 +45,22 @@ Comm Sentinel↔Sherpa↔Grid via Supabase only. Telegram alerts: solo Grid trad
 
 ## 3. In-flight (settimana 2026-05-10+)
 
-- **🟡 [S70 NEW] 24-48h observation post-restart**: bot girando su `4324231`. Verificare:
+- **🟡 [S70 NEW] 24-48h observation post-restart**: bot girando su `4324231` (orchestrator restart 09:51 UTC). Verificare:
   - sell_pct=4% BONK basta vs slippage (eventuale ulteriore aumento se -ve slippage > 4%)
   - Sentinel ladder granulare scrive risk variabile (non più 20/40)
   - Sherpa proposals coerenti
   - Eventuali warning `slippage_below_avg` in `bot_events_log`
-- **🟡 [S70] Reconciliation Step B (admin panel)**: legge `reconciliation_runs` table, mostra status per symbol. Non urgente, post osservazione.
-- **🟡 [S70] Reconciliation Step C (cron Mac Mini notturno)**: dopo 2-3 run manuali clean. Output va su `reconciliation_runs` (no Telegram).
-- **🟡 [S70] Sherpa rule-aware sell_pct**: in DRY_RUN propone sell_pct=1.5 per BONK (ignorando hotfix 4%). Quando andrà live, rule engine deve preservare buffer slippage per coin.
+- **🟢 [S70b SHIPPED] Reconciliation Step B (admin panel)**: pannello live, 3 latest per symbol + tabella trade-by-trade compare collassabile + drift details collassabile (auto-shown). 26/26 ordini matched, 0 drift su run 14:48 UTC e 14:58 UTC.
+- **🟡 [S70c] Reconciliation Step C (cron Mac Mini notturno)**: deferred. Schema: wrapper `scripts/cron_reconcile.sh` (cd repo + venv + python3.13 reconcile_binance.py --write + log su `$HOME/cron_reconcile.log`), crontab `0 3 * * *` (= 03:00 ITA = 01:00 UTC, prima della retention bot 04:00 UTC). Test manuale wrapper. Verificare TCC Full Disk Access. ~30 min con SSH.
+- **🟡 [S70c] Ripristino sito pubblico**: maintenance dal S65. Necessario brief CEO per definire scope (homepage + nav + decisione pagine pubbliche). Cross-fertilization con dashboard /admin esistente (alcuni pattern visivi possono essere riusati).
+- **🟡 [S70 NEW] Sherpa rule-aware sell_pct**: in DRY_RUN propone sell_pct=1.5 per BONK (ignorando hotfix 4%). Quando andrà live, rule engine deve preservare buffer slippage per coin.
 - **🟡 [S67 residuo]** Brief 67a Step 5 superato da reconciliation S70 Step A (stesso scopo).
 
 ## 4. Decisioni recenti
+
+- **2026-05-10 (S70b chiusura) — /admin overhaul completo**. Sezione per sezione: (1) titolo h1 con pattern unico mascot Sentinel + Sherpa fianco a sinistra (coerente con grid.html / tf.html `h1-mascot`); (2) Sentinel 24h chart: linea Opp disegnata sotto come dashed 6px alpha 0.65 (visibile come "alone" tratteggiato verde quando coincide con Risk a 20 base); (3) Sentinel + Sherpa scoring rules tables → `<details>` collassabili native (zero JS); (4) Reaction chart + 3 mini-chart Parameters history → vertical jitter ±3px BTC/SOL/BONK (TradingView pattern); (5) Parameters history rebuild: scala intera 0→MAX (0/1/2/3, 0/1/2/3/4, 0/1/2/3/4/5/6h), separator border-bottom tra mini-chart, asse Y destro con 3 valori live BTC/SOL/BONK colorati impilati con anti-collisione 12px; (6) overlay BTC current price + 24h % in alto a sinistra del 24h chart Sentinel (HTML position:absolute, no canvas text); (7) DB monitor live via RPC `public.get_table_sizes()` (security definer, anon SELECT) — sostituito snapshot hardcoded che drift fino a -90% post-S69 retention; aggiunto `reconciliation_runs` a `tablesToCount` con override su `ts` invece di `created_at`; (8) Sezione Reconciliation Binance ex-TODO ora live: card per-symbol + collassabile "📊 Trade-by-trade compare (latest)" 12 colonne side-by-side Binance vs DB (ts/sym/side/qty Bin/DB/Δ%/px Bin/DB/Δ%/fee Bin/DB/Δ$) + collassabile drift details auto-shown solo se DRIFT esiste. — *why:* /admin era oggettivamente leggibile a metà (linee sovrapposte invisibili, regole 30 righe sempre aperte, DB monitor con dati pre-S70, Reconciliation morta con solo commento HTML). Tutto fatto in iterazione guidata 1-cosa-alla-volta con Max, ~12 commit logici.
+- **2026-05-10 (S70b) — Schema additions in `reconciliation_runs`**. Migration `s70b_reconciliation_runs_select_policy` (anon SELECT, mancava → frontend bloccato). Migration `s70b_reconciliation_runs_matched_details` (`ALTER TABLE ADD COLUMN matched_details jsonb`). Lo script `reconcile_binance.py` ora popola `matched_details` con la lista completa Binance↔DB per ogni run (db_id, exchange_order_id, ts_ms, qty/price/fee Binance vs DB, side). Storage stimato +2 MB/anno con cron daily. — *why:* per il pannello "trade-by-trade compare" frontend serve il dato grezzo, prima viveva solo in memoria dello script (perso a fine run quando tutto OK).
+- **2026-05-10 (S70b) — Migration RPC `public.get_table_sizes()`** (security definer, search_path '', stable, grant execute anon+authenticated). Sostituisce array hardcoded `tableSizes` in admin.html. Linter lamenta `anon_security_definer_function_executable` WARN → intenzionale (pattern coerente con sentinel_scores INSERT anon, sherpa_proposals INSERT anon). — *why:* hardcoded snapshot drift fino a -90% (bot_state_snapshots 3MB→0.3MB post retention). Live RPC = niente più drift, niente manutenzione manuale.
 
 - **2026-05-10 (S70 sera) — Mascot SVG /tf + /admin completati** (commit `2a10028`) e **tabella scoring rules SENTINEL aggiornata post-70b** (commit `40fdc4c`). 3/4 integrazioni brief 65b chiuse (residua solo homepage Astro fuori scope, sito in maintenance). Tabella admin ora coerente con score_engine.py live: drop/pump granulari + funding intermedi + sof floor 1h≤−0.5%. — *why:* preparazione del pannello /admin per la sessione 71 dedicata (Step B reconciliation + eventuali fix sezioni morte).
 - **2026-05-10 (S70 sera) — Restart orchestrator con Sentinel + Sherpa DRY_RUN riaccesi** (commit `4324231`, restart 09:51 UTC). Telegram silente per nuovi brain (env flag default false). TF resta off. Smoke test verde: Sentinel scrive ogni 60s, Sherpa ogni 120s, primo proposal 09:51:50 UTC. — *why:* prerequisito per replay counterfactual + decisione futura SHERPA_MODE→live.
@@ -87,16 +92,18 @@ Comm Sentinel↔Sherpa↔Grid via Supabase only. Telegram alerts: solo Grid trad
 - ✅ **[S70 risolto] Brief 70a sell_pct net-of-fees + sell ladder + post-fill warning**: shipped + restart attivo.
 - ✅ **[S70 risolto] Brief 70b Sentinel ricalibrazione + DRY_RUN riaccensione**: shipped + restart attivo.
 - ✅ **[S70 risolto] Open question 19 rename managed_by**: chiusa.
-- ✅ **[S70 risolto] Reset mensile testnet handling**: integrato in reconcile_binance.py (status `WARN_BINANCE_EMPTY` quando Binance returna 0 trades, no panic, in attesa nuovi dati).
+- ✅ **[S70 risolto] Reset mensile testnet handling**: integrato in reconcile_binance.py.
+- ✅ **[S70b risolto] Reconciliation Step B (pannello /admin)**: shipped con trade-by-trade compare side-by-side.
+- ✅ **[S70b risolto] Reaction chart leggibilità in regime calmo**: vertical jitter ±3px applicato a reaction chart + 3 mini-chart Parameters history. Linee sempre distinguibili anche quando coincidono numericamente.
+- 🟡 **[S70c TODO] Reconciliation Step C (cron notturno Mac Mini)**: ~30 min, deferred. Schema in §3.
+- 🟡 **[S70c TODO] Ripristino sito pubblico**: brief CEO necessario. Sito in maintenance dal S65. Cross-fertilization con pattern /admin (chart, scoring tables, mascot).
 - 🟡 **[S70 NEW] sell_pct + slippage_buffer parametrico per coin**: estensione brief 70a per pre-mainnet. BONK avrebbe `slippage_buffer=3%`, BTC/SOL=0%. Brief separato.
 - 🟡 **[S70 NEW] Sherpa rule-aware sull'hotfix slippage**: prima di SHERPA_MODE=live, rule engine deve sapere che sell_pct=4% di BONK è hotfix da preservare.
-- 🟡 **[S70 NEW] Reconciliation Step B (pannello /admin) + Step C (cron notturno)**: post 24-48h observation Step A.
 - 🟡 **[S70 NEW] Sentinel TELEGRAM flag** (`SENTINEL_TELEGRAM_ENABLED`/`SHERPA_TELEGRAM_ENABLED`): default off; Max abilita quando vuole.
 - **Skim_pct 30% è la soglia giusta?** (Max 2026-05-08): da rivalutare con dati testnet veri.
 - **BNB-discount fee** (CEO opzione A future-proof): trascurabile su €100, da risolvere prima dello scale-up. Connesso a sell_pct net-of-fees.
 - **Tradermonty full-repo scan** parcheggiato (memoria `project_tradermonty_full_scan`).
 - **Esposizione pubblica Validation & Control System** rimandata.
-- **Reaction chart `/admin` poco leggibile in regime calmo** — fix grafico, post-restart Sentinel.
 
 ## 7. Vincoli stagionali / deadline tecniche
 
@@ -108,11 +115,13 @@ Comm Sentinel↔Sherpa↔Grid via Supabase only. Telegram alerts: solo Grid trad
 
 ## 8. Cosa NON è stato fatto e perché
 
+In S70b NON è stato implementato **Reconciliation Step C (cron notturno)**: deferred a S70c. Pre-requisito "2-3 run manuali clean" è soddisfatto a 2 (run 14:48 e 14:58 UTC, entrambi 0 drift su 26 ordini), ma per conservatorismo si aspetta una run #3 organica domani prima di abilitare il cron.
+
+In S70b NON è stato riaperto il **sito pubblico** (home + nav). Richiede brief CEO dedicato, non solo lavoro CC. Cross-fertilization con /admin pattern (chart, scoring tables, mascot) — utile risorsa quando si farà.
+
 In S70 NON è stato implementato **slippage_buffer parametrico per coin** (estensione brief 70a): brief separato post osservazione 24-48h, perché serve calibrare valori per coin con dati reali (BONK testnet vs mainnet).
 
 NON è stato implementato **rule-aware Sherpa sull'hotfix slippage**: Sherpa è in DRY_RUN, niente impatto immediato; brief separato pre-SHERPA_MODE=live.
-
-NON è stato implementato **reconciliation Step B (pannello /admin) + Step C (cron)**: dipendono da 2-3 run manuali clean (oggi solo 1 run dry-run). Candidati S71+.
 
 NON è stato risolto il bug **`reason bugiardo`** (open question 27 BUSINESS_STATE): post-fill warning brief 70a Parte 4 rende il drift visibile, ma la stringa `reason` del trade resta scritta con dicitura "above avg" anche su fill < avg. Cosmetico, TODO separato.
 
@@ -121,8 +130,6 @@ NON è stato risolto il bug **`exchange_order_id=null`** sul sell OP — debt co
 NON è stato fatto il **Phase 2 split di `grid_runner.py`** (~1591 righe). Brief 62b in config, parcheggiato post-go-live €100.
 
 NON è stato riacceso **TF**. Coerente con pivot Board "minimum viable, solo Grid + Sentinel/Sherpa DRY_RUN".
-
-NON è stato riaperto il **sito pubblico** (home + nav). Decisione CEO S65 ancora valida.
 
 ## 9. Audit esterni (sintesi)
 
@@ -145,3 +152,6 @@ NON è stato riaperto il **sito pubblico** (home + nav). Decisione CEO S65 ancor
 | 2026-05-10 | 0 | S70 cleanup brief: 9 brief shipped → briefresolved.md/ | COMPLETE | config/ ridotto a 4 brief parcheggiati + 1 design HTML | commit `a201120` |
 | 2026-05-10 | 0 | S70 cleanup round 2+3: 4 brief/decision S65/S62 + 15 CEO reports → archiviati | COMPLETE | config/ + report_for_CEO/ root puliti | commit `f572b33`, `f2c47d0` |
 | 2026-05-10 | 1 | S70 mascot /tf + /admin (residui 65b) + scoring rules tabella admin post-70b | SHIPPED | 3/4 integrazioni 65b complete; tabella coerente con score_engine live | commit `2a10028`, `40fdc4c` |
+| 2026-05-10 | 0 | S70b /admin overhaul (8 sezioni rivisitate) | SHIPPED | mascot in titolo, dashed-overlay Opp, collapsibles, jitter ±3px, Parameters scala intera + asse Y dx live, BTC overlay, RPC live DB monitor, Reconciliation Step B con trade-by-trade compare side-by-side | commit S70b chiusura |
+| 2026-05-10 | 0 | S70b 3 migrations Supabase | SHIPPED | `s70b_get_table_sizes_rpc` + `s70b_reconciliation_runs_select_policy` + `s70b_reconciliation_runs_matched_details` | apply_migration MCP |
+| 2026-05-10 | 1 | S70b Reconciliation Binance run #2 manuale | OK | 26/26 ordini matched (BTC 9, SOL 5, BONK 12), 0 drift, popolato matched_details con dati Binance↔DB | run 14:58 UTC Mac Mini |
