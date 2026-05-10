@@ -224,14 +224,14 @@ sbq<Commentary[]>(
 });
 
 /* ====================================================================
-   2. HERO net worth — aggregato Grid manual + TF + tf_grid.
+   2. HERO net worth — aggregato Grid + TF + tf_grid.
    Same formula as legacy dashboard.html: net = cash + holdings_value
      where:
        cash             = initial - net_invested - skim
        net_invested     = sum(buy.cost) - sum(sell.cost)   (per coin)
        holdings_value   = remaining_amount * live_price    (per coin)
        skim             = sum(reserve_ledger.amount)       (full fund)
-     Aggregated across Grid manual ($500 budget) and TF ($100 budget).
+     Aggregated across Grid ($500 budget) and TF ($100 budget).
    ==================================================================== */
 
 type Config = { symbol: string; capital_allocation: string | number; managed_by: string };
@@ -272,7 +272,7 @@ const fetchLivePrices = async (symbols: string[]): Promise<Record<string, number
       ),
     ]);
 
-    /* Grid initial = $500 (3 manual coins) + $100 (TF budget).
+    /* Grid initial = $500 (3 grid coins) + $100 (TF budget).
        The legacy dashboard hardcoded these; we follow suit until we
        have a single source of truth for "fund initial". */
     const GRID_INITIAL = 500;
@@ -338,8 +338,8 @@ const fetchLivePrices = async (symbols: string[]): Promise<Record<string, number
 /* ====================================================================
    3. § 2 INSTRUMENTS — TF + GRID totals + coin lists (brief 46b).
    Budget logic:
-     - TF section (net worth, P&L, cash):  managed_by IN ('trend_follower', 'tf_grid')
-     - GRID section: managed_by = 'manual' only
+     - TF section (net worth, P&L, cash):  managed_by IN ('tf', 'tf_grid')
+     - GRID section: managed_by = 'grid' only
    tf_grid coins are TF capital but appear visually under both bots.
    ==================================================================== */
 
@@ -439,15 +439,15 @@ function analyzeCoin(trades: AllTrade[]): {
     /* TF budget is the canonical fund size for the TF section (not the
        sum of active allocations, which fluctuates). Falls back to 100. */
     const TF_BUDGET = Number(trendCfg?.[0]?.tf_budget ?? 100);
-    /* GRID budget is the sum of manual coin allocations (fixed by design:
+    /* GRID budget is the sum of grid coin allocations (fixed by design:
        BTC + SOL + BONK = $500 in v3). */
     const GRID_BUDGET = (configs ?? [])
-      .filter(c => c.managed_by === "manual")
+      .filter(c => c.managed_by === "grid")
       .reduce((s, c) => s + Number(c.capital_allocation || 0), 0);
 
     /* Brief 46b filter: which managed_by values count for which section. */
-    const tfManagedBy   = (mb: string) => mb === "trend_follower" || mb === "tf_grid";
-    const gridManagedBy = (mb: string) => mb === "manual";
+    const tfManagedBy   = (mb: string) => mb === "tf" || mb === "tf_grid";
+    const gridManagedBy = (mb: string) => mb === "grid";
 
     /* Active configs grouped by management mode — used for net worth
        (cash, holdings) which only count for currently-open positions. */
@@ -613,9 +613,9 @@ function analyzeCoin(trades: AllTrade[]): {
     renderCashBar("grid-cash-bar", grid.perCoin, grid.totalAlloc - grid.skim);
 
     /* ============ Render coin cards ============ */
-    const tfNatives = tf.perCoin.filter(c => c.managed_by === "trend_follower");
+    const tfNatives = tf.perCoin.filter(c => c.managed_by === "tf");
     const sharedCoins = tf.perCoin.filter(c => c.managed_by === "tf_grid");
-    const gridNatives = grid.perCoin;   /* always managed_by='manual' */
+    const gridNatives = grid.perCoin;   /* always managed_by='grid' */
 
     renderTfNatives("tf-natives", tfNatives);
     renderSharedCards("shared-cards", sharedCoins);
@@ -647,11 +647,11 @@ const RECENT_TRADES_LIMIT = 6;
     if (!trades || !trades.length) return;
 
     /* Split by bot section per brief 46b:
-       - Grid = managed_by='manual' only
-       - TF   = managed_by IN ('trend_follower','tf_grid') */
-    const gridTrades = trades.filter(t => t.managed_by === "manual");
+       - Grid = managed_by='grid' only
+       - TF   = managed_by IN ('tf','tf_grid') */
+    const gridTrades = trades.filter(t => t.managed_by === "grid");
     const tfTrades   = trades.filter(t =>
-      t.managed_by === "trend_follower" || t.managed_by === "tf_grid",
+      t.managed_by === "tf" || t.managed_by === "tf_grid",
     );
 
     /* Per-row P&L = trades.realized_pnl (DB SUM, avg-cost canonico).
@@ -970,9 +970,9 @@ type DailyPnlRow = {
   /* Filter from V3 launch onward (matches legacy dashboard). */
   dailyPnlRows = dailyPnlRows.filter(d => d.date >= V3_LAUNCH_ISO.slice(0, 10));
 
-  const gridTrades = allTrades.filter(t => t.managed_by === "manual");
+  const gridTrades = allTrades.filter(t => t.managed_by === "grid");
   const tfTrades   = allTrades.filter(t =>
-    t.managed_by === "trend_follower" || t.managed_by === "tf_grid",
+    t.managed_by === "tf" || t.managed_by === "tf_grid",
   );
 
   /* ----- Daily realized aggregation from DB (Opzione A — decision_s65).

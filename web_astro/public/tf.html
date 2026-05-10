@@ -1044,7 +1044,7 @@
       configData.forEach(function(cfg) {
         var a = analyzeCoin(cfg.symbol, cfg);
         totalCashForAlert += a.cashLeft + (a.cashReturned || 0);
-        if (cfg.is_active && cfg.managed_by === 'trend_follower') {
+        if (cfg.is_active && cfg.managed_by === 'tf') {
           pinnedByActiveTf += Number(cfg.capital_allocation) || 0;
         }
       });

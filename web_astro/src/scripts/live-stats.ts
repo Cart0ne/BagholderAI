@@ -230,8 +230,8 @@ sbq<{ created_at: string }[]>(
 
 /* ---------- 4. bot wins/losses ----------
    Live wins/losses from trades, grouped by managed_by.
-   Grid trades use managed_by='manual' in v3 (legacy naming), TF uses
-   'trend_follower'. A win = sell with realized_pnl > 0. */
+   Grid trades use managed_by='grid', TF uses 'tf' (S70 rename:
+   'manual'→'grid', 'trend_follower'→'tf'). A win = sell with realized_pnl > 0. */
 type SellRow = { side: "buy" | "sell"; realized_pnl: number | null };
 
 const fetchBotStats = async (managedBy: string) => {
@@ -261,7 +261,7 @@ const updateBotCard = (variant: "grid" | "tf", wins: number, losses: number) => 
   if (fillLosses) fillLosses.style.width = `${Math.min(100, (losses / max) * 100)}%`;
 };
 
-Promise.all([fetchBotStats("manual"), fetchBotStats("trend_follower")])
+Promise.all([fetchBotStats("grid"), fetchBotStats("tf")])
   .then(([grid, tf]) => {
     updateBotCard("grid", grid.wins, grid.losses);
     updateBotCard("tf",   tf.wins,   tf.losses);
