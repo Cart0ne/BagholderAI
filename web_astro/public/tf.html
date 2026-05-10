@@ -70,6 +70,11 @@
     h1 {
       font-size: clamp(24px, 6vw, 36px); font-weight: 700; line-height: 1.1;
       letter-spacing: -0.03em; color: #fff; margin-bottom: 4px;
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    }
+    h1 .h1-mascot {
+      height: 1.6em; width: auto; flex-shrink: 0;
+      filter: drop-shadow(0 2px 6px rgba(245,158,11,0.30));
     }
     h1 .ai { color: var(--green); }
     h1 .admin { color: var(--red); font-size: 0.5em; vertical-align: super; letter-spacing: 0.05em; }
@@ -365,7 +370,7 @@
         <span><span class="dot" id="tf-mode-dot">●</span> <span id="tf-mode-label">TF — private</span></span>
         <span id="last-update"></span>
       </div>
-      <h1>🧠 BagHolder<span class="ai">AI</span> <span class="admin" style="color:var(--green);">TF</span></h1>
+      <h1><img class="h1-mascot" src="trend-follower.svg" alt="TF bot"><span>BagHolder<span class="ai">AI</span> <span class="admin" style="color:var(--green);">TF</span></span></h1>
 
       <!-- Alerts -->
       <div id="alerts" style="margin-top: 16px;"></div>

@@ -75,9 +75,13 @@
     .section-title {
       font-size: 12px; font-family: var(--mono); text-transform: uppercase;
       letter-spacing: 0.1em; color: var(--purple); margin-bottom: 12px; margin-top: 32px;
+      display: flex; align-items: center; gap: 10px;
     }
     .section-title.sherpa { color: var(--blue); }
     .section-title.db { color: var(--amber); }
+    .section-mascot { height: 28px; width: auto; flex-shrink: 0; }
+    .section-mascot.sentinel { filter: drop-shadow(0 1px 4px rgba(80,140,255,0.35)); }
+    .section-mascot.sherpa   { filter: drop-shadow(0 1px 4px rgba(220,60,90,0.35)); }
 
     section { margin-bottom: 16px; }
 
@@ -283,7 +287,7 @@
       <h1>📡 BagHolder<span class="ai">AI</span> <span class="badge">ADMIN</span></h1>
 
       <!-- ============ SENTINEL ============ -->
-      <div class="section-title">📡 Sentinel — fast loop (60s)</div>
+      <div class="section-title"><img class="section-mascot sentinel" src="sentinel.svg" alt="Sentinel"><span>Sentinel — fast loop (60s)</span></div>
 
       <div class="card">
         <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px;">
@@ -382,7 +386,7 @@
       </div>
 
       <!-- ============ SHERPA ============ -->
-      <div class="section-title sherpa">🏔 Sherpa — parameter writer (loop 120s · DRY_RUN)</div>
+      <div class="section-title sherpa"><img class="section-mascot sherpa" src="sherpa.svg" alt="Sherpa"><span>Sherpa — parameter writer (loop 120s · DRY_RUN)</span></div>
 
       <!-- Last Proposals: 1 row per symbol -->
       <div class="card" style="overflow-x: auto;">
