@@ -369,19 +369,33 @@
             <tr><td>btc_drop_10pct_1h</td><td>BTC 1h ≤ −10%</td><td class="num"><span class="neg">+80</span></td><td class="num">—</td></tr>
             <tr><td>btc_drop_5pct_1h</td><td>BTC 1h ≤ −5%</td><td class="num"><span class="neg">+50</span></td><td class="num">—</td></tr>
             <tr><td>btc_drop_3pct_1h</td><td>BTC 1h ≤ −3%</td><td class="num"><span class="neg">+30</span></td><td class="num">—</td></tr>
+            <tr><td>btc_drop_2pct_1h</td><td>BTC 1h ≤ −2%</td><td class="num"><span class="neg">+20</span></td><td class="num">—</td></tr>
+            <tr><td>btc_drop_1pct_1h</td><td>BTC 1h ≤ −1%</td><td class="num"><span class="neg">+12</span></td><td class="num">—</td></tr>
+            <tr><td>btc_drop_0_5pct_1h</td><td>BTC 1h ≤ −0.5%</td><td class="num"><span class="neg">+6</span></td><td class="num">—</td></tr>
             <tr><td>btc_pump_5pct_1h</td><td>BTC 1h ≥ +5%</td><td class="num">—</td><td class="num"><span class="pos">+40</span></td></tr>
             <tr><td>btc_pump_3pct_1h</td><td>BTC 1h ≥ +3%</td><td class="num">—</td><td class="num"><span class="pos">+25</span></td></tr>
-            <tr><td>speed_of_fall_accelerating</td><td>fall accelerating</td><td class="num"><span class="neg">+20</span></td><td class="num">—</td></tr>
+            <tr><td>btc_pump_2pct_1h</td><td>BTC 1h ≥ +2%</td><td class="num">—</td><td class="num"><span class="pos">+15</span></td></tr>
+            <tr><td>btc_pump_1pct_1h</td><td>BTC 1h ≥ +1%</td><td class="num">—</td><td class="num"><span class="pos">+10</span></td></tr>
+            <tr><td>btc_pump_0_5pct_1h</td><td>BTC 1h ≥ +0.5%</td><td class="num">—</td><td class="num"><span class="pos">+5</span></td></tr>
+            <tr><td>speed_of_fall_accelerating</td><td>fall accel. <em>and</em> 1h ≤ −0.5%</td><td class="num"><span class="neg">+20</span></td><td class="num">—</td></tr>
             <tr><td>funding_over_leveraged_long_strong</td><td>funding &gt; 0.05%</td><td class="num"><span class="neg">+25</span></td><td class="num">—</td></tr>
             <tr><td>funding_over_leveraged_long</td><td>funding &gt; 0.03%</td><td class="num"><span class="neg">+15</span></td><td class="num">—</td></tr>
+            <tr><td>funding_long_mild</td><td>funding &gt; 0.02%</td><td class="num"><span class="neg">+8</span></td><td class="num">—</td></tr>
+            <tr><td>funding_long_weak</td><td>funding &gt; 0.01%</td><td class="num"><span class="neg">+4</span></td><td class="num">—</td></tr>
             <tr><td>funding_short_squeeze_strong</td><td>funding &lt; −0.03%</td><td class="num">—</td><td class="num"><span class="pos">+25</span></td></tr>
             <tr><td>funding_short_squeeze</td><td>funding &lt; −0.01%</td><td class="num">—</td><td class="num"><span class="pos">+15</span></td></tr>
+            <tr><td>funding_short_mild</td><td>funding &lt; −0.005%</td><td class="num">—</td><td class="num"><span class="pos">+8</span></td></tr>
+            <tr><td>funding_short_weak</td><td>funding &lt; −0.002%</td><td class="num">—</td><td class="num"><span class="pos">+4</span></td></tr>
           </tbody>
         </table>
         <div class="footnote">
           Drop ladder and pump ladder are mutually exclusive (only the strongest match fires).
           Funding ladders fire independently. Both scores clamp to 0-100.
-          Source: <code>bot/sentinel/score_engine.py</code> — parsed manually at build time.
+          Brief 70b (S70 2026-05-10): aggiunta granularità intermedia (drop −2/−1/−0.5, pump
+          +2/+1/+0.5, funding ±0.02/0.01/0.005/0.002) per dataset testnet con BTC range ±1%
+          e funding ±0.00007. Speed-of-fall ha precondizione 1h ≤ −0.5% (floor anti-rumore).
+          Source: <code>bot/sentinel/score_engine.py</code> + <code>bot/sentinel/price_monitor.py</code>
+          — parsed manually at build time.
         </div>
       </div>
 
