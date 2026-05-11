@@ -130,9 +130,28 @@ def execute_percentage_buy(bot, price: float) -> Optional[dict]:
     # to Binance. The fill price, cost, and fee come from the exchange
     # response — NOT from the local FEE_RATE constant. Paper mode keeps
     # the legacy simulated path unchanged.
+    # Brief 71a Task 5: preserve check_price (trigger reference) so the
+    # reason string can show both the trigger and the realized fill.
+    check_price = price
+    slippage_pct = 0.0
     exchange_order_id = None
     fee_currency = "USDT"
     if TradingMode.is_live() and bot.exchange is not None:
+        # Brief 71a Task 4: pre-round `cost` so the resulting base-coin
+        # amount lands cleanly on `lot_step_size`. Without this, BONK
+        # testnet (book sottile + step=1) sometimes rejects with -2010
+        # "Order book liquidity is less than LOT_SIZE filter minimum
+        # quantity" before the retry succeeds — see PROJECT_STATE §5.
+        # Reference price = check_price (last polled tick). Real fill
+        # price still comes from Binance response below.
+        if bot._exchange_filters and price > 0:
+            from utils.exchange_filters import round_to_step
+            base_est = cost / price
+            base_rounded = round_to_step(
+                base_est, bot._exchange_filters["lot_step_size"],
+            )
+            if base_rounded > 0:
+                cost = base_rounded * price
         from bot.exchange_orders import place_market_buy
         res = place_market_buy(bot.exchange, bot.symbol, cost)
         if res is None:
@@ -144,6 +163,8 @@ def execute_percentage_buy(bot, price: float) -> Optional[dict]:
         fee = res["fee_cost"]
         fee_currency = res["fee_currency"] or "USDT"
         exchange_order_id = res["order_id"]
+        if check_price > 0:
+            slippage_pct = (price - check_price) / check_price * 100
     else:
         # Paper path: simulated fill at the requested price.
         amount = cost / price
@@ -188,12 +209,23 @@ def execute_percentage_buy(bot, price: float) -> Optional[dict]:
             and bot.tf_trailing_stop_pct > 0):
         bot._trailing_peak_price = price
 
+    # Brief 71a Task 5: reason uses check_price (trigger) for the narrative
+    # "dropped X% below ..." claim and appends fill + slippage as a tail
+    # annotation. This makes the BUSINESS_STATE §27 case ("$0.00000735
+    # dropped 1.5% below $0.00000731" — false on testnet) honest.
+    slip_tail = (
+        f" → fill {fmt_price(price)} (slippage {slippage_pct:+.2f}%)"
+        if abs(slippage_pct) >= 0.05 else ""
+    )
     if old_last_buy == 0:
-        reason = f"Pct buy: first buy at market {fmt_price(price)} (reference established)"
+        reason = (
+            f"Pct buy: first buy at market {fmt_price(check_price)} "
+            f"(reference established){slip_tail}"
+        )
     else:
         reason = (
-            f"Pct buy: price {fmt_price(price)} dropped {bot.buy_pct}% "
-            f"below last buy {fmt_price(old_last_buy)}"
+            f"Pct buy: check {fmt_price(check_price)} dropped {bot.buy_pct}% "
+            f"below last buy {fmt_price(old_last_buy)}{slip_tail}"
         )
     if last_shot:
         reason = f"LAST SHOT: {reason} — spent remaining ${cost:.2f}"

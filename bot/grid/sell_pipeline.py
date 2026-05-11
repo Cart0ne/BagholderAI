@@ -355,6 +355,11 @@ def execute_percentage_sell(
     # 66a Step 3: live mode (testnet or mainnet) sends a real market SELL
     # to Binance. Fill price, revenue, and fee come from the exchange
     # response. Paper mode keeps the legacy simulated path unchanged.
+    # Brief 71a Task 5: freeze check_price (trigger reference) for reason
+    # string — fill_price post-slippage can sit on the opposite side of
+    # the trigger threshold and used to make `reason` lie.
+    check_price = price
+    slippage_pct = 0.0
     exchange_order_id = None
     fee_currency = "USDT"
     if TradingMode.is_live() and bot.exchange is not None:
@@ -369,6 +374,8 @@ def execute_percentage_sell(
         fee = res["fee_cost"]
         fee_currency = res["fee_currency"] or "USDT"
         exchange_order_id = res["order_id"]
+        if check_price > 0:
+            slippage_pct = (price - check_price) / check_price * 100
     else:
         revenue = amount * price
         fee = revenue * bot.FEE_RATE
@@ -524,6 +531,13 @@ def execute_percentage_sell(
 
     # 39a/39c/45f/45g: tag the reason so the trade log + Haiku commentary
     # can distinguish forced exits from normal pct sells.
+    # Brief 71a Task 5: append check + slippage tail whenever slippage is
+    # non-trivial (≥0.05%). Pct/Greed reasons use check_price in the
+    # narrative since they reference the trigger threshold, not the fill.
+    slip_tail = (
+        f" → fill {fmt_price(price)} (slippage {slippage_pct:+.2f}%)"
+        if abs(slippage_pct) >= 0.05 else ""
+    )
     if bot._stop_loss_triggered:
         reason = (
             f"STOP-LOSS: price {fmt_price(price)} forces liquidation "
@@ -560,21 +574,19 @@ def execute_percentage_sell(
             f"(avg cost {fmt_price(sell_avg_cost)})"
         )
     else:
-        # 42a: for TF bots, the sell threshold was the greed-decay TP;
-        # include tier info in the reason so it shows up in logs and
-        # Telegram. Manual bots keep the legacy sell_pct wording.
         tp_pct, age_min, tier = get_effective_tp(bot)
         if bot.managed_by in ("tf", "tf_grid") and age_min is not None:
             reason = (
-                f"Greed decay sell: price {fmt_price(price)} >= avg cost "
+                f"Greed decay sell: check {fmt_price(check_price)} >= avg cost "
                 f"{fmt_price(sell_avg_cost)} * (1 + {tp_pct}%) "
                 f"(age {age_min:.0f}min, tier {tp_pct}%)"
             )
         else:
             reason = (
-                f"Pct sell: price {fmt_price(price)} is {bot.sell_pct}% "
+                f"Pct sell: check {fmt_price(check_price)} is {bot.sell_pct}% "
                 f"above avg cost {fmt_price(sell_avg_cost)}"
             )
+    reason = f"{reason}{slip_tail}"
 
     trade_data = {
         "symbol": bot.symbol,
