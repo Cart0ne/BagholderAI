@@ -283,6 +283,13 @@ const tfSubtitle   = "The breakout hunter";
       <script>
         // Fetch sell P&L and total fees from trades v3 — aggregate client-side.
         // Single anon-key request; PostgREST max 1000 rows enough at testnet scale.
+        //
+        // Brief 72a S72 fix (Max audit 2026-05-11): originally selected ALL
+        // v3 trades without managed_by filter — pulled in 2 TF + 2 tf_grid
+        // rows (+$0.041 realized, +$0.028 fees) → netto +$0.013 ≈ $0.01
+        // overstatement vs canonical Grid-only number on /grid.html. Filter
+        // realigned to managed_by=eq.grid (single source of truth, mirrors
+        // dashboard-live.ts gridManagedBy + grid.html post-S72).
         (async () => {
           const SB_URL = "https://pxdhtmqfwjwjhtcoacsn.supabase.co";
           const SB_KEY =
@@ -291,7 +298,7 @@ const tfSubtitle   = "The breakout hunter";
             "G76lvYWrqlM0z2RoSkU1uAglfMBKN_rXvBGOQhb4kdg";
           const url =
             SB_URL +
-            "/rest/v1/trades?config_version=eq.v3&select=side,realized_pnl,fee";
+            "/rest/v1/trades?config_version=eq.v3&managed_by=eq.grid&select=side,realized_pnl,fee";
           const el = document.getElementById("net-realized-test");
           if (!el) return;
           try {
