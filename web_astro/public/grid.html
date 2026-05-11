@@ -314,6 +314,8 @@
     }
     footer .sub { color: rgba(255,255,255,0.3); }
   </style>
+  <!-- Brief 72a S72: shared canonical P&L (mirror dashboard, home, /tf). -->
+  <script src="/lib/pnl-canonical.js"></script>
 </head>
 <body>
   <div class="container">
@@ -557,14 +559,19 @@
         if (r.symbol) skimBySymbol[r.symbol] = (skimBySymbol[r.symbol] || 0) + Number(r.amount || 0);
       });
       // S69: avg-cost replay. realized = trades.realized_pnl (DB SUM, già
-      // avg-cost canonico post-Operation Clean Slate S66). avg_buy_price
-      // ricostruito iterando i buy in ordine cronologico con weighted average
-      // (la stessa formula del bot in bot/grid/buy_pipeline.py:117).
+      // Brief 72a S72: replay canonico con P2 invariant — quando fee_asset ==
+      // base_coin (live BUY testnet), Binance scala la fee dal wallet base.
+      // qty_acquired = filled − fee_native, avg = total_cost_usdt / qty_acquired_net.
+      // Mirror esatto della logica in bot/grid/buy_pipeline.py:184-217 e di
+      // window.PnL._replayAvgCost (web_astro/public/lib/pnl-canonical.js).
+      // Manteniamo gli snapshot per-trade (realized_by_trade, avg_buy_at_sell_by_trade)
+      // usati dal rendering "Recent trades" — non parte di pnl-canonical.
       avgCostBySymbol = {};
       tradesData.slice().sort(function(a, b) {
         return new Date(a.created_at) - new Date(b.created_at);
       }).forEach(function(t) {
         var sym = t.symbol;
+        var base = (sym.split('/')[0] || '').toUpperCase();
         if (!avgCostBySymbol[sym]) avgCostBySymbol[sym] = {
           holdings: 0, avg_buy_price: 0,
           total_invested: 0, total_received: 0,
@@ -574,10 +581,16 @@
         var amt = Number(t.amount || 0);
         var price = Number(t.price || 0);
         var cost = Number(t.cost || 0);
+        var feeUsdt = Number(t.fee || 0);
+        var feeAsset = ((t.fee_asset || 'USDT') + '').toUpperCase();
         if (t.side === 'buy') {
-          var newHoldings = s.holdings + amt;
+          // P2: fee_native_est sottratto da qty_acquired quando fee in base coin
+          var feeNativeEst = (feeAsset === base && price > 0) ? feeUsdt / price : 0;
+          var qtyAcquired = amt - feeNativeEst;
+          var newHoldings = s.holdings + qtyAcquired;
           if (newHoldings > 0) {
-            s.avg_buy_price = (s.avg_buy_price * s.holdings + price * amt) / newHoldings;
+            // P2 formula: avg = total_cost_usdt / qty_net_acquired
+            s.avg_buy_price = (s.avg_buy_price * s.holdings + cost) / newHoldings;
           }
           s.holdings = newHoldings;
           s.total_invested += cost;
@@ -738,14 +751,22 @@
         unrealizedBySymbol.push({ sym: cfg.symbol.split('/')[0], val: unr });
       });
 
-      var totalFees = tradesData.reduce(function(s, t) { return s + Number(t.fee || 0); }, 0);
-
-      // S69: "Stato attuale" = patrimonio netto fees (sostituisce Net Worth).
-      // (totalCash + unalloc) liquidità totale; + holdingsValue (MTM); +
-      // skimReserveTotal (riserva fisicamente spostata, ma sempre nostra);
-      // − totalFees (commissioni reali pagate, prese da Binance).
-      var statoAttuale = (totalCash + unalloc) + holdingsValue + skimReserveTotal - totalFees;
-      var totalPnl = statoAttuale - INITIAL_CAPITAL;
+      // Brief 72a S72 refactor: tutto Total P&L / Net Worth / netRealized ora
+      // arriva da PnL.computeCanonicalState (window.PnL caricato in <head>).
+      // STESSA funzione consumata da /dashboard, /home, /tf — UNA fonte di
+      // verità, bit-identical. Se vedi divergenza tra superfici post-refactor,
+      // è un bug nel SET di trade passato (filtro managed_by) o nei livePrices.
+      var canonical = window.PnL.computeCanonicalState(
+        tradesData, skimReserveTotal, livePrices, INITIAL_CAPITAL
+      );
+      var totalFees = canonical.fees;
+      var statoAttuale = canonical.netWorth;
+      var totalPnl = canonical.totalPnL;
+      // Allineiamo anche holdingsValue/unrealized/deployed cost al canonical
+      // per coerenza con i widget "Deployed" + "Unrealized".
+      holdingsValue = canonical.holdingsMtm;
+      totalUnrealized = canonical.unrealized;
+      totalDeployedCost = canonical.perCoin.reduce(function(s, c) { return s + c.openCost; }, 0);
 
       var pnlColor = totalPnl >= 0 ? 'var(--green)' : 'var(--red)';
       var unrColor = totalUnrealized >= 0 ? 'var(--green)' : 'var(--red)';
@@ -828,17 +849,15 @@
         '</div>';
 
       // Brief 71a — Net Realized Profit (post-fees). Σ realized_pnl − Σ fees.
-      // Stesso valore della riga "Net realized profit (post-fees)" su /dashboard.
+      // Brief 72a S72: ora arriva da canonical (window.PnL) — STESSA fonte
+      // di /dashboard hero. Se i 2 numeri divergono sulla rete pubblica,
+      // controlla che entrambe le superfici stiano usando lo stesso filtro
+      // managed_by e gli stessi livePrices.
       //
-      // Brief 72a (S72): known ~$0.22 bias on the 18 testnet sells whose
-      // realized_pnl was backfilled to (price-avg)×qty − fee_sell — this
-      // formula subtracts fee_sell again via totalFees. Paper trades remain
-      // gross (correct under the legacy formula). CEO 2026-05-11 accepted
-      // the bias; architectural fix deferred to a future brief.
-      var pnlSell = tradesData.reduce(function(s, t) {
-        return t.side === 'sell' ? s + Number(t.realized_pnl || 0) : s;
-      }, 0);
-      var netRealized = pnlSell - totalFees;
+      // Known bias S72: i 18 sell testnet backfillati hanno realized =
+      // (price-avg)×qty − fee_sell; paper resta gross. `realized - fees`
+      // sottrae fee_sell due volte sul testnet. Bias ≈ −$0.22, documentato.
+      var netRealized = canonical.netRealized;
       var netRealSign = netRealized >= 0 ? '+' : '−';
       var netRealColor = netRealized >= 0 ? 'var(--green)' : 'var(--red)';
       document.getElementById('net-realized-row').innerHTML =
