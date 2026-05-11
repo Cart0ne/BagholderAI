@@ -33,6 +33,21 @@ A FINE ogni sessione, prima di chiudere:
 Questa è la regola n.1: NON chiudere una sessione senza aggiornare 
 PROJECT_STATE.md. È più importante del report finale per il CEO.
 
+Inoltre, quando rigeneri PROJECT_STATE.md, controlla la sezione 9 
+(Audit esterni). Per ciascuna area, se l'ultimo audit chiuso è più 
+vecchio della cadenza suggerita, segnalalo a Max nel report finale 
+della sessione come riga separata:
+
+- Area 1 (tecnica): cadenza 30 giorni
+- Area 2 (coerenza progetto): cadenza 90 giorni o fine-volume Diary
+- Area 3 (strategy & marketing): cadenza 90 giorni
+
+Formato del segnale: "⚠️ Audit Area X dovuto: ultimo era YYYY-MM-DD 
+(N giorni fa). Proponi a Max di pianificarlo."
+
+Se non c'è MAI stato un audit di un'area, considera l'età come 
+"infinita" e segnala.
+
 ═══════════════════════════════════════════
  [2] PROJECT_STATE.md — formato fisso
 ═══════════════════════════════════════════
