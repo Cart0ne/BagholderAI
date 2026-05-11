@@ -205,13 +205,28 @@ def _reconcile_holdings_against_exchange(bot, replayed_qty: float, base_coin: st
     """Brief 72a P1 (S72): boot-time golden source reconciliation.
 
     Calls exchange.fetch_balance() and compares with the replayed qty.
-    Behaviour (CEO 2026-05-11, no env override):
-      - paper / no exchange / no base_coin: no-op
-      - gap > 0.5%: log warn + write bot_events_log
-      - gap > 2.0%: raise RuntimeError — refuse to start
-      - otherwise: log info
-    In all live cases, sets bot.state.holdings = real_qty regardless of gap
-    (the only exception is fetch_balance failure, where we keep the replay).
+    The drift direction matters (Max 2026-05-11 S72, asymmetric thresholds):
+
+      - **Negative drift** (Binance < replayed): the bot believes it owns
+        coins that aren't on the wallet — phantom holdings, risk of
+        InsufficientFunds on every sell attempt. This is the BONK
+        InsufficientFunds class of bug, a sign of capital-at-risk on
+        mainnet. Thresholds:
+          > 2.0%: raise RuntimeError — refuse to start
+          > 0.5%: log warn + write bot_events_log
+
+      - **Positive drift** (Binance > replayed): the wallet has more coins
+        than the bot expects. On testnet this is the initial-balance
+        phantom (Binance gifts ~1 BTC, ~18K BONK, etc at account creation).
+        On mainnet this can only happen if the user manually deposited
+        coins outside the bot — informational, not a bug. Thresholds:
+          > 0.5%: log warn (never fail)
+
+    In all live cases (within or above thresholds), sets bot.state.holdings
+    = real_qty so future trades use the wallet truth. The only exception is
+    fetch_balance failure, where we keep the replay value.
+
+    Paper / no exchange / no base_coin: no-op.
     """
     if not TradingMode.is_live() or bot.exchange is None or not base_coin:
         return
@@ -226,64 +241,78 @@ def _reconcile_holdings_against_exchange(bot, replayed_qty: float, base_coin: st
 
     coin_bal = balance.get(base_coin, {}) or {}
     real_qty = float(coin_bal.get("total", 0) or 0)
-    gap_abs = real_qty - replayed_qty
+    gap_signed = real_qty - replayed_qty  # +ve = wallet has more, -ve = wallet has less
     if replayed_qty > 1e-9:
-        gap_pct = abs(gap_abs) / replayed_qty * 100
-    elif abs(gap_abs) > 1e-9:
+        gap_pct = abs(gap_signed) / replayed_qty * 100
+    elif abs(gap_signed) > 1e-9:
         gap_pct = 100.0
     else:
         gap_pct = 0.0
+    direction = "phantom_holdings" if gap_signed < 0 else "wallet_surplus"
 
     msg_base = (
         f"replayed={replayed_qty:.6f} vs Binance={real_qty:.6f} "
-        f"(gap={gap_abs:+.6f} {base_coin}, |{gap_pct:.4f}%|)"
+        f"(gap={gap_signed:+.6f} {base_coin}, |{gap_pct:.4f}%|, "
+        f"direction={direction})"
     )
 
-    if gap_pct > 2.0:
+    # Negative drift > 2%: phantom holdings → capital at risk → FAIL
+    if gap_signed < 0 and gap_pct > 2.0:
         try:
             from db.event_logger import log_event
             log_event(
                 severity="error",
-                category="reconcile",
+                category="integrity",
                 event="holdings_drift_fail",
                 symbol=bot.symbol,
-                message=f"REFUSE START: holdings drift >2% — {msg_base}",
+                message=f"REFUSE START: phantom holdings >2% — {msg_base}",
                 details={
                     "replayed_qty": replayed_qty,
                     "real_qty": real_qty,
+                    "gap_signed": gap_signed,
                     "gap_pct": gap_pct,
                     "threshold_pct": 2.0,
+                    "direction": direction,
                 },
             )
         except Exception:
             pass
         raise RuntimeError(
-            f"[{bot.symbol}] Brief 72a boot reconcile FAILED: holdings drift "
-            f"{gap_pct:.2f}% exceeds 2% threshold. {msg_base}. "
-            f"Refusing to start (CEO 2026-05-11, no override). Investigate "
-            f"manual transfers, untracked deposits, or DB corruption before "
+            f"[{bot.symbol}] Brief 72a boot reconcile FAILED: phantom holdings "
+            f"{gap_pct:.2f}% (real < replayed) exceeds 2% threshold. "
+            f"{msg_base}. Refusing to start (Max+CEO 2026-05-11). The bot "
+            f"believes it owns more {base_coin} than the wallet actually "
+            f"holds, every sell will be rejected. Investigate untracked "
+            f"sells, manual transfers out, or DB row corruption before "
             f"restarting."
         )
 
+    # Any drift > 0.5%: WARN. Asymmetric — negative is more alarming.
     if gap_pct > 0.5:
+        severity = "warn" if gap_signed < 0 else "info"
         try:
             from db.event_logger import log_event
             log_event(
-                severity="warn",
-                category="reconcile",
+                severity=severity,
+                category="integrity",
                 event="holdings_drift_warn",
                 symbol=bot.symbol,
-                message=f"holdings drift >0.5%: {msg_base}",
+                message=f"holdings drift {gap_pct:.4f}% ({direction}): {msg_base}",
                 details={
                     "replayed_qty": replayed_qty,
                     "real_qty": real_qty,
+                    "gap_signed": gap_signed,
                     "gap_pct": gap_pct,
                     "threshold_pct": 0.5,
+                    "direction": direction,
                 },
             )
         except Exception:
             pass
-        logger.warning(f"[{bot.symbol}] Boot reconcile WARN: {msg_base}")
+        if gap_signed < 0:
+            logger.warning(f"[{bot.symbol}] Boot reconcile WARN (phantom): {msg_base}")
+        else:
+            logger.info(f"[{bot.symbol}] Boot reconcile NOTE (surplus): {msg_base}")
     else:
         logger.info(f"[{bot.symbol}] Boot reconcile OK: {msg_base}")
 
@@ -324,7 +353,7 @@ def maybe_reconcile_after_fill(bot, base_coin: str = "") -> None:
             from db.event_logger import log_event
             log_event(
                 severity="warn",
-                category="reconcile",
+                category="integrity",
                 event="post_fill_drift",
                 symbol=bot.symbol,
                 message=(
