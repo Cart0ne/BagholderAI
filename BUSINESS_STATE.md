@@ -1,8 +1,8 @@
 # BUSINESS_STATE.md
 
-**Last updated:** 2026-05-11 — Session 71 chiusura (brief 71a pending cleanup shipped + BONK fee-in-base-coin diagnosticato → brief 71b separato + approccio sequenziale go-live)
+**Last updated:** 2026-05-11 — Session 72 chiusura (brief 72a fee unification shipped, 11 commit, frontend canonical refactor, TF rimosso da totali pubblici, cron reconcile attivo)
 **Updated by:** CEO
-**Basato su:** PROJECT_STATE.md aggiornato 2026-05-11 (S71 chiusura, commits 6021230 + 67614bd + 8a158dc + db3c6c1 + 5f2bcea)
+**Basato su:** PROJECT_STATE.md aggiornato 2026-05-11 (S72 chiusura, ultimo commit e975a71)
 
 ---
 
@@ -52,7 +52,7 @@ Preview rimosse da entrambi i volumi.
 
 **Volume 3** — prossimo target di pubblicazione. Coprirà sessions 53+. Sessioni 53–71 in accumulo, **nessun lavoro attivo** (Board: "prima i fondamentali"). Stima grezza chiusura: sessioni 75–80. Arco narrativo: Clean Slate → Testnet → FIFO Divorce → Fee Reckoning.
 
-**Sessione corrente:** 71 BUILDING (pending cleanup + diagnosi BONK fee-in-base-coin → brief 71b). S70 COMPLETE su Supabase.
+**Sessione corrente:** 72 BUILDING (brief 72a shipped + frontend cleanup + cron reconcile). S71 COMPLETE su Supabase.
 
 **Check di congruenza diary↔DB:** nessun check automatico attivo. **Reconciliation gate (nightly script)** proposto come task Validation System: verifica ogni notte che `Realized_avg_cost + Unrealized = Total P&L` chiuda al centesimo, alert se gap > $0.01. Da implementare insieme a brief 60b respec.
 
@@ -62,6 +62,12 @@ Preview rimosse da entrambi i volumi.
 
 | Data | Decisione | Perché |
 |---|---|---|
+| 2026-05-11 (S72) | **Holdings = fetch_balance() golden source** | Svolta architetturale: il DB non può ricostruire holdings (initial fantasma testnet + reset mensili). Wallet Binance è l'unica verità. Replay DB solo per avg e realized |
+| 2026-05-11 (S72) | **Asymmetric boot reconcile** | Drift negativo (capital at risk) → fail 2%. Drift positivo (surplus) → warn only. Su mainnet irrilevante (no gift) |
+| 2026-05-11 (S72) | **TF sparisce da tutti i totali pubblici** | Homepage, dashboard, grid card: solo Grid $500. TF paused non infla P&L |
+| 2026-05-11 (S72) | **Via A — bias $0.22 netRealized accettato** | Mainnet pulito by construction. Testnet paper resta gross. Documentato, non corretto |
+| 2026-05-11 (S72) | **Frontend canonical refactor** | `pnl-canonical.js` shared. 4 superfici (home/dashboard/grid/tf) stessa funzione. Inline scripts bypass eliminati |
+| 2026-05-11 (S72) | **Cron reconcile Step C installato** | Mac Mini 03:00 Europe/Rome. Prima run automatica 2026-05-12 |
 | 2026-05-11 (S71) | **Go-live slips, approccio sequenziale** | Roadmap a fasi: (1) pending cleanup, (2) fee brainstorming + fix, (3) Sentinel/Sherpa analisi, (4) TF. Nessuna data fissa |
 | 2026-05-11 (S71) | **P&L hero = NET fees ovunque** | Formula canonica: `cash + holdings_mtm + skim − fees − budget`. grid.html aveva ragione, pagine pubbliche fixate |
 | 2026-05-11 (S71) | **Due numeri P&L etichettati** | Total P&L (include unrealized) + Net Realized Profit (storico, post-fees). Raccontano cose diverse, servono entrambi |
@@ -81,12 +87,6 @@ Preview rimosse da entrambi i volumi.
 ---
 
 ## 5. Domande Aperte per CC (idee tech non ancora in brief)
-
-**[S71 Board — URGENTE]**
-
-- **Brief 71b — BONK holdings fee-in-base-coin**: `state.holdings += amount` gross, Binance dà net. Gap 12.280 BONK (0.74%), 31 sell rifiutati. Schema fix in report CC S71 §5. ~1-2h. **Aspetta design session "fee brainstorming"** (Board), poi primo task post-brainstorming.
-- **Strada 2 ridotta (solo testnet)**: realized_pnl gross→net + avg_buy_price fix + backfill ~42 trade testnet + verifica identità. ~1-1.5h. Dopo 71b. Decisione S71: paper trade NON backfillati (non avevano fee reali).
-- **Reconciliation Step C cron Mac Mini**: wrapper pronto in `scripts/cron_reconcile.sh`. Manca install crontab + TCC Full Disk Access quando Mac Mini torna online. ~10 min.
 
 **[Aperte da S65-S70, ancora attive]**
 
@@ -108,9 +108,9 @@ Preview rimosse da entrambi i volumi.
 
 ## 6. Vincoli / Deadline Non-Tecnici
 
-**Go-live €100 — target variabile, non più 21-24 maggio.** Approccio sequenziale: fee cleanup → Sentinel/Sherpa → TF → Board approval. Stima realistica: **fine maggio / inizio giugno 2026**.
+**Go-live €100 — target 18-21 maggio 2026** (recupero ~7-10gg vs precedente "fine maggio / inizio giugno"). Brief 72a Fee Unification + frontend canonical refactor + TF removal ha chiuso le gate strutturali.
 
-**Pre-live gates aggiornate S71:**
+**Pre-live gates aggiornate S72:**
 - ✅ Contabilità avg-cost (S66)
 - ✅ Fee USDT canonical (S67)
 - ✅ Dust prevention (S67)
@@ -125,12 +125,15 @@ Preview rimosse da entrambi i volumi.
 - ✅ P&L hero unificato (S71)
 - ✅ LAST SHOT lot_step_size (S71)
 - ✅ Reason bugiardo fixato (S71)
-- ⬜ **Brief 71b BONK fee-in-base-coin** (gating — bot non può vendere BONK senza)
-- ⬜ Strada 2 ridotta (P&L netto canonico solo testnet)
-- ⬜ Reconciliation Step C cron (wrapper pronto, install pending Mac Mini)
+- ✅ **Fee Unification (S72)** — holdings golden source + avg + realized netto
+- ✅ **Lexical drift cleanup S70 rename (S72)** — 4 callsite legacy fixati
+- ✅ **Frontend canonical refactor (S72)** — `pnl-canonical.js` shared, 4 superfici unite
+- ✅ **TF sparito dai totali pubblici (S72)** — Grid only sul sito
+- ✅ **Reconciliation Step C cron (S72)** — Mac Mini 03:00 Europe/Rome
+- ⬜ 24h osservazione (in corso, scade 2026-05-12 13:49 UTC)
 - ⬜ Mobile smoke test reale
 - ⬜ Sentinel/Sherpa analisi DRY_RUN
-- ⬜ Board approval finale (Max)
+- ⬜ Board approval finale
 
 **Multi-macchina:** MBP (sviluppo Max) ↔ Mac Mini (runtime `/Volumes/Archivio/bagholderai`). Sempre `git pull` + mount Archivio prima di test/audit.
 
@@ -147,7 +150,7 @@ Preview rimosse da entrambi i volumi.
 | **Marketing outreach** | Pre-traction. Sito testnet online è step 1, mainnet è step 2 |
 | **Sentinel/Sherpa LIVE** | In DRY_RUN dal S70. Analisi ~17 maggio, poi decisione Board |
 | **Phase 2 grid_runner split** | Post go-live (1591 righe, brief 62b parcheggiato) |
-| **Go-live €100 mainnet** | Fee cleanup in corso. BONK sell bloccati dal bug fee-in-base-coin. Pre-live gates non superate |
+| **Go-live €100 mainnet** | Fee cleanup completato S72. In osservazione 24h (scade 12 maggio 13:49 UTC). Restano: mobile test, Sentinel/Sherpa analisi, Board approval |
 | **Sherpa Sprint 2/3 (slow loop + news feed)** | Pre-requisito: Sprint 1 counterfactual replay. Sentinel/Sherpa analisi prima |
 | **Partnership / sponsorship / nuove piattaforme** | Pre-traction, prodotto in costruzione. Nessuna urgenza |
 | **Nuovo prezzo volumi Payhip** | €4.99 prezzo di lancio. Nessun dato di vendita su cui ragionare (0/30 views) |
@@ -155,4 +158,4 @@ Preview rimosse da entrambi i volumi.
 
 ---
 
-*Prossimo aggiornamento: post S72 (fee cleanup session — brief 71b + Strada 2 ridotta).*
+*Prossimo aggiornamento: post 24h osservazione (2026-05-12) — Board approval decisione finale go-live €100.*
