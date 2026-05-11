@@ -573,18 +573,15 @@ function analyzeCoin(trades: AllTrade[]): {
       };
     }
 
-    /* Brief 72a S72 (Max audit 2026-05-11): only Grid renders on public
-       /dashboard. TF/Sentinel/Sherpa are off — their numbers must not
-       leak into hero or per-coin cards. Hero already uses computeCanonical
-       above; the per-coin card section reuses it for the same source of
-       truth (bit-identical with /grid.html and /home).
-       Note: buildSection is still defined above for archival reference,
-       but no longer called. It can be removed in a future cleanup brief. */
-    const gridSkimSet = (skimRows ?? []).reduce(
-      (s, r) => gridSymbols.has(r.symbol) ? s + Number(r.amount || 0) : s, 0,
-    );
+    /* Brief 72a S72 (Max audit 2026-05-11, runtime fix): variabili
+       gridTrades/gridSymbols vivono nel primo IIFE (hero); qui sono
+       fuori scope. Rilego al set Grid già calcolato in questa scope
+       (gridAllTrades) + skimFor() che filtra reserve_ledger per i
+       simboli del fondo Grid. Single-source-of-truth via
+       computeCanonicalState (mirror di /home, /grid, /tf). */
+    const gridSkimLocal = skimFor(gridActive, gridAllTrades);
     const grid = computeCanonicalState(
-      gridTrades, gridSkimSet, prices, GRID_BUDGET,
+      gridAllTrades, gridSkimLocal, prices, GRID_BUDGET,
     );
 
     /* Day counters from each bot's start date. */
