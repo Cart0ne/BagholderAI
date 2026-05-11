@@ -631,10 +631,15 @@
         console.warn('trend_config unreachable:', e);
       }
 
-      // 2. Load the TF-only slice of state
+      // 2. Load the TF-only slice of state.
+      // Brief 72a S72: post-S70 rename `trend_follower→tf` left these filters
+      // hunting for the old name. After rename DB has managed_by IN ('tf','tf_grid')
+      // so we update the filter accordingly. Without this fix /tf showed zero
+      // bots (config) and zero history (trades) since S70 — same lexical-drift
+      // family as grid.html:519.
       var settled = await Promise.allSettled([
-        sbGet('bot_config', 'managed_by=in.(trend_follower,tf_grid)&order=symbol'),
-        sbGet('trades', 'select=id,symbol,side,amount,price,cost,fee,realized_pnl,created_at,managed_by&config_version=eq.v3&managed_by=in.(trend_follower,tf_grid)&order=created_at.desc'),
+        sbGet('bot_config', 'managed_by=in.(tf,tf_grid)&order=symbol'),
+        sbGet('trades', 'select=id,symbol,side,amount,price,cost,fee,fee_asset,realized_pnl,created_at,managed_by&config_version=eq.v3&managed_by=in.(tf,tf_grid)&order=created_at.desc'),
         sbGet('daily_pnl', 'order=date.desc&limit=10'),
         sbGet('reserve_ledger', 'select=symbol,amount&config_version=eq.v3')
       ]);

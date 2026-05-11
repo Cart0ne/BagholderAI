@@ -513,11 +513,20 @@
     }
 
     async function loadAll() {
-      // Admin shows only manually-managed bots. TF-managed bots (trend_follower
-      // + tf_grid) live in /tf.html.
+      // Admin shows only Grid-managed bots. TF-managed bots ('tf' or 'tf_grid'
+      // post-S70 rename) live in /tf.html.
+      // Brief 72a S72 fix: was `not.in.(trend_follower,tf_grid)` but S70 rename
+      // moved TF rows to managed_by='tf', leaking through. Realigned to eq.grid.
       var settled = await Promise.allSettled([
-        sbGet('bot_config', 'managed_by=not.in.(trend_follower,tf_grid)&order=symbol'),
-        sbGet('trades', 'select=id,symbol,side,amount,price,cost,fee,realized_pnl,created_at&config_version=eq.v3&managed_by=not.in.(trend_follower,tf_grid)&order=created_at.desc'),
+        sbGet('bot_config', 'managed_by=eq.grid&order=symbol'),
+        // Brief 72a S72 fix: was `managed_by=not.in.(trend_follower,tf_grid)`,
+        // but S70 rename `trend_follower→tf` left the filter exposing TF rows
+        // (managed_by='tf' was not in the exclusion list). Realigned to
+        // `eq.grid` — same set the public dashboard uses (one source of truth).
+        // Effect: removes 2 TF rows leaking in (1 sell, ~$0.04 realized,
+        // ~$0.014 fees) → grid.html "Net realized profit" now bit-identical
+        // to /dashboard.
+        sbGet('trades', 'select=id,symbol,side,amount,price,cost,fee,fee_asset,realized_pnl,created_at&config_version=eq.v3&managed_by=eq.grid&order=created_at.desc'),
         sbGet('daily_pnl', 'order=date.desc&limit=10'),
         sbGet('reserve_ledger', 'select=symbol,amount&config_version=eq.v3'),
         fetchLivePrices()
