@@ -354,6 +354,11 @@
       <div id="overview-row2" class="stats-row"></div>
       <div id="overview-row3" class="stats-row"></div>
 
+      <!-- Brief 71a — Net Realized Profit (post-fees). Same metric shown on
+           /dashboard, kept here too so the admin view never lies about
+           "what's actually banked". -->
+      <div id="net-realized-row" class="stats-row" style="margin-top:12px;"></div>
+
       <!-- Per-Coin Status -->
       <div class="section-title">Grid status per coin</div>
       <div id="coin-cards"></div>
@@ -811,6 +816,23 @@
           '<div class="stat-label">Dust</div>' +
           '<div class="stat-value" style="color:' + dustColor + ';">$' + dustTotalUsd.toFixed(4) + '</div>' +
           '<div class="stat-sub">residui sotto $5 min_notional · ' + dustBreakdown + '</div>' +
+        '</div>';
+
+      // Brief 71a — Net Realized Profit (post-fees). Σ realized_pnl − Σ fees.
+      // Stesso valore della riga "Net realized profit (post-fees)" su /dashboard.
+      var pnlSell = tradesData.reduce(function(s, t) {
+        return t.side === 'sell' ? s + Number(t.realized_pnl || 0) : s;
+      }, 0);
+      var netRealized = pnlSell - totalFees;
+      var netRealSign = netRealized >= 0 ? '+' : '−';
+      var netRealColor = netRealized >= 0 ? 'var(--green)' : 'var(--red)';
+      document.getElementById('net-realized-row').innerHTML =
+        '<div class="stat-box" style="grid-column: 1 / -1;">' +
+          '<div class="stat-label">Net realized profit (post-fees)</div>' +
+          '<div class="stat-value" style="color:' + netRealColor + ';">' +
+            netRealSign + '$' + fmt(Math.abs(netRealized)) +
+          '</div>' +
+          '<div class="stat-sub">= Σ realized_pnl − Σ fees · esclude unrealized · gemello del numero su /dashboard</div>' +
         '</div>';
     }
 

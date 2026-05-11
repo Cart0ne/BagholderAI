@@ -263,9 +263,9 @@ const fetchLivePrices = async (symbols: string[]): Promise<Record<string, number
 
 (async () => {
   try {
-    const [configs, allTrades, skimRows] = await Promise.all([
+    const [_configs, allTrades, skimRows] = await Promise.all([
       sbq<Config[]>("bot_config", "select=symbol,capital_allocation,managed_by"),
-      fetchAllTrades<AllTrade>("symbol,side,amount,cost,created_at,managed_by"),
+      fetchAllTrades<AllTrade>("symbol,side,amount,cost,fee,created_at,managed_by"),
       sbq<SkimRow[]>(
         "reserve_ledger",
         "select=symbol,amount&config_version=eq.v3",
@@ -273,13 +273,12 @@ const fetchLivePrices = async (symbols: string[]): Promise<Record<string, number
     ]);
 
     /* Grid initial = $500 (3 grid coins) + $100 (TF budget).
-       The legacy dashboard hardcoded these; we follow suit until we
-       have a single source of truth for "fund initial". */
+       Brief 71a: hero netWorth is canonical NET-of-fees (mirror of
+       grid.html). Σ trades.fee subtracted explicitly. */
     const GRID_INITIAL = 500;
     const TF_INITIAL = 100;
     const totalInitial = GRID_INITIAL + TF_INITIAL;
 
-    /* Group symbols and aggregate trades per symbol (single pass). */
     const symbolsActive = new Set<string>();
     const tradesBySym: Record<string, AllTrade[]> = {};
     for (const t of allTrades ?? []) {
@@ -287,23 +286,22 @@ const fetchLivePrices = async (symbols: string[]): Promise<Record<string, number
       (tradesBySym[t.symbol] ||= []).push(t);
     }
 
-    /* Skim total — full fund. */
     const skimTotal = (skimRows ?? []).reduce(
       (s, r) => s + Number(r.amount || 0), 0,
     );
 
-    /* Live prices for all symbols that have trades. */
     const prices = await fetchLivePrices([...symbolsActive]);
 
-    /* Net invested + holdings amount per coin → cash & holdings_value. */
     let totalNetInvested = 0;
     let totalHoldingsValue = 0;
+    let totalFees = 0;
     for (const sym of symbolsActive) {
       const ts = tradesBySym[sym];
       let bought = 0, sold = 0, holdings = 0;
       for (const t of ts) {
         const amt = Number(t.amount || 0);
         const cost = Number(t.cost || 0);
+        totalFees += Number(t.fee || 0);
         if (t.side === "buy") {
           bought += cost;
           holdings += amt;
@@ -318,7 +316,7 @@ const fetchLivePrices = async (symbols: string[]): Promise<Record<string, number
     }
 
     const totalCash = totalInitial - totalNetInvested - skimTotal;
-    const netWorth = totalCash + totalHoldingsValue + skimTotal;
+    const netWorth = totalCash + totalHoldingsValue + skimTotal - totalFees;
     const totalPnl = netWorth - totalInitial;
     const totalPct = (totalPnl / totalInitial) * 100;
 
@@ -542,25 +540,22 @@ function analyzeCoin(trades: AllTrade[]): {
       const { realized, fees } = realizedAndFeesAcross(allTradesGroup);
       const m = perCoinMetrics(cfgs);
       const skim = skimFor(cfgs, allTradesGroup);
-      /* Net worth identity (legacy dashboard):
-           netWorth = budget + realized + unrealized
-         This naturally accounts for deallocated coins: their realized P&L
-         flows into the cumulative `realized` term, while their holdings are
-         zero (already excluded from `unrealized`). */
-      const netWorth = fundBudget + realized + m.totalUnrealized;
-      /* Cash = whatever isn't currently locked in open positions or skimmed:
-           cash = netWorth - holdingsValue - skim
-         This equals "fund free liquidity at the bot's disposal right now". */
-      const cash = netWorth - m.totalHoldingsValue - skim;
-      /* Cash% is computed against the OPERATIONAL budget (= fundBudget - skim),
-         not the original budget. Skim is set aside and no longer available
-         for trading, so it doesn't make sense to count it as part of the
-         denominator when measuring "how much is free for reinvest right now". */
+      /* Brief 71a — canonical NET-of-fees:
+           netWorth = budget + realized + unrealized − fees
+         Identity check: budget + realized + unrealized ≡ cash + holdings + skim
+         (algebraic via avg-cost closed-cycle replay); subtracting fees here
+         aligns the dashboard hero with grid.html "Stato attuale". */
+      const netWorth = fundBudget + realized + m.totalUnrealized - fees;
+      /* Cash = liquidity free for reinvest. Stays the pure USDT residue
+         from buys/sells/skim — fees are accounted for in net worth, not cash
+         (cash is what the bot can actually deploy next, fees are sunk). */
+      const cash = fundBudget - m.totalNetInvested - skim;
       const operationalBudget = fundBudget - skim;
       const cashPct = operationalBudget > 0 ? (cash / operationalBudget) * 100 : 0;
+      const netRealized = realized - fees;
       return {
         totalAlloc: fundBudget, skim, cash, netWorth, cashPct,
-        realized, unrealized: m.totalUnrealized, fees,
+        realized, unrealized: m.totalUnrealized, fees, netRealized,
         perCoin: m.perCoin,
       };
     }
