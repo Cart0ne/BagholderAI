@@ -133,9 +133,13 @@ Promise.all([
   const allSymbols = Array.from(new Set(trades.map(t => t.symbol)));
   const prices = await fetchLivePrices(allSymbols);
 
+  /* Brief 72a S72 (Max audit 2026-05-11): only Grid contributes to public
+     totals. TF is paused since S70 ("dal dottore"); including it inflated
+     the hero with stale state. tfState computed but NOT added — kept as
+     reference for the day TF restarts. */
   const gridState = computeCanonicalState(gridTrades, skimGrid, prices, GRID_BUDGET);
-  const tfState   = computeCanonicalState(tfTrades,   skimTf,   prices, TF_BUDGET);
-  const totalPnl = gridState.totalPnL + tfState.totalPnL;
+  void tfTrades; void skimTf; void TF_BUDGET; // intentionally unused (TF off)
+  const totalPnl = gridState.totalPnL;
 
   const sign = totalPnl >= 0 ? "+" : "-";
   setText("stat-pnl", `${sign}$${Math.abs(totalPnl).toFixed(2)}`);

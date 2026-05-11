@@ -11,6 +11,10 @@
    replay client-side. */
 
 import { sbFetchAll } from "./sb-paginated";
+import {
+  computeCanonicalState,
+  fetchLivePrices as fetchLivePricesCanonical,
+} from "../lib/pnl-canonical";
 
 const SB_URL = "https://pxdhtmqfwjwjhtcoacsn.supabase.co";
 const SB_KEY =
@@ -283,53 +287,32 @@ const fetchLivePrices = async (symbols: string[]): Promise<Record<string, number
       ),
     ]);
 
-    /* Grid initial = $500 (3 grid coins) + $100 (TF budget).
-       Brief 71a: hero netWorth is canonical NET-of-fees (mirror of
-       grid.html). Σ trades.fee subtracted explicitly. */
+    /* Brief 72a S72 (Max audit 2026-05-11): hero is now Grid-ONLY.
+       TF/Sentinel/Sherpa do not affect public P&L numbers — capital at
+       risk is the $500 Grid budget, period. TF was "dal dottore" since
+       S70, never showing real capital movement; including its $100 in
+       the hero made the math noisy.
+       computeCanonicalState is the SAME function used by /home, /grid,
+       /tf — single source of truth, bit-identical. */
     const GRID_INITIAL = 500;
-    const TF_INITIAL = 100;
-    const totalInitial = GRID_INITIAL + TF_INITIAL;
 
-    const symbolsActive = new Set<string>();
-    const tradesBySym: Record<string, AllTrade[]> = {};
-    for (const t of allTrades ?? []) {
-      symbolsActive.add(t.symbol);
-      (tradesBySym[t.symbol] ||= []).push(t);
-    }
+    const gridTrades = (allTrades ?? []).filter(t => t.managed_by === "grid");
+    const gridSymbols = new Set<string>();
+    for (const t of gridTrades) gridSymbols.add(t.symbol);
 
-    const skimTotal = (skimRows ?? []).reduce(
-      (s, r) => s + Number(r.amount || 0), 0,
+    /* skim filtered to Grid coins (reserve_ledger has all coins; we want only Grid). */
+    const gridSkim = (skimRows ?? []).reduce(
+      (s, r) => gridSymbols.has(r.symbol) ? s + Number(r.amount || 0) : s, 0,
     );
 
-    const prices = await fetchLivePrices([...symbolsActive]);
+    const prices = await fetchLivePrices([...gridSymbols]);
 
-    let totalNetInvested = 0;
-    let totalHoldingsValue = 0;
-    let totalFees = 0;
-    for (const sym of symbolsActive) {
-      const ts = tradesBySym[sym];
-      let bought = 0, sold = 0, holdings = 0;
-      for (const t of ts) {
-        const amt = Number(t.amount || 0);
-        const cost = Number(t.cost || 0);
-        totalFees += Number(t.fee || 0);
-        if (t.side === "buy") {
-          bought += cost;
-          holdings += amt;
-        } else {
-          sold += cost;
-          holdings -= amt;
-        }
-      }
-      totalNetInvested += (bought - sold);
-      const px = prices[sym] ?? 0;
-      if (holdings > 0 && px > 0) totalHoldingsValue += holdings * px;
-    }
-
-    const totalCash = totalInitial - totalNetInvested - skimTotal;
-    const netWorth = totalCash + totalHoldingsValue + skimTotal - totalFees;
-    const totalPnl = netWorth - totalInitial;
-    const totalPct = (totalPnl / totalInitial) * 100;
+    const heroCanonical = computeCanonicalState(
+      gridTrades, gridSkim, prices, GRID_INITIAL
+    );
+    const netWorth = heroCanonical.netWorth;
+    const totalPnl = heroCanonical.totalPnL;
+    const totalPct = (totalPnl / GRID_INITIAL) * 100;
 
     setText("hero-nw", fmtUsd(netWorth));
 
@@ -590,8 +573,19 @@ function analyzeCoin(trades: AllTrade[]): {
       };
     }
 
-    const tf   = buildSection(tfActive,   tfAllTrades,   TF_BUDGET);
-    const grid = buildSection(gridActive, gridAllTrades, GRID_BUDGET);
+    /* Brief 72a S72 (Max audit 2026-05-11): only Grid renders on public
+       /dashboard. TF/Sentinel/Sherpa are off — their numbers must not
+       leak into hero or per-coin cards. Hero already uses computeCanonical
+       above; the per-coin card section reuses it for the same source of
+       truth (bit-identical with /grid.html and /home).
+       Note: buildSection is still defined above for archival reference,
+       but no longer called. It can be removed in a future cleanup brief. */
+    const gridSkimSet = (skimRows ?? []).reduce(
+      (s, r) => gridSymbols.has(r.symbol) ? s + Number(r.amount || 0) : s, 0,
+    );
+    const grid = computeCanonicalState(
+      gridTrades, gridSkimSet, prices, GRID_BUDGET,
+    );
 
     /* Day counters from each bot's start date. */
     const daysSince = (iso: string) => {
@@ -599,32 +593,13 @@ function analyzeCoin(trades: AllTrade[]): {
       return Math.max(1, Math.floor((Date.now() - start) / 86_400_000) + 1);
     };
 
-    /* ============ Render TF totals ============ */
-    setText("tf-budget", `$${tf.totalAlloc.toFixed(0)}`);
-    setText("tf-day", String(daysSince(TF_LAUNCH_ISO)));
-    setText("tf-cash-reinvest", fmtUsd(tf.cash));
-    setText("tf-nw", fmtUsd(tf.netWorth));
-    const tfPnl = tf.netWorth - tf.totalAlloc;
-    const tfPct = tf.totalAlloc > 0 ? (tfPnl / tf.totalAlloc) * 100 : 0;
-    const tfPnlEl = document.getElementById("tf-pnl-pct");
-    if (tfPnlEl) {
-      tfPnlEl.classList.remove("text-pos", "text-neg", "text-text-muted");
-      tfPnlEl.classList.add(tfPnl >= 0 ? "text-pos" : "text-neg");
-      tfPnlEl.textContent = `${fmtSigned(tfPnl)} (${fmtPct(tfPct)})`;
-    }
-    applyMetric("tf-unrealized", tf.unrealized);
-    applyFees("tf-fees", tf.fees);
-    applySkim("tf-skim", tf.skim);
-    setText("tf-cash-pct", `${tf.cashPct.toFixed(0)}%`);
-    renderCashBar("tf-cash-bar", tf.perCoin, tf.totalAlloc - tf.skim);
-
     /* ============ Render GRID totals ============ */
-    setText("grid-budget", `$${grid.totalAlloc.toFixed(0)}`);
+    setText("grid-budget", `$${GRID_BUDGET.toFixed(0)}`);
     setText("grid-day", String(daysSince(V3_LAUNCH_ISO)));
     setText("grid-cash-reinvest", fmtUsd(grid.cash));
     setText("grid-nw", fmtUsd(grid.netWorth));
-    const gridPnl = grid.netWorth - grid.totalAlloc;
-    const gridPct = grid.totalAlloc > 0 ? (gridPnl / grid.totalAlloc) * 100 : 0;
+    const gridPnl = grid.totalPnL;
+    const gridPct = GRID_BUDGET > 0 ? (gridPnl / GRID_BUDGET) * 100 : 0;
     const gridPnlEl = document.getElementById("grid-pnl-pct");
     if (gridPnlEl) {
       gridPnlEl.classList.remove("text-pos", "text-neg", "text-text-muted");
@@ -634,17 +609,22 @@ function analyzeCoin(trades: AllTrade[]): {
     applyMetric("grid-unrealized", grid.unrealized);
     applyFees("grid-fees", grid.fees);
     applySkim("grid-skim", grid.skim);
-    setText("grid-cash-pct", `${grid.cashPct.toFixed(0)}%`);
-    renderCashBar("grid-cash-bar", grid.perCoin, grid.totalAlloc - grid.skim);
+    const operationalBudget = GRID_BUDGET - grid.skim;
+    const cashPct = operationalBudget > 0 ? (grid.cash / operationalBudget) * 100 : 0;
+    setText("grid-cash-pct", `${cashPct.toFixed(0)}%`);
+    /* renderCashBar wants perCoin with managed_by — add it (all 'grid'). */
+    const gridPerCoinTagged = grid.perCoin.map(c => ({
+      ...c, managed_by: "grid" as const,
+      alloc: 0, mtmValue: c.mtm, openCost: c.openCost,
+      avgBuy: c.avgBuyPrice, holdings: c.holdings, livePrice: c.livePrice,
+      realized: c.realized, unrealized: c.unrealized,
+    }));
+    renderCashBar("grid-cash-bar", gridPerCoinTagged, GRID_BUDGET - grid.skim);
 
-    /* ============ Render coin cards ============ */
-    const tfNatives = tf.perCoin.filter(c => c.managed_by === "tf");
-    const sharedCoins = tf.perCoin.filter(c => c.managed_by === "tf_grid");
-    const gridNatives = grid.perCoin;   /* always managed_by='grid' */
-
-    renderTfNatives("tf-natives", tfNatives);
-    renderSharedCards("shared-cards", sharedCoins);
-    renderGridNatives("grid-natives", gridNatives, sharedCoins);
+    /* ============ Render coin cards (Grid only) ============ */
+    renderTfNatives("tf-natives", []);        /* empty: TF off */
+    renderSharedCards("shared-cards", []);    /* empty: no tf_grid in public view */
+    renderGridNatives("grid-natives", gridPerCoinTagged, []);
   } catch (err) {
     console.warn("[dashboard-live] § 2 instruments failed:", err);
   }
