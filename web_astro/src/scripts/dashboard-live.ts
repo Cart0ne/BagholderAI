@@ -236,7 +236,15 @@ sbq<Commentary[]>(
 
 type Config = { symbol: string; capital_allocation: string | number; managed_by: string };
 type SkimRow = { symbol: string; amount: string | number };
-type AllTrade = Trade & { realized_pnl?: string | number; managed_by?: string };
+type AllTrade = Trade & {
+  realized_pnl?: string | number;
+  managed_by?: string;
+  fee?: string | number;
+  /* Brief 72a (S72): fee_asset drives the P2 net-of-fee_base avg-cost
+     formula in analyzeCoin. 'USDT' on paper trades + sells, base coin
+     on live BUY (BTC/SOL/BONK/...). */
+  fee_asset?: string | null;
+};
 
 const fetchLivePrices = async (symbols: string[]): Promise<Record<string, number>> => {
   if (!symbols.length) return {};
@@ -265,7 +273,10 @@ const fetchLivePrices = async (symbols: string[]): Promise<Record<string, number
   try {
     const [_configs, allTrades, skimRows] = await Promise.all([
       sbq<Config[]>("bot_config", "select=symbol,capital_allocation,managed_by"),
-      fetchAllTrades<AllTrade>("symbol,side,amount,cost,fee,created_at,managed_by"),
+      /* Brief 72a (S72): fee_asset added so analyzeCoin can detect BUY
+         rows where Binance scaled the fee from the base coin and apply
+         the P2 net-of-fee_base formula. */
+      fetchAllTrades<AllTrade>("symbol,side,amount,cost,fee,fee_asset,created_at,managed_by"),
       sbq<SkimRow[]>(
         "reserve_ledger",
         "select=symbol,amount&config_version=eq.v3",
@@ -388,9 +399,20 @@ function analyzeCoin(trades: AllTrade[]): {
     const price = amt > 0 ? cost / amt : 0;
     fees += Number(t.fee || 0);
     if (t.side === "buy") {
-      const newHoldings = holdings + amt;
+      /* Brief 72a P2 (S72): when Binance scaled the fee from the base coin
+         (live BUY, fee_asset == base), subtract fee_native ≈ fee/price
+         from qty_acquired so the replay matches the wallet. Paper trades
+         (fee_asset='USDT' default) → fee_native=0 → legacy behaviour. */
+      const base = t.symbol.split("/")[0]?.toUpperCase() ?? "";
+      const feeAsset = (t.fee_asset || "USDT").toString().toUpperCase();
+      const feeUsdt = Number(t.fee || 0);
+      const feeNativeEst = (feeAsset === base && price > 0) ? feeUsdt / price : 0;
+      const qtyAcquired = amt - feeNativeEst;
+      const newHoldings = holdings + qtyAcquired;
       if (newHoldings > 0) {
-        avgBuyPrice = (avgBuyPrice * holdings + price * amt) / newHoldings;
+        /* P2: avg = total_cost_usdt / qty_net_acquired (mirror of
+           bot/grid/buy_pipeline.py:215). */
+        avgBuyPrice = (avgBuyPrice * holdings + cost) / newHoldings;
       }
       holdings = newHoldings;
       totalInvested += cost;
@@ -423,7 +445,9 @@ function analyzeCoin(trades: AllTrade[]): {
         "select=symbol,capital_allocation,managed_by,is_active,volume_tier",
       ),
       fetchAllTrades<AllTrade>(
-        "symbol,side,amount,cost,fee,realized_pnl,created_at,managed_by",
+        /* Brief 72a (S72): include fee_asset for the canonical replay
+           (P2: subtract fee_base when fee_asset == base_coin). */
+        "symbol,side,amount,cost,fee,fee_asset,realized_pnl,created_at,managed_by",
       ),
       sbq<SkimRow[]>(
         "reserve_ledger",
@@ -552,6 +576,12 @@ function analyzeCoin(trades: AllTrade[]): {
       const cash = fundBudget - m.totalNetInvested - skim;
       const operationalBudget = fundBudget - skim;
       const cashPct = operationalBudget > 0 ? (cash / operationalBudget) * 100 : 0;
+      /* Brief 72a (S72): known ~$0.22 bias on the 18 testnet sells that
+         were backfilled with realized = (price-avg)×qty − fee_sell. This
+         formula subtracts fee_sell a second time via `fees`. Paper trades
+         remain gross (realized − all_fees, correct). CEO 2026-05-11 accepted
+         the temporary bias; architectural fix (split paper/live in the
+         public view) deferred to a future brief. */
       const netRealized = realized - fees;
       return {
         totalAlloc: fundBudget, skim, cash, netWorth, cashPct,

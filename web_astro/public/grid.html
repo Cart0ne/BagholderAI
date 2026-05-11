@@ -820,6 +820,12 @@
 
       // Brief 71a — Net Realized Profit (post-fees). Σ realized_pnl − Σ fees.
       // Stesso valore della riga "Net realized profit (post-fees)" su /dashboard.
+      //
+      // Brief 72a (S72): known ~$0.22 bias on the 18 testnet sells whose
+      // realized_pnl was backfilled to (price-avg)×qty − fee_sell — this
+      // formula subtracts fee_sell again via totalFees. Paper trades remain
+      // gross (correct under the legacy formula). CEO 2026-05-11 accepted
+      // the bias; architectural fix deferred to a future brief.
       var pnlSell = tradesData.reduce(function(s, t) {
         return t.side === 'sell' ? s + Number(t.realized_pnl || 0) : s;
       }, 0);

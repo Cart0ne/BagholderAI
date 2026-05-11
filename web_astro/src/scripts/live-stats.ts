@@ -94,7 +94,10 @@ const TF_BUDGET   = 100;
 
 Promise.all([
   sbFetchAll<TradeFull>(
-    "trades?select=symbol,side,amount,cost,fee,realized_pnl,created_at" +
+    /* Brief 72a (S72): fee_asset added so the canonical replay can detect
+       BUY rows where Binance scaled the fee from the base coin (live live
+       testnet) and apply P2 (qty_acquired = filled − fee_native). */
+    "trades?select=symbol,side,amount,cost,fee,fee_asset,realized_pnl,created_at" +
     "&config_version=eq.v3&order=created_at.asc",
   ),
   sbFetchAll<SkimRow>(

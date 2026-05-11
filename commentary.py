@@ -122,21 +122,28 @@ def fetch_binance_prices(symbols):
         return {}
 
 
-def _analyze_coin_avg_cost(coin_trades):
+def _analyze_coin_avg_cost(coin_trades, symbol=""):
     """
     S69: avg-cost replay (running weighted average), specchio della logica
     bot in bot/grid/buy_pipeline.py:117 e di tutte le dashboard. Sostituisce
     il vecchio _analyze_coin_avg_cost (Operation Clean Slate S66 ha pivotato il
     bot ad avg-cost canonico — DB realized_pnl ora è già avg-cost).
 
+    Brief 72a (S72): replay applies the 3 invariants. When `fee_asset`
+    matches the base coin (live BUY: BTC/SOL/BONK/...), Binance scaled the
+    commission from the base balance — derive fee_native = fee_usdt/price
+    and subtract from qty_acquired so the replay matches the wallet. Paper
+    trades have fee_asset='USDT' (default) → fee_native=0 → legacy.
+
     Returns dict with: realized, open_cost, open_amount, net_invested, fees.
       - realized   : Σ trades.realized_pnl (DB SUM, scritto dal bot avg-cost)
       - open_cost  : avg_buy_price × holdings (mark-to-cost posizione aperta)
-      - open_amount: amount di base ancora in pancia
+      - open_amount: amount di base ancora in pancia (net of fee_base on live)
       - net_invested: Σ buy.cost − Σ sell.cost (USDT cash flow)
       - fees       : Σ fee across all trades
     """
     sorted_trades = sorted(coin_trades, key=lambda t: t.get("created_at") or "")
+    base = symbol.split("/")[0].upper() if "/" in symbol else ""
     holdings = 0.0
     avg_buy_price = 0.0
     total_invested = 0.0
@@ -147,11 +154,17 @@ def _analyze_coin_avg_cost(coin_trades):
         amt = float(t.get("amount") or 0)
         cost = float(t.get("cost") or 0)
         price = float(t.get("price") or 0)
-        fees += float(t.get("fee") or 0)
+        fee_usdt = float(t.get("fee") or 0)
+        fee_asset = (t.get("fee_asset") or "USDT").upper()
+        fees += fee_usdt
         if t.get("side") == "buy":
-            new_holdings = holdings + amt
+            # Brief 72a P2: net-of-fee_base when commission scaled from base
+            fee_native_est = (fee_usdt / price) if (fee_asset == base and price > 0) else 0.0
+            qty_acquired = amt - fee_native_est
+            new_holdings = holdings + qty_acquired
             if new_holdings > 0:
-                avg_buy_price = (avg_buy_price * holdings + price * amt) / new_holdings
+                # P2 formula: avg = total_cost_usdt / qty_net_acquired
+                avg_buy_price = (avg_buy_price * holdings + cost) / new_holdings
             holdings = new_holdings
             total_invested += cost
         else:
@@ -220,7 +233,7 @@ def get_tf_state(supabase_client):
         # 3. trades: all TF trades (newest first), incl. tf_grid trades.
         tr = (
             supabase_client.table("trades")
-            .select("symbol, side, amount, price, cost, fee, realized_pnl, created_at")
+            .select("symbol, side, amount, price, cost, fee, fee_asset, realized_pnl, created_at")
             .eq("config_version", "v3")
             .in_("managed_by", ["tf", "tf_grid"])
             .order("created_at", desc=True)
@@ -280,7 +293,7 @@ def get_tf_state(supabase_client):
 
         # Realized + fees aggregated across ALL TF coins (active or deallocated).
         for sym, coin_trades in trades_by_sym.items():
-            a = _analyze_coin_avg_cost(coin_trades)
+            a = _analyze_coin_avg_cost(coin_trades, sym)
             realized_total += a["realized"]
             fees_total += a["fees"]
 
@@ -296,7 +309,7 @@ def get_tf_state(supabase_client):
                 continue
             coin_trades = trades_by_sym.get(sym, [])
 
-            a = _analyze_coin_avg_cost(coin_trades)
+            a = _analyze_coin_avg_cost(coin_trades, sym)
             open_amt = a["open_amount"]
             open_cost = a["open_cost"]
             realized_coin = a["realized"]
@@ -434,7 +447,7 @@ def get_grid_state(supabase_client):
         # 2. trades: all Grid trades, ascending order.
         tr = (
             supabase_client.table("trades")
-            .select("symbol, side, amount, price, cost, fee, realized_pnl, created_at")
+            .select("symbol, side, amount, price, cost, fee, fee_asset, realized_pnl, created_at")
             .eq("config_version", "v3")
             .eq("managed_by", "grid")
             .order("created_at", desc=False)
@@ -482,7 +495,7 @@ def get_grid_state(supabase_client):
 
         # Aggregate realized + fees across all Grid coins.
         for sym, coin_trades in trades_by_sym.items():
-            a = _analyze_coin_avg_cost(coin_trades)
+            a = _analyze_coin_avg_cost(coin_trades, sym)
             realized_total += a["realized"]
             fees_total += a["fees"]
 
@@ -490,7 +503,7 @@ def get_grid_state(supabase_client):
         for cfg_row in grid_config:
             sym = cfg_row["symbol"]
             coin_trades = trades_by_sym.get(sym, [])
-            a = _analyze_coin_avg_cost(coin_trades)
+            a = _analyze_coin_avg_cost(coin_trades, sym)
             open_amt = a["open_amount"]
             open_cost = a["open_cost"]
             realized_coin = a["realized"]

@@ -26,6 +26,11 @@ export type CanonicalTrade = {
   amount: string | number;
   cost: string | number;
   fee?: string | number | null;
+  /* Brief 72a (S72): broker's fee currency. When it equals the base coin
+     (e.g. 'BONK' on BONK/USDT BUY), Binance scaled the fee from the wallet
+     base balance — we must subtract `fee/price` from qty_acquired so the
+     replay matches the bot. Paper trades default to 'USDT' (no impact). */
+  fee_asset?: string | null;
   realized_pnl?: string | number | null;
   created_at: string;
 };
@@ -72,6 +77,7 @@ function replayAvgCost(trades: CanonicalTrade[]): Record<string, SymState> {
   );
   for (const t of sorted) {
     const sym = t.symbol;
+    const base = sym.split("/")[0]?.toUpperCase() ?? "";
     const s = (out[sym] ||= {
       holdings: 0, avgBuyPrice: 0,
       totalInvested: 0, totalReceived: 0,
@@ -80,12 +86,24 @@ function replayAvgCost(trades: CanonicalTrade[]): Record<string, SymState> {
     const amt = Number(t.amount || 0);
     const cost = Number(t.cost || 0);
     const fee = Number(t.fee || 0);
+    const feeAsset = (t.fee_asset || "USDT").toString().toUpperCase();
     s.fees += fee;
     if (t.side === "buy") {
       const price = amt > 0 ? cost / amt : 0;
-      const newH = s.holdings + amt;
+      /* Brief 72a P2 (S72): when fee_asset matches the base coin (live BUY),
+         Binance scales the commission from the base balance — derive
+         fee_native ≈ fee_usdt / price and subtract from qty_acquired so the
+         replay matches the actual wallet. Paper trades have fee_asset='USDT'
+         (default) → fee_native_est = 0 → legacy behaviour preserved. */
+      const feeNativeEst = (feeAsset === base && price > 0) ? fee / price : 0;
+      const qtyAcquired = amt - feeNativeEst;
+      const newH = s.holdings + qtyAcquired;
       if (newH > 0) {
-        s.avgBuyPrice = (s.avgBuyPrice * s.holdings + price * amt) / newH;
+        /* P2 formula: avg = total_cost_usdt / qty_net_acquired (mirror of
+           bot/grid/buy_pipeline.py:215). On paper trades the formula
+           collapses to the legacy (cost = price × amt, qty_acquired = amt)
+           — numerically identical. */
+        s.avgBuyPrice = (s.avgBuyPrice * s.holdings + cost) / newH;
       }
       s.holdings = newH;
       s.totalInvested += cost;
@@ -151,6 +169,14 @@ export function computeCanonicalState(
   const cash = budget - netInvested - skim;
   const netWorth = cash + holdingsMtm + skim - fees;
   const totalPnL = netWorth - budget;
+  /* Known bias (Brief 72a S72): for the 18 live testnet trades that were
+     backfilled with realized = (price - avg) × qty − fee_sell, this formula
+     subtracts fee_sell twice (once via the backfilled value, once via the
+     `fees` total). Bias ≈ −$0.22 cumulato (sotto-rappresenta netRealized).
+     Per i 458 paper trade pre-S67 la formula resta corretta (realized gross,
+     una sottrazione di fees totale). Decisione editoriale CEO 2026-05-11:
+     paper as-is, accettato bias temporaneo. Fix architetturale rinviato
+     a brief S73+ (split paper/live nel rendering pubblico). */
   const netRealized = realized - fees;
 
   return {
