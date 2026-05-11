@@ -573,6 +573,79 @@ class GridBot:
                     },
                 )
 
+        # --- DEAD ZONE RECALIBRATE (Brief 73a, S73 2026-05-11) ---
+        # After a sell run, residual holdings stay ancored to the
+        # `_last_sell_price` ladder (S70a). If the rally stalls, three
+        # S69 guards collectively freeze the bot:
+        #   - sell: trigger = ladder × (1+sell_pct+FEE)/(1−FEE) → too high
+        #   - buy:  Strategy A blocks "buy above avg if holdings>0"
+        #   - idle recalibrate (24h): skipped when current > avg
+        # Resolution: after DEAD_ZONE_HOURS of inactivity, if the ladder
+        # is active (_last_sell_price>0) and price is stuck above avg,
+        # reset the sell ladder and the buy reference to the current
+        # price. The next sell trigger reverts to avg_cost × (1+sell_pct
+        # +FEE)/(1−FEE) which is below current → sell scatta nello
+        # stesso tick. Vincoli brief: Grid only, NON tocca sell_pct,
+        # NON tocca TF/Sentinel/Sherpa. Hours hardcoded → moveremo
+        # in dashboard come parametro per-coin in brief successivo.
+        DEAD_ZONE_HOURS = 4.0
+        if (self.is_active
+                and self.managed_by == "grid"
+                and not self.pending_liquidation
+                and not self._stop_loss_triggered
+                and not self._trailing_stop_triggered
+                and not self._take_profit_triggered
+                and not self._profit_lock_triggered
+                and not self._gain_saturation_triggered
+                and self.state.holdings > 0
+                and self._last_sell_price > 0
+                and self.state.avg_buy_price > 0
+                and current_price > self.state.avg_buy_price
+                and self._last_trade_time is not None):
+            elapsed_dz = (datetime.utcnow() - self._last_trade_time).total_seconds() / 3600
+            if elapsed_dz >= DEAD_ZONE_HOURS:
+                previous_last_sell = self._last_sell_price
+                previous_ref = self._pct_last_buy_price
+                logger.warning(
+                    f"[{self.symbol}] DEAD ZONE RECALIBRATE after {elapsed_dz:.1f}h: "
+                    f"holdings={self.state.holdings:.6f}, "
+                    f"current {fmt_price(current_price)} > avg {fmt_price(self.state.avg_buy_price)}, "
+                    f"ladder active at {fmt_price(previous_last_sell)}. "
+                    f"Resetting _last_sell_price → 0 and buy_reference "
+                    f"{fmt_price(previous_ref)} → {fmt_price(current_price)}."
+                )
+                self._last_sell_price = 0.0
+                self._pct_last_buy_price = current_price
+                self._last_trade_time = datetime.utcnow()
+                self._idle_logged_hour = -1
+                self.idle_reentry_alerts.append({
+                    "symbol": self.symbol,
+                    "elapsed_hours": elapsed_dz,
+                    "reference_price": current_price,
+                    "recalibrate": True,
+                    "dead_zone": True,
+                })
+                log_event(
+                    severity="warn",
+                    category="trade_audit",
+                    event="dead_zone_recalibrate",
+                    symbol=self.symbol,
+                    message=(
+                        f"Dead zone reset after {elapsed_dz:.1f}h idle: "
+                        f"_last_sell_price {previous_last_sell} → 0, "
+                        f"buy_ref {previous_ref} → {current_price}"
+                    ),
+                    details={
+                        "elapsed_hours": float(elapsed_dz),
+                        "holdings": float(self.state.holdings),
+                        "current_price": float(current_price),
+                        "avg_buy_price": float(self.state.avg_buy_price),
+                        "previous_last_sell_price": float(previous_last_sell),
+                        "previous_buy_reference": float(previous_ref),
+                        "dead_zone_hours_threshold": DEAD_ZONE_HOURS,
+                    },
+                )
+
         # --- SELL CHECK (avg-cost trading, brief s70 FASE 1) ---
         # Single decision on state.avg_buy_price: if current_price >=
         # avg_buy_price × (1 + threshold_pct/100), sell one lot of

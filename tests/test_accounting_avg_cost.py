@@ -1049,6 +1049,100 @@ def test_r_replay_with_fee_in_base_coin():
 # Runner
 # ----------------------------------------------------------------------
 
+# ----------------------------------------------------------------------
+# Brief 73a tests (S73 2026-05-11) — Dead Zone recalibrate
+# ----------------------------------------------------------------------
+
+def test_s_dead_zone_recalibrate_fires_when_ladder_active_and_idle():
+    """Brief 73a (S73 2026-05-11): after a sell run leaves the bot with
+    _last_sell_price > 0 (ladder active), residual holdings, current >
+    avg, and >= 4h idle → reset _last_sell_price to 0 and recalibrate
+    buy reference to current price. Unsticks BTC/SOL/BONK stuck in the
+    dead zone where S69 guards collectively freeze the bot.
+    """
+    from datetime import datetime, timedelta
+    print("=" * 70)
+    print("TEST S: brief 73a — dead zone recalibrate fires")
+    print("=" * 70)
+    bot = make_bot()
+    bot.managed_by = "grid"  # Grid only, brief vincolo
+    bot.is_active = True
+    bot.buy_pct = 99.0   # disable buy path
+    bot.sell_pct = 99.0  # disable sell path
+    bot.idle_reentry_hours = 24.0  # standard 24h, dead zone is the earlier trigger
+
+    # Establish a state: buy at $100, then simulate prior partial sell
+    # that set _last_sell_price = $104 (ladder active).
+    bot._execute_percentage_buy(price=100.0)  # avg=$100, holdings=0.5
+    bot._last_sell_price = 104.0  # ladder anchored above current
+    initial_ref = bot._pct_last_buy_price
+    initial_avg = bot.state.avg_buy_price
+    assert_close(initial_avg, 100.0, label="avg after first buy")
+    print(f"  initial: ref=${initial_ref:.2f}, avg=${initial_avg:.2f}, "
+          f"_last_sell_price=${bot._last_sell_price:.2f}")
+
+    # 5h ago → exceeds DEAD_ZONE_HOURS (4.0) but below idle_reentry_hours (24h)
+    bot._last_trade_time = datetime.utcnow() - timedelta(hours=5)
+
+    # current=$102: above avg ($100) but below pre-reset sell trigger
+    bot.check_price_and_execute(current_price=102.0)
+
+    assert bot._last_sell_price == 0.0, (
+        f"_last_sell_price must reset to 0, got {bot._last_sell_price}"
+    )
+    assert_close(bot._pct_last_buy_price, 102.0, label="buy_ref reset to current")
+    dead_zone_alerts = [
+        a for a in bot.idle_reentry_alerts if a.get("dead_zone")
+    ]
+    assert len(dead_zone_alerts) == 1, (
+        f"expected 1 dead_zone alert, got {len(dead_zone_alerts)}: "
+        f"{bot.idle_reentry_alerts}"
+    )
+    print(f"  $102 + 5h idle + ladder active: DEAD ZONE FIRED ✓ "
+          f"_last_sell_price → 0, buy_ref → ${bot._pct_last_buy_price:.2f}")
+
+
+def test_t_dead_zone_does_not_fire_under_4h_idle():
+    """Brief 73a: dead zone reset must NOT fire if elapsed < 4h even with
+    all other preconditions true. Guards against premature ladder reset
+    during normal sell runs that take 1-3h to complete.
+    """
+    from datetime import datetime, timedelta
+    print("=" * 70)
+    print("TEST T: brief 73a — dead zone NOT fires under 4h idle")
+    print("=" * 70)
+    bot = make_bot()
+    bot.managed_by = "grid"
+    bot.is_active = True
+    bot.buy_pct = 99.0
+    bot.sell_pct = 99.0
+    bot.idle_reentry_hours = 24.0
+
+    bot._execute_percentage_buy(price=100.0)
+    bot._last_sell_price = 104.0
+    initial_ref = bot._pct_last_buy_price
+
+    # Only 2h idle → below DEAD_ZONE_HOURS=4
+    bot._last_trade_time = datetime.utcnow() - timedelta(hours=2)
+
+    bot.check_price_and_execute(current_price=102.0)
+
+    assert bot._last_sell_price == 104.0, (
+        f"_last_sell_price must remain unchanged at 104, got {bot._last_sell_price}"
+    )
+    assert bot._pct_last_buy_price == initial_ref, (
+        f"buy_ref must remain unchanged at {initial_ref}, got {bot._pct_last_buy_price}"
+    )
+    dead_zone_alerts = [
+        a for a in bot.idle_reentry_alerts if a.get("dead_zone")
+    ]
+    assert len(dead_zone_alerts) == 0, (
+        f"expected 0 dead_zone alerts under 4h, got {len(dead_zone_alerts)}"
+    )
+    print(f"  $102 + 2h idle: DEAD ZONE SKIPPED ✓ "
+          f"_last_sell_price unchanged @ ${bot._last_sell_price:.2f}")
+
+
 def main():
     tests = [
         test_a_simple_buy_then_sell,
@@ -1069,6 +1163,8 @@ def main():
         test_p_live_buy_scales_holdings_net_of_fee_base,
         test_q_sell_realized_pnl_includes_fee_sell,
         test_r_replay_with_fee_in_base_coin,
+        test_s_dead_zone_recalibrate_fires_when_ladder_active_and_idle,
+        test_t_dead_zone_does_not_fire_under_4h_idle,
     ]
     passed = 0
     failed = []
