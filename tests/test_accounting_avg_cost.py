@@ -124,10 +124,13 @@ def test_a_simple_buy_then_sell():
 
     trade = bot._execute_percentage_sell(price=6.0, force_all=True)
     assert trade is not None, "sell must execute"
-    assert_close(trade["realized_pnl"], 10.0, label="realized = (6-5)*10 = $10")
+    # Brief 72a P3 (S72): realized = (sell - avg) × qty − fee_sell
+    expected_realized = (6.0 - 5.0) * 10.0 - (6.0 * 10.0) * bot.FEE_RATE
+    assert_close(trade["realized_pnl"], expected_realized,
+                 label=f"realized = (6-5)*10 − fee_sell = ${expected_realized:.4f}")
     assert_close(bot.state.holdings, 0.0, label="holdings after full sell")
     assert_close(bot.state.avg_buy_price, 0.0, label="avg resets to 0 on full sell")
-    print(f"  realized = ${trade['realized_pnl']:.4f} (expected $10.0000) ✓")
+    print(f"  realized = ${trade['realized_pnl']:.4f} (expected ${expected_realized:.4f}) ✓")
     print(f"  avg post-sell = ${bot.state.avg_buy_price:.2f} (expected $0.00) ✓")
 
 
@@ -151,9 +154,11 @@ def test_b_multi_buy_partial_sell():
     # FIFO lot1 sell. avg-cost mode: avg unchanged on partial sell.
     avg_before_sell = bot.state.avg_buy_price
     trade = bot._execute_percentage_sell(price=9.0, sell_amount=10.0)
-    expected_realized = (9.0 - avg_before_sell) * 10.0
+    # Brief 72a P3 (S72): realized = (sell - avg) × qty − fee_sell
+    expected_fee_sell = (9.0 * 10.0) * bot.FEE_RATE
+    expected_realized = (9.0 - avg_before_sell) * 10.0 - expected_fee_sell
     assert_close(trade["realized_pnl"], expected_realized,
-                 label=f"realized = (9 - {avg_before_sell:.4f}) * 10")
+                 label=f"realized = (9 - {avg_before_sell:.4f}) * 10 − fee_sell")
     # CRITICAL: avg must NOT change on sell (still $6.67)
     assert_close(bot.state.avg_buy_price, avg_before_sell,
                  label="avg unchanged after partial sell")
@@ -210,15 +215,21 @@ def test_d_alternating_buy_sell_sequence():
             if t:
                 realized_track.append(t["realized_pnl"])
 
-    # After the sequence, verify accounting identity
+    # After the sequence, verify accounting identity.
+    # Brief 72a (S72): realized_pnl now includes -fee_sell. Identity becomes:
+    #   realized + unrealized + sum(fee_sell) = revenue − invested + holdings_value
+    # i.e. the "P&L view" matches the "cash view" only after adding back
+    # the sell-side fees that realized has already absorbed.
     revenue_total = bot.state.total_received
     invested_total = bot.state.total_invested
     realized_db = sum(t["realized_pnl"] for t in bot.trade_logger.trades if t.get("side") == "sell")
-    expected_realized = revenue_total - invested_total
+    total_fee_sell = sum(t.get("fee", 0) for t in bot.trade_logger.trades if t.get("side") == "sell")
+    expected_realized = revenue_total - invested_total - total_fee_sell
 
     print(f"  invested total: ${invested_total:.4f}")
     print(f"  received total: ${revenue_total:.4f}")
-    print(f"  realized expected (revenue−invested): ${expected_realized:.4f}")
+    print(f"  sum fee_sell: ${total_fee_sell:.6f}")
+    print(f"  realized expected (revenue−invested−fee_sell): ${expected_realized:.4f}")
     print(f"  realized DB (sum of trade.realized_pnl):  ${realized_db:.4f}")
 
     # NOTE: identity holds only when ALL positions are closed (Unrealized=0).
@@ -230,11 +241,12 @@ def test_d_alternating_buy_sell_sequence():
     print(f"  total expected (received - invested + holdings_value): "
           f"${revenue_total - invested_total + bot.state.holdings * last_price:.4f}")
 
-    closed_identity = realized_db + unrealized
+    # 72a: realized already has fee_sell baked in, so add it back to compare.
+    closed_identity = realized_db + unrealized + total_fee_sell
     open_identity = revenue_total - invested_total + bot.state.holdings * last_price
     assert_close(closed_identity, open_identity,
-                 tol=1e-6, label="closed_identity == open_identity")
-    print(f"  identity holds ✓")
+                 tol=1e-6, label="closed_identity (+fee_sell) == open_identity")
+    print(f"  identity holds (72a: +sum(fee_sell)) ✓")
 
 
 def test_e_random_sequence_identity():
@@ -266,33 +278,38 @@ def test_e_random_sequence_identity():
     revenue_total = bot.state.total_received
     invested_total = bot.state.total_invested
     realized_db = sum(t["realized_pnl"] for t in bot.trade_logger.trades if t.get("side") == "sell")
+    total_fee_sell = sum(t.get("fee", 0) for t in bot.trade_logger.trades if t.get("side") == "sell")
     holdings_residue = bot.state.holdings
 
     print(f"  ops executed: buys={sum(1 for t in bot.trade_logger.trades if t.get('side')=='buy')}, "
           f"sells={sum(1 for t in bot.trade_logger.trades if t.get('side')=='sell')}")
     print(f"  invested total: ${invested_total:.4f}")
     print(f"  received total: ${revenue_total:.4f}")
-    print(f"  expected realized = revenue − invested = ${revenue_total - invested_total:.4f}")
+    print(f"  sum fee_sell: ${total_fee_sell:.6f}")
+    print(f"  expected realized (revenue − invested − fee_sell): "
+          f"${revenue_total - invested_total - total_fee_sell:.4f}")
     print(f"  DB realized (sum of trade.realized_pnl): ${realized_db:.4f}")
     print(f"  holdings residue: {holdings_residue:.6f}")
 
-    # If holdings residue > 0, identity holds via realized + unrealized = total
+    # Brief 72a (S72): identity now includes sum(fee_sell), since realized
+    # bakes in -fee_sell per row.
     if holdings_residue > 1e-9:
         # Use last sell price as proxy for spot
         last_sell_price = bot.trade_logger.trades[-1]["price"]
         unrealized = holdings_residue * (last_sell_price - bot.state.avg_buy_price)
         print(f"  unrealized @ last sell price ${last_sell_price}: ${unrealized:.4f}")
-        total_pnl_via_db = realized_db + unrealized
+        total_pnl_via_db = realized_db + unrealized + total_fee_sell
         total_pnl_via_id = revenue_total - invested_total + holdings_residue * last_sell_price
         assert_close(total_pnl_via_db, total_pnl_via_id, tol=1e-3,
-                     label="realized+unrealized == revenue-invested+holdings_value")
-        print(f"  identity holds (open positions): ${total_pnl_via_db:.4f} == ${total_pnl_via_id:.4f} ✓")
+                     label="realized+unrealized+fee_sell == revenue-invested+holdings_value")
+        print(f"  identity holds (open, 72a): ${total_pnl_via_db:.4f} == ${total_pnl_via_id:.4f} ✓")
     else:
-        # Fully closed: identity is direct
-        assert_close(realized_db, revenue_total - invested_total, tol=1e-3,
-                     label="SUM(realized) == revenue - invested")
-        print(f"  identity holds (closed): SUM(realized) = ${realized_db:.4f} == "
-              f"${revenue_total - invested_total:.4f} ✓")
+        # Fully closed: realized + sum(fee_sell) == revenue - invested
+        assert_close(realized_db + total_fee_sell, revenue_total - invested_total, tol=1e-3,
+                     label="SUM(realized) + sum(fee_sell) == revenue - invested")
+        print(f"  identity holds (closed, 72a): "
+              f"SUM(realized)+fee_sell = ${realized_db + total_fee_sell:.4f} "
+              f"== ${revenue_total - invested_total:.4f} ✓")
 
 
 def test_f_dust_prevention_residual_below_min_sellable():
@@ -329,20 +346,22 @@ def test_f_dust_prevention_residual_below_min_sellable():
     assert_close(bot.state.holdings, 0.0, label="holdings empty")
     assert_close(bot.state.avg_buy_price, 0.0, label="avg resets to 0")
 
-    expected_pnl = (10.0 - avg_before) * 10.4
+    # Brief 72a P3 (S72): realized = (sell - avg) × qty − fee_sell
+    expected_fee_sell = (10.0 * 10.4) * bot.FEE_RATE
+    expected_pnl = (10.0 - avg_before) * 10.4 - expected_fee_sell
     assert_close(trade["realized_pnl"], expected_pnl, tol=1e-6, label="realized_pnl")
     print(f"  amount = {trade['amount']:.4f} (expected 10.4) ✓")
     print(f"  holdings=0, avg=0 ✓")
     print(f"  realized = ${trade['realized_pnl']:+.4f} (expected ${expected_pnl:+.4f}) ✓")
 
-    # Identity check: revenue − invested = realized (fully closed)
+    # Identity check (72a): rev − inv = realized + fee_sell when fully closed
     assert_close(
         bot.state.total_received - bot.state.total_invested,
-        bot.state.realized_pnl,
+        bot.state.realized_pnl + expected_fee_sell,
         tol=1e-6,
-        label="closed identity",
+        label="closed identity (72a: realized + fee_sell == rev - inv)",
     )
-    print(f"  closed identity holds: rev − inv = realized ✓")
+    print(f"  closed identity holds (72a): rev − inv = realized + fee_sell ✓")
 
 
 def test_h_guard_blocks_sell_below_avg_even_above_lot_buy():
@@ -396,9 +415,11 @@ def test_h_guard_blocks_sell_below_avg_even_above_lot_buy():
     avg_at_sell = bot.state.avg_buy_price
     result_ok = bot._execute_percentage_sell(price=sell_price_ok)
     assert result_ok is not None, "sell above avg must execute"
-    expected_pnl = (sell_price_ok - avg_at_sell) * result_ok["amount"]
+    # Brief 72a P3: realized = (sell - avg) × qty − fee_sell
+    revenue_ok = sell_price_ok * result_ok["amount"]
+    expected_pnl = (sell_price_ok - avg_at_sell) * result_ok["amount"] - revenue_ok * bot.FEE_RATE
     assert_close(result_ok["realized_pnl"], expected_pnl, tol=1e-6,
-                 label="realized = (sell_price - avg) * qty")
+                 label="realized = (sell_price - avg) * qty − fee_sell")
     print(f"  sell at ${sell_price_ok:.4f} executed (above avg) → realized ${result_ok['realized_pnl']:+.4f} ✓")
 
 
@@ -430,7 +451,9 @@ def test_g_dust_prevention_no_trigger_when_residual_healthy():
     # avg unchanged on partial sell (canonical avg-cost)
     assert_close(bot.state.avg_buy_price, avg_before, label="avg unchanged on partial sell")
 
-    expected_pnl = (10.0 - avg_before) * 10.0
+    # Brief 72a P3: realized = (sell - avg) × qty − fee_sell
+    expected_fee_sell = (10.0 * 10.0) * bot.FEE_RATE
+    expected_pnl = (10.0 - avg_before) * 10.0 - expected_fee_sell
     assert_close(trade["realized_pnl"], expected_pnl, tol=1e-6, label="realized_pnl")
     print(f"  amount = {trade['amount']:.4f} (expected 10.0) ✓")
     print(f"  holdings={bot.state.holdings} ✓")
@@ -499,12 +522,14 @@ def test_i_sell_trigger_uses_avg_buy_price():
     print(f"  sell amount = {sell_trade['amount']:.4f} (= ${bot.capital_per_trade}/$7.90) ✓")
 
     # Realized must use avg (snapshot at sell-time) as cost basis, not lot price.
-    expected_pnl = (7.90 - avg_before_sell) * sell_trade["amount"]
+    # Brief 72a P3 (S72): realized = (price − avg) × qty − fee_sell
+    revenue_trade = 7.90 * sell_trade["amount"]
+    expected_pnl = (7.90 - avg_before_sell) * sell_trade["amount"] - revenue_trade * bot.FEE_RATE
     assert_close(
         sell_trade["realized_pnl"], expected_pnl, tol=1e-6,
-        label="realized = (price − avg) × amount"
+        label="realized = (price − avg) × amount − fee_sell"
     )
-    print(f"  realized identity uses avg (not lot price): ✓")
+    print(f"  realized identity uses avg (not lot price), netto fees: ✓")
 
 
 def test_k_buy_guard_above_avg_when_holdings():
@@ -834,6 +859,193 @@ def test_o_post_fill_warning_slippage_below_avg():
 
 
 # ----------------------------------------------------------------------
+# Brief 72a tests — Fee Unification (S72 2026-05-11)
+# ----------------------------------------------------------------------
+
+
+def test_p_live_buy_scales_holdings_net_of_fee_base():
+    """Brief 72a P1+P2 (S72): live mode BUY with fee_currency==base_coin must
+    add `filled − fee_base` to holdings (not `filled` lordo). And avg_buy_price
+    must use `cost USDT / qty_acquired_net`, so the true USDT-per-coin held
+    is reflected.
+
+    Reproduces BONK testnet bug: pre-72a `state.holdings += filled` accumulated
+    phantom qty (12.280 BONK drift on 9 BUYs). Post-72a state matches wallet.
+    """
+    print("=" * 70)
+    print("TEST P: 72a — live BUY holdings = filled − fee_base, avg P2")
+    print("=" * 70)
+    from config.settings import TradingMode
+    import bot.exchange_orders as eo
+
+    bot = make_bot()
+    bot.managed_by = "tf"  # bypass Strategy A guard (TF path)
+    bot.exchange = object()  # non-None to enter live branch
+
+    # Mock: Binance fills 1000 TEST coins, charges 1 TEST as fee
+    # (= 0.1%, exactly like real BONK testnet). USDT cost = 50.
+    def mock_place_market_buy(exchange, symbol, cost):
+        return {
+            "order_id": "mock_p1",
+            "filled_amount": 1000.0,
+            "avg_price": 0.05,
+            "cost": 50.0,
+            "fee_cost": 0.05,           # USDT-equivalent
+            "fee_currency": "TEST",     # base coin → fee scaled from base
+            "fee_native_amount": 1.0,
+            "fee_base": 1.0,            # 72a: subtracted from holdings
+            "status": "closed",
+            "raw": {},
+        }
+
+    original_mode = TradingMode.MODE
+    original_buy = eo.place_market_buy
+    TradingMode.MODE = "live"
+    eo.place_market_buy = mock_place_market_buy
+
+    try:
+        bot._execute_percentage_buy(price=0.05)
+    finally:
+        TradingMode.MODE = original_mode
+        eo.place_market_buy = original_buy
+
+    # P1: holdings = filled - fee_base = 1000 - 1 = 999
+    assert_close(bot.state.holdings, 999.0, tol=1e-6,
+                 label="holdings net of fee_base")
+    # P2: avg = cost / qty_acquired = 50 / 999 ≈ 0.05005005
+    expected_avg = 50.0 / 999.0
+    assert_close(bot.state.avg_buy_price, expected_avg, tol=1e-9,
+                 label="avg = cost_usdt / qty_acquired")
+    # total_invested still tracks USDT lordo (cash actually paid)
+    assert_close(bot.state.total_invested, 50.0, label="total_invested USDT")
+    print(f"  filled=1000, fee_base=1 → holdings={bot.state.holdings} (expected 999) ✓")
+    print(f"  avg={bot.state.avg_buy_price:.8f} (expected {expected_avg:.8f}) ✓")
+
+
+def test_q_sell_realized_pnl_includes_fee_sell():
+    """Brief 72a P3 (S72): realized_pnl = (price - avg) × qty − fee_sell_usdt.
+    Pre-72a was just (price - avg) × qty → gonfiato di ~0.1% per sell.
+
+    Paper mode is sufficient to test this — paper simulates fee = revenue × FEE_RATE,
+    and the formula change applies in both paper and live paths uniformly.
+    """
+    print("=" * 70)
+    print("TEST Q: 72a — sell realized_pnl includes fee_sell_usdt")
+    print("=" * 70)
+    bot = make_bot()
+    bot.strategy = "B"  # bypass S68a guard so we can sell at any price
+
+    # Setup: 1 buy @ $10 → avg=10, qty=5
+    bot._execute_percentage_buy(price=10.0)
+    avg_before_sell = bot.state.avg_buy_price
+    assert_close(avg_before_sell, 10.0, label="avg after buy")
+
+    # Sell 5 units @ $12. fee_paper = revenue × FEE_RATE = 60 × 0.001 = 0.06.
+    # Expected realized P&L = (12 - 10) × 5 − 0.06 = 10 - 0.06 = 9.94
+    trade = bot._execute_percentage_sell(price=12.0, sell_amount=5.0)
+    assert trade is not None, "sell must execute (strategy B, no guard)"
+
+    expected_fee = 60.0 * bot.FEE_RATE  # paper sim
+    expected_realized = (12.0 - 10.0) * 5.0 - expected_fee
+    assert_close(trade["realized_pnl"], expected_realized, tol=1e-6,
+                 label="realized = (sell - avg) × qty − fee_sell")
+    print(f"  fee_paper = ${expected_fee:.6f}")
+    print(f"  realized = ${trade['realized_pnl']:.6f} "
+          f"(expected ${expected_realized:.6f}) ✓")
+    print(f"  Pre-72a would have been ${(12.0 - 10.0) * 5.0:.4f} "
+          f"(overstated by fee = ${expected_fee:.6f}) ✓")
+
+
+def test_r_replay_with_fee_in_base_coin():
+    """Brief 72a (S72): replay applies the 3 invariants — BUYs with
+    fee_asset == base_coin reduce qty_acquired, avg uses cost USDT
+    over net qty, sells subtract fee_sell. Paper trades (fee_asset='USDT')
+    preserve legacy behaviour because fee_native_est = 0.
+
+    Ground-truth scenario: 2 BUYs on TEST/USDT with fee in TEST + 1 SELL
+    with fee in USDT. Verify final avg/realized match the closed-form
+    expectation, and the BUY-side fee correctly shaves qty.
+    """
+    print("=" * 70)
+    print("TEST R: 72a — replay subtracts fee_native on BUY, fee_sell on SELL")
+    print("=" * 70)
+    from bot.grid.state_manager import init_avg_cost_state_from_db
+    from bot.grid.grid_bot import GridBot
+
+    # Mock client that returns synthetic trade history
+    class MockSupabaseResult:
+        def __init__(self, data):
+            self.data = data
+
+    class MockTable:
+        def __init__(self, data):
+            self.data = data
+        def select(self, _): return self
+        def eq(self, *_): return self
+        def order(self, *_, **__): return self
+        def execute(self): return MockSupabaseResult(self.data)
+
+    class MockClient:
+        def __init__(self, data):
+            self._data = data
+        def table(self, _): return MockTable(self._data)
+
+    # Trade history:
+    # BUY1: 1000 TEST @ $0.05, cost $50, fee_usdt $0.05, fee_asset=TEST
+    # BUY2: 500 TEST @ $0.04, cost $20, fee_usdt $0.02, fee_asset=TEST
+    # SELL1: 300 TEST @ $0.06, fee_usdt $0.018, fee_asset=USDT
+    trade_history = [
+        {"side": "buy",  "amount": 1000.0, "price": 0.05, "cost": 50.0,
+         "fee": 0.05, "fee_asset": "TEST", "created_at": "2026-05-10T00:00:00+00:00"},
+        {"side": "buy",  "amount": 500.0,  "price": 0.04, "cost": 20.0,
+         "fee": 0.02, "fee_asset": "TEST", "created_at": "2026-05-10T01:00:00+00:00"},
+        {"side": "sell", "amount": 300.0,  "price": 0.06, "cost": 18.0,
+         "fee": 0.018, "fee_asset": "USDT", "created_at": "2026-05-10T02:00:00+00:00"},
+    ]
+
+    bot = make_bot()
+    bot.symbol = "TEST/USDT"
+    # Replace trade_logger with one whose client returns the synthetic history
+    class MockLogger:
+        def __init__(self):
+            self.client = MockClient(trade_history)
+            self.trades = []
+        def log_trade(self, **kw):
+            self.trades.append(kw)
+            return kw
+    bot.trade_logger = MockLogger()
+    bot.exchange = None  # paper mode → no fetch_balance, replay sets holdings
+
+    init_avg_cost_state_from_db(bot)
+
+    # Expected calculations:
+    # BUY1: fee_native_est = 0.05 / 0.05 = 1.0 TEST → qty_acq1 = 999
+    #       avg1 = 50.0 / 999.0
+    # BUY2: fee_native_est = 0.02 / 0.04 = 0.5 TEST → qty_acq2 = 499.5
+    #       cumulative qty = 999 + 499.5 = 1498.5
+    #       avg2 = (avg1 × 999 + 20.0) / 1498.5 = (50.0 + 20.0) / 1498.5 = 70.0 / 1498.5
+    # SELL1: realized = (0.06 - avg2) × 300 − 0.018
+    expected_qty_after_buys = 999.0 + 499.5
+    expected_avg_after_buys = 70.0 / 1498.5
+    expected_realized = (0.06 - expected_avg_after_buys) * 300.0 - 0.018
+    expected_qty_after_sell = 1498.5 - 300.0
+
+    assert_close(bot.state.holdings, expected_qty_after_sell, tol=1e-6,
+                 label="qty after replay (paper, no fetch_balance)")
+    assert_close(bot.state.avg_buy_price, expected_avg_after_buys, tol=1e-9,
+                 label="avg after 2 BUYs with fee in base coin")
+    assert_close(bot.state.realized_pnl, expected_realized, tol=1e-6,
+                 label="realized = (sell - avg) × qty − fee_sell")
+    print(f"  BUY1 (1000 @ $0.05, fee=1 TEST) → qty_acq=999, avg={50.0/999.0:.8f}")
+    print(f"  BUY2 (500 @ $0.04, fee=0.5 TEST) → qty_acq=499.5, "
+          f"avg={expected_avg_after_buys:.8f}")
+    print(f"  SELL1 (300 @ $0.06, fee=$0.018) → realized=${expected_realized:.6f}")
+    print(f"  Final state: holdings={bot.state.holdings:.4f}, "
+          f"avg={bot.state.avg_buy_price:.8f}, "
+          f"realized=${bot.state.realized_pnl:.6f} ✓")
+
+
+# ----------------------------------------------------------------------
 # Runner
 # ----------------------------------------------------------------------
 
@@ -854,6 +1066,9 @@ def main():
         test_m_sell_ladder_three_steps,
         test_n_ladder_resets_on_full_selloff,
         test_o_post_fill_warning_slippage_below_avg,
+        test_p_live_buy_scales_holdings_net_of_fee_base,
+        test_q_sell_realized_pnl_includes_fee_sell,
+        test_r_replay_with_fee_in_base_coin,
     ]
     passed = 0
     failed = []

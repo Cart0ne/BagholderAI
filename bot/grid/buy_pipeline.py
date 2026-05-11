@@ -163,6 +163,11 @@ def execute_percentage_buy(bot, price: float) -> Optional[dict]:
         fee = res["fee_cost"]
         fee_currency = res["fee_currency"] or "USDT"
         exchange_order_id = res["order_id"]
+        # Brief 72a (S72): fee scaled from the base coin balance by Binance.
+        # Subtracted from `state.holdings` so it mirrors the real wallet.
+        # Paper mode keeps fee_base=0 because the simulated fill doesn't
+        # touch base balance — paper fee is informational, USDT-equivalent.
+        fee_base = float(res.get("fee_base", 0.0) or 0.0)
         if check_price > 0:
             slippage_pct = (price - check_price) / check_price * 100
     else:
@@ -180,17 +185,36 @@ def execute_percentage_buy(bot, price: float) -> Optional[dict]:
             cost = amount * price  # recalculate cost after rounding
 
         fee = cost * bot.FEE_RATE
+        fee_base = 0.0  # 72a: paper has no base-coin commission
 
     old_last_buy = bot._pct_last_buy_price
     old_holdings = bot.state.holdings
     old_avg = bot.state.avg_buy_price
 
+    # Brief 72a P1 (S72): state.holdings tracks the REAL wallet balance.
+    # Binance scales fee from the base coin on market BUYs (e.g. you buy
+    # 3.4M BONK, Binance keeps ~3.4K BONK as commission, your wallet
+    # receives ~3.397M). Without subtracting fee_base, state.holdings
+    # accumulates phantom qty and eventual sell-all gets InsufficientFunds
+    # rejected (S71 BONK incident, 12.280 BONK observed drift over 9 buys).
+    qty_acquired = amount - fee_base
     bot.state.total_invested += cost
     bot.state.total_fees += fee
-    bot.state.holdings += amount
+    bot.state.holdings += qty_acquired
 
+    # Brief 72a P2 (S72): avg_buy_price = true USDT cost per coin held.
+    # Numerator uses `cost` (USDT actually paid out of cash) and
+    # denominator uses `qty_acquired` (coins that landed in the wallet).
+    # Pre-72a we did (avg_old × old + price × amount) / (old + amount) —
+    # numerically identical when fee_base=0 (paper) but ~0.1% low when
+    # fee_base>0 (live market BUY). On mainnet this is the difference
+    # between sell triggers that lock real profit vs ones that lock
+    # losses after fee. Trade-off only visible at the boundary; corrected
+    # by construction here.
     if bot.state.holdings > 0:
-        bot.state.avg_buy_price = (old_avg * old_holdings + price * amount) / bot.state.holdings
+        bot.state.avg_buy_price = (
+            (old_avg * old_holdings + cost) / bot.state.holdings
+        )
 
     bot._pct_last_buy_price = price
     # Brief s70 FASE 2: avg-cost trading — no FIFO queue to populate.
@@ -262,4 +286,13 @@ def execute_percentage_buy(bot, price: float) -> Optional[dict]:
         f"(cost: ${cost:.2f}, fee: ${fee:.4f} {fee_currency}) [pct mode]"
         + (f" id={exchange_order_id}" if exchange_order_id else "")
     )
+
+    # Brief 72a P1 (S72): optional post-fill safety check (OFF by default,
+    # ENABLED by RECONCILE_AFTER_FILL=true env flag for mainnet).
+    try:
+        from bot.grid.state_manager import maybe_reconcile_after_fill
+        maybe_reconcile_after_fill(bot)
+    except Exception:
+        pass  # never let reconcile errors break a successful trade
+
     return trade_data

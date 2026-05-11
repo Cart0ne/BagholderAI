@@ -185,8 +185,17 @@ def _normalize_order_response(order: dict, symbol: str, side: str) -> Optional[d
     # break every consumer (the BONK trade on 2026-05-08 21:00 showed up
     # as -$3,419 P&L in the private grid dashboard before this fix).
     # `fee_currency` stays as the broker's original ticker for audit.
+    #
+    # Brief 72a (Fee Unification, S72 2026-05-11): also return `fee_base`,
+    # the amount of base coin scaled by Binance as commission. Only > 0
+    # when fee_currency == base_coin (typical market BUY). This is what
+    # buy_pipeline subtracts from `state.holdings` so it matches the
+    # actual wallet balance on Binance. BNB-discount path: fee_base = 0
+    # because the BNB commission does NOT touch the symbol's base coin
+    # balance (it's paid out of the user's BNB wallet, separate asset).
     base_coin = symbol.split("/")[0].upper() if "/" in symbol else ""
     quote_coin = symbol.split("/")[1].upper() if "/" in symbol else "USDT"
+    fee_base = 0.0
     if fee_native <= 0 or not fee_currency:
         fee_usdt = 0.0
     elif fee_currency == quote_coin:
@@ -195,10 +204,12 @@ def _normalize_order_response(order: dict, symbol: str, side: str) -> Optional[d
     elif fee_currency == base_coin and avg_price > 0:
         # Fee in base coin (typical: market BUY on /USDT pair)
         fee_usdt = fee_native * avg_price
+        fee_base = fee_native  # 72a: scaled from wallet base balance
     else:
-        # Edge case: BNB-discount or unrelated currency. Cross-rate lookup
-        # is a Step 5 task; for now record the native amount so it's not
-        # lost from logs and leave fee_usdt at 0 with a warning.
+        # BNB-discount path (or other unrelated currency). fee_base stays 0
+        # because BNB commission doesn't touch this symbol's base balance.
+        # fee_usdt cross-rate lookup is deferred (Step 5); for now record 0
+        # so dashboards don't show garbage and log a warning.
         fee_usdt = 0.0
         logger.warning(
             f"[orders] {side.upper()} {symbol}: fee in {fee_currency} "
@@ -210,7 +221,8 @@ def _normalize_order_response(order: dict, symbol: str, side: str) -> Optional[d
     logger.info(
         f"[orders] {side.upper()} {symbol} FILLED: "
         f"amount={filled} avg=${avg_price:.6f} cost=${cost:.4f} "
-        f"fee={fee_native} {fee_currency} (~${fee_usdt:.6f}) id={order.get('id')}"
+        f"fee={fee_native} {fee_currency} (~${fee_usdt:.6f}, "
+        f"fee_base={fee_base}) id={order.get('id')}"
     )
 
     return {
@@ -221,6 +233,10 @@ def _normalize_order_response(order: dict, symbol: str, side: str) -> Optional[d
         "fee_cost": fee_usdt,            # USDT-equivalent — what trades.fee gets
         "fee_currency": fee_currency,    # broker's original ticker (audit)
         "fee_native_amount": fee_native, # raw value, available for future audit cols
+        "fee_base": fee_base,            # 72a: base-coin commission (>0 only when
+                                          # fee_currency==base_coin); used by
+                                          # buy_pipeline to keep state.holdings in
+                                          # sync with the real Binance wallet
         "status": status,
         "raw": order,
     }

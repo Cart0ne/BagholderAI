@@ -400,8 +400,13 @@ def execute_percentage_sell(
     sell_avg_cost = bot.state.avg_buy_price
     cost_basis = amount * sell_avg_cost
     buy_fee = cost_basis * bot.FEE_RATE  # backward-compat for state.total_fees
-    # 52a: paper-mode realized_pnl excludes fees (see _execute_sell comment).
-    realized_pnl = revenue - cost_basis
+    # Brief 72a P3 (S72): realized_pnl is netto fees. Binance scales fee
+    # from USDT on market SELL — your wallet receives `revenue - fee`,
+    # not `revenue`. The pre-72a formula `revenue - cost_basis` overstated
+    # P&L by ~0.1% per sell (cumulated +$0.47 across 458 sells in the v3
+    # testnet dataset). Buy-side fee is already captured in `avg_buy_price`
+    # via the P2 net formula (cost USDT / qty_acquired) — no double-count.
+    realized_pnl = revenue - cost_basis - fee
 
     # Brief s70 FASE 1: forensic audit trail on avg-cost.
     # ~20 sells/day cluster-wide; cheap. If a future report disagrees
@@ -663,4 +668,13 @@ def execute_percentage_sell(
         f"SELL {amount:.6f} {bot.symbol} @ {fmt_price(price)} "
         f"(revenue: ${revenue:.2f}, fee: ${fee:.4f}, pnl: ${realized_pnl:.4f}) [pct mode]"
     )
+
+    # Brief 72a P1 (S72): optional post-fill safety check (OFF by default,
+    # ENABLED by RECONCILE_AFTER_FILL=true env flag for mainnet).
+    try:
+        from bot.grid.state_manager import maybe_reconcile_after_fill
+        maybe_reconcile_after_fill(bot)
+    except Exception:
+        pass  # never let reconcile errors break a successful trade
+
     return trade_data
