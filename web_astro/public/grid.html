@@ -777,22 +777,22 @@
         return x.sym + ': ' + s + Math.abs(x.val).toFixed(2);
       }).join(' · ');
 
-      // ROW 1 — fondamentali: Budget · Stato attuale · Total P&L
+      // ROW 1 — fondamentali: Budget · Current state · Total P&L
       document.getElementById('overview-row1').innerHTML =
         '<div class="stat-box">' +
-          '<div class="stat-label">Budget progetto</div>' +
+          '<div class="stat-label">Project budget</div>' +
           '<div class="stat-value">$' + fmt(INITIAL_CAPITAL) + '</div>' +
-          '<div class="stat-sub">starting capital (convenzione interna)</div>' +
+          '<div class="stat-sub">starting capital (internal convention)</div>' +
         '</div>' +
         '<div class="stat-box">' +
-          '<div class="stat-label">Stato attuale</div>' +
+          '<div class="stat-label">Current state</div>' +
           '<div class="stat-value">$' + fmt(statoAttuale) + '</div>' +
           '<div class="stat-sub">= cash + holdings + skim − fees</div>' +
         '</div>' +
         '<div class="stat-box">' +
           '<div class="stat-label">Total P&L</div>' +
           '<div class="stat-value" style="color:' + pnlColor + ';">' + (totalPnl >= 0 ? '+' : '') + '$' + fmt(totalPnl) + '</div>' +
-          '<div class="stat-sub">= Stato attuale − Budget</div>' +
+          '<div class="stat-sub">= Current state − Budget</div>' +
         '</div>';
 
       // ROW 2 — cash flow: Cash to reinvest · Deployed · Skim
@@ -805,12 +805,12 @@
         '<div class="stat-box">' +
           '<div class="stat-label">Deployed</div>' +
           '<div class="stat-value">$' + fmt(holdingsValue) + '</div>' +
-          '<div class="stat-sub">= holdings × prezzo live · cost basis $' + fmt(totalDeployedCost) + '</div>' +
+          '<div class="stat-sub">= holdings × live price · cost basis $' + fmt(totalDeployedCost) + '</div>' +
         '</div>' +
         '<div class="stat-box">' +
           '<div class="stat-label">Skim</div>' +
           '<div class="stat-value" style="color:var(--green);">+$' + skimReserveTotal.toFixed(4) + '</div>' +
-          '<div class="stat-sub">= Σ skim_pct % del realized accantonato</div>' +
+          '<div class="stat-sub">= Σ skim_pct % of realized set aside</div>' +
         '</div>';
 
       // ROW 3 — performance breakdown: Unrealized · Fees · Dust
@@ -835,17 +835,17 @@
         '<div class="stat-box">' +
           '<div class="stat-label">Unrealized</div>' +
           '<div class="stat-value" style="color:' + unrColor + ';">' + unrSign + '$' + fmt(totalUnrealized) + '</div>' +
-          '<div class="stat-sub">= (prezzo live − avg buy) × holdings · ' + (unrBreakdown || '—') + '</div>' +
+          '<div class="stat-sub">= (live price − avg buy) × holdings · ' + (unrBreakdown || '—') + '</div>' +
         '</div>' +
         '<div class="stat-box">' +
           '<div class="stat-label">Fees</div>' +
           '<div class="stat-value" style="color:var(--text-dim);">−$' + fmt(totalFees) + '</div>' +
-          '<div class="stat-sub">= Σ trades.fee · già scontate da Stato attuale</div>' +
+          '<div class="stat-sub">= Σ trades.fee · already deducted from Current state</div>' +
         '</div>' +
         '<div class="stat-box">' +
           '<div class="stat-label">Dust</div>' +
           '<div class="stat-value" style="color:' + dustColor + ';">$' + dustTotalUsd.toFixed(4) + '</div>' +
-          '<div class="stat-sub">residui sotto $5 min_notional · ' + dustBreakdown + '</div>' +
+          '<div class="stat-sub">residuals below $5 min_notional · ' + dustBreakdown + '</div>' +
         '</div>';
 
       // Brief 71a — Net Realized Profit (post-fees). Σ realized_pnl − Σ fees.
@@ -866,7 +866,7 @@
           '<div class="stat-value" style="color:' + netRealColor + ';">' +
             netRealSign + '$' + fmt(Math.abs(netRealized)) +
           '</div>' +
-          '<div class="stat-sub">= Σ realized_pnl − Σ fees · esclude unrealized · gemello del numero su /dashboard</div>' +
+          '<div class="stat-sub">= Σ realized_pnl − Σ fees · excludes unrealized · twin of the value on /dashboard</div>' +
         '</div>';
     }
 
@@ -884,7 +884,7 @@
 
         var barColor = a.buysLeft === 0 ? 'var(--red)' : a.buysLeft <= 1 ? 'var(--yellow)' : color;
 
-        // S69: prezzo live e diff% vs avg buy (solo se posizione aperta + prezzo disponibile)
+        // S69: live price e diff% vs avg buy (solo se posizione aperta + prezzo disponibile)
         var livePrice = livePrices[sym];
         var hasLive = !positionClosed && livePrice > 0 && a.avgBuyPrice > 0;
         var diffPct = hasLive ? ((livePrice - a.avgBuyPrice) / a.avgBuyPrice * 100) : null;
