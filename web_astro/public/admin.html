@@ -211,8 +211,9 @@
     }
     .chart-wrap canvas { width: 100%; height: 320px; display: block; }
     .chart-overlay {
-      position: absolute; top: 18px; left: 22px;
+      position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
       font-family: var(--mono); pointer-events: none; z-index: 2;
+      text-align: center;
     }
     .chart-overlay .price { font-size: 14px; font-weight: 700; color: #fff; }
     .chart-overlay .change { font-size: 11px; margin-top: 1px; color: var(--text-dim); }
@@ -290,6 +291,24 @@
       font-family: var(--mono); font-size: 10px; color: var(--text-dim);
       margin-top: 8px; line-height: 1.4;
     }
+
+    /* Global time-range selector — applies to all charts (Sentinel trend,
+       Reaction, Parameters history). One change triggers a refetch +
+       re-render across the whole dashboard. */
+    .range-selector {
+      display: flex; gap: 4px; margin: 8px 0 4px;
+    }
+    .range-selector button {
+      background: var(--surface); border: 1px solid var(--border);
+      color: var(--text-dim); padding: 6px 14px; border-radius: 6px;
+      font-family: var(--mono); font-size: 11px; cursor: pointer;
+      letter-spacing: 0.05em; transition: all 0.15s;
+    }
+    .range-selector button:hover { color: var(--text); border-color: var(--text-dim); }
+    .range-selector button.active {
+      background: var(--purple); color: #0a0a0a; border-color: var(--purple);
+      font-weight: 600;
+    }
   </style>
 </head>
 <body>
@@ -319,6 +338,15 @@
         <span id="last-update">—</span>
       </div>
       <h1><img class="h1-mascot sentinel" src="sentinel.svg" alt="Sentinel"><img class="h1-mascot sherpa" src="sherpa.svg" alt="Sherpa"><span>BagHolder<span class="ai">AI</span> <span class="badge">ADMIN</span></span></h1>
+
+      <!-- Global time-range selector — synced across Sentinel trend, Reaction
+           chart, and the 3 Parameters history charts. -->
+      <div class="range-selector" id="range-selector">
+        <button data-range-hours="12">12h</button>
+        <button data-range-hours="24" class="active">24h</button>
+        <button data-range-hours="168">7d</button>
+        <button data-range-hours="720">1m</button>
+      </div>
 
       <!-- ============ SENTINEL ============ -->
       <div class="section-title"><img class="section-mascot sentinel" src="sentinel.svg" alt="Sentinel"><span>Sentinel — fast loop (60s)</span></div>
@@ -384,7 +412,7 @@
         <canvas id="sentinel-chart"></canvas>
         <div class="chart-legend">
           <span class="item"><span class="swatch" style="background: var(--red-strong); height: 2px;"></span> Risk score (0-100)</span>
-          <span class="item"><span class="swatch" style="background: repeating-linear-gradient(90deg, var(--green) 0 6px, transparent 6px 10px); height: 3px;"></span> Opportunity score (0-100)</span>
+          <span class="item"><span class="swatch" style="background: var(--green); height: 2px;"></span> Opportunity score (0-100)</span>
           <span class="item"><span class="swatch" style="background: var(--blue);"></span> BTC price (right axis)</span>
           <span class="item"><span class="swatch" style="background: var(--yellow); height: 8px; border-left: 2px dashed var(--yellow);"></span> Speed of fall fired</span>
         </div>
@@ -471,21 +499,28 @@
         </div>
       </div>
 
-      <!-- Reaction chart: Sentinel risk × Sherpa proposals (24h) -->
-      <div class="section-title sherpa">📊 Sentinel → Sherpa reaction (24h)</div>
+      <!-- Reaction chart: Sentinel risk + opp × Sherpa proposals -->
+      <div class="section-title sherpa">📊 Sentinel (risk + opp) → Sherpa reaction</div>
       <div class="chart-wrap">
         <canvas id="reaction-chart"></canvas>
         <div class="chart-legend">
           <span class="item"><span class="swatch" style="background: var(--red-strong);"></span> Risk score (0-100, left axis)</span>
+          <span class="item"><span class="swatch" style="background: var(--green);"></span> Opportunity score (0-100, left axis)</span>
           <span class="item"><span class="swatch" style="background: #3b82f6;"></span> BTC proposed_buy_pct</span>
           <span class="item"><span class="swatch" style="background: #22c55e;"></span> SOL proposed_buy_pct</span>
           <span class="item"><span class="swatch" style="background: #f59e0b;"></span> BONK proposed_buy_pct</span>
           <span class="item"><span class="swatch" style="background: var(--text-dim);"></span> right axis: buy_pct (0.3-3.0)</span>
         </div>
         <div class="footnote">
-          When Sentinel's risk_score moves, do the 3 Sherpa lines react?
-          A flat market (today) shows flat lines — that's fine. A volatile market should show the 3 lines moving in response to risk spikes.
-          <br>The 3 buy_pct lines are vertically offset by ±3px (BTC up, SOL center, BONK down) so they stay visible when they coincide. Exact values are in the proposals table above.
+          When Sentinel's <strong>risk + opp scores</strong> move, do the 3 Sherpa lines react?
+          A flat market shows flat lines — that's fine. A volatile market should show
+          the 3 buy_pct lines moving in response to both risk spikes (drop ladders) and
+          opp spikes (pump ladders, funding short squeezes). Half of Sherpa's
+          adjustment ladders are opp-side, so the green line is part of the decision
+          input, not just a passive signal.
+          <br>Risk + Opp are vertically offset by ±2px so they stay visible when they
+          coincide. The 3 buy_pct lines are offset by ±3px (BTC up, SOL center, BONK
+          down). Exact values are in the proposals table above.
         </div>
       </div>
 
@@ -610,7 +645,7 @@
           <strong style="color: var(--yellow);">WARN_BINANCE_EMPTY</strong> Binance returned 0 trades (probable testnet reset) ·
           <strong style="color: var(--red);">DRIFT</strong> matched orders out of tolerance ·
           <strong style="color: var(--red-strong);">DRIFT_BINANCE_ORPHAN</strong> order on Binance not in DB.
-          <br>Manual run on Mac Mini: <code>python3.13 scripts/reconcile_binance.py --write</code>. Nightly cron (Step C) — pending S71+.
+          <br>Manual run on Mac Mini: <code>python3.13 scripts/reconcile_binance.py --write</code>. Nightly cron at 03:00 Europe/Rome via <code>cron_reconcile.sh</code> (brief 71a, S71).
         </div>
       </div>
 
@@ -700,6 +735,11 @@
     var SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB4ZGh0bXFmd2p3amh0Y29hY3NuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4NDI1OTIsImV4cCI6MjA4OTQxODU5Mn0.G76lvYWrqlM0z2RoSkU1uAglfMBKN_rXvBGOQhb4kdg';
     var ADMIN_HASH = '8a308134250d16e95b79019171e5cb37ed436a14e2800f22b98e0fa20ac6f9eb'; // sha256 of the real admin password (set ~session 53)
 
+    // === STATE ===
+    // Current time-window for all charts (Sentinel trend + Reaction + Parameters).
+    // Updated by the .range-selector buttons; bootstrap() reads it on every refresh.
+    var currentRangeHours = 24;
+
     // === AUTH (identical to tf.html / grid.html) ===
     async function sha256(msg) {
       var buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(msg));
@@ -724,10 +764,29 @@
     function showDashboard() {
       document.getElementById('auth-gate').style.display = 'none';
       document.getElementById('dashboard').style.display = 'block';
+      wireRangeSelector();
       bootstrap();
     }
 
     if (sessionStorage.getItem('bh_admin') === '1') showDashboard();
+
+    // Wire the global range selector once the dashboard is shown.
+    // Clicking a button updates currentRangeHours and re-runs bootstrap so
+    // every chart (Sentinel trend + Reaction + 3 Parameters) refetches and
+    // re-renders against the new window.
+    function wireRangeSelector() {
+      var buttons = document.querySelectorAll('#range-selector button');
+      buttons.forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          var h = Number(btn.getAttribute('data-range-hours'));
+          if (!h || h === currentRangeHours) return;
+          buttons.forEach(function(b) { b.classList.remove('active'); });
+          btn.classList.add('active');
+          currentRangeHours = h;
+          bootstrap();
+        });
+      });
+    }
 
     // === SUPABASE FETCH HELPERS ===
     async function sbFetch(path) {
@@ -756,10 +815,12 @@
 
     // Supabase REST caps responses at 1000 rows even if `limit=N` URL param
     // is larger. We paginate via the Range header until we get < pageSize rows
-    // (or hit a hard safety cap of 10k rows to avoid runaway loops).
-    async function sbFetchAll(path, pageSize) {
+    // (or hit a hard safety cap to avoid runaway loops). The cap is a parameter
+    // because long ranges (7d, 1m) need a higher ceiling: 7d of Sherpa is
+    // ~30k rows, 1m can be ~130k.
+    async function sbFetchAll(path, pageSize, safetyCap) {
       pageSize = pageSize || 1000;
-      var safetyCap = 10000;
+      safetyCap = safetyCap || 10000;
       var all = [];
       var offset = 0;
       while (offset < safetyCap) {
@@ -969,32 +1030,29 @@
       }
       ctx.stroke();
 
-      // Opportunity line — BOTTOM layer (drawn first): thick + dashed + alpha
-      // so the line above (Risk) leaves a visible green "halo" around itself
-      // even when both scores coincide (e.g. flat market: risk=opp=20).
-      ctx.save();
+      // Opportunity + Risk lines — both thin, both solid, vertically offset
+      // by ±2px so they remain visible when their values coincide (flat market:
+      // risk=opp=20). Same pattern as the reaction chart's 3 buy_pct lines.
+      // Risk on top (dy=-2), Opportunity slightly below (dy=+2).
       ctx.strokeStyle = '#22c55e';
-      ctx.lineWidth = 6;
-      ctx.globalAlpha = 0.65;
-      ctx.setLineDash([6, 4]);
+      ctx.lineWidth = 1.5;
       ctx.beginPath();
       for (var i = 0; i < rows.length; i++) {
         var v = Number(rows[i].opportunity_score);
         var x = tx(new Date(rows[i].created_at).getTime());
-        var y = tyScore(v);
+        var y = tyScore(v) + 2;
         if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
       }
       ctx.stroke();
-      ctx.restore();
 
-      // Risk line — TOP layer (drawn last): thin + solid + opaque
+      // Risk line — drawn last so it sits visually on top
       ctx.strokeStyle = '#ef4444';
       ctx.lineWidth = 1.8;
       ctx.beginPath();
       for (var i = 0; i < rows.length; i++) {
         var v = Number(rows[i].risk_score);
         var x = tx(new Date(rows[i].created_at).getTime());
-        var y = tyScore(v);
+        var y = tyScore(v) - 2;
         if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
       }
       ctx.stroke();
@@ -1154,17 +1212,32 @@
         ctx.stroke();
       });
 
-      // Risk score line (left axis, red, drawn last so it's on top)
+      // Opportunity + Risk score lines (left axis). Both thin solid, vertically
+      // offset ±2px so they remain visible when their values coincide.
+      // Half of Sherpa's adjustment ladders are opp-side (btc_pump_*,
+      // funding_short_*), so showing both surfaces the full decision input.
       var sentinel = sentinelRows.slice().sort(function(a, b) {
         return new Date(a.created_at) - new Date(b.created_at);
       });
+      // Opp first (below, dy=+2)
+      ctx.strokeStyle = '#22c55e';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      sentinel.forEach(function(r, i) {
+        var v = Number(r.opportunity_score);
+        var x = tx(new Date(r.created_at).getTime());
+        var y = tyScore(v) + 2;
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+      // Risk last so it sits visually on top (above, dy=-2)
       ctx.strokeStyle = '#ef4444';
       ctx.lineWidth = 1.8;
       ctx.beginPath();
       sentinel.forEach(function(r, i) {
         var v = Number(r.risk_score);
         var x = tx(new Date(r.created_at).getTime());
-        var y = tyScore(v);
+        var y = tyScore(v) - 2;
         if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
       });
       ctx.stroke();
@@ -1486,17 +1559,24 @@
         var last = await sbFetch('sentinel_scores?select=*&order=created_at.desc&limit=1');
         renderLastScan(last[0]);
 
-        var since = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
-        // Paginated: Supabase REST caps at 1000 rows per response. 24h of
-        // Sentinel data is ~1440 rows (60s loop) and 24h of Sherpa is ~2160
-        // rows (3 symbols × 720). Without pagination we'd lose the most
-        // recent ~7 hours.
-        var sentinelRows = await sbFetchAll('sentinel_scores?select=created_at,risk_score,opportunity_score,btc_price,raw_signals&created_at=gte.' + encodeURIComponent(since) + '&order=created_at.asc');
+        var since = new Date(Date.now() - currentRangeHours * 3600 * 1000).toISOString();
+        // Paginated: Supabase REST caps at 1000 rows per response.
+        // Sentinel writes every 60s, Sherpa every 120s per symbol (3 symbols).
+        // For long ranges we lift the safety cap so the page can show the
+        // full window without truncating the oldest rows.
+        //   12h: ~720 sentinel / ~2160 sherpa  → cap 10k (default)
+        //   24h: ~1440 sentinel / ~4320 sherpa → cap 10k (default)
+        //   7d:  ~10080 sentinel / ~30240 sherpa → cap 60k
+        //   1m:  ~43200 sentinel / ~130k sherpa  → cap 200k
+        var fetchCap = currentRangeHours >= 720 ? 200000
+                     : currentRangeHours >= 168 ? 60000
+                     : 10000;
+        var sentinelRows = await sbFetchAll('sentinel_scores?select=created_at,risk_score,opportunity_score,btc_price,raw_signals&created_at=gte.' + encodeURIComponent(since) + '&order=created_at.asc', 1000, fetchCap);
         renderChart(sentinelRows);
         renderSpeedCounter(sentinelRows);
 
-        // --- Sherpa: 24h proposals for all symbols ---
-        var sherpaAll = await sbFetchAll('sherpa_proposals?select=created_at,symbol,risk_score,opportunity_score,current_buy_pct,current_sell_pct,current_idle_reentry_hours,proposed_buy_pct,proposed_sell_pct,proposed_idle_reentry_hours,proposed_regime,cooldown_active,cooldown_parameters,would_have_changed&created_at=gte.' + encodeURIComponent(since) + '&order=created_at.asc');
+        // --- Sherpa: proposals for all symbols over the selected window ---
+        var sherpaAll = await sbFetchAll('sherpa_proposals?select=created_at,symbol,risk_score,opportunity_score,current_buy_pct,current_sell_pct,current_idle_reentry_hours,proposed_buy_pct,proposed_sell_pct,proposed_idle_reentry_hours,proposed_regime,cooldown_active,cooldown_parameters,would_have_changed&created_at=gte.' + encodeURIComponent(since) + '&order=created_at.asc', 1000, fetchCap);
 
         var bySym = { 'BTC/USDT': [], 'SOL/USDT': [], 'BONK/USDT': [] };
         var latestBySym = {};
