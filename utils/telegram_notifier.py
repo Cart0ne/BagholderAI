@@ -183,17 +183,17 @@ class TelegramNotifier:
 
             text += (
                 f"\n{'─' * 15}\n"
-                f"💼 <b>Portfolio Totale</b>\n"
+                f"💼 <b>Total Portfolio</b>\n"
                 f"  Cash: ${cash:.2f}\n"
                 f"  Holdings: ${holdings_val:.2f}\n"
-                f"  <b>Valore totale: ${total_val:.2f}</b>\n"
-                f"  Capitale iniziale: ${initial:.2f}\n"
+                f"  <b>Total value: ${total_val:.2f}</b>\n"
+                f"  Initial capital: ${initial:.2f}\n"
                 f"  P&L: ${total_pnl:+.2f} ({pnl_pct:+.1f}%)\n"
             )
 
             positions = ps.get('positions', [])
             if positions:
-                text += "\n  <b>Posizioni:</b>\n"
+                text += "\n  <b>Positions:</b>\n"
                 for p in positions:
                     psym = p.get('symbol', '?')
                     pval = p.get('value', 0)

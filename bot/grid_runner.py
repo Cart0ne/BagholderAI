@@ -953,8 +953,8 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
                     msg = (
                         f"⚠️ BUY SKIPPED {sym}\n"
                         f"Level: {fmt_price(skip['level_price'])}\n"
-                        f"💵 Cash {base}: ${skip['cash_before']:.2f} → Servono ${skip['cost']:.2f} ❌ SKIPPED\n"
-                        f"Motivo: capitale insufficiente"
+                        f"💵 Cash {base}: ${skip['cash_before']:.2f} → Need ${skip['cost']:.2f} ❌ SKIPPED\n"
+                        f"Reason: insufficient capital"
                     )
                     notifier.send_message(msg)
 
@@ -969,7 +969,7 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
                     f"⚠️ SELL SKIPPED {sym}\n"
                     f"Level: {fmt_price(skip['level_price'])}\n"
                     f"Need: {skip['amount_needed']:.6f} | Have: {skip['holdings']:.6f}\n"
-                    f"Motivo: holdings insufficienti"
+                    f"Reason: insufficient holdings"
                 )
                 notifier.send_message(msg)
 
@@ -978,10 +978,10 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
             if available < HardcodedRules.MIN_LAST_SHOT_USD and not _capital_exhausted:
                 _capital_exhausted = True
                 notifier.send_message(
-                    f"⚠️ <b>{cfg.symbol}: Capitale esaurito</b>\n"
-                    f"Cash disponibile: ${available:.2f}\n"
-                    f"Tutte le posizioni sono deployed.\n"
-                    f"Il bot attende un sell per ricominciare a comprare."
+                    f"⚠️ <b>{cfg.symbol}: Capital exhausted</b>\n"
+                    f"Available cash: ${available:.2f}\n"
+                    f"All positions deployed.\n"
+                    f"Bot waits for a sell to resume buying."
                 )
                 log_event(
                     severity="warn",
@@ -994,9 +994,9 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
             elif available >= HardcodedRules.MIN_LAST_SHOT_USD and _capital_exhausted:
                 _capital_exhausted = False
                 notifier.send_message(
-                    f"✅ <b>{cfg.symbol}: Capitale ripristinato</b>\n"
-                    f"Cash disponibile: ${available:.2f}\n"
-                    f"Il bot può tornare a comprare."
+                    f"✅ <b>{cfg.symbol}: Capital restored</b>\n"
+                    f"Available cash: ${available:.2f}\n"
+                    f"Bot can resume buying."
                 )
                 log_event(
                     severity="info",
@@ -1010,9 +1010,9 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
             # Error recovery: cycle succeeded after consecutive failures
             if _error_count > 0:
                 notifier.send_message(
-                    f"✅ <b>{cfg.symbol}: Loop ripristinato</b>\n"
-                    f"Errori consecutivi risolti: {_error_count}\n"
-                    f"Bot operativo."
+                    f"✅ <b>{cfg.symbol}: Loop restored</b>\n"
+                    f"Consecutive errors resolved: {_error_count}\n"
+                    f"Bot operational."
                 )
                 _error_count = 0
                 _error_last_alert = 0.0
@@ -1176,11 +1176,11 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
             now_ts = time.time()
             if now_ts - _error_last_alert >= ERROR_ALERT_COOLDOWN:
                 _error_last_alert = now_ts
-                repeat_note = f"\nProssimo alert tra 30min se persiste." if _error_count > 1 else ""
+                repeat_note = f"\nNext alert in 30min if persistent." if _error_count > 1 else ""
                 notifier.send_message(
-                    f"🔴 <b>{cfg.symbol}: Errore nel loop</b>\n"
+                    f"🔴 <b>{cfg.symbol}: Loop error</b>\n"
                     f"<code>{str(e)[:300]}</code>\n"
-                    f"Errori consecutivi: {_error_count}"
+                    f"Consecutive errors: {_error_count}"
                     f"{repeat_note}"
                 )
             try:
