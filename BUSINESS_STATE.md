@@ -1,8 +1,8 @@
 # BUSINESS_STATE.md
 
-**Last updated:** 2026-05-11 — Session 72 chiusura (brief 72a fee unification shipped, 11 commit, frontend canonical refactor, TF rimosso da totali pubblici, cron reconcile attivo)
+**Last updated:** 2026-05-12 — Session 74 chiusura (S73: dead zone + dust trap + phantom holdings + managed_holdings. S74: partial fill mainnet-gating chiusa, bot_runtime_state primitiva canonical, dashboard stop-buy + trigger fix, DEAD_ZONE_HOURS parametrico)
 **Updated by:** CEO
-**Basato su:** PROJECT_STATE.md aggiornato 2026-05-11 (S72 chiusura, ultimo commit e975a71)
+**Basato su:** PROJECT_STATE.md aggiornato 2026-05-12 (S74b chiusura, ultimo commit 2f67533)
 
 ---
 
@@ -50,11 +50,15 @@ BagHolderAI è un progetto sperimentale dove un'AI (Claude) gestisce un micro-bu
 
 Preview rimosse da entrambi i volumi.
 
-**Volume 3** — prossimo target di pubblicazione. Coprirà sessions 53+. Sessioni 53–71 in accumulo, **nessun lavoro attivo** (Board: "prima i fondamentali"). Stima grezza chiusura: sessioni 75–80. Arco narrativo: Clean Slate → Testnet → FIFO Divorce → Fee Reckoning.
+**Volume 3** — prossimo target di pubblicazione. Coprirà sessions 53+. Sessioni 53–74 in accumulo. Stima grezza chiusura: sessioni 78–85. Arco narrativo: Clean Slate → Testnet → FIFO Divorce → Fee Reckoning → The Stress Test (S73–74).
 
-**Sessione corrente:** 72 BUILDING (brief 72a shipped + frontend cleanup + cron reconcile). S71 COMPLETE su Supabase.
+**Sessione corrente:** 74 BUILDING su Supabase, 73 COMPLETE. Diary .docx S73 e S74 prodotti.
 
-**Check di congruenza diary↔DB:** nessun check automatico attivo. **Reconciliation gate (nightly script)** proposto come task Validation System: verifica ogni notte che `Realized_avg_cost + Unrealized = Total P&L` chiuda al centesimo, alert se gap > $0.01. Da implementare insieme a brief 60b respec.
+**Check di congruenza diary↔DB:** nessun check automatico attivo. Reconciliation gate nightly proposto ma non implementato.
+
+**Draft in coda:**
+- `drafts/2026-05-07_howwework_v3.md` — ready for review, deferred a sessione "sito pubblico"
+- `drafts/2026-05-07_diary_vol3_state_files.md` — seed draft, da sviluppare col CEO per Volume 3
 
 ---
 
@@ -62,78 +66,42 @@ Preview rimosse da entrambi i volumi.
 
 | Data | Decisione | Perché |
 |---|---|---|
-| 2026-05-11 (S72) | **Holdings = fetch_balance() golden source** | Svolta architetturale: il DB non può ricostruire holdings (initial fantasma testnet + reset mensili). Wallet Binance è l'unica verità. Replay DB solo per avg e realized |
-| 2026-05-11 (S72) | **Asymmetric boot reconcile** | Drift negativo (capital at risk) → fail 2%. Drift positivo (surplus) → warn only. Su mainnet irrilevante (no gift) |
-| 2026-05-11 (S72) | **TF sparisce da tutti i totali pubblici** | Homepage, dashboard, grid card: solo Grid $500. TF paused non infla P&L |
-| 2026-05-11 (S72) | **Via A — bias $0.22 netRealized accettato** | Mainnet pulito by construction. Testnet paper resta gross. Documentato, non corretto |
-| 2026-05-11 (S72) | **Frontend canonical refactor** | `pnl-canonical.js` shared. 4 superfici (home/dashboard/grid/tf) stessa funzione. Inline scripts bypass eliminati |
-| 2026-05-11 (S72) | **Cron reconcile Step C installato** | Mac Mini 03:00 Europe/Rome. Prima run automatica 2026-05-12 |
-| 2026-05-11 (S71) | **Go-live slips, approccio sequenziale** | Roadmap a fasi: (1) pending cleanup, (2) fee brainstorming + fix, (3) Sentinel/Sherpa analisi, (4) TF. Nessuna data fissa |
-| 2026-05-11 (S71) | **P&L hero = NET fees ovunque** | Formula canonica: `cash + holdings_mtm + skim − fees − budget`. grid.html aveva ragione, pagine pubbliche fixate |
-| 2026-05-11 (S71) | **Due numeri P&L etichettati** | Total P&L (include unrealized) + Net Realized Profit (storico, post-fees). Raccontano cose diverse, servono entrambi |
-| 2026-05-11 (S71) | **Backfill solo testnet, paper resta as-is** | I 458 trade paper non avevano fee reali. Correggere con formula fee = "fixare" dati mai veri. Strada 2 ridotta a ~42 trade testnet (~1-1.5h) |
-| 2026-05-11 (S71) | **Fee: brainstorming prima di codice** | BONK InsufficientFunds (gap 12.280 BONK fee-in-base-coin tra DB e Binance) dimostra che le fee toccano il core trading. Brief 71b scoped ma aspetta design session |
-| 2026-05-10 (S70) | **FEE_RATE = 0.001 hardcoded** | Worst-case Binance. Se BNB discount, guadagno extra senza toccare codice |
-| 2026-05-10 (S70) | **Sell graduale a scala (sell ladder)** | Speculare ai buy DCA. Ogni sell richiede +sell_pct% sopra l'ultimo. `_last_sell_price` traccia la scala |
-| 2026-05-10 (S70) | **Sentinel ricalibrato + Sentinel/Sherpa DRY_RUN riaccesi** | 3 bug calibrazione fixati. Telegram OFF di default. 7 giorni raccolta dati |
-| 2026-05-10 (S70) | **Reconciliation Binance Step A+B shipped** | 26/26 matched zero drift. Script manuale + pannello /admin + tabella pubblica |
-| 2026-05-10 (S70c) | **"The story is the process, not the numbers"** | Board: cambi contabili retroattivi = materiale narrativo, non rischio reputazionale |
-| 2026-05-10 (S70c) | **Net Realized Profit parcheggiato** | Bug strutturale realized_pnl gross scoperto. Brief dedicato "Strada 2" pre-mainnet |
-| 2026-05-09 (S69) | **Avg-cost trading puro deployed + Strategy A simmetrico** | Chiusura completa del debito FIFO. Buy guard "no buy above avg" + sell guard "no sell below avg" specular |
-| 2026-05-09 (S69) | **Budget testnet $500 confermato (no passaggio a $10K)** — Board | Niente vantaggio tangibile a scalare. Allocazioni invariate (BTC $200, SOL $150, BONK $150) |
-| 2026-05-09 (S68) | **Filosofia "Trading minimum viable"** — Board | Solo Grid attivo, TF/Sentinel/Sherpa stay-but-off. 67 sessioni accumulate debt strutturale, restart concettuale del trading subsystem |
-| 2026-05-08 (S67) | **Brief 67a SHIPPED: testnet live + fee design opzione A (USDT-equivalent canonical)** | Prima connessione reale a Binance, ccxt set_sandbox_mode. Una sola fonte di verità in USDT per dashboard/P&L/reconciliation |
+| 2026-05-12 (S74b) | **bot_runtime_state come primitiva canonical** | Il bot scrive il suo stato in-memory ogni tick in 1 riga per symbol. Dashboard legge da lì, non più dai trades/events. Pattern stabile per ogni futuro "il dashboard non racconta la verità" |
+| 2026-05-12 (S74b) | **Partial fill = trade reale (brief 74c)** | `status='expired'` con `filled>0` è un partial fill, non un no-op. Mainnet-gating chiusa. Fix 3 righe in exchange_orders.py |
+| 2026-05-12 (S74b) | **DEAD_ZONE_HOURS per-coin in bot_config** | Migrato da hardcoded a parametro configurabile. BONK può avere 8h, BTC 2h. Sherpa-ready |
+| 2026-05-12 (S74b) | **Dashboard stop-buy badge + trigger fix** | Badge rosso quando guardia attiva. Trigger calcolato da bot reference, non da trades |
+| 2026-05-12 (S74) | **English everywhere (Telegram)** | 9 stringhe IT residue → EN. Più veloce che tradurre tutto IT, consistente cross-canale |
+| 2026-05-12 (S74) | **Private-first, public later** | HWW v3 deferred. Prima sistemare ciò che vede l'operatore (admin, Telegram), poi il sito pubblico |
+| 2026-05-12 (S73) | **Tutti i 4 cervelli su testnet prima del go-live** | Rischio operativo: restart per fix Sentinel può fermare trade reali. Team troppo piccolo per due ambienti. Go-live spostato a fine maggio/inizio giugno |
+| 2026-05-12 (S73c) | **managed_holdings = wallet − phantom** | 9 punti hot path ora usano managed. Su mainnet phantom=0 → no behavior change |
+| 2026-05-12 (S73c) | **Base amount per market buy** | Elimina LOT_SIZE rejection su book sottili. ccxt flag per impedire auto-conversione |
+| 2026-05-12 (S73a) | **Dead Zone recalibration** | Dopo N ore idle con 1 lotto, forza reset ladder al prezzo corrente |
+| 2026-05-11 (S72) | **Holdings = fetch_balance() golden source** | Wallet Binance unica verità. Replay DB solo per avg e realized |
+| 2026-05-11 (S72) | **Frontend canonical refactor** | `pnl-canonical.js` shared. 4 superfici stessa funzione |
+| 2026-05-11 (S72) | **TF sparisce da totali pubblici** | Homepage, dashboard, grid: solo Grid $500 |
 
 ---
 
-## 5. Domande Aperte per CC (idee tech non ancora in brief)
+## 5. Domande Aperte per CC
 
-**[Aperte da S65-S70, ancora attive]**
-
-- **BNB-discount fee future-proof** (S67) — se mainnet usa BNB per sconto 25%, `fee_usdt = 0` quando fee_currency=BNB. Trascurabile su €100, da risolvere pre-scale-up. Cross-tema con brief 71b + Strada 2.
-- **Slippage_buffer parametrico per coin** (S70) — BONK testnet slippage 2.46% vs BTC/SOL ~0%. Brief separato pre-mainnet.
-- **exchange_order_id null su sell** (S67) — sell OP/USDT non popola il campo. Fix: fallback clientOrderId. ~30min.
-- **Recalibrate-on-restart** (S67) — buy_pct cambia spontaneamente a ogni restart. Da indagare: Sherpa scrive in bot_config durante DRY_RUN?
-- **Phase 2 split di `bot/grid_runner.py`** (S68) — 1591 righe, di cui ~830 in `run_grid_bot()`. Split proposto in 5-6 moduli. ~3-4h. **DOPO go-live €100**.
-- **Rename `manual` → `grid` su tutto il sistema** (S65) — superata parzialmente in S70 (DB + frontend); resta codice Python con riferimenti legacy.
-- **Tradermonty full-repo scan** (S65) — solo 5/15+ skill valutate. Riprendere per Sentinel Phase 3 / TF improvements.
-- **Esposizione pubblica Validation System** (S65) — milestone viva su /roadmap, contenuto interno. Decidere quanto esporre.
-- **TF distance filter 12% fisso** (S63) — paralizza TF in mercato rialzista. Soglia dinamica regime-aware? Cross-tema Sentinel/Sherpa.
-- **Rework comm Telegram post-`/admin`** (S63) — solo errori critici + buy/sell real-time in Telegram, tutto il resto in DB. Report serale aggregato. Da brief-are dopo Sentinel/Sherpa analisi.
-- **Sherpa Sprint 2/3** (S63) — slow loop F&G+CMC + news feed CryptoPanic. Pre-requisito: replay counterfactual Sprint 1.
-- **Surface coherence checks + schema verification + log file size monitor** (S65) — task Validation System, brief separato pre-mainnet o post.
-- **Sito mobile review reale** (S70c) — smoke test desktop OK, audit statico CSS in S71 (1 fix recon table), ma test su device reale non eseguito.
+| Tema | Stato | Note |
+|---|---|---|
+| **Buy trigger anchor (A/B/C)** | Parcheggiata S74 PROJECT_STATE §6 | A=last_buy, B=avg, C=hybrid. Simulazione mostra trade-off spread vs compressione. Decisione strategica |
+| **Stop-buy time-limit** | Parcheggiata S74 PROJECT_STATE §6 | Proposta Max: dopo 24h di stallo, compra per abbassare avg. Trading logic, brief dedicato |
+| **HWW v3 "3 entities" prose inconsistency** | Aperta | Draft aggiorna badge ma non hero prose. Da decidere in sessione sito pubblico |
+| **Phantom BONK 1.37M composizione** | Bassa priorità | Molto più grande dell'initial gift stimato. Non bloccante |
 
 ---
 
-## 6. Vincoli / Deadline Non-Tecnici
+## 6. Vincoli/Deadline Non-Tecnici
 
-**Go-live €100 — target 18-21 maggio 2026** (recupero ~7-10gg vs precedente "fine maggio / inizio giugno"). Brief 72a Fee Unification + frontend canonical refactor + TF removal ha chiuso le gate strutturali.
-
-**Pre-live gates aggiornate S72:**
-- ✅ Contabilità avg-cost (S66)
-- ✅ Fee USDT canonical (S67)
-- ✅ Dust prevention (S67)
-- ✅ Sell-in-loss guard avg_cost (S68a)
-- ✅ DB schema cleanup (S68 + S69 DROP COLUMN)
-- ✅ FIFO contabile via dashboard (S69)
-- ✅ Avg-cost trading completo + Strategy A simmetrico + IDLE recalibrate guard (S69)
-- ✅ sell_pct net-of-fees (S70)
-- ✅ Reconciliation Binance Step A+B (S70)
-- ✅ Sentinel ricalibrazione (S70b)
-- ✅ Sito online con disclaimer testnet (S70c)
-- ✅ P&L hero unificato (S71)
-- ✅ LAST SHOT lot_step_size (S71)
-- ✅ Reason bugiardo fixato (S71)
-- ✅ **Fee Unification (S72)** — holdings golden source + avg + realized netto
-- ✅ **Lexical drift cleanup S70 rename (S72)** — 4 callsite legacy fixati
-- ✅ **Frontend canonical refactor (S72)** — `pnl-canonical.js` shared, 4 superfici unite
-- ✅ **TF sparito dai totali pubblici (S72)** — Grid only sul sito
-- ✅ **Reconciliation Step C cron (S72)** — Mac Mini 03:00 Europe/Rome
-- ⬜ 24h osservazione (in corso, scade 2026-05-12 13:49 UTC)
-- ⬜ Mobile smoke test reale
-- ⬜ Sentinel/Sherpa analisi DRY_RUN
-- ⬜ Board approval finale
+| Vincolo | Scadenza | Note |
+|---|---|---|
+| **Go-live €100 mainnet** | Fine maggio / inizio giugno | Gate canonical state TUTTE CHIUSE. Restano: mobile smoke test, Sentinel/Sherpa 7gg DRY_RUN analysis, Board approval. 7 giorni clean run si resettano a zero se fix logic-changing deployato |
+| **Sentinel/Sherpa data collection** | ~25 maggio | 14 giorni di DRY_RUN da brainstorming 11 maggio. 3 bug calibrazione noti (speed_of_fall, opportunity_score, risk_score binario) — decisione aperta: fixare ora e resettare, o aspettare 14gg con dati imperfetti |
+| **Volume 3 pubblicazione** | Nessuna deadline | In accumulo. Arco narrativo si sta formando |
+| **How We Work v3 sito** | Nessuna deadline | Draft pronto, deferred a sessione dedicata "sito pubblico" |
+| **Blog section sito** | Nessuna deadline | 2-3 diary entries gratis come funnel a Payhip (0/30 views = invisibilità) |
 
 **Multi-macchina:** MBP (sviluppo Max) ↔ Mac Mini (runtime `/Volumes/Archivio/bagholderai`). Sempre `git pull` + mount Archivio prima di test/audit.
 
@@ -143,19 +111,16 @@ Preview rimosse da entrambi i volumi.
 
 ## 7. Cosa NON Sta Succedendo e Perché
 
-| Cosa | Perché no |
+| Cosa | Perché |
 |---|---|
-| **TF trading attivo** | In "osservazione" (dal dottore). Fase 4 della roadmap sequenziale |
-| **Volume 3 in lavorazione** | Materiale S53–S71 si accumula. Chiusura quando l'arco narrativo ha un finale naturale |
-| **Marketing outreach** | Pre-traction. Sito testnet online è step 1, mainnet è step 2 |
-| **Sentinel/Sherpa LIVE** | In DRY_RUN dal S70. Analisi ~17 maggio, poi decisione Board |
-| **Phase 2 grid_runner split** | Post go-live (1591 righe, brief 62b parcheggiato) |
-| **Go-live €100 mainnet** | Fee cleanup completato S72. In osservazione 24h (scade 12 maggio 13:49 UTC). Restano: mobile test, Sentinel/Sherpa analisi, Board approval |
-| **Sherpa Sprint 2/3 (slow loop + news feed)** | Pre-requisito: Sprint 1 counterfactual replay. Sentinel/Sherpa analisi prima |
-| **Partnership / sponsorship / nuove piattaforme** | Pre-traction, prodotto in costruzione. Nessuna urgenza |
-| **Nuovo prezzo volumi Payhip** | €4.99 prezzo di lancio. Nessun dato di vendita su cui ragionare (0/30 views) |
-| **Audit esterni formali** | Protocollo introdotto S63. Primo audit pianificato post brief 71b + Strada 2 (numeri certificati) |
+| **Go-live mainnet** | Board decision S73: tutti i 4 cervelli devono girare insieme su testnet. Gate canonical chiuse, ma Sentinel/Sherpa DRY_RUN analysis non fatta |
+| **Trend Follower riattivazione** | Necessita sessione brainstorming dedicata. Problemi strutturali: win/loss asymmetry, death spiral T3, distance filter paralysis. ENABLE_TF=false |
+| **Sentinel/Sherpa fix calibrazione** | Decisione aperta: fixare subito (e resettare 14gg) o raccogliere dati imperfetti. CEO propende per fix ora |
+| **How We Work v3 + blog + roadmap sito** | Deferred a sessione "sito pubblico" dedicata. Private-first |
+| **Partnership / sponsorship** | Pre-traction. 0/30 views Payhip |
+| **Phase 2 grid_runner split** | Post go-live. 1623 righe post-S74b (+32 da S68 per wiring `_upsert_runtime_state` + `dead_zone_hours`). Nessun brief formale — il vecchio riferimento "brief 62b" era stale (62b era sul refactor `grid_bot.py`, shipped + archiviato). Brief da redigere quando si apre la sessione |
+| **HN outreach (dang email)** | Da fare, ma non urgente pre-go-live |
 
 ---
 
-*Prossimo aggiornamento: post 24h osservazione (2026-05-12) — Board approval decisione finale go-live €100.*
+*Prossimo aggiornamento: post sessione Sentinel/Sherpa calibration fix, o post go-live decision — whichever comes first.*
