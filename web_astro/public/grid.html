@@ -498,8 +498,12 @@
     // avg_buy_price si aggiorna SOLO sui buy; resta invariato sui sell e si
     // azzera quando holdings va a zero (specchio bot/grid/sell_pipeline.py).
     var avgCostBySymbol = {};
-    // Brief 74b Bug 1: symbol → true when bot's drawdown stop-buy guard is on.
-    var stopBuyActiveBySymbol = {};
+    // Brief 74b (S74b): symbol → bot runtime state row (UPSERTed every tick).
+    // See bot/grid_runner.py _upsert_runtime_state. Fields: buy_reference_price,
+    // last_sell_price, stop_buy_active, phantom_holdings, managed_holdings,
+    // last_recalibrate_at, updated_at. Falls back to derived values if a
+    // symbol's row is missing or stale.
+    var runtimeStateBySymbol = {};
 
     async function fetchLivePrices() {
       try {
@@ -533,18 +537,14 @@
         sbGet('trades', 'select=id,symbol,side,amount,price,cost,fee,fee_asset,realized_pnl,created_at&config_version=eq.v3&managed_by=eq.grid&order=created_at.desc'),
         sbGet('daily_pnl', 'order=date.desc&limit=10'),
         sbGet('reserve_ledger', 'select=symbol,amount&config_version=eq.v3'),
-        // Brief 74b Bug 1 (S74b 2026-05-12): stop-buy state per symbol.
-        // The bot's `_stop_buy_active` boolean is in-memory only — not in any
-        // table. But the events ARE logged: `stop_buy_activated` fires when
-        // drawdown breaches the threshold, `stop_buy_cleared` fires when a
-        // profitable sell resets it. Latest event per symbol == current state.
-        // Known edge: a bot restart while drawdown is still > threshold will
-        // leave the in-memory latch False until the next tick re-applies it
-        // (bot re-emits `stop_buy_activated`). Worst case: badge lags by one
-        // tick after restart. A bot-side fix (emit boot-time state event)
-        // is out of scope for this dashboard fix.
-        sbGet('bot_events_log',
-              'select=symbol,event,created_at&event=in.(stop_buy_activated,stop_buy_cleared)&order=created_at.desc&limit=50'),
+        // Brief 74b Bug 2 (S74b 2026-05-12): runtime state mirror.
+        // Replaces the events-derived stop-buy lookup. One row per symbol,
+        // UPSERTed by the bot every tick (~5-30s). Exposes:
+        //   - buy_reference_price → "Next buy if ↓" trigger (Bug 2)
+        //   - last_sell_price     → ladder anchor for "Next sell if ↑"
+        //   - stop_buy_active     → "STOP-BUY ACTIVE" badge (Bug 1)
+        //   - managed_holdings / phantom_holdings → testnet artefacts
+        sbGet('bot_runtime_state', 'select=*'),
         fetchLivePrices()
       ]);
 
@@ -562,15 +562,13 @@
       tradesData = settled[1].value;
       pnlData = settled[2].value;
       var skimRows = settled[3].value;
-      // Brief 74b Bug 1: latest stop_buy_* event per symbol → current state.
-      // `events` is ordered desc, so the first occurrence per symbol is the
-      // most recent. Active iff that event is `stop_buy_activated`.
-      var stopBuyEvents = settled[4].value || [];
-      stopBuyActiveBySymbol = {};
-      stopBuyEvents.forEach(function(e) {
-        if (!(e.symbol in stopBuyActiveBySymbol)) {
-          stopBuyActiveBySymbol[e.symbol] = (e.event === 'stop_buy_activated');
-        }
+      // Brief 74b Bug 2: read mirrored runtime state per symbol. Each row
+      // is freshly UPSERTed by grid_runner after every tick. Fallbacks below
+      // for rows missing (bot not running yet, or seed row before first tick).
+      var runtimeStateRows = settled[4].value || [];
+      runtimeStateBySymbol = {};
+      runtimeStateRows.forEach(function(r) {
+        runtimeStateBySymbol[r.symbol] = r;
       });
       // Restrict skim to the symbols shown here (manual bots) so TF skim
       // doesn't leak into the admin reserve total.
@@ -924,10 +922,21 @@
         var FEE_RATE = 0.001;
         var buyPct = Number(cfg.buy_pct) || 0;
         var sellPct = Number(cfg.sell_pct) || 0;
-        var hasBuyRef = a.lastBuyPrice > 0 && buyPct > 0;
+        // Brief 74b Bug 2 (S74b 2026-05-12): prefer the bot's live
+        // `_pct_last_buy_price` mirrored in bot_runtime_state. This is the
+        // value the bot ACTUALLY trades against. The lastBuyPrice from
+        // trades (the previous fallback) drifts after IDLE_RECALIBRATE /
+        // DEAD_ZONE_RECALIBRATE — observed ~1.5% gap on BONK 2026-05-12.
+        // Bot offline / fresh seed → fall back to trades.
+        var rtState = runtimeStateBySymbol[sym] || {};
+        var botBuyRef = Number(rtState.buy_reference_price) || 0;
+        var botSellRef = Number(rtState.last_sell_price) || 0;
+        var buyRefForTrigger = botBuyRef > 0 ? botBuyRef : a.lastBuyPrice;
+        var hasBuyRef = buyRefForTrigger > 0 && buyPct > 0;
         var hasSellRef = a.avgBuyPrice > 0 && sellPct > 0 && !positionClosed;
-        var nextBuyTrigger = hasBuyRef ? a.lastBuyPrice * (1 - buyPct / 100) : 0;
-        var sellRef = a.lastSellPrice > 0 ? a.lastSellPrice : a.avgBuyPrice;
+        var nextBuyTrigger = hasBuyRef ? buyRefForTrigger * (1 - buyPct / 100) : 0;
+        var ladderSellRef = botSellRef > 0 ? botSellRef : a.lastSellPrice;
+        var sellRef = ladderSellRef > 0 ? ladderSellRef : a.avgBuyPrice;
         var nextSellTrigger = hasSellRef
           ? sellRef * (1 + sellPct / 100 + FEE_RATE) / (1 - FEE_RATE)
           : 0;
@@ -941,29 +950,14 @@
           ? ((livePrice - nextBuyTrigger) / nextBuyTrigger * 100) : null;
         var nextBuyColor = (nextBuyDistance === null) ? 'var(--text-dim)'
           : (nextBuyDistance > 0 ? '#5fb3ff' : 'var(--green)');  // cyan = waiting; green = already below
-        // Brief 74b Bug 1: stop-buy guard override. When the bot's drawdown
-        // safety latch is active, the "Next buy if ↓" trigger is misleading
-        // (price could be far below it, but the bot won't buy). Replace the
-        // cell with a red BLOCKED badge + tooltip explaining the reason.
-        //
-        // We combine the event log (latest event === 'stop_buy_activated')
-        // with a live recompute of the drawdown vs threshold. Reason: the
-        // bot's `_stop_buy_active` latch is in-memory only and resets to
-        // False on every restart. After a restart with the latest DB event
-        // still being `stop_buy_activated`, the badge would be a false
-        // positive if the price has since recovered above threshold. The
-        // recompute filters those out. False negatives (bot still latched
-        // but drawdown lifted without a profitable sell yet) are accepted
-        // — rare and self-resolving on the next sell or restart.
+        // Brief 74b Bug 1 (S74b 2026-05-12): stop-buy guard override.
+        // Reads `_stop_buy_active` straight from the runtime mirror, which
+        // is UPSERTed every tick by the bot. No more events-log derivation
+        // and no more frontend recompute of the drawdown threshold — the
+        // bot's value is the source of truth. Falls back to false if the
+        // row is missing (bot offline).
         var stopBuyPct = Number(cfg.stop_buy_drawdown_pct) || 0;
-        var unrealizedUsd = (hasLive && !positionClosed)
-          ? (livePrice - a.avgBuyPrice) * a.netHoldings : 0;
-        var stopBuyThresholdUsd = (stopBuyPct > 0 && a.alloc > 0)
-          ? -(a.alloc * stopBuyPct / 100) : 0;
-        var isStopBuyActive = !!stopBuyActiveBySymbol[sym]
-          && stopBuyPct > 0
-          && hasLive
-          && unrealizedUsd <= stopBuyThresholdUsd;
+        var isStopBuyActive = !!rtState.stop_buy_active && stopBuyPct > 0;
         var nextBuyCellHtml = isStopBuyActive
           ? '<div class="coin-stat" title="Bot drawdown exceeded ' + stopBuyPct.toFixed(0) +
             '% of allocation. New buys are blocked until a profitable sell resets the guard. Existing holdings unaffected (Strategy A still applies).">' +

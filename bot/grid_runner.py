@@ -138,6 +138,35 @@ def _deactivate_if_fully_liquidated(symbol: str, event_label: str) -> bool:
         return False
 
 
+def _upsert_runtime_state(trade_logger, bot, symbol: str) -> None:
+    """Brief 74b (S74b 2026-05-12): mirror in-memory bot state to
+    `bot_runtime_state` so public widgets can read it.
+
+    Called after each `check_price_and_execute` tick. The widgets that
+    used to derive these values from trades/events (and drifted, see
+    brief 74b Bug 1 & 2) read this table directly now. Best-effort:
+    swallow exceptions so a Supabase blip never breaks the trade loop.
+    """
+    try:
+        managed = getattr(bot, "managed_holdings", None)
+        phantom = getattr(bot, "_phantom_holdings", 0.0) or 0.0
+        last_recal = getattr(bot, "_last_trade_time", None)
+        payload = {
+            "symbol": symbol,
+            "buy_reference_price": float(bot._pct_last_buy_price or 0) or None,
+            "last_sell_price": float(bot._last_sell_price or 0) or None,
+            "stop_buy_active": bool(getattr(bot, "_stop_buy_active", False)),
+            "phantom_holdings": float(phantom),
+            "managed_holdings": float(managed) if managed is not None else None,
+            "last_recalibrate_at": last_recal.isoformat() if last_recal else None,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }
+        trade_logger.client.table("bot_runtime_state") \
+            .upsert(payload, on_conflict="symbol").execute()
+    except Exception as e:
+        logger.debug(f"[{symbol}] bot_runtime_state upsert failed: {e}")
+
+
 def _sync_config_to_bot(reader: "SupabaseConfigReader", bot: "GridBot", symbol: str):
     """
     Apply the latest Supabase config values to the running bot.
@@ -844,6 +873,10 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
 
             # Run grid logic
             trades = bot.check_price_and_execute(price)
+
+            # Brief 74b (S74b 2026-05-12): mirror in-memory state for the
+            # public dashboard widgets. Best-effort, never fails the loop.
+            _upsert_runtime_state(trade_logger, bot, cfg.symbol)
 
             # 39a/39c: stop-loss or take-profit inside check_price_and_execute
             # may have flagged pending_liquidation. Handle it NOW (before the
