@@ -927,8 +927,7 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
                     notifier.send_message(
                         f"⏰ <b>IDLE RE-ENTRY: {base}</b>\n"
                         f"After {alert['elapsed_hours']:.1f}h idle, new reference: "
-                        f"{fmt_price(alert['reference_price'])}\n"
-                        f"Buying at market..."
+                        f"{fmt_price(alert['reference_price'])}"
                     )
 
             # Log trades
