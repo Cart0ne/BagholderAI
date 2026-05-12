@@ -102,6 +102,7 @@ class GridBot:
         idle_reentry_hours: float = 24.0,  # hours idle (holdings=0) before forced re-entry
         tf_stop_loss_pct: float = 0.0,  # 39a: TF stop-loss threshold as % of open value (0 = disabled)
         stop_buy_drawdown_pct: float = 0.0,  # 39b: manual stop-buy threshold as % of allocation (0 = disabled)
+        dead_zone_hours: float = 4.0,        # 74b: per-coin dead-zone recalibrate threshold (hours idle before ladder reset)
         tf_take_profit_pct: float = 0.0,  # 39c: TF take-profit threshold as % of open value (0 = disabled)
         tf_profit_lock_enabled: bool = False,  # 45f: opt-in switch for proactive Profit Lock exit
         tf_profit_lock_pct: float = 0.0,       # 45f: net PnL threshold (% of alloc) that triggers Profit Lock
@@ -131,6 +132,7 @@ class GridBot:
         self.idle_reentry_hours = idle_reentry_hours
         self.tf_stop_loss_pct = tf_stop_loss_pct
         self.stop_buy_drawdown_pct = stop_buy_drawdown_pct
+        self.dead_zone_hours = dead_zone_hours
         self.tf_take_profit_pct = tf_take_profit_pct
         self.tf_profit_lock_enabled = tf_profit_lock_enabled
         self.tf_profit_lock_pct = tf_profit_lock_pct
@@ -610,9 +612,10 @@ class GridBot:
         # price. The next sell trigger reverts to avg_cost × (1+sell_pct
         # +FEE)/(1−FEE) which is below current → sell scatta nello
         # stesso tick. Vincoli brief: Grid only, NON tocca sell_pct,
-        # NON tocca TF/Sentinel/Sherpa. Hours hardcoded → moveremo
-        # in dashboard come parametro per-coin in brief successivo.
-        DEAD_ZONE_HOURS = 4.0
+        # NON tocca TF/Sentinel/Sherpa.
+        # 74b (S74b 2026-05-12): hours now per-coin from bot_config,
+        # hot-reloadable via SupabaseConfigReader (grid_runner._sync_config_to_bot).
+        DEAD_ZONE_HOURS = float(self.dead_zone_hours)
         if (self.is_active
                 and self.managed_by == "grid"
                 and not self.pending_liquidation

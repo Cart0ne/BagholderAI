@@ -1027,6 +1027,7 @@
             '<div class="param-group-label safety-label">⚠️ Safety</div>' +
             '<div class="config-grid">' +
               configField(short, 'stop_buy_drawdown_pct', 'Stop-buy drawdown %', cfg.stop_buy_drawdown_pct) +
+              configField(short, 'dead_zone_hours', 'Dead-zone unblock (hours)', cfg.dead_zone_hours) +
             '</div>' +
             '<div class="save-row">' +
               '<button class="btn-save" id="save-' + short + '" onclick="saveConfig(\'' + sym + '\', \'' + short + '\')" disabled>Save changes</button>' +
@@ -1057,7 +1058,7 @@
     var GRID_CONFIG_FIELDS = [
       'capital_allocation', 'capital_per_trade', 'skim_pct',
       'buy_pct', 'sell_pct', 'profit_target_pct', 'idle_reentry_hours',
-      'stop_buy_drawdown_pct'
+      'stop_buy_drawdown_pct', 'dead_zone_hours'
     ];
 
     var SUBLABELS = {
@@ -1065,7 +1066,8 @@
       'profit_target_pct': 'Safety gate: blocks ALL sells unless price is this % above avg buy. 0 = disabled.',
       'buy_pct': 'Buys when price drops this % below the last buy price',
       'skim_pct': '% of each sell\'s profit routed to reserve instead of reinvested',
-      'stop_buy_drawdown_pct': 'Blocks NEW buys when total unrealized loss exceeds this % of allocation. Existing lots unaffected (Strategy A still applies). Re-enables after first profitable sell. 0 = disabled.'
+      'stop_buy_drawdown_pct': 'Blocks NEW buys when total unrealized loss exceeds this % of allocation. Existing lots unaffected (Strategy A still applies). Re-enables after first profitable sell. 0 = disabled.',
+      'dead_zone_hours': 'After a partial sell run, residual holdings stay anchored to the last-sell price ladder. If the rally stalls and price stays above avg cost without any trade for this many hours, the bot resets the ladder so a new sell trigger can fire. Prevents the bot from sitting frozen. Default 4h; higher for thin books (BONK), lower for liquid pairs (BTC).'
     };
 
     function configField(short, field, label, value) {

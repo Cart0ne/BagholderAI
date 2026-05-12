@@ -31,7 +31,9 @@ _CONFIG_FIELDS = (
     # 42a: multi-lot entry + greed decay anchor
     "initial_lots,allocated_at,"
     # 45g: per-coin override for the gain-saturation breaker
-    "tf_exit_after_n_override"
+    "tf_exit_after_n_override,"
+    # 74b (S74b 2026-05-12): per-coin DEAD_ZONE_HOURS, hot-reloadable.
+    "dead_zone_hours"
 )
 
 # 39j: global TF params polled from trend_config alongside bot_config.

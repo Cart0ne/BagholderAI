@@ -165,6 +165,10 @@ def _sync_config_to_bot(reader: "SupabaseConfigReader", bot: "GridBot", symbol: 
         # Changing the value does NOT reset _stop_buy_active — the flag clears
         # only on a profitable sell (event-based hysteresis).
         bot.stop_buy_drawdown_pct = float(sb_cfg["stop_buy_drawdown_pct"])
+    if "dead_zone_hours" in sb_cfg and sb_cfg["dead_zone_hours"] is not None:
+        # 74b (S74b): per-coin dead-zone recalibrate threshold (hot-reload).
+        # Read fresh on every tick via self.dead_zone_hours.
+        bot.dead_zone_hours = float(sb_cfg["dead_zone_hours"])
     if "is_active" in sb_cfg:
         bot.is_active = bool(sb_cfg["is_active"])
     if "pending_liquidation" in sb_cfg:
@@ -559,6 +563,16 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
     except Exception as e:
         logger.warning(f"Could not read bot_config.stop_buy_drawdown_pct for {cfg.symbol}: {e}. Defaulting to 0.")
 
+    # 74b (S74b 2026-05-12): per-coin dead-zone recalibrate threshold
+    # (replaces the DEAD_ZONE_HOURS=4.0 hardcoded constant in grid_bot.py).
+    # CHECK constraint guarantees > 0 ≤ 168; safe fallback to 4.0 on read error.
+    dead_zone_hours = 4.0
+    try:
+        if sb_cfg and sb_cfg.get("dead_zone_hours") is not None:
+            dead_zone_hours = float(sb_cfg["dead_zone_hours"])
+    except Exception as e:
+        logger.warning(f"Could not read bot_config.dead_zone_hours for {cfg.symbol}: {e}. Defaulting to 4.0.")
+
     # 42a: greed decay anchor (per-bot) + tiers (global, from trend_config).
     # allocated_at is the TF ALLOCATE moment; manual bots have NULL here and
     # fall back to sell_pct. greed_decay_tiers is the JSON array polled by
@@ -597,6 +611,7 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
         skim_pct=cfg.skim_pct,
         tf_stop_loss_pct=tf_stop_loss_pct,
         stop_buy_drawdown_pct=stop_buy_drawdown_pct,
+        dead_zone_hours=dead_zone_hours,
         tf_take_profit_pct=tf_take_profit_pct,
         tf_profit_lock_enabled=tf_profit_lock_enabled,
         tf_profit_lock_pct=tf_profit_lock_pct,
