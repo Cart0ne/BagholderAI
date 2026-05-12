@@ -498,6 +498,8 @@
     // avg_buy_price si aggiorna SOLO sui buy; resta invariato sui sell e si
     // azzera quando holdings va a zero (specchio bot/grid/sell_pipeline.py).
     var avgCostBySymbol = {};
+    // Brief 74b Bug 1: symbol → true when bot's drawdown stop-buy guard is on.
+    var stopBuyActiveBySymbol = {};
 
     async function fetchLivePrices() {
       try {
@@ -531,6 +533,18 @@
         sbGet('trades', 'select=id,symbol,side,amount,price,cost,fee,fee_asset,realized_pnl,created_at&config_version=eq.v3&managed_by=eq.grid&order=created_at.desc'),
         sbGet('daily_pnl', 'order=date.desc&limit=10'),
         sbGet('reserve_ledger', 'select=symbol,amount&config_version=eq.v3'),
+        // Brief 74b Bug 1 (S74b 2026-05-12): stop-buy state per symbol.
+        // The bot's `_stop_buy_active` boolean is in-memory only — not in any
+        // table. But the events ARE logged: `stop_buy_activated` fires when
+        // drawdown breaches the threshold, `stop_buy_cleared` fires when a
+        // profitable sell resets it. Latest event per symbol == current state.
+        // Known edge: a bot restart while drawdown is still > threshold will
+        // leave the in-memory latch False until the next tick re-applies it
+        // (bot re-emits `stop_buy_activated`). Worst case: badge lags by one
+        // tick after restart. A bot-side fix (emit boot-time state event)
+        // is out of scope for this dashboard fix.
+        sbGet('bot_events_log',
+              'select=symbol,event,created_at&event=in.(stop_buy_activated,stop_buy_cleared)&order=created_at.desc&limit=50'),
         fetchLivePrices()
       ]);
 
@@ -548,6 +562,16 @@
       tradesData = settled[1].value;
       pnlData = settled[2].value;
       var skimRows = settled[3].value;
+      // Brief 74b Bug 1: latest stop_buy_* event per symbol → current state.
+      // `events` is ordered desc, so the first occurrence per symbol is the
+      // most recent. Active iff that event is `stop_buy_activated`.
+      var stopBuyEvents = settled[4].value || [];
+      stopBuyActiveBySymbol = {};
+      stopBuyEvents.forEach(function(e) {
+        if (!(e.symbol in stopBuyActiveBySymbol)) {
+          stopBuyActiveBySymbol[e.symbol] = (e.event === 'stop_buy_activated');
+        }
+      });
       // Restrict skim to the symbols shown here (manual bots) so TF skim
       // doesn't leak into the admin reserve total.
       var adminSymSet = {};
@@ -917,6 +941,36 @@
           ? ((livePrice - nextBuyTrigger) / nextBuyTrigger * 100) : null;
         var nextBuyColor = (nextBuyDistance === null) ? 'var(--text-dim)'
           : (nextBuyDistance > 0 ? '#5fb3ff' : 'var(--green)');  // cyan = waiting; green = already below
+        // Brief 74b Bug 1: stop-buy guard override. When the bot's drawdown
+        // safety latch is active, the "Next buy if ↓" trigger is misleading
+        // (price could be far below it, but the bot won't buy). Replace the
+        // cell with a red BLOCKED badge + tooltip explaining the reason.
+        //
+        // We combine the event log (latest event === 'stop_buy_activated')
+        // with a live recompute of the drawdown vs threshold. Reason: the
+        // bot's `_stop_buy_active` latch is in-memory only and resets to
+        // False on every restart. After a restart with the latest DB event
+        // still being `stop_buy_activated`, the badge would be a false
+        // positive if the price has since recovered above threshold. The
+        // recompute filters those out. False negatives (bot still latched
+        // but drawdown lifted without a profitable sell yet) are accepted
+        // — rare and self-resolving on the next sell or restart.
+        var stopBuyPct = Number(cfg.stop_buy_drawdown_pct) || 0;
+        var unrealizedUsd = (hasLive && !positionClosed)
+          ? (livePrice - a.avgBuyPrice) * a.netHoldings : 0;
+        var stopBuyThresholdUsd = (stopBuyPct > 0 && a.alloc > 0)
+          ? -(a.alloc * stopBuyPct / 100) : 0;
+        var isStopBuyActive = !!stopBuyActiveBySymbol[sym]
+          && stopBuyPct > 0
+          && hasLive
+          && unrealizedUsd <= stopBuyThresholdUsd;
+        var nextBuyCellHtml = isStopBuyActive
+          ? '<div class="coin-stat" title="Bot drawdown exceeded ' + stopBuyPct.toFixed(0) +
+            '% of allocation. New buys are blocked until a profitable sell resets the guard. Existing holdings unaffected (Strategy A still applies).">' +
+            '<div class="cs-label" style="color:var(--red);">Stop-buy active</div>' +
+            '<div class="cs-value" style="color:var(--red);font-size:11px;">BLOCKED · drawdown &gt; ' + stopBuyPct.toFixed(0) + '%</div></div>'
+          : '<div class="coin-stat"><div class="cs-label">Next buy if ↓</div>' +
+            '<div class="cs-value" style="color:' + nextBuyColor + ';">' + nextBuyStr + '</div></div>';
         // Distanza % dal trigger di sell (negativo = ancora sotto trigger, positivo = già sopra)
         var nextSellDistance = (hasSellRef && livePrice > 0)
           ? ((livePrice - nextSellTrigger) / nextSellTrigger * 100) : null;
@@ -948,7 +1002,7 @@
             // TRIGGERS — buy/sell % · next buy if ↓ · next sell if ↑
             '<div class="coin-section-label">Triggers</div>' +
             '<div class="coin-stat"><div class="cs-label">Buy / Sell %</div><div class="cs-value">' + buySellPctStr + '</div></div>' +
-            '<div class="coin-stat"><div class="cs-label">Next buy if ↓</div><div class="cs-value" style="color:' + nextBuyColor + ';">' + nextBuyStr + '</div></div>' +
+            nextBuyCellHtml +
             '<div class="coin-stat"><div class="cs-label">Next sell if ↑</div><div class="cs-value" style="color:' + nextSellColor + ';">' + nextSellStr + '</div></div>' +
           '</div>' +
           '<div class="cap-bar-wrap">' +

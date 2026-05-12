@@ -1500,8 +1500,17 @@
         });
       }
 
-      // Drift details — show section only when at least one DRIFT/ORPHAN run exists
-      var driftRuns = runs.filter(function(r) {
+      // Drift details — show section only when a symbol's CURRENT state is in
+      // drift. `runs` is ordered ts.desc, so the first entry per symbol is the
+      // latest run; we surface drift_details only when that latest run is in
+      // DRIFT/ORPHAN status. Historical drifts that have since been reconciled
+      // (e.g. orphan resolved by a later run) stay in the table but no longer
+      // light up this panel — they're history, not current state.
+      var latestPerSymbol = {};
+      runs.forEach(function(r) {
+        if (!latestPerSymbol[r.symbol]) latestPerSymbol[r.symbol] = r;
+      });
+      var driftRuns = Object.values(latestPerSymbol).filter(function(r) {
         return (r.status === 'DRIFT' || r.status === 'DRIFT_BINANCE_ORPHAN') && r.drift_details;
       });
       if (driftRuns.length > 0) {
