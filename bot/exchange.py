@@ -35,6 +35,16 @@ def create_exchange() -> ccxt.binance:
         "options": {
             "defaultType": "spot",
             "adjustForTimeDifference": True,
+            # Brief 73c (S73 2026-05-12): ccxt default for Binance MARKET
+            # BUY converts `amount` (base) into `quoteOrderQty=amount*lastPrice`
+            # under the hood. This breaks `place_market_buy_base` whose
+            # entire purpose is to submit a deterministic, lot-step-rounded
+            # base amount. Setting this to False makes ccxt pass through
+            # the base quantity to Binance's `quantity` field, exactly what
+            # we want for the thin-book LOT_SIZE-safe path. Quote-order
+            # call site (place_market_buy) is unaffected because it
+            # explicitly sets `params['quoteOrderQty']` which always wins.
+            "createMarketBuyOrderRequiresPrice": False,
         },
     }
 
