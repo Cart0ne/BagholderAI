@@ -26,7 +26,7 @@ Repo locale: `/Users/max/Desktop/BagHolderAI/Repository/bagholder` (MBP). Repo r
 ```
 bot/
   orchestrator.py          single-process supervisor: spawn 3 Grid + Sentinel + Sherpa via env flags (TF off)
-  grid_runner.py           per-symbol process wrapper, hot-reload bot_config (1591 righe — Phase 2 split candidate)
+  grid_runner.py           per-symbol process wrapper, hot-reload bot_config (1623 righe — split candidate post go-live, no brief formale)
   exchange.py              Binance ccxt sandbox (S67)
   exchange_orders.py       market-order wrapper, fee USDT canonical (S67)
   health_check.py          daily health check
@@ -46,7 +46,7 @@ bot/
   trend_follower/          Brain #4 — TF (DISABLED via ENABLE_TF=false)
 db/, utils/, scripts/, web_astro/  (DB client, telegram, daily reports, sito Astro maintenance)
 scripts/reconcile_binance.py  S70 Step A: reconciliation Binance ↔ DB trades (3 OK su primo run)
-config/                    settings, validation_and_control_system.md, brief 62b/65b/DUST/eval_skills (parcheggiati)
+config/                    settings, validation_and_control_system.md, brief DUST + evaluate_trading_skills (parcheggiati)
 audits/                    gitignored — formula_verification_s66 + 2026-05-08_pre-reset-s67/
 tests/                     test_accounting_avg_cost.py 15/15 verdi (11 originali + 4 brief 70a: L/M/N/O)
 ```
@@ -128,7 +128,7 @@ Comm Sentinel↔Sherpa↔Grid via Supabase only. Telegram alerts: solo Grid trad
 - **🔴 [S67]** `exchange_order_id=null` su sell OP/USDT — fallback timestamp gestisce reconciliation, ma debt cosmetico. Aperto.
 - **🟡 [S67]** Slippage testnet variabile (osservato 2.46% BONK) — gestito con sell_pct buffer per ora. Brief futuro `sell_pct net-of-fees + slippage_buffer parametrico per coin`.
 - **🟡 [S69 NEW]** 2 BONK sells fossili pre-S68a con `buy_trade_id NULL` — restano in DB ma niente più check che li flagga.
-- **🟡 [S68 NEW]** `grid_runner.py` 1591 righe (di cui ~830 in `run_grid_bot()`). Phase 2 split (brief `62b`) post go-live.
+- **🟡 [S68 NEW]** `grid_runner.py` **1623 righe** (di cui ~830 in `run_grid_bot()`), cresciuto +32 in S74b per wiring `_upsert_runtime_state` + `dead_zone_hours`. Split proposto in 5-6 moduli (~3-4h). **No brief formale** — il vecchio riferimento "brief 62b" era stale (62b era sul refactor `grid_bot.py`, shipped + archiviato). Brief da scrivere prima dell'esecuzione. Vincolo: **post go-live €100** (refactor strutturale ad alto rischio su file che gira H24 con capitale reale).
 - **🟡 [S70 NEW]** Sherpa propone abbassare BONK sell_pct 4→1.5 in DRY_RUN (ignora hotfix slippage). Quando SHERPA_MODE=live, rule engine deve preservare buffer per-coin. Tracciato in §6.
 - **🟡 [S70 NEW]** **LAST SHOT path bypassa lot_step_size rounding** — BUY BONK 11:52:12 UTC rejected da Binance (`code -2010`, "Order book liquidity is less than LOT_SIZE filter minimum quantity"); retry LAST SHOT a 11:52:33 ha avuto successo. Reconcile DB↔Binance OK 12/12 (rejected non scritto in DB, success regolare). Cosmetico (genera 1 Telegram + warn ORDER_REJECTED), ma pre-mainnet vale arrotondare l'amount a `lot_step_size` anche nel path LAST SHOT per evitare il primo tentativo destinato a fallire.
 - **TF distance filter 12% fisso vs EMA20** (CEO 2026-05-07): cross-tema Sentinel/Sherpa, post-go-live.
@@ -178,7 +178,7 @@ NON è stato risolto il bug **`reason bugiardo`** (open question 27 BUSINESS_STA
 
 NON è stato risolto il bug **`exchange_order_id=null`** sul sell OP — debt cosmetico tracciato post-go-live. Reconciliation S70 Step A gestisce con fallback timestamp.
 
-NON è stato fatto il **Phase 2 split di `grid_runner.py`** (~1591 righe). Brief 62b in config, parcheggiato post-go-live €100.
+NON è stato fatto il **split di `grid_runner.py`** (1623 righe post-S74b). Nessun brief formale (il riferimento storico "brief 62b" era stale — 62b riguardava `grid_bot.py`, shipped + archiviato). Parcheggiato post-go-live €100. Brief da redigere quando si apre la sessione.
 
 NON è stato riacceso **TF**. Coerente con pivot Board "minimum viable, solo Grid + Sentinel/Sherpa DRY_RUN".
 
