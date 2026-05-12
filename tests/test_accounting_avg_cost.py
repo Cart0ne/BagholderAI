@@ -1271,6 +1271,138 @@ def test_v_managed_holdings_excludes_phantom():
           f"state.holdings={bot.state.holdings} ✓")
 
 
+# ----------------------------------------------------------------------
+# Brief 74c tests — Partial fill recovery (S74 2026-05-12)
+# ----------------------------------------------------------------------
+
+
+def _silence_event_log_and_alert():
+    """Return (restore_fn) that swaps log_event + _alert_rejection with no-ops.
+
+    Prevents the unit test from writing to bot_events_log / Telegram while
+    exercising _normalize_order_response. Both are lazy-imported inside
+    exchange_orders.py, so we patch the source modules.
+    """
+    import bot.exchange_orders as eo
+    import db.event_logger as dbel
+    original_alert = eo._alert_rejection
+    original_log = dbel.log_event
+    eo._alert_rejection = lambda *a, **k: None
+    dbel.log_event = lambda **k: None
+
+    def restore():
+        eo._alert_rejection = original_alert
+        dbel.log_event = original_log
+
+    return restore
+
+
+def test_w_partial_fill_expired_returns_normalized_dict():
+    """Brief 74c: ccxt response with status='expired' AND filled>0 is a
+    partial fill — the base coin is already in the wallet. Pre-fix the
+    bot treated it as no-op (returned None) and lost the trade.
+    Post-fix: returns a normalized dict so buy_pipeline / sell_pipeline
+    record it as a real trade.
+    """
+    print("=" * 70)
+    print("TEST W: 74c — partial fill (status=expired, filled>0) → dict")
+    print("=" * 70)
+    from bot.exchange_orders import _normalize_order_response
+
+    restore = _silence_event_log_and_alert()
+    try:
+        ccxt_order = {
+            "id": "21190",
+            "status": "expired",
+            "filled": 100.0,
+            "amount": 200.0,
+            "average": 0.1,
+            "cost": 10.0,
+            "fee": {"cost": 0.1, "currency": "TEST"},
+        }
+        result = _normalize_order_response(ccxt_order, "TEST/USDT", "buy")
+    finally:
+        restore()
+
+    assert result is not None, "partial fill must NOT return None"
+    assert_close(result["filled_amount"], 100.0, label="filled_amount preserved")
+    assert_close(result["avg_price"], 0.1, label="avg_price preserved")
+    assert_close(result["cost"], 10.0, label="cost preserved")
+    assert result["status"] == "expired", "raw status preserved for audit"
+    assert result["order_id"] == "21190", "order_id preserved"
+    print(f"  partial fill returned dict: filled={result['filled_amount']}, "
+          f"avg=${result['avg_price']}, status='{result['status']}' ✓")
+
+
+def test_x_zero_fill_still_returns_none():
+    """Brief 74c regression guard: when filled<=0, the response is a real
+    no-op regardless of status. Must still return None and trigger
+    _alert_rejection (no state change, no DB row)."""
+    print("=" * 70)
+    print("TEST X: 74c — zero-fill no-op (filled=0) → None (regression)")
+    print("=" * 70)
+    from bot.exchange_orders import _normalize_order_response
+
+    alert_calls = []
+
+    def fake_alert(symbol, side, reason, details):
+        alert_calls.append((symbol, side, reason, details))
+
+    import bot.exchange_orders as eo
+    import db.event_logger as dbel
+    original_alert = eo._alert_rejection
+    original_log = dbel.log_event
+    eo._alert_rejection = fake_alert
+    dbel.log_event = lambda **k: None
+    try:
+        ccxt_order = {
+            "id": "99999",
+            "status": "expired",
+            "filled": 0.0,
+            "amount": 200.0,
+        }
+        result = _normalize_order_response(ccxt_order, "TEST/USDT", "buy")
+    finally:
+        eo._alert_rejection = original_alert
+        dbel.log_event = original_log
+
+    assert result is None, "zero-fill must return None (no-op)"
+    assert len(alert_calls) == 1, "zero-fill must trigger _alert_rejection once"
+    print(f"  zero-fill → None ✓ + 1 alert_rejection call ✓")
+
+
+def test_y_closed_full_fill_unchanged():
+    """Brief 74c regression guard: the happy path (status='closed',
+    filled>0) must remain identical to pre-fix behavior."""
+    print("=" * 70)
+    print("TEST Y: 74c — happy path (status=closed) regression")
+    print("=" * 70)
+    from bot.exchange_orders import _normalize_order_response
+
+    restore = _silence_event_log_and_alert()
+    try:
+        ccxt_order = {
+            "id": "ok-1",
+            "status": "closed",
+            "filled": 200.0,
+            "amount": 200.0,
+            "average": 0.5,
+            "cost": 100.0,
+            "fee": {"cost": 0.1, "currency": "USDT"},
+        }
+        result = _normalize_order_response(ccxt_order, "TEST/USDT", "sell")
+    finally:
+        restore()
+
+    assert result is not None
+    assert_close(result["filled_amount"], 200.0, label="filled happy path")
+    assert_close(result["cost"], 100.0, label="cost happy path")
+    assert_close(result["fee_cost"], 0.1, label="fee_cost USDT happy path")
+    assert result["status"] == "closed"
+    print(f"  happy path unchanged: filled={result['filled_amount']}, "
+          f"fee_cost=${result['fee_cost']} ✓")
+
+
 def main():
     tests = [
         test_a_simple_buy_then_sell,
@@ -1295,6 +1427,9 @@ def main():
         test_t_dead_zone_does_not_fire_under_4h_idle,
         test_u_dust_residual_treated_as_full_sellout,
         test_v_managed_holdings_excludes_phantom,
+        test_w_partial_fill_expired_returns_normalized_dict,
+        test_x_zero_fill_still_returns_none,
+        test_y_closed_full_fill_unchanged,
     ]
     passed = 0
     failed = []

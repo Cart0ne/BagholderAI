@@ -183,12 +183,16 @@ def place_market_sell(exchange, symbol: str, base_amount: float) -> Optional[dic
 def _normalize_order_response(order: dict, symbol: str, side: str) -> Optional[dict]:
     """Extract the fields we care about from a ccxt order response.
 
-    Returns None if the order did NOT actually fill (status != closed
-    or filled <= 0). The caller treats this as a no-op.
+    Returns None ONLY for a real no-op (filled <= 0). A response with
+    status != 'closed' but filled > 0 is a partial fill: the base coin
+    IS in the account (Binance has already settled it), so we MUST
+    normalize and record it as a real trade. Treating the partial fill
+    as a no-op would lose a true position and desync DB from broker
+    (brief 74c, BONK orphan 21190 incident 2026-05-12).
     """
     status = (order.get("status") or "").lower()
     filled = float(order.get("filled") or 0)
-    if status != "closed" or filled <= 0:
+    if filled <= 0:
         logger.warning(
             f"[orders] {side.upper()} {symbol}: order not filled "
             f"(status={status!r}, filled={filled}). Treating as no-op. "
@@ -200,6 +204,36 @@ def _normalize_order_response(order: dict, symbol: str, side: str) -> Optional[d
             {"order_id": order.get("id"), "status": status, "filled": filled},
         )
         return None
+
+    if status != "closed":
+        # Brief 74c (S74 2026-05-12): partial fill. Binance returned
+        # status='expired'/'canceled' but filled > 0 — the coins are
+        # already in the wallet. Common on thin testnet books (BONK).
+        # Log and emit a forensic event, but proceed with normalize:
+        # buy_pipeline / sell_pipeline will record it as a real trade.
+        amount = order.get("amount")
+        logger.warning(
+            f"[orders] {side.upper()} {symbol}: PARTIAL FILL "
+            f"(status={status!r}, filled={filled}/{amount}). "
+            f"Recording as real trade. Order id={order.get('id')}."
+        )
+        try:
+            from db.event_logger import log_event
+            log_event(
+                severity="warn",
+                category="trade",
+                event="ORDER_PARTIAL_FILL",
+                symbol=symbol,
+                message=f"{side.upper()} {symbol} partial fill: {filled}/{amount}",
+                details={
+                    "order_id": order.get("id"),
+                    "status": status,
+                    "filled": filled,
+                    "amount": amount,
+                },
+            )
+        except Exception as e:
+            logger.debug(f"[orders] log_event ORDER_PARTIAL_FILL failed: {e}")
 
     avg_price = float(order.get("average") or 0)
     cost = float(order.get("cost") or 0)
