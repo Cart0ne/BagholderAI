@@ -1143,6 +1143,81 @@ def test_t_dead_zone_does_not_fire_under_4h_idle():
           f"_last_sell_price unchanged @ ${bot._last_sell_price:.2f}")
 
 
+def test_u_dust_residual_treated_as_full_sellout():
+    """Brief 73b (S73 2026-05-12): post-sell, se residual_notional <
+    MIN_NOTIONAL, treat as full sell-out: reset avg_buy_price=0,
+    _last_sell_price=0, _pct_last_buy_price=sell_price.
+
+    Previene la BONK dust trap (2026-05-11→12): full-sellout BONK lascia
+    0.8 BONK dust (post-S72 state.holdings = fetch_balance() include
+    dust unsellable), il vecchio criterio `holdings <= 0` non scattava
+    perché 0.8 > 0, avg_buy_price restava al vecchio valore, Strategy A
+    buy guard bloccava ogni buy above avg in eternity.
+    """
+    print("=" * 70)
+    print("TEST U: brief 73b — dust residue triggers full sell-out reset")
+    print("=" * 70)
+    bot = make_bot(capital=1000.0, capital_per_trade=20.0)
+    bot.managed_by = "grid"
+    bot.sell_pct = 2.0
+    # Binance BONK min_notional historically $5, lot_step_size=1
+    bot._exchange_filters = {"min_notional": 5.0, "lot_step_size": 1e-8}
+
+    # Setup avg via buy, then manually inject post-fetch dust into holdings
+    # (simulates the post-S72 fetch_balance() golden source that returns
+    # residual coin balance above what the replay tracked).
+    bot._execute_percentage_buy(price=0.00001)
+    base_holdings = bot.state.holdings
+    initial_avg = bot.state.avg_buy_price
+    print(f"  After buy: holdings={base_holdings}, avg={initial_avg}")
+
+    # Inject 0.8 dust on top of the buy (the situation post-Binance sync)
+    bot.state.holdings = base_holdings + 0.8
+
+    # Sell qty = base_holdings (the "managed" piece); residual = 0.8 coin
+    # at sell price 0.00002 → residual notional $0.000016 << min_notional $5
+    bot._execute_percentage_sell(price=0.00002, sell_amount=base_holdings)
+
+    # Dust must be treated as full sell-out
+    assert bot.state.avg_buy_price == 0, (
+        f"avg_buy_price must reset to 0 on dust residue, got {bot.state.avg_buy_price}"
+    )
+    assert bot._last_sell_price == 0.0, (
+        f"_last_sell_price must reset to 0, got {bot._last_sell_price}"
+    )
+    assert_close(bot._pct_last_buy_price, 0.00002, label="buy ref → sell price")
+    residual_notional = bot.state.holdings * 0.00002
+    assert residual_notional < 5.0, (
+        f"residual_notional ${residual_notional} should be < min_notional $5"
+    )
+    print(f"  Post-sell dust: holdings={bot.state.holdings:.6f}, "
+          f"residual_notional=${residual_notional:.6f} < $5 → full sell-out ✓")
+    print(f"  Reset: avg=0, _last_sell_price=0, _pct_last_buy_price=$0.00002 ✓")
+
+    # Counter-test: partial sell where residual is ABOVE min_notional must
+    # preserve avg (not treat as full sell-out).
+    bot2 = make_bot(capital=1000.0, capital_per_trade=20.0)
+    bot2.managed_by = "grid"
+    bot2.sell_pct = 2.0
+    bot2._exchange_filters = {"min_notional": 5.0, "lot_step_size": 1e-8}
+    bot2._execute_percentage_buy(price=100.0)
+    bot2._execute_percentage_buy(price=100.0)
+    bot2._execute_percentage_buy(price=100.0)
+    pre_holdings = bot2.state.holdings  # 1.5 coin
+    pre_avg = bot2.state.avg_buy_price
+    bot2._execute_percentage_sell(price=110.0)  # partial, capital_per_trade/110 ≈ 0.18 coin
+    residual_value = bot2.state.holdings * 110.0
+    assert residual_value > 5.0, f"residual ${residual_value} should be >> $5"
+    assert bot2.state.avg_buy_price == pre_avg, (
+        f"avg must NOT reset on healthy residual, got {bot2.state.avg_buy_price} (was {pre_avg})"
+    )
+    assert bot2._last_sell_price == 110.0, (
+        f"partial sell must set ladder, got {bot2._last_sell_price}"
+    )
+    print(f"  Counter-test: residual ${residual_value:.2f} > $5 → ladder set, "
+          f"avg preserved ✓")
+
+
 def main():
     tests = [
         test_a_simple_buy_then_sell,
@@ -1165,6 +1240,7 @@ def main():
         test_r_replay_with_fee_in_base_coin,
         test_s_dead_zone_recalibrate_fires_when_ladder_active_and_idle,
         test_t_dead_zone_does_not_fire_under_4h_idle,
+        test_u_dust_residual_treated_as_full_sellout,
     ]
     passed = 0
     failed = []

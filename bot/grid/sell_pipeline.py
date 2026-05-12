@@ -513,15 +513,36 @@ def execute_percentage_sell(
     # full exit (was tied to empty queue pre-fix; now tied to scalar
     # holdings). After a partial avg-cost sell holdings stay positive
     # and the buy reference is preserved.
-    if bot.state.holdings <= 0:
-        bot.state.holdings = 0
+    # Brief 73b (S73 2026-05-12): treat economic dust as fully sold out.
+    # Post-S72, `state.holdings -= amount` can leave a tiny residue (e.g.
+    # 0.8 BONK = $0.000006 from BONK full-sellout 2026-05-11 23:26 UTC)
+    # because the sell amount derives from capital_per_trade / price and
+    # may not exactly match Binance's filled qty (lot_step_size rounding,
+    # initial testnet phantom included in state.holdings via fetch_balance).
+    # Without dust treatment, avg_buy_price stays >0 → Strategy A buy guard
+    # blocks every buy above the stale avg in eternity (BONK dust trap
+    # observed 8+ hours of "BUY BLOCKED" loop).
+    # Criterion mirrors grid_bot.py:646-652 cycle_closed: holdings*price <
+    # MIN_NOTIONAL means the residual is unsellable on Binance → equivalent
+    # to fully sold out for trading purposes.
+    fully_sold = bot.state.holdings <= 1e-10
+    if not fully_sold and getattr(bot, "_exchange_filters", None):
+        residual_notional = bot.state.holdings * price
+        min_notional = float((bot._exchange_filters or {}).get("min_notional", 0) or 0)
+        if min_notional > 0 and residual_notional < min_notional:
+            fully_sold = True
+
+    if fully_sold:
+        bot.state.holdings = max(bot.state.holdings, 0)  # preserve dust on state if >0, just treat as zero
         bot.state.avg_buy_price = 0
         bot._pct_last_buy_price = price
         # Brief 70a Parte 3 (S70): reset sell ladder reference on full
         # sell-out. Next cycle's first sell will use avg_cost as reference.
         bot._last_sell_price = 0.0
         logger.info(
-            f"[{bot.symbol}] Fully sold out. Buy reference reset to {fmt_price(price)}"
+            f"[{bot.symbol}] Fully sold out (holdings={bot.state.holdings:.10f}, "
+            f"residual_notional=${bot.state.holdings * price:.6f}). "
+            f"Buy reference reset to {fmt_price(price)}."
         )
     else:
         # Brief 70a Parte 3: partial sell — track for next ladder step.
