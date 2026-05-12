@@ -137,13 +137,17 @@ def execute_percentage_buy(bot, price: float) -> Optional[dict]:
     exchange_order_id = None
     fee_currency = "USDT"
     if TradingMode.is_live() and bot.exchange is not None:
-        # Brief 71a Task 4: pre-round `cost` so the resulting base-coin
-        # amount lands cleanly on `lot_step_size`. Without this, BONK
-        # testnet (book sottile + step=1) sometimes rejects with -2010
-        # "Order book liquidity is less than LOT_SIZE filter minimum
-        # quantity" before the retry succeeds — see PROJECT_STATE §5.
-        # Reference price = check_price (last polled tick). Real fill
-        # price still comes from Binance response below.
+        # Brief 73c (S73 2026-05-12): when lot_step_size is known, submit
+        # `amount=base_rounded` (deterministic, lot-step compliant) via
+        # place_market_buy_base. Avoids the BONK -2010 rejection loop
+        # that hit testnet 6 times on 2026-05-12 10:30-10:32 UTC: the
+        # quote-order path (quoteOrderQty=$25) let Binance compute the
+        # base amount from the slipped fill price, which on a thin book
+        # broke lot_step_size divisibility. Reference price = check_price
+        # (last polled tick); real fill comes from Binance response.
+        # Fallback to quote-order only if filters unavailable (boot edge).
+        from bot.exchange_orders import place_market_buy, place_market_buy_base
+        res = None
         if bot._exchange_filters and price > 0:
             from utils.exchange_filters import round_to_step
             base_est = cost / price
@@ -151,9 +155,16 @@ def execute_percentage_buy(bot, price: float) -> Optional[dict]:
                 base_est, bot._exchange_filters["lot_step_size"],
             )
             if base_rounded > 0:
-                cost = base_rounded * price
-        from bot.exchange_orders import place_market_buy
-        res = place_market_buy(bot.exchange, bot.symbol, cost)
+                res = place_market_buy_base(bot.exchange, bot.symbol, base_rounded)
+            else:
+                logger.warning(
+                    f"[{bot.symbol}] BUY skipped: base_rounded=0 from "
+                    f"cost=${cost:.4f} / price={price} / step={bot._exchange_filters['lot_step_size']}"
+                )
+                return None
+        else:
+            # No filters → fallback to quote-order (still better than skipping)
+            res = place_market_buy(bot.exchange, bot.symbol, cost)
         if res is None:
             # Order failed or did not fill — no state change. Retry on next tick.
             return None

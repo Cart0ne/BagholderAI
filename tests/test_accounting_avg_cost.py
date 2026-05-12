@@ -1218,6 +1218,59 @@ def test_u_dust_residual_treated_as_full_sellout():
           f"avg preserved ✓")
 
 
+def test_v_managed_holdings_excludes_phantom():
+    """Brief 73c (S73 2026-05-12): managed_holdings property must
+    subtract _phantom_holdings from state.holdings. Used by unrealized,
+    open_value, stop_buy, and sell_amount cap to prevent phantom-coin
+    contamination of economic calculations.
+
+    Scenario: BTC testnet boot reconcile finds wallet=1.000606 vs
+    replay=0.000609 → phantom_holdings=0.999997. managed_holdings must
+    report 0.000609 (the true bot-bought amount), not 1.000606.
+    Without this, stop_buy with avg=$80,843 and price=$60,000 computes
+    unrealized = -$5,000 from phantom * delta instead of -$0.50 real.
+    """
+    print("=" * 70)
+    print("TEST V: brief 73c — managed_holdings excludes phantom")
+    print("=" * 70)
+    bot = make_bot(capital=200.0, capital_per_trade=20.0)
+    bot.managed_by = "grid"
+    # Simulate BTC scenario: replayed buy 0.000609 BTC at $80,843
+    bot._execute_percentage_buy(price=80843.91)
+    bot.state.holdings = 0.000609  # only this much actually bought
+    bot.state.avg_buy_price = 80843.91
+    # Boot reconcile finds wallet at 1.000606 → phantom_holdings=0.999997
+    bot.state.holdings = 1.000606
+    bot._phantom_holdings = 0.999997
+
+    assert_close(bot.managed_holdings, 0.000609, tol=1e-6,
+                 label="managed_holdings excludes phantom")
+    print(f"  state.holdings={bot.state.holdings}, "
+          f"phantom={bot._phantom_holdings}, "
+          f"managed={bot.managed_holdings:.6f} ✓")
+
+    # Verify unrealized is computed on managed, not raw holdings
+    current_price = 80000.0
+    unreal_managed = (current_price - bot.state.avg_buy_price) * bot.managed_holdings
+    unreal_raw = (current_price - bot.state.avg_buy_price) * bot.state.holdings
+    assert abs(unreal_managed) < 1.0, (
+        f"managed unrealized should be ~$0.51, got {unreal_managed}"
+    )
+    assert abs(unreal_raw) > 800, (
+        f"raw unrealized would be ~$844 (drogato), got {unreal_raw}"
+    )
+    print(f"  Unrealized @ $80,000: managed=${unreal_managed:.4f} vs "
+          f"raw=${unreal_raw:.2f} (phantom-drogato) ✓")
+
+    # Mainnet sanity: phantom=0 → managed == raw holdings
+    bot._phantom_holdings = 0.0
+    bot.state.holdings = 0.000609
+    assert_close(bot.managed_holdings, 0.000609, tol=1e-9,
+                 label="mainnet: managed == raw when phantom=0")
+    print(f"  Mainnet (phantom=0): managed={bot.managed_holdings} == "
+          f"state.holdings={bot.state.holdings} ✓")
+
+
 def main():
     tests = [
         test_a_simple_buy_then_sell,
@@ -1241,6 +1294,7 @@ def main():
         test_s_dead_zone_recalibrate_fires_when_ladder_active_and_idle,
         test_t_dead_zone_does_not_fire_under_4h_idle,
         test_u_dust_residual_treated_as_full_sellout,
+        test_v_managed_holdings_excludes_phantom,
     ]
     passed = 0
     failed = []

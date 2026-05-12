@@ -325,8 +325,19 @@ def _reconcile_holdings_against_exchange(bot, replayed_qty: float, base_coin: st
 
     if bot.state:
         bot.state.holdings = real_qty
+        # Brief 73c (S73 2026-05-12): record phantom holdings = wallet
+        # surplus over replayed managed qty. Used by `bot.managed_holdings`
+        # property to decouple economic calculations (unrealized, open
+        # value, sell amount cap) from the testnet initial gift or any
+        # manual deposit. Negative drift was already converted to a fail
+        # / warn above — phantom is the POSITIVE drift only.
+        if gap_signed > 0:
+            bot._phantom_holdings = float(gap_signed)
+        else:
+            bot._phantom_holdings = 0.0
         logger.info(
-            f"[{bot.symbol}] Holdings synced from Binance: {base_coin}={real_qty}"
+            f"[{bot.symbol}] Holdings synced from Binance: {base_coin}={real_qty} "
+            f"(phantom={bot._phantom_holdings:.6f}, managed={real_qty - bot._phantom_holdings:.6f})"
         )
 
 

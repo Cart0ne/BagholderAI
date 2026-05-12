@@ -104,6 +104,51 @@ def place_market_buy(exchange, symbol: str, quote_amount_usdt: float) -> Optiona
     return _normalize_order_response(order, symbol, "buy")
 
 
+def place_market_buy_base(exchange, symbol: str, base_amount: float) -> Optional[dict]:
+    """Brief 73c (S73 2026-05-12): mainnet-safe BUY using base amount.
+
+    Unlike `place_market_buy` (which uses Binance's `quoteOrderQty` and
+    lets Binance derive the base amount from the fill price), this path
+    submits `amount=base_amount` directly. The caller MUST round
+    `base_amount` to `lot_step_size` before calling. Use this whenever
+    `bot._exchange_filters['lot_step_size']` is known.
+
+    Why this exists: on thin testnet books (e.g. BONK lot_step=1, book
+    depth $50), `quoteOrderQty=$25` causes Binance to compute amount
+    via slipped fill price → not lot-step-divisible → InvalidOrder
+    -2010 "Order book liquidity is less than LOT_SIZE filter minimum
+    quantity". 6 attempts rejected before LAST SHOT retry succeeded
+    (BONK 2026-05-12 10:30-10:32 UTC). With amount-based the order is
+    deterministic. Coverage works on mainnet too (mainnet has filters
+    populated, so this path is always preferred when filters known).
+
+    Returns normalized dict on success, None on failure.
+    """
+    if base_amount <= 0:
+        logger.error(f"[orders] BUY {symbol}: invalid base_amount={base_amount}")
+        _alert_rejection(symbol, "buy", "invalid base_amount",
+                         {"base_amount": base_amount})
+        return None
+    try:
+        order = exchange.create_order(
+            symbol=symbol,
+            type="market",
+            side="buy",
+            amount=base_amount,
+        )
+    except Exception as e:
+        reason = f"{type(e).__name__}: {e}"
+        logger.error(
+            f"[orders] BUY {symbol} base={base_amount} FAILED: {reason}"
+        )
+        _alert_rejection(symbol, "buy", reason,
+                         {"base_amount": base_amount,
+                          "exception_type": type(e).__name__})
+        return None
+
+    return _normalize_order_response(order, symbol, "buy")
+
+
 def place_market_sell(exchange, symbol: str, base_amount: float) -> Optional[dict]:
     """Place a market SELL for `base_amount` of base coin in `symbol`.
 

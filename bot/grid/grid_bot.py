@@ -172,6 +172,30 @@ class GridBot:
         # Brief s70 FASE 2: _pct_open_positions e _self_heal_attempted
         # rimossi insieme al FIFO queue. Avg-cost trading consulta solo
         # state.avg_buy_price + state.holdings nel hot path.
+        # Brief 73c (S73 2026-05-12): _phantom_holdings = max(0, real_qty
+        # − replayed_qty) computed at boot reconcile (state_manager). On
+        # testnet Binance gifts ~1 BTC, ~5 SOL, ~18K BONK at account
+        # creation — those land on state.holdings (=fetch_balance) but
+        # were never bought by the bot, so any calculation that multiplies
+        # by `state.holdings` (unrealized P&L, open_value, sell_amount
+        # cap) gets drogato by phantom-coin × current_price. Decouple
+        # via `managed_holdings` property below. On mainnet the boot
+        # reconcile sees real_qty == replayed_qty so phantom_holdings=0
+        # and managed_holdings == state.holdings → no behavior change.
+        self._phantom_holdings: float = 0.0
+
+    @property
+    def managed_holdings(self) -> float:
+        """Holdings effettivamente acquistate dal bot, escludendo il
+        balance fantasma (testnet initial gift, manual deposit, etc.).
+
+        Brief 73c (S73 2026-05-12). Usato in TUTTI i calcoli economici
+        (unrealized, open_value, sell_amount cap). Per gating "holdings
+        > 0" si usa ancora state.holdings (golden source wallet).
+        """
+        if self.state is None:
+            return 0.0
+        return max(0.0, float(self.state.holdings) - float(self._phantom_holdings))
 
     # ------------------------------------------------------------------
     # Helpers (kept on GridBot — small + heavily used internally).
@@ -335,8 +359,8 @@ class GridBot:
                 and self.state.holdings > 0
                 and self.state.avg_buy_price > 0
                 and not self._stop_loss_triggered):
-            unrealized = (current_price - self.state.avg_buy_price) * self.state.holdings
-            open_value = self.state.avg_buy_price * self.state.holdings
+            unrealized = (current_price - self.state.avg_buy_price) * self.managed_holdings
+            open_value = self.state.avg_buy_price * self.managed_holdings
             loss_threshold = -(open_value * self.tf_stop_loss_pct / 100)
             if unrealized <= loss_threshold:
                 logger.warning(
@@ -393,7 +417,7 @@ class GridBot:
                 trailing_trigger = self._trailing_peak_price * (1 - self.tf_trailing_stop_pct / 100)
                 if current_price <= trailing_trigger:
                     drop_from_peak_pct = ((self._trailing_peak_price - current_price) / self._trailing_peak_price) * 100
-                    unrealized = (current_price - self.state.avg_buy_price) * self.state.holdings
+                    unrealized = (current_price - self.state.avg_buy_price) * self.managed_holdings
                     logger.warning(
                         f"[{self.symbol}] TRAILING-STOP TRIGGERED: price {fmt_price(current_price)} "
                         f"dropped {drop_from_peak_pct:.1f}% from peak {fmt_price(self._trailing_peak_price)} "
@@ -448,8 +472,8 @@ class GridBot:
                 and self.state.avg_buy_price > 0
                 and not self._take_profit_triggered
                 and not self._stop_loss_triggered):
-            unrealized = (current_price - self.state.avg_buy_price) * self.state.holdings
-            open_value = self.state.avg_buy_price * self.state.holdings
+            unrealized = (current_price - self.state.avg_buy_price) * self.managed_holdings
+            open_value = self.state.avg_buy_price * self.managed_holdings
             profit_threshold = open_value * self.tf_take_profit_pct / 100
             if unrealized >= profit_threshold:
                 logger.warning(
@@ -491,7 +515,7 @@ class GridBot:
                 and not self._profit_lock_triggered
                 and not self._stop_loss_triggered
                 and not self._take_profit_triggered):
-            unrealized = (current_price - self.state.avg_buy_price) * self.state.holdings
+            unrealized = (current_price - self.state.avg_buy_price) * self.managed_holdings
             net_pnl = float(self.state.realized_pnl or 0) + unrealized
             net_pnl_pct = (net_pnl / self.capital) * 100
             if net_pnl_pct >= self.tf_profit_lock_pct:
@@ -550,7 +574,7 @@ class GridBot:
                 and self.state.holdings > 0
                 and self.state.avg_buy_price > 0
                 and not self._stop_buy_active):
-            unrealized = (current_price - self.state.avg_buy_price) * self.state.holdings
+            unrealized = (current_price - self.state.avg_buy_price) * self.managed_holdings
             buy_block_threshold = -(self.capital * self.stop_buy_drawdown_pct / 100)
             if unrealized <= buy_block_threshold:
                 logger.warning(
@@ -692,15 +716,22 @@ class GridBot:
             )
 
             if should_sell:
+                # Brief 73c (S73 2026-05-12): cap sell_amount on
+                # managed_holdings (excludes phantom testnet/manual
+                # deposit) to prevent selling coins the bot never
+                # bought. Force-liquidate (TF) still empties state.holdings
+                # because that path is meant to close the bot's full
+                # economic exposure — but on mainnet phantom_holdings=0
+                # so the two are identical.
                 if force_liquidate:
                     sell_amount = self.state.holdings
                 else:
                     sell_amount = (
                         self.capital_per_trade / current_price
                         if self.capital_per_trade > 0 and current_price > 0
-                        else self.state.holdings
+                        else self.managed_holdings
                     )
-                    sell_amount = min(sell_amount, self.state.holdings)
+                    sell_amount = min(sell_amount, self.managed_holdings)
 
                 trade = self._execute_percentage_sell(
                     current_price,
