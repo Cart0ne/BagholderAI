@@ -117,9 +117,16 @@ def init_avg_cost_state_from_db(bot):
                 # overstated P&L by the sell fee (~0.1% per trade).
                 realized += (price - avg) * amount - fee_usdt
                 qty -= amount
-                if qty <= 1e-9:
+                # Brief 73b (S73 2026-05-12): economic full sell-out — if
+                # the residual is below ~$0.50 it's dust unsellable on
+                # Binance (well below MIN_NOTIONAL $5-$10). Treat as full
+                # exit so avg + ladder reset propagate, matching the
+                # runtime sell_pipeline.py fix. Without this, the BONK
+                # dust-trap reproduces on every restart from the replay.
+                _DUST_USDT_THRESHOLD = 0.50
+                if qty <= 1e-9 or qty * price < _DUST_USDT_THRESHOLD:
                     qty = 0.0
-                    avg = 0.0  # reset on full sell-out
+                    avg = 0.0  # reset on full sell-out (numeric or economic)
                     last_sell_price = 0.0  # 70a: reset ladder on full exit
                 else:
                     last_sell_price = price  # 70a: partial sell → next ladder step
