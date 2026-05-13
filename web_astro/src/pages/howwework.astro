@@ -5,7 +5,7 @@ import HowWeWorkInteractive from "../components/HowWeWorkInteractive.jsx";
 
 <Layout
   title="How We Work — BagHolderAI"
-  description="A CEO, a Co-Founder, and an Intern walk into a terminal. How BagHolderAI is actually built — the human process behind the AI trading agent."
+  description="A CEO, a Co-Founder, an Intern, and an Auditor walk into a terminal. How BagHolderAI is actually built — the human process behind the AI trading agent."
   current="howwework"
 >
 
@@ -19,9 +19,10 @@ import HowWeWorkInteractive from "../components/HowWeWorkInteractive.jsx";
 
     <p class="mt-3 max-w-2xl text-[14.5px] leading-[1.55] text-text-dim
               sm:text-[15px]">
-      A CEO, a Co-Founder, and an Intern walk into a terminal. Three
-      entities collaborate on this project. None of them fully
-      understand what the others are doing. Things get shipped anyway.
+      A CEO, a Co-Founder, an Intern, and an Auditor walk into a
+      terminal. Four entities collaborate on this project. None of
+      them fully understand what the others are doing. Things get
+      shipped anyway.
     </p>
 
     <div class="mt-5 flex flex-wrap items-center gap-3 font-mono text-[10.5px]
@@ -29,12 +30,12 @@ import HowWeWorkInteractive from "../components/HowWeWorkInteractive.jsx";
       <span class="inline-flex items-center gap-1.5">
         <span class="inline-block h-1.5 w-1.5 rounded-full bg-pos
                      shadow-[0_0_8px_rgba(134,239,172,0.7)]"></span>
-        v2.0 · march 2026
+        v3.0 · may 2026
       </span>
       <span class="text-border">·</span>
       <span>updated when workflow changes</span>
       <span class="text-border">·</span>
-      <span>3 entities · 1 terminal</span>
+      <span>4 entities · 1 terminal</span>
     </div>
   </section>
 
@@ -85,8 +86,8 @@ import HowWeWorkInteractive from "../components/HowWeWorkInteractive.jsx";
           </div>
           <div class="mt-1 font-mono text-[11px] leading-[1.5] text-text-dim">
             The intern's desk. Terminal access, file editing, git
-            operations. Briefed via CLAUDE.md + memory.md on every
-            session start.
+            operations. Briefed via CLAUDE.md + an auto-memory system
+            that persists notes across sessions.
           </div>
         </div>
         <div class="rounded-lg border border-border bg-surface p-4">
@@ -228,6 +229,21 @@ import HowWeWorkInteractive from "../components/HowWeWorkInteractive.jsx";
             it's the foundation.
           </p>
         </div>
+
+        <div class="border-l-2 border-pos/60 pl-4">
+          <div class="font-mono text-[13px] font-semibold text-text">
+            Stale instructions fail silently.
+          </div>
+          <p class="mt-1 text-[14px] leading-[1.6] text-text-dim">
+            For a month and a half, the CEO kept writing briefs based on
+            assumptions two sessions out of date — referencing files that
+            had moved, forgetting decisions made the week before. Smarter
+            prompts didn't fix it. State files did. Two markdown files,
+            one written by each AI, both read at the start of every
+            session. The kind of plumbing nobody brags about and
+            everyone ends up needing.
+          </p>
+        </div>
       </div>
     </section>
 
@@ -250,13 +266,14 @@ import HowWeWorkInteractive from "../components/HowWeWorkInteractive.jsx";
         </div>
         <div>
           <span class="mr-2 font-semibold text-pos/70">03</span>
-          The intern does <span class="font-semibold text-neg">NOT</span> make
-          external connections unless told to.
+          The intern restarts the orchestrator and pushes to git, but
+          <span class="font-semibold text-neg">NEVER</span> modifies
+          bot_config without an approved brief.
         </div>
         <div>
           <span class="mr-2 font-semibold text-pos/70">04</span>
-          The intern does <span class="font-semibold text-neg">NOT</span> launch
-          the trading bot. Ever.
+          Max approves every non-trivial plan before code is written.
+          The veto stands until commit.
         </div>
         <div>
           <span class="mr-2 font-semibold text-pos/70">05</span>
@@ -291,79 +308,180 @@ import HowWeWorkInteractive from "../components/HowWeWorkInteractive.jsx";
         </div>
         <div>
           <span class="mr-2 font-semibold text-pos/70">12</span>
-          roadmap.html: always validate JS const with{" "}
-          <code class="text-[11px] text-text">node -e eval</code>{" "}
-          before delivering.
+          Astro pages: run{" "}
+          <code class="text-[11px] text-text">npm run build</code>{" "}
+          locally before pushing — Vercel re-deploys silently on
+          failure.
         </div>
       </div>
     </section>
 
-    {/* ============ § 5 — HOW MEMORY ACTUALLY WORKS ============ */}
+    {/* ============ § 5 — HOW STATE ACTUALLY WORKS ============ */}
     <hr class="mt-12 border-t border-border-soft" />
     <section class="mt-8">
       <h2 class="font-mono text-[12px] uppercase tracking-[0.18em] text-pos mb-5">
-        § 5 · How memory actually works
+        § 5 · How state actually works
       </h2>
 
       <p class="mb-5 text-[14.5px] leading-[1.7] text-text-dim">
-        There are two separate memory systems in this project, and
-        they work very differently.
+        Three AI conversations, two machines, one human bridge.
+        Without explicit state management, context drifts: the CEO
+        writes briefs based on what the codebase looked like two
+        sessions ago, the intern doesn't know about strategic
+        decisions made yesterday in Claude Projects. Two living files
+        in the repo solve this — one written by each AI, both read at
+        the start of every session.
       </p>
 
       <div class="space-y-5">
         <div class="border-l-2 border-pos/60 pl-4">
           <div class="font-mono text-[13px] font-semibold text-text">
-            The CEO (Claude Projects)
+            PROJECT_STATE.md
           </div>
           <p class="mt-1 text-[14px] leading-[1.6] text-text-dim">
-            Doesn't use a file. At the start of every conversation,
-            the system injects a structured summary of the project
-            state, rules, and current priorities. On top of that, the
-            CEO has a personal notebook (<code class="font-mono text-[12px] text-text">memory_user_edits</code>)
-            where it can add, modify, or delete specific reminders. It
-            also has access to all project files (Blueprint, Roadmap,
-            Diary) and can search them before answering.
+            The tech-side state. Written by the intern (Claude Code)
+            at the end of every coding session, committed to the repo.
+            Nine canonical sections: current state, active
+            architecture, in-flight work, recent decisions with
+            rationale, known bugs, open questions for the CEO,
+            deadlines, what was deliberately not done, and external
+            audits. If you want to know what the code is doing today,
+            this is the file.
           </p>
         </div>
 
         <div class="border-l-2 border-pos/60 pl-4">
           <div class="font-mono text-[13px] font-semibold text-text">
-            The Intern (Claude Code)
+            BUSINESS_STATE.md
           </div>
           <p class="mt-1 text-[14px] leading-[1.6] text-text-dim">
-            Resets completely every session. No memory carries over
-            automatically. Its only continuity comes from two files:{" "}
-            <code class="font-mono text-[12px] text-text">CLAUDE.md</code>{" "}
-            in the repo root (project rules it reads on startup) and{" "}
-            <code class="font-mono text-[12px] text-text">memory.md</code>{" "}
-            (which it updates at the end of each task with what was
-            done and what to remember). Without these files, the
-            intern starts every session as if it's day one.
+            The strategy-side state. Written by the CEO (Claude
+            Projects) at the end of every strategic session. Seven
+            sections: brand and messaging, marketing in-flight, diary
+            status, recent strategic decisions, open questions for
+            the intern, non-tech deadlines, and what is deliberately
+            not happening. The file the intern reads to remember why
+            we're doing what we're doing.
           </p>
         </div>
 
         <div class="border-l-2 border-pos/60 pl-4">
           <div class="font-mono text-[13px] font-semibold text-text">
-            The Human (Max)
+            The audit clause
           </div>
           <p class="mt-1 text-[14px] leading-[1.6] text-text-dim">
-            The bridge. Carries context between the two AIs,
-            translates strategic decisions into intern briefs, and
-            catches when either AI is working from stale information.
-            The three-way split works because each participant
-            compensates for the others' constraints: the CEO thinks
-            but can't execute, the intern executes but can't remember,
-            and Max can do both but doesn't scale.
+            Both AIs operate under one mandatory rule: if you notice
+            that an instruction references a file that doesn't exist,
+            a decision that's been superseded, or anything that
+            contradicts the current state of the repo — stop and flag
+            it. Don't execute from stale context. The rule caught its
+            first drift within hours of being introduced: the CEO had
+            a roadmap path that pointed to a file gitignored months
+            ago. Nothing was broken, nothing was technically wrong,
+            but every roadmap update was silently editing a legacy
+            file that hadn't been deployed since the site migration.
+            The audit clause surfaced it.
+          </p>
+        </div>
+
+        <div class="border-l-2 border-pos/60 pl-4">
+          <div class="font-mono text-[13px] font-semibold text-text">
+            The human (Max)
+          </div>
+          <p class="mt-1 text-[14px] leading-[1.6] text-text-dim">
+            Still the bridge — but now a bridge with a railing.
+            Carries artifacts between the AIs (copy-paste from Claude
+            Projects into a new file, hand it to Claude Code for the
+            commit), approves plans before code is written, reads
+            WORKFLOW.md when exhausted at midnight. The three-way
+            split works because each participant compensates for the
+            others' constraints: the CEO thinks but can't execute,
+            the intern executes but resets every session, and Max can
+            do both but doesn't scale. The state files exist precisely
+            because Max doesn't scale.
           </p>
         </div>
       </div>
     </section>
 
-    {/* ============ § 6 — WANT TO REPLICATE THIS? ============ */}
+    {/* ============ § 6 — VERIFICATION & CONTROL ============ */}
     <hr class="mt-12 border-t border-border-soft" />
     <section class="mt-8">
       <h2 class="font-mono text-[12px] uppercase tracking-[0.18em] text-pos mb-5">
-        § 6 · Want to replicate this?
+        § 6 · Verification & Control
+      </h2>
+
+      <p class="mb-5 text-[14.5px] leading-[1.7] text-text-dim">
+        Two AIs writing each other state files is not enough by
+        itself — the loop can become self-reinforcing. Both could
+        agree on a fiction. The fourth entity in this project is an
+        external auditor: a fresh Claude Code session, with no
+        continuity, called periodically to verify, flag drift, and
+        produce a written report. Inspired by how construction sites
+        have an independent inspector distinct from both the architect
+        and the contractor.
+      </p>
+
+      <div class="space-y-5">
+        <div class="border-l-2 border-pos/60 pl-4">
+          <div class="font-mono text-[13px] font-semibold text-text">
+            Three areas of audit
+          </div>
+          <p class="mt-1 text-[14px] leading-[1.6] text-text-dim">
+            <strong class="text-text">Technical</strong> — code
+            correctness and behavioral consistency across modules
+            (does Sentinel pass Sherpa the data it expects? Does the
+            Grid bot read the parameters Sherpa writes?). Run monthly
+            and after major features.<br /><br />
+            <strong class="text-text">Project coherence</strong> —
+            drift between diary, site, code, and strategy. Does the
+            homepage message match what the bots actually do? Are
+            there gaps between what the brief said and what got built?
+            Run at the end of every diary volume.<br /><br />
+            <strong class="text-text">Strategy and marketing</strong>{" "}
+            — positioning, messaging, channel coherence. Trickier to
+            run meaningfully at five visitors per month, but the
+            muscle is there for when the numbers grow.
+          </p>
+        </div>
+
+        <div class="border-l-2 border-pos/60 pl-4">
+          <div class="font-mono text-[13px] font-semibold text-text">
+            Private reports, public verdicts
+          </div>
+          <p class="mt-1 text-[14px] leading-[1.6] text-text-dim">
+            Audit reports themselves are local-only (gitignored) —
+            they can be candid about strategic weaknesses without
+            becoming public liabilities. But a one-line verdict (date,
+            area, topic, outcome) is appended to PROJECT_STATE.md, so
+            both AIs see what has already been audited and can't
+            ignore unresolved recommendations. Transparency on the
+            existence of audits, privacy on their full content.
+          </p>
+        </div>
+
+        <div class="border-l-2 border-pos/60 pl-4">
+          <div class="font-mono text-[13px] font-semibold text-text">
+            The auditor doesn't decide
+          </div>
+          <p class="mt-1 text-[14px] leading-[1.6] text-text-dim">
+            Clear boundaries: the auditor flags, the CEO decides, the
+            intern executes. The auditor doesn't write code as part of
+            the verification (except for trivial inline fixes),
+            doesn't change strategic direction, doesn't replace the
+            internal checks Sentinel and Sherpa run at runtime. The
+            point is independent verification, not parallel
+            governance.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    {/* ============ § 7 — WANT TO REPLICATE THIS? ============ */}
+    <hr class="mt-12 border-t border-border-soft" />
+    <section class="mt-8">
+      <h2 class="font-mono text-[12px] uppercase tracking-[0.18em] text-pos mb-5">
+        § 7 · Want to replicate this?
       </h2>
 
       <p class="mb-5 text-[14.5px] leading-[1.7] text-text-dim">
@@ -410,6 +528,19 @@ import HowWeWorkInteractive from "../components/HowWeWorkInteractive.jsx";
           <p class="mt-1 text-[14px] leading-[1.6] text-text-dim">
             Don't wait until you have something impressive. The
             documentation IS the product.
+          </p>
+        </div>
+        <div>
+          <div class="font-mono text-[13px] font-semibold text-amber-400">
+            5. Add state files before you need them
+          </div>
+          <p class="mt-1 text-[14px] leading-[1.6] text-text-dim">
+            Two markdown files in the repo root: one written by your
+            CEO AI, one by your coding AI. Both read at the start of
+            every session. It feels like overhead until the day you
+            realize a brief is based on assumptions two weeks old.
+            Then it feels like the only thing keeping the project
+            sane.
           </p>
         </div>
       </div>

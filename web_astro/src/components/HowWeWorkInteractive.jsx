@@ -28,10 +28,10 @@ const TEAM = {
     desc:
       "An AI with the confidence of a Fortune 500 CEO and the budget of a lemonade stand. Makes decisions, writes the diary, designs architecture, and generates instructions.",
     superpower: "Never forgets a decision (it's all in the documents)",
-    weakness: "Can't touch a file, open a browser, or buy a domain",
+    weakness: "Can't push code, restart processes, or buy a domain",
     tools: ["Claude Projects", "Supabase MCP", "Vercel MCP"],
     memory:
-      "userMemories block injected at session start + memory_user_edits notebook + all project documents searchable",
+      "Reads PROJECT_STATE.md and writes BUSINESS_STATE.md at session start + end. Personal notebook for ad-hoc reminders + all project documents searchable via Claude Projects.",
   },
   max: {
     id: "max",
@@ -47,7 +47,7 @@ const TEAM = {
     weakness: 'Says "quick session" then stays 3 hours',
     tools: ["Mac Mini (prod)", "MacBook Air (dev)", "GitHub", "Telegram"],
     memory:
-      "The bridge. Carries context between the two AIs, translates strategy into intern briefs.",
+      "The bridge — now with a railing. Reads the state files at session start; still relays briefs and approves plans, just with less context-carrying overhead.",
   },
   cc: {
     id: "cc",
@@ -60,10 +60,26 @@ const TEAM = {
     desc:
       "The most talented developer you've ever met, with the memory of a goldfish. Builds everything from scratch — every single time. Pushes directly to main.",
     superpower: "Writes code directly in the repo",
-    weakness: "Forgets everything between sessions",
-    tools: ["Terminal", "Git", "Python", "Local files only"],
+    weakness: "Without the state files, would forget everything between sessions",
+    tools: ["Terminal", "Git + gh CLI", "Python", "SSH (Mac Mini)", "Supabase MCP"],
     memory:
-      "Resets every session. Only continuity: CLAUDE.md (rules) + memory.md (updated at task end).",
+      "Resets every session. Continuity comes from CLAUDE.md (project rules), PROJECT_STATE.md + BUSINESS_STATE.md (state files committed to the repo), and an auto-memory notebook that persists across sessions.",
+  },
+  auditor: {
+    id: "auditor",
+    name: "Auditor",
+    role: "External · AI",
+    emoji: "🔍",
+    accent: "cyan-400",
+    accentHex: "#22d3ee",
+    tagline: "The one who checks",
+    desc:
+      "A fresh Claude Code session with no continuity, called in periodically to verify, flag drift, and produce a written report. Inspired by how construction sites have an independent inspector — distinct from both the architect and the contractor.",
+    superpower: "No bias from past decisions",
+    weakness: "Sees only what's documented",
+    tools: ["Fresh terminal", "audits/ dir (gitignored)", "AUDIT_PROTOCOL.md", "PROJECT_STATE.md §9"],
+    memory:
+      "None — that's the point. Walks in blind, reads only what the others have written, leaves a report behind.",
   },
 };
 
@@ -107,6 +123,34 @@ const CONNECTIONS = [
       "Deploy status via Vercel",
     ],
   },
+  {
+    from: "auditor",
+    to: "ceo",
+    dashed: true,
+    label: "Audits",
+    desc:
+      "Independent verification of both AI agents. The auditor reads what they wrote, runs sanity checks against the live code and DB, and flags any drift between brief, build, and reality. Never modifies code as part of the review — except trivial inline fixes.",
+    items: [
+      "Technical · monthly",
+      "Project coherence · end-of-volume",
+      "Strategy · quarterly",
+      "Hot-fix · on-demand",
+    ],
+  },
+  {
+    from: "auditor",
+    to: "cc",
+    dashed: true,
+    label: "Audits",
+    desc:
+      "Independent verification of both AI agents. The auditor reads what they wrote, runs sanity checks against the live code and DB, and flags any drift between brief, build, and reality. Never modifies code as part of the review — except trivial inline fixes.",
+    items: [
+      "Technical · monthly",
+      "Project coherence · end-of-volume",
+      "Strategy · quarterly",
+      "Hot-fix · on-demand",
+    ],
+  },
 ];
 
 const WORKFLOW = [
@@ -137,8 +181,8 @@ const WORKFLOW = [
   {
     step: "05",
     title: "Deploy",
-    who: "max",
-    desc: "Max does git pull on Mac Mini, restarts orchestrator. If crash → git revert.",
+    who: "cc",
+    desc: "CC pulls on Mac Mini and restarts the orchestrator. Max watches Telegram for the first cycle; rollback via git revert if a regression appears.",
   },
   {
     step: "06",
@@ -177,8 +221,9 @@ function useIsMobile() {
 /* ============================================================
    Desktop org chart node (CEO / Max / CC).
    ============================================================ */
-function Node({ memberKey, isSelected, onClick }) {
+function Node({ memberKey, isSelected, onClick, scale = 1 }) {
   const m = TEAM[memberKey];
+  const s = isSelected ? scale * 1.08 : scale;
   return (
     <div
       data-node={memberKey}
@@ -186,7 +231,7 @@ function Node({ memberKey, isSelected, onClick }) {
       className="group flex cursor-pointer flex-col items-center gap-1.5
                  transition-transform duration-300"
       style={{
-        transform: isSelected ? "scale(1.08)" : "scale(1)",
+        transform: `scale(${s})`,
         zIndex: isSelected ? 10 : 1,
         position: "relative",
       }}
@@ -239,7 +284,7 @@ function SVGConnections({ selectedConn, onSelectConnection, containerRef }) {
       const container = containerRef.current;
       const cRect = container.getBoundingClientRect();
       const nodes = {};
-      ["ceo", "max", "cc"].forEach((id) => {
+      ["ceo", "max", "cc", "auditor"].forEach((id) => {
         const el = container.querySelector(`[data-node="${id}"]`);
         if (el) {
           const r = el.getBoundingClientRect();
@@ -249,7 +294,7 @@ function SVGConnections({ selectedConn, onSelectConnection, containerRef }) {
           };
         }
       });
-      if (Object.keys(nodes).length === 3) {
+      if (Object.keys(nodes).length === 4) {
         setPaths(
           CONNECTIONS.map((c) => {
             const f = nodes[c.from];
@@ -298,56 +343,65 @@ function SVGConnections({ selectedConn, onSelectConnection, containerRef }) {
           <path d="M0,0 L10,3 L0,6" fill="#7dd3fc" opacity="0.5" />
         </marker>
       </defs>
-      {paths.map((p, i) => (
-        <g key={i}>
-          {/* Base track (dimmer) + accent overlay (brighter when selected) */}
-          <path
-            d={p.d}
-            fill="none"
-            stroke="#2a3556"
-            strokeWidth={selectedConn === i ? 2.5 : 1.5}
-          />
-          <path
-            d={p.d}
-            fill="none"
-            stroke="#7dd3fc"
-            strokeWidth={selectedConn === i ? 2 : 1}
-            opacity={selectedConn === i ? 0.7 : 0.25}
-            markerEnd="url(#hww-arrow)"
-          />
-          {/* Animated dot crawling along the path. */}
-          <circle r="3" fill="#7dd3fc" opacity="0.8">
-            <animateMotion
-              dur={`${3 + i}s`}
-              repeatCount="indefinite"
-              path={p.d}
+      {paths.map((p, i) => {
+        const accent = p.dashed ? "#22d3ee" : "#7dd3fc";
+        const dash = p.dashed ? "6 4" : undefined;
+        const baseOpacity = selectedConn === i ? 0.7 : p.dashed ? 0.35 : 0.25;
+        return (
+          <g key={i}>
+            {/* Base track (dimmer) + accent overlay (brighter when selected) */}
+            <path
+              d={p.d}
+              fill="none"
+              stroke="#2a3556"
+              strokeWidth={selectedConn === i ? 2.5 : 1.5}
+              strokeDasharray={dash}
             />
-          </circle>
-          {/* Clickable label hotspot at the curve midpoint. */}
-          <g
-            style={{ pointerEvents: "all", cursor: "pointer" }}
-            onClick={() => onSelectConnection(i)}
-          >
-            <circle cx={p.mx} cy={p.my} r={22} fill="transparent" />
-            <text
-              x={p.mx}
-              y={p.my}
-              textAnchor="middle"
-              dominantBaseline="central"
-              fontSize={9}
-              fill={selectedConn === i ? "#7dd3fc" : "#5d6680"}
-              fontFamily="monospace"
-              letterSpacing="0.5"
-              style={{
-                textTransform: "uppercase",
-                pointerEvents: "none",
-              }}
+            <path
+              d={p.d}
+              fill="none"
+              stroke={accent}
+              strokeWidth={selectedConn === i ? 2 : 1}
+              opacity={baseOpacity}
+              strokeDasharray={dash}
+              markerEnd={p.dashed ? undefined : "url(#hww-arrow)"}
+            />
+            {/* Animated dot crawling along the path — only on continuous loop edges. */}
+            {!p.dashed && (
+              <circle r="3" fill="#7dd3fc" opacity="0.8">
+                <animateMotion
+                  dur={`${3 + i}s`}
+                  repeatCount="indefinite"
+                  path={p.d}
+                />
+              </circle>
+            )}
+            {/* Clickable label hotspot at the curve midpoint. */}
+            <g
+              style={{ pointerEvents: "all", cursor: "pointer" }}
+              onClick={() => onSelectConnection(i)}
             >
-              {p.label}
-            </text>
+              <circle cx={p.mx} cy={p.my} r={22} fill="transparent" />
+              <text
+                x={p.mx}
+                y={p.my}
+                textAnchor="middle"
+                dominantBaseline="central"
+                fontSize={9}
+                fill={selectedConn === i ? accent : "#5d6680"}
+                fontFamily="monospace"
+                letterSpacing="0.5"
+                style={{
+                  textTransform: "uppercase",
+                  pointerEvents: "none",
+                }}
+              >
+                {p.label}
+              </text>
+            </g>
           </g>
-        </g>
-      ))}
+        );
+      })}
     </svg>
   );
 }
@@ -705,7 +759,11 @@ function KeyInsight() {
       <p className="text-[14px] leading-[1.7] text-text-dim">
         The CEO <span className="text-pos">thinks</span> but can't do.{" "}
         The intern <span className="text-cc">does</span> but can't think long-term.{" "}
-        The human <span className="text-amber-400">can do and can think</span>, but doesn't scale.
+        The human <span className="text-amber-400">can do and can think</span>, but doesn't scale.{" "}
+        And once in a while,{" "}
+        <span style={{ color: "#22d3ee" }}>
+          an outsider checks they're all telling the same story.
+        </span>
       </p>
       <p className="mt-2 text-[13px] font-medium text-text">Together, they ship.</p>
     </div>
@@ -766,8 +824,11 @@ export default function HowWeWorkInteractive() {
     <div className="font-mono">
       <style>{KEYFRAMES}</style>
 
-      {/* Org chart area — 3 nodes positioned absolutely. */}
-      <div ref={containerRef} className="relative mb-6 h-[280px]">
+      {/* Org chart area — 4 nodes positioned absolutely.
+          Triangle (CEO / Max / CC) is the continuous loop;
+          Auditor floats top-right, outside the loop, connected
+          via dashed edges. */}
+      <div ref={containerRef} className="relative mb-6 h-[340px]">
         <SVGConnections
           selectedConn={selectedConn}
           onSelectConnection={handleConnClick}
@@ -798,6 +859,16 @@ export default function HowWeWorkInteractive() {
             memberKey="cc"
             isSelected={selectedNode === "cc"}
             onClick={() => handleNodeClick("cc")}
+          />
+        </div>
+
+        {/* Auditor — floating top-right, outside the loop, scale 0.85 */}
+        <div className="absolute right-[6%] top-2">
+          <Node
+            memberKey="auditor"
+            isSelected={selectedNode === "auditor"}
+            onClick={() => handleNodeClick("auditor")}
+            scale={0.85}
           />
         </div>
       </div>
