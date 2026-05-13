@@ -1,0 +1,74 @@
+---
+import { getCollection } from "astro:content";
+import Layout from "../../layouts/Layout.astro";
+import BlogPostCard from "../../components/BlogPostCard.astro";
+
+/* In production, hide drafts. In dev, show everything so we can
+   preview before publishing. */
+const allPosts = await getCollection("blog", ({ data }) =>
+  import.meta.env.PROD ? !data.draft : true
+);
+
+/* Most recent first. */
+const posts = allPosts.sort(
+  (a, b) => b.data.date.valueOf() - a.data.date.valueOf()
+);
+---
+
+<Layout
+  title="Blog — BagHolderAI"
+  description="Selected stories from the development diary, and lessons learned. The full story lives in the volumes on Payhip."
+  current="blog"
+>
+
+  {/* ============================================================ HERO */}
+  <section class="mx-auto max-w-4xl px-4 pt-10 pb-6 sm:px-6 sm:pt-14 sm:pb-8">
+
+    <h1 class="text-[28px] font-semibold leading-[1.12] tracking-tight
+               text-text sm:text-[34px] md:text-[40px] md:leading-[1.08]">
+      Blog<span class="text-primary">.</span>
+    </h1>
+
+    <p class="mt-3 max-w-2xl text-[14.5px] leading-[1.55] text-text-dim
+              sm:text-[15px]">
+      Selected stories from the development diary, and lessons learned
+      along the way. The full diary lives in the volumes.
+    </p>
+
+    <div class="mt-5 flex flex-wrap items-center gap-3 font-mono text-[10.5px]
+                uppercase tracking-[0.16em] text-text-muted">
+      <span class="inline-flex items-center gap-1.5">
+        <span class="inline-block h-1.5 w-1.5 rounded-full bg-pos
+                     shadow-[0_0_8px_rgba(134,239,172,0.7)]"></span>
+        {posts.length} {posts.length === 1 ? "post" : "posts"}
+      </span>
+      <span class="text-border">·</span>
+      <span>updated when something is worth writing</span>
+    </div>
+  </section>
+
+  {/* ============================================================ LIST */}
+  <section class="reveal mx-auto max-w-4xl px-4 pb-20 sm:px-6">
+    {posts.length === 0 ? (
+      <p class="py-12 text-center font-mono text-[12px] text-text-muted">
+        No posts yet. The first one is on its way.
+      </p>
+    ) : (
+      <div class="flex flex-col reveal-stagger">
+        {posts.map((post) => (
+          <BlogPostCard
+            href={`/blog/${post.id}`}
+            title={post.data.title}
+            subtitle={post.data.subtitle}
+            date={post.data.date}
+            type={post.data.type}
+            volume={post.data.volume}
+            summary={post.data.summary}
+            tags={post.data.tags}
+          />
+        ))}
+      </div>
+    )}
+  </section>
+
+</Layout>

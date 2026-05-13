@@ -1,0 +1,188 @@
+---
+import { getCollection, render } from "astro:content";
+import Layout from "../../layouts/Layout.astro";
+import BlogCTA from "../../components/BlogCTA.astro";
+
+/* Static paths: one route per non-draft post in production, all
+   posts in dev. The `slug` rest param maps to the entry id (which
+   for `glob` loader is the file path without extension). */
+export async function getStaticPaths() {
+  const posts = await getCollection("blog", ({ data }) =>
+    import.meta.env.PROD ? !data.draft : true
+  );
+  return posts.map((post) => ({
+    params: { slug: post.id },
+    props: { post },
+  }));
+}
+
+const { post } = Astro.props;
+const { Content } = await render(post);
+
+const formattedDate = post.data.date.toLocaleDateString("en-GB", {
+  day: "2-digit",
+  month: "long",
+  year: "numeric",
+});
+
+const typePill =
+  post.data.type === "highlight"
+    ? post.data.volume
+      ? `from Volume ${post.data.volume}`
+      : "highlight"
+    : "lesson";
+---
+
+<Layout
+  title={`${post.data.title} — BagHolderAI`}
+  description={post.data.summary}
+  current="blog"
+>
+
+  {/* ========================================================== HEADER */}
+  <section class="mx-auto max-w-4xl px-4 pt-10 pb-6 sm:px-6 sm:pt-14 sm:pb-8">
+
+    <a
+      href="/blog"
+      class="inline-flex items-center gap-1 font-mono text-[11px] uppercase
+             tracking-[0.16em] text-text-muted hover:text-text transition-colors"
+    >
+      ← Back to blog
+    </a>
+
+    <h1 class="mt-4 text-[28px] font-semibold leading-[1.12] tracking-tight
+               text-text sm:text-[34px] md:text-[40px] md:leading-[1.08]">
+      {post.data.title}
+    </h1>
+
+    {post.data.subtitle && (
+      <p class="mt-3 max-w-2xl text-[16px] leading-[1.55] text-text-dim italic
+                sm:text-[17px]">
+        {post.data.subtitle}
+      </p>
+    )}
+
+    <div class="mt-5 flex flex-wrap items-center gap-2.5 font-mono text-[10.5px]
+                uppercase tracking-[0.16em] text-text-muted">
+      <span>{formattedDate}</span>
+      <span class="text-border">·</span>
+      <span
+        class:list={[
+          "rounded-full border px-2 py-0.5 text-[9px]",
+          post.data.type === "highlight"
+            ? "border-pos/30 text-pos bg-pos/5"
+            : "border-amber-400/30 text-amber-400 bg-amber-400/5",
+        ]}
+      >
+        {typePill}
+      </span>
+      {post.data.tags.length > 0 && post.data.tags.map((t) => (
+        <span class="rounded-md border border-border-soft bg-surface/50
+                     px-1.5 py-0.5 text-[9px] normal-case tracking-normal
+                     text-text-muted">
+          #{t}
+        </span>
+      ))}
+    </div>
+  </section>
+
+  {/* ========================================================== BODY */}
+  <article class="prose-blog mx-auto max-w-4xl px-4 pb-6 sm:px-6">
+    <Content />
+  </article>
+
+  {/* ========================================================== CTA */}
+  <section class="mx-auto max-w-4xl px-4 pb-20 sm:px-6">
+    <BlogCTA volume={post.data.volume} />
+  </section>
+
+</Layout>
+
+<style is:global>
+  /* Blog body typography — scoped under .prose-blog wrapper.
+     We don't pull @tailwindcss/typography (no new deps); instead we
+     style markdown elements here to match the rest of the site. */
+  .prose-blog {
+    color: var(--color-text-dim);
+    font-size: 15px;
+    line-height: 1.75;
+  }
+  .prose-blog h2 {
+    margin-top: 2.5rem;
+    margin-bottom: 0.75rem;
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--color-text);
+    letter-spacing: -0.01em;
+  }
+  .prose-blog h3 {
+    margin-top: 2rem;
+    margin-bottom: 0.5rem;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--color-text);
+  }
+  .prose-blog p {
+    margin-bottom: 1rem;
+  }
+  .prose-blog blockquote {
+    border-left: 3px solid var(--color-pos);
+    padding-left: 1rem;
+    margin: 1.5rem 0;
+    font-style: italic;
+    color: var(--color-text-dim);
+  }
+  .prose-blog ul,
+  .prose-blog ol {
+    margin-left: 1.5rem;
+    margin-bottom: 1rem;
+  }
+  .prose-blog ul li {
+    list-style-type: disc;
+    margin-bottom: 0.25rem;
+  }
+  .prose-blog ol li {
+    list-style-type: decimal;
+    margin-bottom: 0.25rem;
+  }
+  .prose-blog a {
+    color: var(--color-primary);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .prose-blog a:hover {
+    color: var(--color-text);
+  }
+  .prose-blog code {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border-soft);
+    border-radius: 4px;
+    padding: 0.1rem 0.35rem;
+    font-size: 0.85em;
+    color: var(--color-text);
+    font-family: var(--font-mono);
+  }
+  .prose-blog pre {
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    overflow-x: auto;
+    margin: 1.5rem 0;
+    font-size: 13px;
+    line-height: 1.55;
+  }
+  .prose-blog pre code {
+    background: transparent;
+    border: none;
+    padding: 0;
+  }
+  .prose-blog hr {
+    border-color: var(--color-border-soft);
+    margin: 2rem 0;
+  }
+  .prose-blog strong {
+    color: var(--color-text);
+    font-weight: 600;
+  }
+</style>

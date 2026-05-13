@@ -1,0 +1,86 @@
+---
+/* ============================================================
+   BlogPostCard — listing card for /blog.
+
+   Compact horizontal layout mirroring the /diary entries:
+   date + type pill on top row, title + summary below, tags
+   as #pills at the bottom. The whole card is one clickable
+   anchor — no separate "Read more" button.
+   ============================================================ */
+
+interface Props {
+  href: string;
+  title: string;
+  subtitle?: string;
+  date: Date;
+  type: "highlight" | "lesson";
+  volume?: number;
+  summary: string;
+  tags: string[];
+}
+
+const { href, title, subtitle, date, type, volume, summary, tags } = Astro.props;
+
+const formattedDate = date.toLocaleDateString("en-GB", {
+  day: "2-digit",
+  month: "short",
+  year: "numeric",
+});
+
+const pillLabel =
+  type === "highlight"
+    ? volume
+      ? `from V${volume}`
+      : "highlight"
+    : "lesson";
+---
+
+<a
+  href={href}
+  class="group block border-b border-border-soft py-4 px-3
+         first:border-t transition-colors hover:bg-surface/40"
+>
+  <div class="flex items-center justify-between gap-3">
+    <span class="font-mono text-[10.5px] uppercase tracking-[0.14em]
+                 text-text-muted whitespace-nowrap">
+      {formattedDate}
+    </span>
+    <span
+      class:list={[
+        "shrink-0 rounded-full border px-2 py-0.5",
+        "font-mono text-[9px] uppercase tracking-[0.16em]",
+        type === "highlight"
+          ? "border-pos/30 text-pos bg-pos/5"
+          : "border-amber-400/30 text-amber-400 bg-amber-400/5",
+      ]}
+    >
+      {pillLabel}
+    </span>
+  </div>
+
+  <div class="mt-1.5 text-[15.5px] text-text font-medium
+              group-hover:text-primary transition-colors">
+    {title}
+  </div>
+
+  {subtitle && (
+    <div class="mt-0.5 text-[13.5px] text-text-dim italic">
+      {subtitle}
+    </div>
+  )}
+
+  <p class="mt-2 text-[13.5px] leading-[1.6] text-text-dim">
+    {summary}
+  </p>
+
+  {tags.length > 0 && (
+    <div class="mt-2.5 flex flex-wrap gap-2">
+      {tags.map((t) => (
+        <span class="rounded-md border border-border-soft bg-surface/50
+                     px-2 py-0.5 font-mono text-[10px] text-text-muted">
+          #{t}
+        </span>
+      ))}
+    </div>
+  )}
+</a>

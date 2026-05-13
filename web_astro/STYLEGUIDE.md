@@ -944,10 +944,117 @@ L'isola è "isola" quando ha attorno terra ferma statica. Su
   `src/pages/library.astro` — eccezione documentata, scoping `.library-shelf`
 - **Pattern React island**: vedi `src/components/HowWeWorkInteractive.jsx`
   (usato da `src/pages/howwework.astro` con `client:visible`)
+- **Pattern Content Collections + listing/detail**: vedi
+  `src/content.config.ts` (schema), `src/pages/blog/index.astro`
+  (listing) e `src/pages/blog/[...slug].astro` (detail)
+
+---
+
+## 22. Blog (Content Collections)
+
+Il blog vive in `src/content/blog/` come **Astro Content Collection**.
+La differenza rispetto a `/diary` (che pesca da Supabase) è che il blog
+è **statico, file-based, build-time**: ogni post è un `.md` committed,
+gli URL sono generati durante `npm run build`.
+
+### File coinvolti
+
+```
+web_astro/
+  src/
+    content.config.ts            ← schema collection blog (NON src/content/config.ts!)
+    content/
+      blog/
+        <slug>.md                ← un file = un post; filename = slug
+    components/
+      BlogPostCard.astro         ← card della listing
+      BlogCTA.astro              ← box Payhip a fondo post (volume-aware)
+    pages/
+      blog/
+        index.astro              ← listing /blog
+        [...slug].astro          ← dynamic route /blog/<slug>
+```
+
+### ⚠️ Posizione del config file
+
+**Astro v6 richiede `src/content.config.ts`** (file di pari livello a
+`src/pages/`), NON `src/content/config.ts`. Se metti il config dentro
+`src/content/` ottieni un `LegacyContentConfigError`. Sbagliato una
+volta in Sessione 75, costato 1 build retry.
+
+### Schema (sintesi — vedi `src/content.config.ts` per la fonte)
+
+```ts
+title:        z.string()
+subtitle?:    z.string()
+date:         z.coerce.date()        // YAML date o ISO string OK
+tags:         z.array(z.string())    // vocabolario libero, freeform
+summary:      z.string().max(220)    // meta description + card preview
+coverSession?:z.number()             // sessione di riferimento se highlight
+volume?:      z.number()             // 1 | 2 | 3 — per CTA Payhip mirato
+type:         z.enum(['highlight','lesson'])
+draft:        z.boolean().default(false)
+```
+
+### Convenzioni di scrittura
+
+- **Filename = slug**: scegli un filename `kebab-case` significativo
+  (`the-bonk-fee-story.md`), niente prefissi numerici, niente date nel
+  nome (la data sta nel frontmatter)
+- **Lingua**: inglese, come tutto il sito pubblico
+- **`type: 'highlight'`** = riscrittura discorsiva di una sessione del
+  diary; metti `coverSession` e `volume`
+- **`type: 'lesson'`** = pezzo trasversale; `volume` opzionale (se
+  presente, CTA punta solo a quel volume)
+- **`draft: true`**: il post NON appare nella listing in production
+  (nascosto da `import.meta.env.PROD` filter), ma è visibile in
+  `npm run dev` per anteprima
+
+### Markdown supportato
+
+Standard + Shiki (built-in Astro) per code blocks. Niente
+`@tailwindcss/typography` (avrebbe richiesto una dep extra). Lo
+styling vive in `<style is:global>` dentro `[...slug].astro` sotto la
+classe `.prose-blog` (h2/h3, blockquote, ul/ol, code inline, pre, hr,
+strong, a). Se vuoi aggiungere un elemento (tabelle? footnote?
+callout?), aggiungi la regola lì e documentalo qui.
+
+### CTA Payhip (`BlogCTA.astro`)
+
+Il componente sceglie automaticamente lo stile in base a `volume`:
+
+- **Con volume 1 o 2 noto**: box verde "From the diary · This story is
+  from Volume X — `<title>`" + link Payhip al singolo volume
+- **Senza volume (o volume non in {1,2})**: box neutro "If this
+  resonated" + due link side-by-side a V1 e V2
+
+Quando esce Volume 3, aggiungere la voce in `BlogCTA.astro` `VOLUMES`
+map.
+
+### Aggiungere un nuovo post — checklist
+
+1. Crea `src/content/blog/<slug>.md` con frontmatter completo
+2. Scrivi il contenuto in markdown
+3. `npm run dev` → vai a `/blog` (anche se `draft: true`)
+4. Verifica il singolo post a `/blog/<slug>`
+5. Quando pronto: rimuovi `draft: true` (o setta `false`)
+6. `npm run build` per confermare che entra in produzione
+7. Commit + push, Vercel re-deploya
+
+### Cosa NON è il blog
+
+- **Non è il diary**. Il diary è live da Supabase, una entry per
+  sessione, snapshot del processo. Il blog è curato, riscritto, a
+  cadenza irregolare ("variable reinforcement", come i post X)
+- **Non sostituisce i volumi**. Funnel gratuito verso Payhip, non
+  alternativa
+- **Non ha commenti, share button, RSS**. Esplicita decisione di
+  semplicità — riapri se mai servirà
 
 ---
 
 *Documento creato 2026-05-03 (Session 54). § 20 React Islands aggiunto
-2026-05-04 dopo Sessione 7. Aggiornato dal Claude Code che lavora sul
+2026-05-04 dopo Sessione 7. § 22 Blog (Content Collections) aggiunto
+2026-05-13 (Brief 75a). Aggiornato dal Claude Code che lavora sul
 sito. Quando trovi un pattern utile, aggiungilo. Quando trovi una
 lezione dolorosa, scrivila in § 12 prima che svanisca.*
