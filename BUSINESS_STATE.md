@@ -1,8 +1,8 @@
 # BUSINESS_STATE.md
 
-**Last updated:** 2026-05-12 — Session 74 chiusura (S73: dead zone + dust trap + phantom holdings + managed_holdings. S74: partial fill mainnet-gating chiusa, bot_runtime_state primitiva canonical, dashboard stop-buy + trigger fix, DEAD_ZONE_HOURS parametrico)
+**Last updated:** 2026-05-13 — Session 75 chiusura (sito pubblico: howwework v3 + Auditor entity, brief 75a blog infrastructure shipped, fix description Dashboard. Sitemap reinviata. Audit SEO meta tags completo).
 **Updated by:** CEO
-**Basato su:** PROJECT_STATE.md aggiornato 2026-05-12 (S74b chiusura, ultimo commit 2f67533)
+**Basato su:** PROJECT_STATE.md aggiornato 2026-05-13 (S75 chiusura, ultimo commit cd8ce65)
 
 ---
 
@@ -16,7 +16,7 @@ BagHolderAI è un progetto sperimentale dove un'AI (Claude) gestisce un micro-bu
 
 **Target audience:** tech-curious readers, AI enthusiasts, indie hackers. Non crypto traders professionisti.
 
-**Domain:** bagholderai.lol (Porkbun). Sito Astro su Vercel. 9 pagine live (home, diary, dashboard, library, howwework, roadmap, blueprint, terms, privacy).
+**Domain:** bagholderai.lol (Porkbun). Sito Astro su Vercel. 10 pagine live post-S75 (home, diary, dashboard, library, howwework, roadmap, blueprint, terms, privacy, **blog** infrastruttura pronta in attesa contenuti).
 
 **Social:** X @BagHolderAI (22+ post, posting organico non schedulato). Telegram @BagHolderAI_report (canale pubblico, report giornalieri).
 
@@ -24,7 +24,7 @@ BagHolderAI è un progetto sperimentale dove un'AI (Claude) gestisce un micro-bu
 
 ## 2. Marketing In-Flight
 
-**Sito online (S70c + S71):** TestnetBanner globale, Reconciliation table pubblica su /dashboard, TF "dal dottore" SVG inline, Sentinel/Sherpa badge TEST MODE colorati. Public dashboard certificata vs Binance. **S71:** P&L hero unificato sulle 3 superfici via formula canonica `netWorth = cash + holdings_mtm + skim − fees`. Due metriche etichettate: Total P&L (oscilla, include unrealized) + Net Realized Profit (storico fisso, post-fees).
+**Sito online (S70c + S71 + S75):** TestnetBanner globale, Reconciliation table pubblica su /dashboard, TF "dal dottore" SVG inline, Sentinel/Sherpa badge TEST MODE colorati. Public dashboard certificata vs Binance. **S71:** P&L hero unificato sulle 3 superfici via formula canonica `netWorth = cash + holdings_mtm + skim − fees`. Due metriche etichettate: Total P&L (oscilla, include unrealized) + Net Realized Profit (storico fisso, post-fees). **S75:** howwework v3 con Auditor entity (4° attore narrativo + diagramma React) + blog infrastructure pronta + dashboard meta description fix.
 
 **Post X:** thread S69+S70 da verificare se pubblicato. Nessun nuovo post in coda da S71.
 
@@ -32,11 +32,11 @@ BagHolderAI è un progetto sperimentale dove un'AI (Claude) gestisce un micro-bu
 
 **Payhip:** Volume 1 + Volume 2 live, **0/30 views totali** (segnalato da Board S68 come problema di invisibilità — sito offline + zero canale promozionale, non difetto del prodotto).
 
-**Blog/contenuto:** il contenuto pubblico è il diary sul sito (/diary) e i volumi Payhip. Nessun blog esterno. Daily CEO's Log via Haiku + X posting (OAuth 1.0a) attivo.
+**Blog:** infrastruttura Astro Content Collections shippata da CC (brief 75a, commit `67f1f57`). Pagina /blog live in locale con 1 post placeholder (`draft: true`, escluso dalla build production). Deploy Vercel alla prossima push. CTA Payhip volume-aware (V1/V2 box dedicato; lesson cross-volume box generico con entrambi i volumi). Prossimo step: sessioni dedicate selezione contenuti V1 e V2 (riscritture discorsive, non copia-incolla del diary). Cadenza: irregolare ("variable reinforcement", coerente con strategia X).
 
 **Ads/monetizzazione:** A-Ads live sul sito (crypto-native, revenue trascurabile). Buy Me a Coffee attivo (buymeacoffee.com/bagholderai). Nessuna sponsorship in pipeline.
 
-**SEO/Analytics:** Umami Cloud (cookieless, GDPR) + Vercel Web Analytics. Progetto pre-traction, nessun dato di traffico significativo.
+**SEO/Analytics:** Umami Cloud (cookieless, GDPR) + Vercel Web Analytics. Progetto pre-traction, nessun dato di traffico significativo. **S75 — Sitemap Google Search Console:** reinviata (sitemap-index.xml + sitemap-0.xml). Stato ancora "Impossibile recuperare" — monitorare 24-48h. Sito comunque indicizzato (8 pagine, posizione media 8.6). **S75 — Audit SEO meta tags:** tutte le pagine coperte (title, description, OG, Twitter card). Unico fix: description Dashboard duplicava la homepage → SHIPPED da CC in commit `cd8ce65` (Layout.astro propaga unico prop a meta + og + twitter card).
 
 **Partnership/eventi:** nessuno in corso né in pipeline.
 
@@ -52,7 +52,7 @@ Preview rimosse da entrambi i volumi.
 
 **Volume 3** — prossimo target di pubblicazione. Coprirà sessions 53+. Sessioni 53–74 in accumulo. Stima grezza chiusura: sessioni 78–85. Arco narrativo: Clean Slate → Testnet → FIFO Divorce → Fee Reckoning → The Stress Test (S73–74).
 
-**Sessione corrente:** 74 BUILDING su Supabase, 73 COMPLETE. Diary .docx S73 e S74 prodotti.
+**Sessione corrente:** 75 COMPLETE (sito pubblico: howwework v3 Auditor + blog infra + dashboard meta description). 74 + 73 COMPLETE. Diary .docx S73 e S74 prodotti; S75 in coda di diary writing.
 
 **Check di congruenza diary↔DB:** nessun check automatico attivo. Reconciliation gate nightly proposto ma non implementato.
 
@@ -66,6 +66,13 @@ Preview rimosse da entrambi i volumi.
 
 | Data | Decisione | Perché |
 |---|---|---|
+| 2026-05-13 (S75) | **Blog: partire da V1/V2, non V3** | Chi arriva non ha contesto. V1/V2 chiusi = materiale stabile. V3 solo dopo pubblicazione |
+| 2026-05-13 (S75) | **Blog: due tipi di post (highlight + lesson)** | Highlight = momento da una sessione. Lesson = tema trasversale. Alternare per varietà |
+| 2026-05-13 (S75) | **Blog: cadenza irregolare (variable reinforcement)** | Coerente con strategia X. No calendario fisso |
+| 2026-05-13 (S75) | **Sitemap: reinviata + sitemap-0.xml diretto** | Tentativo di sbloccare problema persistente da mesi |
+| 2026-05-13 (S75) | **Project Knowledge > GitHub web_fetch per state files** | PK aggiornato a S74b, GitHub fermo a S63. Invertita priorità di lettura |
+| 2026-05-13 (S75) | **howwework v3: coerenza piena (opzione B), non solo badge** | L'inconsistenza prose 3-vs-4 entities catturata in audit S75. Coerenza completa hero + meta + diagramma React (Auditor entity nuova) — il sito pubblico racconta esattamente il workflow attuale, niente drift cosmetico |
+| 2026-05-13 (S75) | **CC autonomia operativa estesa: pull/push/restart/SSH** | Max esplicito: "oramai abbiamo sdoganato che pull e lanciare orchestrator e i bot lo fai tu, io non lo faccio più". Reflected nelle Rules of engagement 03/04 nuove formulazioni. Salvato in [[feedback_cc_runs_orchestrator]] |
 | 2026-05-12 (S74b) | **bot_runtime_state come primitiva canonical** | Il bot scrive il suo stato in-memory ogni tick in 1 riga per symbol. Dashboard legge da lì, non più dai trades/events. Pattern stabile per ogni futuro "il dashboard non racconta la verità" |
 | 2026-05-12 (S74b) | **Partial fill = trade reale (brief 74c)** | `status='expired'` con `filled>0` è un partial fill, non un no-op. Mainnet-gating chiusa. Fix 3 righe in exchange_orders.py |
 | 2026-05-12 (S74b) | **DEAD_ZONE_HOURS per-coin in bot_config** | Migrato da hardcoded a parametro configurabile. BONK può avere 8h, BTC 2h. Sherpa-ready |
@@ -87,8 +94,11 @@ Preview rimosse da entrambi i volumi.
 | Tema | Stato | Note |
 |---|---|---|
 | **Buy trigger anchor (A/B/C)** | Parcheggiata S74 PROJECT_STATE §6 | A=last_buy, B=avg, C=hybrid. Simulazione mostra trade-off spread vs compressione. Decisione strategica |
-| **Stop-buy time-limit** | Parcheggiata S74 PROJECT_STATE §6 | Proposta Max: dopo 24h di stallo, compra per abbassare avg. Trading logic, brief dedicato |
-| **HWW v3 "3 entities" prose inconsistency** | Aperta | Draft aggiorna badge ma non hero prose. Da decidere in sessione sito pubblico |
+| **Stop-buy time-limit → brief 75b** | **PROGRAMMATA 2026-05-14** | Da "proposta parcheggiata" a brief concreto: timer parametrico `stop_buy_unlock_hours` in `bot_config` (pattern 74d). Default 24h. Motivazione empirica: perdita reale 2026-05-13. Refactor `grid_runner.py` come prerequisito strutturale (stesso giorno) |
+| **Audit messaggi idle re-entry / recalibrate** | **PROGRAMMATA 2026-05-14** | Idle msgs sono rumore quando stop_buy attivo (mercato crollato → bot bloccato per ragione strutturale, non per assenza opportunità). Soppressione condizionale `if not stop_buy_active`. Trigger in grid_bot.py:854/878/906, send in grid_runner.py:964 |
+| ✅ **HWW v3 "3 entities" prose inconsistency** | CHIUSA in S75 | Shipped opzione B (coerenza completa hero + meta + badge + diagramma React con 4° entity Auditor). Commit `f62f781` |
+| ✅ **Fix description Dashboard** | CHIUSA in S75 | Shipped commit `cd8ce65`. Layout.astro propaga prop singolo a meta + og + twitter card |
+| 🆕 **Monitorare sitemap Search Console post-24h** | Aperta | Se ancora "Impossibile recuperare" provare ping Google. Reinvio S75 |
 | **Phantom BONK 1.37M composizione** | Bassa priorità | Molto più grande dell'initial gift stimato. Non bloccante |
 
 ---
@@ -101,7 +111,7 @@ Preview rimosse da entrambi i volumi.
 | **Sentinel/Sherpa data collection** | ~25 maggio | 14 giorni di DRY_RUN da brainstorming 11 maggio. 3 bug calibrazione noti (speed_of_fall, opportunity_score, risk_score binario) — decisione aperta: fixare ora e resettare, o aspettare 14gg con dati imperfetti |
 | **Volume 3 pubblicazione** | Nessuna deadline | In accumulo. Arco narrativo si sta formando |
 | **How We Work v3 sito** | Nessuna deadline | Draft pronto, deferred a sessione dedicata "sito pubblico" |
-| **Blog section sito** | Nessuna deadline | 2-3 diary entries gratis come funnel a Payhip (0/30 views = invisibilità) |
+| **Blog section sito** | Infrastruttura pronta (S75), contenuti TBD in sessioni dedicate V1/V2 | 2-3 diary entries gratis come funnel a Payhip (0/30 views = invisibilità). Infra shippata brief 75a |
 
 **Multi-macchina:** MBP (sviluppo Max) ↔ Mac Mini (runtime `/Volumes/Archivio/bagholderai`). Sempre `git pull` + mount Archivio prima di test/audit.
 
