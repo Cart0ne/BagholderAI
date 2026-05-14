@@ -38,6 +38,7 @@ from bot.sentinel.inputs.binance_btc import fetch_price
 from bot.sherpa.config_writer import write_parameter
 from bot.sherpa.cooldown_manager import latest_manual_change, parameters_in_cooldown
 from bot.sherpa.parameter_rules import calculate_parameters, is_changed
+from bot.sherpa.regime_reader import get_current_regime
 
 logger = logging.getLogger("bagholderai.sherpa")
 
@@ -139,11 +140,15 @@ def run_sherpa() -> None:
             risk = int(score.get("risk_score", 50))
             opp = int(score.get("opportunity_score", 50))
             fast_signals = _signals_from_score(score)
+            # Sprint 2 (S78): regime now comes from Sentinel's slow loop
+            # (sentinel_scores.score_type='slow'). Fallback to "neutral"
+            # if no slow row exists yet (regime_reader handles it).
+            current_regime = get_current_regime(supabase)
             proposed_params, breakdown = calculate_parameters(
-                regime="neutral", fast_signals=fast_signals
+                regime=current_regime, fast_signals=fast_signals
             )
             proposed_stop_buy_active = risk > RISK_STOP_BUY_THRESHOLD
-            proposed_regime = breakdown.get("regime", "neutral")
+            proposed_regime = breakdown.get("regime", current_regime)
 
             bots = _fetch_active_manual_bots(supabase)
             for bot in bots:

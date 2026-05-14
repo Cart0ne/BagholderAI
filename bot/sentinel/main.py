@@ -26,6 +26,7 @@ from db.client import get_client
 from db.event_logger import log_event
 from utils.telegram_notifier import SyncTelegramNotifier
 
+from bot.sentinel import slow_loop
 from bot.sentinel.funding_monitor import FundingMonitor
 from bot.sentinel.price_monitor import PriceMonitor
 from bot.sentinel.score_engine import score
@@ -36,6 +37,13 @@ SCAN_INTERVAL_S = 60
 TELEGRAM_THROTTLE_S = 10 * 60  # max 1 alert of each type per 10 min
 RISK_ALERT_THRESHOLD = 70
 RISK_CRITICAL_THRESHOLD = 90
+
+# Sprint 2 (S78): slow loop cadence. Every SLOW_LOOP_INTERVAL_S the
+# Sentinel pulls F&G + CMC, decides a regime, and writes a
+# score_type='slow' row. Sherpa reads the latest slow row to pick the
+# BASE_TABLE regime to start from.
+SLOW_LOOP_INTERVAL_S = 4 * 60 * 60  # 4 hours
+SLOW_LOOP_EVERY_N_TICKS = SLOW_LOOP_INTERVAL_S // SCAN_INTERVAL_S  # 240
 
 # Brief 70b (S70 2026-05-10): default OFF al riavvio post-DRY_RUN per
 # evitare spam Telegram durante calibrazione. Max abilita via env quando
@@ -96,6 +104,10 @@ def run_sentinel() -> None:
     price.warm_up_from_klines()
 
     last_alert_ts: dict[str, float] = {}
+    # Sprint 2: start the counter AT the threshold so the very first
+    # iteration fires a slow tick. After that, every SLOW_LOOP_EVERY_N_TICKS
+    # ticks (=240 ticks = 4h) it fires again.
+    slow_tick_counter = SLOW_LOOP_EVERY_N_TICKS
 
     while not shutting_down["v"]:
         try:
@@ -149,6 +161,25 @@ def run_sentinel() -> None:
             # events still go through log_event below.
 
             _maybe_alert(notifier, last_alert_ts, risk, snapshot)
+
+            # Sprint 2: slow tick (regime detection) every 4h, plus
+            # once at boot. Wrapped so any failure here cannot crash
+            # the fast loop; slow_loop.tick() itself also swallows
+            # internal errors and just logs them.
+            slow_tick_counter += 1
+            if slow_tick_counter >= SLOW_LOOP_EVERY_N_TICKS:
+                slow_tick_counter = 0
+                try:
+                    slow_loop.tick(supabase)
+                except Exception as e:
+                    logger.error(f"Slow tick failed: {e}", exc_info=True)
+                    log_event(
+                        severity="error",
+                        category="error",
+                        event="SENTINEL_SLOW_ERROR",
+                        message=str(e)[:300],
+                        details={"source": "slow_loop"},
+                    )
 
         except Exception as e:
             logger.error(f"Sentinel loop error: {e}", exc_info=True)
