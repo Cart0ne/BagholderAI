@@ -1,8 +1,8 @@
 # BUSINESS_STATE.md
 
-**Last updated:** 2026-05-13 — Session 75 chiusura (sito pubblico: howwework v3 + Auditor entity, brief 75a blog infrastructure shipped, fix description Dashboard. Sitemap reinviata. Audit SEO meta tags completo).
+**Last updated:** 2026-05-14 — Session 76 (CEO session: S76 diary prodotto, roadmap Sentinel-first definita, decisione mainnet posticipata a sistema completo, visione TF Tier 3 + Sentinel Sprint 3 parcheggiata, blog weekend pianificato).
 **Updated by:** CEO
-**Basato su:** PROJECT_STATE.md aggiornato 2026-05-13 (S75 chiusura, ultimo commit cd8ce65)
+**Basato su:** PROJECT_STATE.md aggiornato 2026-05-14 (S76 chiusura, ultimo commit `fe58388`)
 
 ---
 
@@ -16,7 +16,7 @@ BagHolderAI è un progetto sperimentale dove un'AI (Claude) gestisce un micro-bu
 
 **Target audience:** tech-curious readers, AI enthusiasts, indie hackers. Non crypto traders professionisti.
 
-**Domain:** bagholderai.lol (Porkbun). Sito Astro su Vercel. 10 pagine live post-S75 (home, diary, dashboard, library, howwework, roadmap, blueprint, terms, privacy, **blog** infrastruttura pronta in attesa contenuti).
+**Domain:** bagholderai.lol (Porkbun). Sito Astro su Vercel. 10 pagine live (home, diary, dashboard, library, howwework, roadmap, blueprint, terms, privacy, blog infrastruttura pronta).
 
 **Social:** X @BagHolderAI (22+ post, posting organico non schedulato). Telegram @BagHolderAI_report (canale pubblico, report giornalieri).
 
@@ -24,41 +24,38 @@ BagHolderAI è un progetto sperimentale dove un'AI (Claude) gestisce un micro-bu
 
 ## 2. Marketing In-Flight
 
-**Sito online (S70c + S71 + S75):** TestnetBanner globale, Reconciliation table pubblica su /dashboard, TF "dal dottore" SVG inline, Sentinel/Sherpa badge TEST MODE colorati. Public dashboard certificata vs Binance. **S71:** P&L hero unificato sulle 3 superfici via formula canonica `netWorth = cash + holdings_mtm + skim − fees`. Due metriche etichettate: Total P&L (oscilla, include unrealized) + Net Realized Profit (storico fisso, post-fees). **S75:** howwework v3 con Auditor entity (4° attore narrativo + diagramma React) + blog infrastructure pronta + dashboard meta description fix.
+**Sito online:** TestnetBanner globale, Reconciliation table pubblica su /dashboard, TF "dal dottore" SVG inline, Sentinel/Sherpa badge TEST MODE. Dashboard P&L hero unificato. HWW v3 con Auditor entity. Blog infrastructure pronta (brief 75a shipped).
 
-**Post X:** thread S69+S70 da verificare se pubblicato. Nessun nuovo post in coda da S71.
+**Blog weekend (17-18 maggio):** 2 post pianificati:
+- **Post 1 — "Why We're Not Live Yet (And When We Will Be)"**: decisione strategica di oggi — perché mainnet è posticipato, roadmap Sentinel-first, timeline onesta.
+- **Post 2 — Highlight da V1 o V2**: pezzo standalone per lettori nuovi (candidati: "The Day the Bot Ran Out of Money", "How We Taught an AI to Write Its Own Daily Log").
 
-**Post X:** nessun post in coda (`pending_x_posts` vuoto). Scanner X automatizzato a cron settimanale dal 2026-05-04. Strategia: "variable reinforcement" — pubblica quando succede qualcosa di vero, mai calendar-driven. Posting Strategy v1.1 in `Posting_Strategy_v1_1.docx`.
+Cadenza blog: irregolare ("variable reinforcement"), coerente con strategia X.
 
-**Payhip:** Volume 1 + Volume 2 live, **0/30 views totali** (segnalato da Board S68 come problema di invisibilità — sito offline + zero canale promozionale, non difetto del prodotto).
+**Post X:** nessun post in coda. Scanner X cron settimanale attivo. Strategia: pubblica quando succede qualcosa di vero.
 
-**Blog:** infrastruttura Astro Content Collections shippata da CC (brief 75a, commit `67f1f57`). Pagina /blog live in locale con 1 post placeholder (`draft: true`, escluso dalla build production). Deploy Vercel alla prossima push. CTA Payhip volume-aware (V1/V2 box dedicato; lesson cross-volume box generico con entrambi i volumi). Prossimo step: sessioni dedicate selezione contenuti V1 e V2 (riscritture discorsive, non copia-incolla del diary). Cadenza: irregolare ("variable reinforcement", coerente con strategia X).
+**Payhip:** Volume 1 + Volume 2 live, 0/30 views totali.
 
-**Ads/monetizzazione:** A-Ads live sul sito (crypto-native, revenue trascurabile). Buy Me a Coffee attivo (buymeacoffee.com/bagholderai). Nessuna sponsorship in pipeline.
+**Ads/monetizzazione:** A-Ads live (revenue trascurabile). Buy Me a Coffee attivo. Nessuna sponsorship.
 
-**SEO/Analytics:** Umami Cloud (cookieless, GDPR) + Vercel Web Analytics. Progetto pre-traction, nessun dato di traffico significativo. **S75 — Sitemap Google Search Console:** reinviata (sitemap-index.xml + sitemap-0.xml). Stato ancora "Impossibile recuperare" — monitorare 24-48h. Sito comunque indicizzato (8 pagine, posizione media 8.6). **S75 — Audit SEO meta tags:** tutte le pagine coperte (title, description, OG, Twitter card). Unico fix: description Dashboard duplicava la homepage → SHIPPED da CC in commit `cd8ce65` (Layout.astro propaga unico prop a meta + og + twitter card).
-
-**Partnership/eventi:** nessuno in corso né in pipeline.
+**SEO/Analytics:** Umami Cloud + Vercel Web Analytics. Sitemap reinviata S75, monitorare.
 
 ---
 
 ## 3. Diary Status
 
-**Volume 1** — "From Zero to Grid" (Sessions 1–23, 96 pagine, €4.99). LIVE su Payhip: https://payhip.com/b/a4yMc
+**Volume 1** — "From Zero to Grid" (Sessions 1–23, €4.99). LIVE su Payhip: https://payhip.com/b/a4yMc
 
-**Volume 2** — "From Grid to Brain" (Sessions 24–52, 108 pagine, €4.99). LIVE su Payhip: https://payhip.com/b/NHw53
+**Volume 2** — "From Grid to Brain" (Sessions 24–52, €4.99). LIVE su Payhip: https://payhip.com/b/NHw53
 
-Preview rimosse da entrambi i volumi.
+**Volume 3** — in accumulo. Sessions 53+. Arco narrativo: Clean Slate → Testnet → Fee Reckoning → Stress Test → Sentinel-First Roadmap. Stima chiusura: sessioni 80-90.
 
-**Volume 3** — prossimo target di pubblicazione. Coprirà sessions 53+. Sessioni 53–74 in accumulo. Stima grezza chiusura: sessioni 78–85. Arco narrativo: Clean Slate → Testnet → FIFO Divorce → Fee Reckoning → The Stress Test (S73–74).
+**Sessione corrente:** S76 BUILDING. S75 COMPLETE. Diary .docx S73/S74/S76 prodotti. S75 .docx prodotto.
 
-**Sessione corrente:** 75 COMPLETE (sito pubblico: howwework v3 Auditor + blog infra + dashboard meta description). 74 + 73 COMPLETE. Diary .docx S73 e S74 prodotti; S75 in coda di diary writing.
-
-**Check di congruenza diary↔DB:** nessun check automatico attivo. Reconciliation gate nightly proposto ma non implementato.
+**Check di congruenza diary↔DB:** nessun check automatico attivo.
 
 **Draft in coda:**
-- `drafts/2026-05-07_howwework_v3.md` — ready for review, deferred a sessione "sito pubblico"
-- `drafts/2026-05-07_diary_vol3_state_files.md` — seed draft, da sviluppare col CEO per Volume 3
+- `drafts/2026-05-07_diary_vol3_state_files.md` — seed draft Volume 3
 
 ---
 
@@ -66,26 +63,20 @@ Preview rimosse da entrambi i volumi.
 
 | Data | Decisione | Perché |
 |---|---|---|
-| 2026-05-13 (S75) | **Blog: partire da V1/V2, non V3** | Chi arriva non ha contesto. V1/V2 chiusi = materiale stabile. V3 solo dopo pubblicazione |
-| 2026-05-13 (S75) | **Blog: due tipi di post (highlight + lesson)** | Highlight = momento da una sessione. Lesson = tema trasversale. Alternare per varietà |
-| 2026-05-13 (S75) | **Blog: cadenza irregolare (variable reinforcement)** | Coerente con strategia X. No calendario fisso |
-| 2026-05-13 (S75) | **Sitemap: reinviata + sitemap-0.xml diretto** | Tentativo di sbloccare problema persistente da mesi |
-| 2026-05-13 (S75) | **Project Knowledge > GitHub web_fetch per state files** | PK aggiornato a S74b, GitHub fermo a S63. Invertita priorità di lettura |
-| 2026-05-13 (S75) | **howwework v3: coerenza piena (opzione B), non solo badge** | L'inconsistenza prose 3-vs-4 entities catturata in audit S75. Coerenza completa hero + meta + diagramma React (Auditor entity nuova) — il sito pubblico racconta esattamente il workflow attuale, niente drift cosmetico |
-| 2026-05-13 (S75) | **CC autonomia operativa estesa: pull/push/restart/SSH** | Max esplicito: "oramai abbiamo sdoganato che pull e lanciare orchestrator e i bot lo fai tu, io non lo faccio più". Reflected nelle Rules of engagement 03/04 nuove formulazioni. Salvato in [[feedback_cc_runs_orchestrator]] |
-| 2026-05-12 (S74b) | **bot_runtime_state come primitiva canonical** | Il bot scrive il suo stato in-memory ogni tick in 1 riga per symbol. Dashboard legge da lì, non più dai trades/events. Pattern stabile per ogni futuro "il dashboard non racconta la verità" |
-| 2026-05-12 (S74b) | **Partial fill = trade reale (brief 74c)** | `status='expired'` con `filled>0` è un partial fill, non un no-op. Mainnet-gating chiusa. Fix 3 righe in exchange_orders.py |
-| 2026-05-12 (S74b) | **DEAD_ZONE_HOURS per-coin in bot_config** | Migrato da hardcoded a parametro configurabile. BONK può avere 8h, BTC 2h. Sherpa-ready |
-| 2026-05-12 (S74b) | **Dashboard stop-buy badge + trigger fix** | Badge rosso quando guardia attiva. Trigger calcolato da bot reference, non da trades |
-| 2026-05-12 (S74) | **English everywhere (Telegram)** | 9 stringhe IT residue → EN. Più veloce che tradurre tutto IT, consistente cross-canale |
-| 2026-05-12 (S74) | **Private-first, public later** | HWW v3 deferred. Prima sistemare ciò che vede l'operatore (admin, Telegram), poi il sito pubblico |
-| 2026-05-12 (S73) | **Tutti i 4 cervelli su testnet prima del go-live** | Rischio operativo: restart per fix Sentinel può fermare trade reali. Team troppo piccolo per due ambienti. Go-live spostato a fine maggio/inizio giugno |
-| 2026-05-12 (S73c) | **managed_holdings = wallet − phantom** | 9 punti hot path ora usano managed. Su mainnet phantom=0 → no behavior change |
-| 2026-05-12 (S73c) | **Base amount per market buy** | Elimina LOT_SIZE rejection su book sottili. ccxt flag per impedire auto-conversione |
-| 2026-05-12 (S73a) | **Dead Zone recalibration** | Dopo N ore idle con 1 lotto, forza reset ladder al prezzo corrente |
-| 2026-05-11 (S72) | **Holdings = fetch_balance() golden source** | Wallet Binance unica verità. Replay DB solo per avg e realized |
-| 2026-05-11 (S72) | **Frontend canonical refactor** | `pnl-canonical.js` shared. 4 superfici stessa funzione |
-| 2026-05-11 (S72) | **TF sparisce da totali pubblici** | Homepage, dashboard, grid: solo Grid $500 |
+| 2026-05-14 (S76 CEO) | **Mainnet €100 posticipato a sistema completo (Grid + Sentinel testato + Sherpa attivato)** | Sherpa scriverà `bot_config` con soldi veri — va testato prima su testnet con Grid attivo. Grid-only mainnet avrebbe valore narrativo ma rischia quando Sherpa si accende. Sequenza: Sentinel fix → Sprint 2 → observe → Sherpa graduale su testnet → mainnet |
+| 2026-05-14 (S76 CEO) | **Roadmap Sentinel-first in 5 step** | Step 1: audit+fix Sprint 1. Step 2: build Sprint 2 (F&G, regime). Step 3: osservazione 1 settimana. Step 4: Sherpa LIVE su testnet (1 parametro alla volta). Step 5: mainnet con sistema rodato. Timeline: fine giugno / inizio luglio |
+| 2026-05-14 (S76 CEO) | **Sherpa attivazione graduale: un parametro alla volta** | Primo candidato: `sell_pct`. Osservare proposte per giorni prima di lasciar scrivere. Poi `buy_pct`. Permette di isolare problemi e bloccare fix |
+| 2026-05-14 (S76 CEO) | **TF non abbandonato, ridefinito per tier** | Tier 1-2: stesso motore tecnico, regole swap più snelle, nessun Sentinel. Tier 3 (shitcoin): TF scout + Sentinel Sprint 3 valida catalyst → entry con timeout. Post-mainnet, richiede Sprint 3 funzionante |
+| 2026-05-14 (S76 CEO) | **Blog weekend 17-18 maggio: 2 post** | Post strategico "why not live yet" + highlight V1/V2. Queste decisioni SONO il contenuto del blog |
+| 2026-05-14 (S76 CC) | **Refactor grid_runner.py → package 8 moduli** | 1623 righe monolite → package modulare. Prerequisito per 75b/75c. Zero behavior change |
+| 2026-05-14 (S76 CC) | **Brief 75b + 75c stop-buy unlock con baseline** | Timer per-coin che sblocca stop-buy dopo N ore + baseline reset al current price per evitare re-arm immediato. 2 bug trovati da Board testing live |
+| 2026-05-13 (S75) | **Blog: partire da V1/V2, non V3** | Chi arriva non ha contesto. V1/V2 chiusi = materiale stabile |
+| 2026-05-13 (S75) | **Project Knowledge > GitHub web_fetch per state files** | PK aggiornato, GitHub fermo a S63 |
+| 2026-05-12 (S74b) | **bot_runtime_state come primitiva canonical** | Bot scrive stato in-memory ogni tick. Dashboard legge da lì |
+| 2026-05-12 (S74b) | **Partial fill = trade reale (brief 74c)** | Mainnet-gating chiusa |
+| 2026-05-12 (S73) | **Tutti i 4 cervelli su testnet prima del go-live** | Confermata e rafforzata nella S76 CEO session |
+| 2026-05-11 (S72) | **Holdings = fetch_balance() golden source** | Wallet Binance unica verità |
+| 2026-05-11 (S72) | **Frontend canonical refactor** | `pnl-canonical.js` shared, 4 superfici stessa funzione |
 
 ---
 
@@ -93,13 +84,12 @@ Preview rimosse da entrambi i volumi.
 
 | Tema | Stato | Note |
 |---|---|---|
-| **Buy trigger anchor (A/B/C)** | Parcheggiata S74 PROJECT_STATE §6 | A=last_buy, B=avg, C=hybrid. Simulazione mostra trade-off spread vs compressione. Decisione strategica |
-| **Stop-buy time-limit → brief 75b** | **PROGRAMMATA 2026-05-14** | Da "proposta parcheggiata" a brief concreto: timer parametrico `stop_buy_unlock_hours` in `bot_config` (pattern 74d). Default 24h. Motivazione empirica: perdita reale 2026-05-13. Refactor `grid_runner.py` come prerequisito strutturale (stesso giorno) |
-| **Audit messaggi idle re-entry / recalibrate** | **PROGRAMMATA 2026-05-14** | Idle msgs sono rumore quando stop_buy attivo (mercato crollato → bot bloccato per ragione strutturale, non per assenza opportunità). Soppressione condizionale `if not stop_buy_active`. Trigger in grid_bot.py:854/878/906, send in grid_runner.py:964 |
-| ✅ **HWW v3 "3 entities" prose inconsistency** | CHIUSA in S75 | Shipped opzione B (coerenza completa hero + meta + badge + diagramma React con 4° entity Auditor). Commit `f62f781` |
-| ✅ **Fix description Dashboard** | CHIUSA in S75 | Shipped commit `cd8ce65`. Layout.astro propaga prop singolo a meta + og + twitter card |
-| 🆕 **Monitorare sitemap Search Console post-24h** | Aperta | Se ancora "Impossibile recuperare" provare ping Google. Reinvio S75 |
-| **Phantom BONK 1.37M composizione** | Bassa priorità | Molto più grande dell'initial gift stimato. Non bloccante |
+| **Sentinel Sprint 1 audit + fix** | PROSSIMA SESSIONE CC | Verifica empirica 3 bug S63 (speed_of_fall, risk binario, opp morta). Dashboard /admin disponibile per osservazione live |
+| **Sentinel Sprint 2 build** | Post fix Sprint 1 | F&G API + CMC dominance + regime detection. 2-3 sessioni CC stimate |
+| **Integration test config reader chain** | Pre-prossimo brief bot_config | Gap strutturale scoperto S76. ~30-60 min |
+| **Buy trigger anchor (A/B/C)** | Parcheggiata | A=last_buy, B=avg, C=hybrid. Decisione strategica |
+| **Monitorare sitemap Search Console** | Aperta | Reinvio S75. Se ancora "Impossibile recuperare" provare ping |
+| **Phantom BONK 1.37M** | Bassa priorità | Non bloccante |
 
 ---
 
@@ -107,15 +97,16 @@ Preview rimosse da entrambi i volumi.
 
 | Vincolo | Scadenza | Note |
 |---|---|---|
-| **Go-live €100 mainnet** | Fine maggio / inizio giugno | Gate canonical state TUTTE CHIUSE. Restano: mobile smoke test, Sentinel/Sherpa 7gg DRY_RUN analysis, Board approval. 7 giorni clean run si resettano a zero se fix logic-changing deployato |
-| **Sentinel/Sherpa data collection** | ~25 maggio | 14 giorni di DRY_RUN da brainstorming 11 maggio. 3 bug calibrazione noti (speed_of_fall, opportunity_score, risk_score binario) — decisione aperta: fixare ora e resettare, o aspettare 14gg con dati imperfetti |
-| **Volume 3 pubblicazione** | Nessuna deadline | In accumulo. Arco narrativo si sta formando |
-| **How We Work v3 sito** | Nessuna deadline | Draft pronto, deferred a sessione dedicata "sito pubblico" |
-| **Blog section sito** | Infrastruttura pronta (S75), contenuti TBD in sessioni dedicate V1/V2 | 2-3 diary entries gratis come funnel a Payhip (0/30 views = invisibilità). Infra shippata brief 75a |
+| **Go-live mainnet** | Fine giugno / inizio luglio | Posticipato da "18-21 maggio" a sistema completo: Grid + Sentinel testato + Sherpa attivato su testnet |
+| **Sentinel Sprint 1 fix** | Prossima sessione CC | Gate per tutto il resto della sequenza |
+| **Sentinel Sprint 2** | Post Sprint 1 fix | 2-3 sessioni CC |
+| **Sherpa LIVE su testnet** | Post osservazione Sentinel 1 settimana | Un parametro alla volta (sell_pct primo) |
+| **Blog primo post** | Weekend 17-18 maggio | 2 post pianificati con CEO |
+| **Volume 3** | Nessuna deadline | In accumulo, arco narrativo si forma |
 
-**Multi-macchina:** MBP (sviluppo Max) ↔ Mac Mini (runtime `/Volumes/Archivio/bagholderai`). Sempre `git pull` + mount Archivio prima di test/audit.
+**Multi-macchina:** MBP (sviluppo) ↔ Mac Mini (runtime). Allineati su commit `9ceaa81` (S76 squash) + commit successivi S76 (fix + 75c + cleanup).
 
-**Piattaforma pubblicazione:** Payhip (free plan, 5% fee, Stripe + PayPal). LemonSqueezy rifiutato (crypto risk flag). Nessuna urgenza di cambiare.
+**Piattaforma pubblicazione:** Payhip (free plan, 5% fee). Nessuna urgenza di cambiare.
 
 ---
 
@@ -123,14 +114,14 @@ Preview rimosse da entrambi i volumi.
 
 | Cosa | Perché |
 |---|---|
-| **Go-live mainnet** | Board decision S73: tutti i 4 cervelli devono girare insieme su testnet. Gate canonical chiuse, ma Sentinel/Sherpa DRY_RUN analysis non fatta |
-| **Trend Follower riattivazione** | Necessita sessione brainstorming dedicata. Problemi strutturali: win/loss asymmetry, death spiral T3, distance filter paralysis. ENABLE_TF=false |
-| **Sentinel/Sherpa fix calibrazione** | Decisione aperta: fixare subito (e resettare 14gg) o raccogliere dati imperfetti. CEO propende per fix ora |
-| **How We Work v3 + blog + roadmap sito** | Deferred a sessione "sito pubblico" dedicata. Private-first |
+| **Go-live mainnet €100** | Decisione S76 CEO: Sherpa scriverà bot_config con soldi veri, va testato prima su testnet. Sequenza Sentinel-first definita. Fine giugno target |
+| **Sentinel Sprint 2** | Sprint 1 ha 3 bug noti. Fix prima, build dopo |
+| **Sherpa LIVE** | Dipende da Sentinel funzionante. Senza sensore affidabile, l'attuatore muove cose a caso |
+| **TF riattivazione** | ENABLE_TF=false. Tier 1-2 da testare su testnet quando ci si arriva. Tier 3 (shitcoin) richiede Sentinel Sprint 3. Post-mainnet |
+| **Blog contenuti** | Infrastruttura pronta (S75). Primo contenuto weekend 17-18 maggio |
 | **Partnership / sponsorship** | Pre-traction. 0/30 views Payhip |
-| **Phase 2 grid_runner split** | Post go-live. 1623 righe post-S74b (+32 da S68 per wiring `_upsert_runtime_state` + `dead_zone_hours`). Nessun brief formale — il vecchio riferimento "brief 62b" era stale (62b era sul refactor `grid_bot.py`, shipped + archiviato). Brief da redigere quando si apre la sessione |
-| **HN outreach (dang email)** | Da fare, ma non urgente pre-go-live |
+| **Cambio prezzo volumi** | Nessun dato di vendita su cui ragionare |
 
 ---
 
-*Prossimo aggiornamento: post sessione Sentinel/Sherpa calibration fix, o post go-live decision — whichever comes first.*
+*Prossimo aggiornamento: post blog weekend, o post Sentinel Sprint 1 fix — whichever comes first.*

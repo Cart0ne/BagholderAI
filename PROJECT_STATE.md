@@ -10,7 +10,9 @@
 
 ## 1. Stato attuale
 
-Fase: **bot LIVE su Binance testnet (Grid-only, $500 budget Board) + Sentinel/Sherpa DRY_RUN + sito pubblico online + tutte le gate canonical state CHIUSE post-S74b + S76 package refactor + 75b timer + idle audit + UI**. Mac Mini su `9ceaa81` (PID 86443, restart 2026-05-14 12:18 UTC). Zero ORDER_REJECTED. Cron reconcile attivo 03:00 Europe/Rome. `bot_runtime_state` UPSERTed ogni tick, ora include `stop_buy_activated_at` per countdown UI futura. Target go-live €100: **18-21 maggio** invariato. Pre-live gates residue: mobile smoke test reale + analisi Sentinel/Sherpa 7gg DRY_RUN + Board approval. Brief shipped post-S72: 72a Fee Unification, 73a Dead Zone, 73b dust trap, 73c BONK lot_size + BTC phantom, 74a respiro, 74c partial fills, 74b runtime_state, 74d DEAD_ZONE_HOURS per-coin, **75b stop_buy_unlock_hours**. Superficie di estensione post-S76: il package modulare `bot/grid_runner/` rende ogni futuro brief che tocca lifecycle/runtime_state/idle/liquidation un diff stretto e a basso rischio.
+Fase: **bot LIVE su Binance testnet (Grid-only, $500 budget Board) + Sentinel/Sherpa DRY_RUN + sito pubblico online + tutte le gate canonical state CHIUSE post-S74b + S76 package refactor + 75b/75c stop-buy unlock con baseline + idle audit + UI badge countdown**. Mac Mini su `b2ae5f7` (PID 87923, restart 2026-05-14 13:35 UTC, post-75c). Zero ORDER_REJECTED. Cron reconcile attivo 03:00 Europe/Rome. `bot_runtime_state` UPSERTed ogni tick, espone `stop_buy_activated_at` + `stop_buy_baseline_price` per dashboard. **Target go-live €100: fine giugno / inizio luglio** (POSTICIPATO dalla decisione S76 CEO 2026-05-14: roadmap Sentinel-first → Sherpa attivato gradualmente su testnet prima di mainnet, perché Sherpa scriverà bot_config con soldi veri). Brief shipped post-S72: 72a Fee Unification, 73a Dead Zone, 73b dust trap, 73c BONK lot_size + BTC phantom, 74a respiro, 74c partial fills, 74b runtime_state, 74d DEAD_ZONE_HOURS per-coin, **75b stop_buy_unlock_hours**, **75c drawdown baseline reset al timer unlock (B1 semantics)**. Superficie di estensione post-S76: package modulare `bot/grid_runner/` rende ogni futuro brief che tocca lifecycle/runtime_state/idle/liquidation un diff stretto.
+
+**Roadmap Sentinel-first (CEO S76, 5 step)**: (1) audit + fix Sentinel Sprint 1 (3 bug noti speed_of_fall + risk binario + opp morta — **prossima sessione CC**); (2) build Sprint 2 (F&G API + CMC dominance + regime detection); (3) osservazione 1 settimana; (4) Sherpa LIVE su testnet 1 parametro alla volta (sell_pct primo); (5) mainnet con sistema rodato.
 
 ## 2. Architettura attiva
 
@@ -153,10 +155,10 @@ Comm Sentinel↔Sherpa↔Grid via Supabase only. Telegram alerts: solo Grid trad
 
 ## 7. Vincoli stagionali / deadline tecniche
 
-- **Bot LIVE su Binance testnet** + Sentinel/Sherpa DRY_RUN. Restart S76 2026-05-14 12:18 UTC. PID orchestrator **86443** + 5 figli. Brain TF off. Mac Mini su `9ceaa81`.
-- **Go/no-go €100 LIVE**: target **18-21 maggio 2026** confermato. Tutte le gate canonical state chiuse post-S74b. Residue: mobile smoke test reale + analisi Sentinel/Sherpa 7gg DRY_RUN + Board approval.
-- **Sequenza S76+**: PROJECT_STATE refresh (questo) + BUSINESS_STATE refresh (CEO) + CEO report → Sentinel/Sherpa 7gg DRY_RUN analysis → mobile test reale → Board approval call.
-- **Multi-macchina**: MBP (sviluppo) ↔ Mac Mini (runtime). Tutti allineati su commit `9ceaa81`.
+- **Bot LIVE su Binance testnet** + Sentinel/Sherpa DRY_RUN. Restart S76 2026-05-14 13:35 UTC (post-75c). PID orchestrator **87923** + 5 figli. Brain TF off. Mac Mini su `b2ae5f7`.
+- **Go/no-go €100 LIVE**: **target fine giugno / inizio luglio 2026** (POSTICIPATO dalla decisione S76 CEO da 18-21 maggio). Gate canonical state già chiuse post-S74b, MA la nuova roadmap Sentinel-first aggiunge step intermedi: Sentinel Sprint 1 fix + Sprint 2 build + osservazione 1 settimana + Sherpa LIVE testnet graduale (un parametro alla volta) → solo dopo mainnet €100.
+- **Sequenza S76+**: PROJECT_STATE + BUSINESS_STATE refresh shipped → **prossima sessione CC: Sentinel Sprint 1 audit + fix** (verifica empirica 3 bug noti, dashboard /admin disponibile per osservazione live).
+- **Multi-macchina**: MBP (sviluppo) ↔ Mac Mini (runtime). Tutti allineati su commit `b2ae5f7`.
 - **Phase 9 V&C — Pre-Live Gates**: contabilità S66 ✅, fee USDT canonical S67 ✅, dust prevention S67 ✅, sell-in-loss guard avg_cost S68a ✅, DB schema cleanup S68 ✅, FIFO contabile via S69 ✅, avg-cost trading completo S69 ✅, Strategy A simmetrico S69 ✅, IDLE recalibrate guard S69 ✅, sell_pct net-of-fees S70 ✅, post-fill warning slippage S70 ✅, wallet reconciliation Binance S70 ✅, Sentinel ricalibrazione S70 ✅, Fee Unification S72 ✅, dead zone S73 ✅, partial fills S74c ✅, dashboard coherence S74b ✅, stop_buy_unlock_hours S76 ✅, idle alert suppression S76 ✅, slippage_buffer parametrico (🔲 brief separato).
 
 ## 8. Cosa NON è stato fatto e perché
