@@ -1613,11 +1613,6 @@ def _print_status(bot: GridBot):
         )
 
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="BagHolderAI Grid Bot")
-    parser.add_argument("--symbol", type=str, default="BTC/USDT", help="Trading pair (e.g. SOL/USDT)")
-    parser.add_argument("--once", action="store_true", help="Run one cycle only")
-    parser.add_argument("--dry-run", action="store_true", help="Don't log to database")
-    args = parser.parse_args()
-
-    run_grid_bot(symbol=args.symbol, once=args.once, dry_run=args.dry_run)
+# CLI entrypoint moved to bot/grid_runner/__main__.py (refactor S76).
+# The orchestrator spawns this module via `python -m bot.grid_runner`,
+# which Python routes to __main__.py.
