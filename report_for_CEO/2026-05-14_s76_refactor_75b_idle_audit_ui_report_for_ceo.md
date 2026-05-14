@@ -202,6 +202,52 @@ Tutti partono con `unlock_hours=0` nel DB → row renderizzata con valore 0 → 
 
 ---
 
+## 5. Bug 75b shipped silenziosamente — diagnosi + fix live (post-pubblicazione)
+
+Dopo la pubblicazione del report e del commit di chiusura S76, Max ha provato il timer dal vivo: ha settato `BONK.stop_buy_unlock_hours = 1` da dashboard. Dopo 1.7h `bot_runtime_state.stop_buy_active` era ancora `true`, l'auto-reset non era scattato (avrebbe dovuto scattare alla 1h).
+
+### Diagnosi
+
+`bot_config` aveva il valore corretto (1) ma il bot non lo stava leggendo. Root cause: `config/supabase_config.py` definisce una stringa `_CONFIG_FIELDS` che enumera *esplicitamente* le colonne richieste alla query Supabase. Durante S76 task 2 ho esteso 2 punti che consumano il dict ritornato (`sb_cfg.get("stop_buy_unlock_hours")`):
+- `grid_runner/__init__.py` bootstrap read
+- `grid_runner/config_sync.py` hot-reload
+
+…ma ho dimenticato di estendere `_CONFIG_FIELDS` stesso. Quindi `sb_cfg["stop_buy_unlock_hours"]` era *sempre* None per omissione lato server, e l'hot-reload era un no-op silenzioso. Il valore in memoria di `bot.stop_buy_unlock_hours` restava all'`__init__` default `0.0` → guard `unlock_hours > 0` falsa → blocco auto-reset mai eseguito.
+
+**Perché pytest 29/29 non ha catturato:** la fixture `make_bot()` setta `bot.stop_buy_unlock_hours` direttamente sull'istanza, bypassando completamente il path `SupabaseConfigReader → config_sync → bot`. Punto cieco strutturale: nessun test di integrazione che esercita la catena reader-vera + config_sync su un payload Supabase realistico. Salvato come lezione.
+
+### Fix
+
+Commit `a780314` — 1 file, +6/-1: aggiunta `stop_buy_unlock_hours` a `_CONFIG_FIELDS` in `config/supabase_config.py`. Pytest 29/29 ancora verdi (la modifica è solo data fetching, nessun comportamento testato cambia).
+
+### Deploy + verifica live
+
+Restart Mac Mini 12:08:48 UTC (PID 87296). Stop-buy 39b ri-armato al primo tick post-restart con timestamp nuovo. Aspettativa: auto-reset entro le ~13:08:48 UTC (1h dal nuovo armamento). Verifica della reader chain via `bot_runtime_state`: `updated_at` corrisponde al timestamp del bot (UPSERT ogni tick), `stop_buy_activated_at` registrato correttamente al primo trigger post-restart.
+
+**Stato in attesa al momento della stesura:** ~0.6 min elapsed dal nuovo restart, manca ~58 min al trigger. Si verifica naturalmente entro 1h. Nessun Telegram di unlock previsto (by design — memoria `feedback_no_telegram_alerts`). Conferma implicita arriverà via Telegram di BUY se il prezzo sarà sotto trigger al momento dello sblocco, oppure via dashboard `/grid` quando il badge tornerà a `Next buy if ↓`.
+
+---
+
+## 6. Badge UI con countdown timer 75b
+
+Dopo il fix Max ha chiesto di rendere il badge dashboard "STOP-BUY ACTIVE · BLOCKED · drawdown > 2%" rappresentativo dello stato reale, incluso il timer 75b se armato. Il dato era già in `bot_runtime_state.stop_buy_activated_at` + `bot_config.stop_buy_unlock_hours` ma il frontend non lo consumava.
+
+### Modifica `web_astro/public/grid.html` (commit `8c2698f`)
+
+Tre stati del badge ora differenziati:
+
+| Configurazione coin | Badge value | Esempio BONK ora |
+|---|---|---|
+| `unlock_hours=0` (default) | `BLOCKED · drawdown > X%` (immutato) | (SOL/BTC oggi) |
+| `unlock_hours>0`, timer armato | `BLOCKED · drawdown > X% · resets in Yh Zm` | `BLOCKED · drawdown > 2% · resets in 58m` |
+| `unlock_hours>0`, soglia raggiunta non ancora applicata | `BLOCKED · drawdown > X% · unlock pending` | edge case 1 tick |
+
+Tooltip esteso correttamente cita entrambi i meccanismi di reset (profitable sell *vs* timer). Quando `unlock_hours=0` il tooltip dice esplicitamente "Auto-unlock disabled, only a profitable sell will clear the guard."
+
+Refresh: il badge si re-renderizza ad ogni poll `/grid` (~30s) — countdown a granularità di minuto è sufficiente, niente JS per-secondo lato client.
+
+---
+
 ## Test suite
 
 | Pre-S76 | S76 | Delta |
@@ -228,23 +274,26 @@ Nuovi:
 
 ## Cosa NON è stato fatto
 
-- **UI countdown timer** per `stop_buy_activated_at` su `/grid` (es. "BLOCKED · resets in Xh Ym"). Dato esposto in `bot_runtime_state` ma non ancora consumato dal frontend. Brief separato (~30 min) se Max lo vuole.
 - **Telegram alert dedicato all'auto-unlock**: quando il timer scatta, log + event_log ma niente Telegram. Coerente con la regola "no new Telegram alerts" (memoria `feedback_no_telegram_alerts`); aggiungibile via admin/SSE se voluto.
+- **Test di integrazione SupabaseConfigReader → config_sync → bot**: la mancanza di questo strato di coverage è la causa del bug 75b shipped silenziosamente (vedi §5). Brief separato (~30-60 min) per aggiungere fixture mock-payload realistici. Importante prima di altri brief che estendono `bot_config`.
 - **Test di coverage estesa al main loop del package**: ho testato in isolamento ogni sotto-modulo. Un test di integrazione end-to-end (es. simulate one full tick) sarebbe utile ma non lo richiede nessun brief attuale.
+- **PROJECT_STATE.md cleanup post-S76**: shipped in fase di chiusura sessione (commit `3d62942`), 78KB → 27KB con archivio in `audits/PROJECT_STATE_archive_pre-S76.md`. Soglia di taglio S70+. Tracked via eccezione `.gitignore` `!audits/PROJECT_STATE_archive_*.md` per preservare la storia leggibile delle compaction future.
 - **Diary entry S76**: come tutte le sessioni, l'entry diary `.docx` per S76 va prodotto separatamente (in coda a S73 e S74 già pronti, S75 ancora da scrivere).
 
 ---
 
 ## Numeri sessione
 
-- **Durata**: ~3h
-- **Commit interni**: 5 (squashati in 1 su main)
-- **File modificati**: 14 (5 backend logic + 8 nuovi moduli refactor + 1 frontend UI)
+- **Durata**: ~4.5h (inclusi diagnosi bug post-pubblicazione + fix + badge UI countdown + cleanup PROJECT_STATE)
+- **Commit su main**: 6 (`9ceaa81` squash refactor+75b+audit+UI · `3e7bc58` docs S76 closure · `3d62942` chore state cleanup · `a780314` fix 75b config_fields · `8c2698f` badge countdown)
+- **Commit interni feature-branch**: 5 (`b62e952`, `5af0ac7`, `cd52fa4`, `19331ee`, `9f68396`) squashati in `9ceaa81`
+- **File modificati totali**: 16 (5 backend logic + 8 nuovi moduli refactor + 2 frontend UI + 1 config reader)
 - **Migration Supabase**: 2 (`bot_config.stop_buy_unlock_hours` + `bot_runtime_state.stop_buy_activated_at`)
-- **Test verdi**: 25 → 29 (+4)
-- **Restart Mac Mini**: 3 (tutti watch-verdi)
-- **Behavior change in produzione**: 0 (tutti i 3 bot live mantengono comportamento pre-S76 fino a edit manuale dei nuovi campi)
-- **Linee di codice**: -1623 (monolite cancellato) + 1858 (package) + 51 (75b) + 13 (idle audit) + 4 (UI) = +303 nette
+- **Test verdi**: 25 → 29 (+4) — il bug 75b silenzioso ha rivelato un punto cieco strutturale (config reader chain non testata)
+- **Restart Mac Mini**: 4 (3 nella prima parte + 1 post-fix bug 75b alle 12:08:48 UTC PID 87296)
+- **Behavior change in produzione**: 0 finché Max non setta unlock_hours>0; BONK è il primo caso reale del timer (settato a 1h post-deploy)
+- **Linee di codice**: -1623 (monolite cancellato) + 1858 (package) + 51 (75b) + 13 (idle audit) + 4 (UI) + 6 (fix _CONFIG_FIELDS) + 30 (badge countdown) = +339 nette
+- **PROJECT_STATE.md compaction**: 78 KB → 27 KB (-65%) con archivio 9.5 KB tracked
 
 ---
 
@@ -262,10 +311,18 @@ Target go-live **18-21 maggio 2026** invariato.
 ## Memoria / lezioni
 
 Da salvare nell'auto-memory:
-- Pattern "lazy import per testabilità sotto-moduli" — applicabile ad altri package se dipendenze pesanti
-- Disciplina "refactor zero-behavior" anche su micro-cambi tentanti (1 riga di payload anticipata = errore)
-- Squash-merge per sessioni con piu commit logicamente sequenziali ma raggruppati narrativamente in un singolo S-number
+- **Pattern "lazy import per testabilità sotto-moduli"** — applicabile ad altri package se dipendenze pesanti (telegram_notifier, ccxt, etc.)
+- **Disciplina "refactor zero-behavior"** anche su micro-cambi tentanti (1 riga di payload anticipata = errore — l'ho rifiutata in tempo durante runtime_state extraction)
+- **Squash-merge** per sessioni con più commit logicamente sequenziali ma raggruppati narrativamente in un singolo S-number
+- **🆕 Tripletta di modifica per nuova colonna bot_config**: ogni nuovo parametro per-coin (75b ne è l'esempio doloroso) richiede modifiche in **TRE punti** sincroni, non due:
+  1. Migration SQL (`ALTER TABLE bot_config ADD COLUMN…`)
+  2. `config/supabase_config.py` → `_CONFIG_FIELDS` (la SELECT esplicita)
+  3. `bot/grid_runner/config_sync.py` → hot-reload branch
+  Più (4) il bootstrap read in `bot/grid_runner/__init__.py` se il valore va passato al GridBot constructor. Saltare #2 produce un bug silenzioso: pytest verde, hot-reload no-op, comportamento al default `__init__`. Test fixture che setta l'attributo direttamente NON copre questo path.
+- **🆕 Test gap rivelato**: nessuna integration test esercita `SupabaseConfigReader → _sync_config_to_bot → bot` su payload realistici. Brief separato consigliato prima del prossimo brief che estende `bot_config`.
 
 ---
 
 *Prossimo report CEO atteso: post-Sentinel/Sherpa DRY_RUN analysis (~25 maggio) o pre-go-live €100 — whichever comes first.*
+
+*Aggiornamento report: 2026-05-14 pomeriggio (post-bug 75b live + fix + badge countdown + state cleanup).*
