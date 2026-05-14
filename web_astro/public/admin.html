@@ -27,6 +27,15 @@
       --text: #e8ecf5;
       --text-dim: #9aa3b8;
       --text-body: #9aa3b8;
+
+      /* Brief 77c widget A — Sentinel slow loop regime palette.
+         Default "sentiment heatmap": blue (panic) → grey (neutral) → red (top).
+         If CEO picks a different palette, swap only these 5 lines. */
+      --regime-extreme-fear:  #7dd3fc;
+      --regime-fear:          #67e8f9;
+      --regime-neutral:       #9aa3b8;
+      --regime-greed:         #f59e0b;
+      --regime-extreme-greed: #ef4444;
     }
 
     html { scroll-behavior: smooth; }
@@ -249,6 +258,34 @@
       color: var(--text-dim); font-family: var(--mono); font-size: 12px;
     }
 
+    /* Brief 77c widget A — Sentinel slow loop regime banner */
+    .slow-banner {
+      display: flex; flex-wrap: wrap; gap: 22px; align-items: center;
+      padding: 4px 0 10px 0;
+    }
+    .slow-regime {
+      display: flex; align-items: center; gap: 10px;
+    }
+    .slow-regime-dot {
+      width: 11px; height: 11px; border-radius: 50%;
+      display: inline-block; box-shadow: 0 0 8px currentColor;
+    }
+    .slow-regime-label {
+      font-family: var(--mono); font-weight: 700;
+      letter-spacing: 0.08em; text-transform: uppercase;
+      font-size: 14px;
+    }
+    .slow-meta {
+      font-family: var(--mono); font-size: 11px;
+      color: var(--text-dim); letter-spacing: 0.03em;
+    }
+    .slow-meta strong { color: var(--text); font-weight: 600; }
+    @media (max-width: 600px) {
+      .slow-banner { gap: 12px; }
+      .slow-meta { font-size: 10px; }
+      .slow-regime-label { font-size: 13px; }
+    }
+
     /* Sherpa proposals table */
     table.proposals {
       width: 100%; border-collapse: collapse; font-family: var(--mono);
@@ -466,6 +503,34 @@
         </div>
       </div>
       </details>
+
+      <!-- ============ SENTINEL — SLOW LOOP (Sprint 2, brief 77c widget A) ============ -->
+      <div class="section-title"><img class="section-mascot sentinel" src="sentinel.svg" alt="Sentinel"><span>Sentinel — slow loop (4h · regime detection)</span></div>
+
+      <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px;">
+          <span style="font-family: var(--mono); font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em;">Current regime</span>
+          <span id="slow-last-ts" style="font-family: var(--mono); font-size: 11px; color: var(--text-dim);">—</span>
+        </div>
+
+        <div class="slow-banner">
+          <div class="slow-regime">
+            <span class="slow-regime-dot" id="slow-regime-dot" style="background: var(--regime-neutral); color: var(--regime-neutral);"></span>
+            <span class="slow-regime-label" id="slow-regime-label" style="color: var(--regime-neutral);">—</span>
+          </div>
+          <div class="slow-meta">F&amp;G: <strong id="slow-fng">—</strong> <span id="slow-fng-label" style="color: var(--text-dim);"></span></div>
+          <div class="slow-meta">BTC dominance: <strong id="slow-btc-dom">—</strong></div>
+          <div class="slow-meta">last update: <strong id="slow-age">—</strong></div>
+          <div class="slow-meta">next tick: <strong id="slow-eta">—</strong></div>
+        </div>
+
+        <div class="footnote">
+          Sentinel slow loop runs every 4h: fetches Fear &amp; Greed Index + CoinMarketCap global metrics,
+          determines regime (one of 5: extreme_fear → extreme_greed), and writes <code>sentinel_scores</code>
+          with <code>score_type='slow'</code>. Sherpa reads the regime to pick the BASE_TABLE row used in
+          parameter proposals.
+        </div>
+      </div>
 
       <!-- ============ SHERPA ============ -->
       <div class="section-title sherpa"><img class="section-mascot sherpa" src="sherpa.svg" alt="Sherpa"><span>Sherpa — parameter writer (loop 120s · DRY_RUN)</span></div>
@@ -1561,12 +1626,123 @@
       });
     }
 
+    // === SENTINEL SLOW LOOP — widget A (brief 77c) ===
+    // Reads the latest sentinel_scores row with score_type='slow' (written
+    // every 4h by bot/sentinel/slow_loop.py) and paints the regime banner.
+    // Polls every 30s so the "last update" / "next tick" countdowns stay
+    // fresh, even though the underlying slow tick fires only every 4h.
+
+    var REGIME_LABELS = {
+      extreme_fear:  'EXTREME FEAR',
+      fear:          'FEAR',
+      neutral:       'NEUTRAL',
+      greed:         'GREED',
+      extreme_greed: 'EXTREME GREED'
+    };
+    var REGIME_VARS = {
+      extreme_fear:  'var(--regime-extreme-fear)',
+      fear:          'var(--regime-fear)',
+      neutral:       'var(--regime-neutral)',
+      greed:         'var(--regime-greed)',
+      extreme_greed: 'var(--regime-extreme-greed)'
+    };
+    var SLOW_TICK_INTERVAL_MS = 4 * 60 * 60 * 1000;
+    var slowBannerTimer = null;
+
+    function fmtAgo(ms) {
+      if (ms < 0) return 'just now';
+      var s = Math.round(ms / 1000);
+      if (s < 60) return s + 's ago';
+      var m = Math.round(s / 60);
+      if (m < 60) return m + ' min ago';
+      var h = Math.floor(m / 60);
+      var mm = m % 60;
+      return h + 'h ' + mm + 'm ago';
+    }
+    function fmtEta(ms) {
+      if (ms <= 0) return 'overdue';
+      var m = Math.round(ms / 60000);
+      if (m < 60) return 'in ' + m + 'm';
+      var h = Math.floor(m / 60);
+      var mm = m % 60;
+      return 'in ' + h + 'h ' + mm + 'm';
+    }
+
+    function renderSlowBanner(row) {
+      var dot = document.getElementById('slow-regime-dot');
+      var label = document.getElementById('slow-regime-label');
+      var fng = document.getElementById('slow-fng');
+      var fngLabel = document.getElementById('slow-fng-label');
+      var btcDom = document.getElementById('slow-btc-dom');
+      var ageEl = document.getElementById('slow-age');
+      var etaEl = document.getElementById('slow-eta');
+      var tsEl = document.getElementById('slow-last-ts');
+
+      if (!row) {
+        label.textContent = '— (no slow tick yet)';
+        label.style.color = 'var(--regime-neutral)';
+        dot.style.background = 'var(--regime-neutral)';
+        dot.style.color = 'var(--regime-neutral)';
+        fng.textContent = '—'; fngLabel.textContent = '';
+        btcDom.textContent = '—';
+        ageEl.textContent = '—';
+        etaEl.textContent = '—';
+        tsEl.textContent = '—';
+        return;
+      }
+
+      var raw = row.raw_signals || {};
+      var regime = raw.regime || 'neutral';
+      var color = REGIME_VARS[regime] || REGIME_VARS.neutral;
+      label.textContent = REGIME_LABELS[regime] || regime.toUpperCase();
+      label.style.color = color;
+      dot.style.background = color;
+      dot.style.color = color;
+
+      if (raw.fng_value != null) {
+        fng.textContent = raw.fng_value;
+        fngLabel.textContent = raw.fng_label ? '(' + raw.fng_label + ')' : '';
+      } else {
+        fng.textContent = '—'; fngLabel.textContent = '';
+      }
+
+      if (raw.btc_dominance != null) {
+        btcDom.textContent = Number(raw.btc_dominance).toFixed(2) + '%';
+      } else {
+        btcDom.textContent = '— (no CMC)';
+      }
+
+      var createdMs = Date.parse(row.created_at);
+      var nowMs = Date.now();
+      ageEl.textContent = fmtAgo(nowMs - createdMs);
+      etaEl.textContent = fmtEta(createdMs + SLOW_TICK_INTERVAL_MS - nowMs);
+      tsEl.textContent = new Date(createdMs).toLocaleString();
+    }
+
+    async function refreshSlowBanner() {
+      try {
+        var rows = await sbFetch(
+          'sentinel_scores?select=created_at,raw_signals&score_type=eq.slow&order=created_at.desc&limit=1'
+        );
+        renderSlowBanner(rows[0]);
+      } catch (e) {
+        console.warn('Slow banner refresh failed:', e);
+      }
+    }
+
     // === BOOTSTRAP: fetch sentinel + sherpa + DB stats after auth ===
     async function bootstrap() {
       try {
         // --- Sentinel ---
         var last = await sbFetch('sentinel_scores?select=*&order=created_at.desc&limit=1');
         renderLastScan(last[0]);
+
+        // Sentinel slow loop banner (brief 77c widget A). Runs once at boot
+        // here and then every 30s via setInterval below.
+        await refreshSlowBanner();
+        if (!slowBannerTimer) {
+          slowBannerTimer = setInterval(refreshSlowBanner, 30000);
+        }
 
         var since = new Date(Date.now() - currentRangeHours * 3600 * 1000).toISOString();
         // Paginated: Supabase REST caps at 1000 rows per response.
