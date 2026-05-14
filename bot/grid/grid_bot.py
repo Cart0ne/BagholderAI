@@ -102,6 +102,7 @@ class GridBot:
         idle_reentry_hours: float = 24.0,  # hours idle (holdings=0) before forced re-entry
         tf_stop_loss_pct: float = 0.0,  # 39a: TF stop-loss threshold as % of open value (0 = disabled)
         stop_buy_drawdown_pct: float = 0.0,  # 39b: manual stop-buy threshold as % of allocation (0 = disabled)
+        stop_buy_unlock_hours: float = 0.0,  # 75b: hours after stop-buy activation before auto-reset (0 = disabled)
         dead_zone_hours: float = 4.0,        # 74b: per-coin dead-zone recalibrate threshold (hours idle before ladder reset)
         tf_take_profit_pct: float = 0.0,  # 39c: TF take-profit threshold as % of open value (0 = disabled)
         tf_profit_lock_enabled: bool = False,  # 45f: opt-in switch for proactive Profit Lock exit
@@ -132,6 +133,7 @@ class GridBot:
         self.idle_reentry_hours = idle_reentry_hours
         self.tf_stop_loss_pct = tf_stop_loss_pct
         self.stop_buy_drawdown_pct = stop_buy_drawdown_pct
+        self.stop_buy_unlock_hours = stop_buy_unlock_hours  # 75b
         self.dead_zone_hours = dead_zone_hours
         self.tf_take_profit_pct = tf_take_profit_pct
         self.tf_profit_lock_enabled = tf_profit_lock_enabled
@@ -148,6 +150,7 @@ class GridBot:
         self.managed_by: str = "grid"  # "grid", "tf", or "tf_grid" (68b)
         self._stop_loss_triggered: bool = False  # 39a: latched once threshold is breached
         self._stop_buy_active: bool = False  # 39b: latched once drawdown breached, resets on profitable sell
+        self._stop_buy_activated_at: Optional[datetime] = None  # 75b: timestamp for unlock timer
         self._take_profit_triggered: bool = False  # 39c: latched once +pct threshold reached
         self._profit_lock_triggered: bool = False  # 45f: latched once net-PnL threshold breached
         self._gain_saturation_triggered: bool = False  # 45g: latched once N positive sells in current period
@@ -586,6 +589,7 @@ class GridBot:
                     f"New buys blocked until profitable sell."
                 )
                 self._stop_buy_active = True
+                self._stop_buy_activated_at = datetime.utcnow()  # 75b: arm unlock timer
                 log_event(
                     severity="warn",
                     category="safety",
@@ -596,6 +600,35 @@ class GridBot:
                         "unrealized": unrealized,
                         "threshold": buy_block_threshold,
                         "pct": self.stop_buy_drawdown_pct,
+                    },
+                )
+
+        # --- 75b: stop-buy unlock hours auto-reset ---
+        # If `stop_buy_unlock_hours > 0` and the timer has elapsed since
+        # the flag was armed, reset it. The bot resumes buying at market
+        # (DCA logic) — useful in prolonged drawdowns where no profitable
+        # sell is possible. Default 0 preserves brief 39b's original
+        # event-based hysteresis (only a profitable sell clears the flag).
+        if (self._stop_buy_active
+                and self.stop_buy_unlock_hours > 0
+                and self._stop_buy_activated_at is not None):
+            elapsed_sb = (datetime.utcnow() - self._stop_buy_activated_at).total_seconds() / 3600
+            if elapsed_sb >= self.stop_buy_unlock_hours:
+                logger.info(
+                    f"[{self.symbol}] STOP-BUY UNLOCK: {elapsed_sb:.1f}h >= "
+                    f"{self.stop_buy_unlock_hours}h threshold. Auto-resetting buy block."
+                )
+                self._stop_buy_active = False
+                self._stop_buy_activated_at = None
+                log_event(
+                    severity="info",
+                    category="safety",
+                    event="stop_buy_unlock_reset",
+                    symbol=self.symbol,
+                    message=f"Stop-buy auto-reset after {elapsed_sb:.1f}h unlock window",
+                    details={
+                        "elapsed_hours": float(elapsed_sb),
+                        "unlock_hours": float(self.stop_buy_unlock_hours),
                     },
                 )
 

@@ -19,16 +19,21 @@ def _upsert_runtime_state(trade_logger, bot, symbol: str) -> None:
 
     Called after each `check_price_and_execute` tick. Best-effort: any
     Supabase blip is swallowed so it can never break the trade loop.
+
+    Brief 75b (S76, 2026-05-14): adds `stop_buy_activated_at` so the
+    /grid widget can show a countdown when the unlock timer is armed.
     """
     try:
         managed = getattr(bot, "managed_holdings", None)
         phantom = getattr(bot, "_phantom_holdings", 0.0) or 0.0
         last_recal = getattr(bot, "_last_trade_time", None)
+        sb_activated = getattr(bot, "_stop_buy_activated_at", None)
         payload = {
             "symbol": symbol,
             "buy_reference_price": float(bot._pct_last_buy_price or 0) or None,
             "last_sell_price": float(bot._last_sell_price or 0) or None,
             "stop_buy_active": bool(getattr(bot, "_stop_buy_active", False)),
+            "stop_buy_activated_at": sb_activated.isoformat() if sb_activated else None,
             "phantom_holdings": float(phantom),
             "managed_holdings": float(managed) if managed is not None else None,
             "last_recalibrate_at": last_recal.isoformat() if last_recal else None,

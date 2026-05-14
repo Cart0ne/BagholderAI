@@ -1397,10 +1397,122 @@ def test_y_closed_full_fill_unchanged():
     assert result is not None
     assert_close(result["filled_amount"], 200.0, label="filled happy path")
     assert_close(result["cost"], 100.0, label="cost happy path")
-    assert_close(result["fee_cost"], 0.1, label="fee_cost USDT happy path")
+    assert_close(result["fee_cost"], 0.1, label="fee_cost happy path")
     assert result["status"] == "closed"
     print(f"  happy path unchanged: filled={result['filled_amount']}, "
           f"fee_cost=${result['fee_cost']} ✓")
+
+
+def test_z_stop_buy_unlock_fires_after_timeout():
+    """Brief 75b (S76 2026-05-14): when `stop_buy_unlock_hours > 0` and
+    enough time has passed since the flag was latched, auto-reset it.
+    Default 0 preserves brief 39b's original behavior (only profitable
+    sell clears the flag), so this test explicitly sets unlock_hours=24
+    and ages the activation timestamp beyond the threshold.
+    """
+    from datetime import datetime, timedelta
+    print("=" * 70)
+    print("TEST Z: brief 75b — stop-buy unlock fires after timeout")
+    print("=" * 70)
+    bot = make_bot()
+    bot.managed_by = "grid"
+    bot.is_active = True
+    bot.buy_pct = 99.0
+    bot.sell_pct = 99.0
+
+    # Arm the stop-buy flag manually with a 25h-old timestamp; configure
+    # the unlock window at 24h. Need holdings + avg so the 39b block is
+    # skipped (already active → branch guarded by `not _stop_buy_active`).
+    bot._execute_percentage_buy(price=100.0)
+    bot._stop_buy_active = True
+    bot._stop_buy_activated_at = datetime.utcnow() - timedelta(hours=25)
+    bot.stop_buy_unlock_hours = 24.0
+    bot.stop_buy_drawdown_pct = 2.0  # 39b path armed but won't re-trigger (already active)
+
+    bot.check_price_and_execute(current_price=95.0)
+
+    assert bot._stop_buy_active is False, (
+        f"_stop_buy_active must reset to False after timeout, got {bot._stop_buy_active}"
+    )
+    assert bot._stop_buy_activated_at is None, (
+        f"_stop_buy_activated_at must clear to None after timeout, "
+        f"got {bot._stop_buy_activated_at}"
+    )
+    print(f"  25h elapsed >= 24h threshold: UNLOCK FIRED ✓ "
+          f"_stop_buy_active → False, timestamp cleared")
+
+
+def test_aa_stop_buy_unlock_holds_under_timeout():
+    """Brief 75b: with unlock_hours=24, after only 23h elapsed the flag
+    must remain latched. Guards against premature unlock on stop-buy
+    activations that briefly cross then recover within the window."""
+    from datetime import datetime, timedelta
+    print("=" * 70)
+    print("TEST AA: brief 75b — stop-buy unlock holds under timeout")
+    print("=" * 70)
+    bot = make_bot()
+    bot.managed_by = "grid"
+    bot.is_active = True
+    bot.buy_pct = 99.0
+    bot.sell_pct = 99.0
+
+    bot._execute_percentage_buy(price=100.0)
+    bot._stop_buy_active = True
+    bot._stop_buy_activated_at = datetime.utcnow() - timedelta(hours=23)
+    bot.stop_buy_unlock_hours = 24.0
+    bot.stop_buy_drawdown_pct = 2.0
+
+    bot.check_price_and_execute(current_price=95.0)
+
+    assert bot._stop_buy_active is True, (
+        f"_stop_buy_active must stay True under timeout, got {bot._stop_buy_active}"
+    )
+    assert bot._stop_buy_activated_at is not None, (
+        f"_stop_buy_activated_at must stay set under timeout, "
+        f"got {bot._stop_buy_activated_at}"
+    )
+    print(f"  23h elapsed < 24h threshold: UNLOCK SKIPPED ✓ "
+          f"flag still latched, timestamp preserved")
+
+
+def test_bb_profitable_sell_clears_unlock_timestamp():
+    """Brief 75b: a profitable sell must clear BOTH `_stop_buy_active`
+    (39b's original event-based reset) AND `_stop_buy_activated_at`
+    (75b's new timer state). Without clearing the timestamp, a future
+    re-arm of the flag would inherit a stale timer."""
+    from datetime import datetime
+    print("=" * 70)
+    print("TEST BB: brief 75b — profitable sell clears unlock timestamp")
+    print("=" * 70)
+    bot = make_bot()
+    bot.managed_by = "grid"
+    bot.is_active = True
+    bot.buy_pct = 99.0
+    bot.sell_pct = 0.1  # low threshold so any uptick triggers sell
+
+    # Buy at $100, simulate stop-buy armed at $90 (drawdown), then sell at $110.
+    bot._execute_percentage_buy(price=100.0)
+    initial_holdings = bot.state.holdings
+    bot._stop_buy_active = True
+    bot._stop_buy_activated_at = datetime.utcnow()
+    bot.stop_buy_unlock_hours = 24.0  # timer would fire in 24h, but profitable sell clears first
+
+    # Profitable sell at $110 — sell_pipeline branch in _execute_percentage_sell.
+    bot._execute_percentage_sell(price=110.0)
+
+    # Sanity: the sell actually executed (realized_pnl > 0).
+    assert bot.state.holdings < initial_holdings, (
+        f"sell must reduce holdings, before={initial_holdings} after={bot.state.holdings}"
+    )
+    assert bot._stop_buy_active is False, (
+        f"profitable sell must clear _stop_buy_active, got {bot._stop_buy_active}"
+    )
+    assert bot._stop_buy_activated_at is None, (
+        f"profitable sell must clear _stop_buy_activated_at, "
+        f"got {bot._stop_buy_activated_at}"
+    )
+    print(f"  profitable sell @$110: 39b RESET ✓ + 75b timestamp CLEARED ✓ "
+          f"(no stale timer for next arm)")
 
 
 def main():
@@ -1430,6 +1542,9 @@ def main():
         test_w_partial_fill_expired_returns_normalized_dict,
         test_x_zero_fill_still_returns_none,
         test_y_closed_full_fill_unchanged,
+        test_z_stop_buy_unlock_fires_after_timeout,
+        test_aa_stop_buy_unlock_holds_under_timeout,
+        test_bb_profitable_sell_clears_unlock_timestamp,
     ]
     passed = 0
     failed = []

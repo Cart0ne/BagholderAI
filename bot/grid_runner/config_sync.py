@@ -46,6 +46,11 @@ def _sync_config_to_bot(reader: "SupabaseConfigReader", bot: "GridBot", symbol: 
         # Changing the value does NOT reset _stop_buy_active — the flag clears
         # only on a profitable sell (event-based hysteresis).
         bot.stop_buy_drawdown_pct = float(sb_cfg["stop_buy_drawdown_pct"])
+    if "stop_buy_unlock_hours" in sb_cfg and sb_cfg["stop_buy_unlock_hours"] is not None:
+        # 75b: per-coin unlock timer for the stop-buy guard. Hot-reload like
+        # the other safety params. 0 disables the timer; the existing event-
+        # based reset (profitable sell) still applies.
+        bot.stop_buy_unlock_hours = float(sb_cfg["stop_buy_unlock_hours"])
     if "dead_zone_hours" in sb_cfg and sb_cfg["dead_zone_hours"] is not None:
         # 74b (S74b): per-coin dead-zone recalibrate threshold (hot-reload).
         # Read fresh on every tick via self.dead_zone_hours.

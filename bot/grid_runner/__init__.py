@@ -217,6 +217,16 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
     except Exception as e:
         logger.warning(f"Could not read bot_config.stop_buy_drawdown_pct for {cfg.symbol}: {e}. Defaulting to 0.")
 
+    # 75b (S76 2026-05-14): per-coin unlock timer for the stop-buy guard.
+    # 0 = disabled (only profitable sell resets the flag). Hot-reloaded via
+    # config_sync; CHECK constraint guarantees 0 ≤ unlock ≤ 168.
+    stop_buy_unlock_hours = 0.0
+    try:
+        if sb_cfg and sb_cfg.get("stop_buy_unlock_hours") is not None:
+            stop_buy_unlock_hours = float(sb_cfg["stop_buy_unlock_hours"])
+    except Exception as e:
+        logger.warning(f"Could not read bot_config.stop_buy_unlock_hours for {cfg.symbol}: {e}. Defaulting to 0.")
+
     # 74b (S74b 2026-05-12): per-coin dead-zone recalibrate threshold
     # (replaces the DEAD_ZONE_HOURS=4.0 hardcoded constant in grid_bot.py).
     # CHECK constraint guarantees > 0 ≤ 168; safe fallback to 4.0 on read error.
@@ -265,6 +275,7 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
         skim_pct=cfg.skim_pct,
         tf_stop_loss_pct=tf_stop_loss_pct,
         stop_buy_drawdown_pct=stop_buy_drawdown_pct,
+        stop_buy_unlock_hours=stop_buy_unlock_hours,  # 75b
         dead_zone_hours=dead_zone_hours,
         tf_take_profit_pct=tf_take_profit_pct,
         tf_profit_lock_enabled=tf_profit_lock_enabled,
