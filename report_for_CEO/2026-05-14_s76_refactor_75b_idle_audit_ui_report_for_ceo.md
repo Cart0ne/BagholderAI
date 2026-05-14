@@ -248,17 +248,80 @@ Refresh: il badge si re-renderizza ad ogni poll `/grid` (~30s) — countdown a g
 
 ---
 
+## 7. Brief 75c — drawdown baseline reset al 75b unlock (semantica B1)
+
+Anche con il bug 75b fixato e il badge countdown live, Max ha provato a settare `BONK.stop_buy_unlock_hours = 1` e osservato il comportamento end-to-end. Risultato: il timer scattava correttamente alle 13:09:08 UTC, ma 39b si ri-armava 20 secondi dopo. Cycle infinito unlock → re-arm ogni ora. Il timer era *meccanicamente* funzionante ma *operativamente* inutile.
+
+### Diagnosi
+
+La guardia 39b confronta `(current − avg_buy_price) × managed_holdings` con la soglia "−X% allocation". Quando il timer 75b sblocca, `_stop_buy_active = False`, ma né `avg_buy_price` né `current_price` cambiano. Al tick successivo (20s per BONK) 39b ricalcola la stessa identica disuguaglianza, la trova ancora vera, e ri-arma. Il timer regala 20 secondi di sblocco, periodo che ha senso solo se il prezzo è già sotto il `buy_trigger` di Strategy A — un coincidenza che su drawdown prolungato non capita.
+
+Max ha colto il problema concettualmente: *"quando sblocca lo stop buy deve resettare il drawdown, riparte al limite dal current price"*. Esattamente quello che serve. È lo stesso pattern del dead-zone-recalibrate (74b/73a) applicato al guard drawdown invece che al ladder di sell.
+
+### Scelta semantica (B1)
+
+Quando il 75b unlock fa scattare, registriamo `_stop_buy_baseline_price = current_price`. Da quel momento 39b confronta `(current − baseline) × managed_holdings` invece di `(current − avg)`. Tre opzioni esaminate per il behavior al re-arm successivo:
+
+- **A**: baseline tenuto stale (sconsigliato, contraddittorio)
+- **B1** ✅: baseline persiste, si aggiorna solo al *prossimo* 75b unlock (= step-down progressivo)
+- **B2**: baseline ri-registrato al re-arm (auto-contraddittorio: `unrealized vs baseline = 0` mai re-armerebbe)
+
+B1 ha senso economico: ogni timer cycle rappresenta un'accettazione progressiva di un livello di prezzo più basso. Se BONK scende, baseline scende anche, su step di 1h.
+
+### Implementazione (commit `fe58388`)
+
+5 file modificati, 1 migration, 1 test nuovo:
+
+| File | Modifica |
+|---|---|
+| `bot/grid/grid_bot.py` | `__init__`: nuovo field `_stop_buy_baseline_price: float = 0.0`. Check 39b: `ref_price = baseline if baseline > 0 else avg_buy_price`, log esteso a riportare `ref=avg` o `ref=baseline`. Blocco 75b unlock: `self._stop_buy_baseline_price = current_price` + log `New drawdown baseline = $X (75c)`. |
+| `bot/grid/buy_pipeline.py` | Su BUY successo: `bot._stop_buy_baseline_price = 0.0` (cycle closed by averaging down, ritorno a default semantics) |
+| `bot/grid/sell_pipeline.py` | Su profitable sell (insieme al clear di `_stop_buy_active` e `_stop_buy_activated_at`): `bot._stop_buy_baseline_price = 0.0` |
+| `bot/grid_runner/runtime_state.py` | Espone `stop_buy_baseline_price` per dashboard (NULL se baseline=0) |
+| Migration | `ALTER TABLE bot_runtime_state ADD COLUMN stop_buy_baseline_price REAL NULL` (la colonna esisteva già da un tentativo precedente — schema combacia) |
+| Test | **DD** (5 step): isolato BONK reproduction. (1) baseline=0 prima del primo unlock, (2) 75b scrive baseline, (3) 39b stays clear a same-price, (4) 39b re-arms a −4% sotto baseline, (5) baseline persiste B1 |
+
+Pytest 30/30 verdi.
+
+### Verifica live
+
+Restart Mac Mini 13:35:31 UTC (PID 87923). Log mostra:
+
+```
+STOP-BUY TRIGGERED: unrealized $-10.68 <= threshold $-3.00
+  (2% of allocation $150.00, ref=avg $0.00000745).
+  New buys blocked until profitable sell or 75b unlock.
+```
+
+Il bot ha riarmato 39b normalmente al boot (baseline=0, usa avg). Timer 75b ri-armato a 13:35:31 UTC. Auto-reset atteso a 14:35:31 UTC. A quel momento atteso log alternativo:
+
+```
+STOP-BUY UNLOCK: 1.0h >= 1.0h threshold. Auto-resetting buy block.
+  New drawdown baseline = $X (75c).
+```
+
+Con `$X` il prezzo BONK in quel momento. Da lì in poi 39b confronta vs $X invece che vs avg — se BONK resta stabile o sale, il flag NON si ri-arma e il bot può comprare appena il prezzo scende sotto il `buy_trigger` di Strategy A.
+
+### Lezione architetturale
+
+> Quando un guard si attiva su una *quantità derivata* (qui drawdown = `current − reference × holdings`), rimuovere solo il flag senza muovere il `reference` produce un no-op operativo: la guard ri-arma al prossimo tick.
+
+Salvato come pattern: ogni futuro guard time-based che voglia "dare una possibilità reale" al bot deve anche resettare la quantità che ha causato l'attivazione.
+
+---
+
 ## Test suite
 
 | Pre-S76 | S76 | Delta |
 |---|---|---|
-| 25/25 (A → Y) | **29/29** | +4 |
+| 25/25 (A → Y) | **30/30** | +5 |
 
 Nuovi:
 - **Z** stop_buy_unlock fires after timeout (75b)
 - **AA** stop_buy_unlock holds under timeout (75b)
 - **BB** profitable_sell clears unlock_timestamp (75b)
 - **CC** idle_alerts suppressed when stop_buy_active (audit)
+- **DD** baseline stops immediate 39b re-arm after 75b unlock (75c)
 
 ---
 
@@ -284,15 +347,15 @@ Nuovi:
 
 ## Numeri sessione
 
-- **Durata**: ~4.5h (inclusi diagnosi bug post-pubblicazione + fix + badge UI countdown + cleanup PROJECT_STATE)
-- **Commit su main**: 6 (`9ceaa81` squash refactor+75b+audit+UI · `3e7bc58` docs S76 closure · `3d62942` chore state cleanup · `a780314` fix 75b config_fields · `8c2698f` badge countdown)
+- **Durata**: ~6h (inclusi diagnosi 2 bug live + 2 fix + badge UI countdown + cleanup PROJECT_STATE + brief 75c baseline reset)
+- **Commit su main**: 8 (`9ceaa81` squash refactor+75b+audit+UI · `3e7bc58` docs S76 closure · `3d62942` chore state cleanup · `a780314` fix 75b config_fields · `8c2698f` badge countdown · `5a27dec` ceo-report addendum · `fe58388` feat 75c baseline reset)
 - **Commit interni feature-branch**: 5 (`b62e952`, `5af0ac7`, `cd52fa4`, `19331ee`, `9f68396`) squashati in `9ceaa81`
-- **File modificati totali**: 16 (5 backend logic + 8 nuovi moduli refactor + 2 frontend UI + 1 config reader)
-- **Migration Supabase**: 2 (`bot_config.stop_buy_unlock_hours` + `bot_runtime_state.stop_buy_activated_at`)
-- **Test verdi**: 25 → 29 (+4) — il bug 75b silenzioso ha rivelato un punto cieco strutturale (config reader chain non testata)
-- **Restart Mac Mini**: 4 (3 nella prima parte + 1 post-fix bug 75b alle 12:08:48 UTC PID 87296)
-- **Behavior change in produzione**: 0 finché Max non setta unlock_hours>0; BONK è il primo caso reale del timer (settato a 1h post-deploy)
-- **Linee di codice**: -1623 (monolite cancellato) + 1858 (package) + 51 (75b) + 13 (idle audit) + 4 (UI) + 6 (fix _CONFIG_FIELDS) + 30 (badge countdown) = +339 nette
+- **File modificati totali**: ~19 (5 backend logic refactor + 8 moduli refactor + 2 frontend UI + 1 config reader + 4 codice 75b/75c trading logic)
+- **Migration Supabase**: 3 (`bot_config.stop_buy_unlock_hours` + `bot_runtime_state.stop_buy_activated_at` + `bot_runtime_state.stop_buy_baseline_price`)
+- **Test verdi**: 25 → 30 (+5) — bug 75b ha rivelato gap su config reader chain; bug "timer-useless" ha guidato brief 75c (lezione strutturale: rimuovere un flag senza muovere il reference = no-op)
+- **Restart Mac Mini**: 5 (3 nella prima parte + 1 post-fix bug 75b + 1 post-75c alle 13:35:31 UTC PID 87923)
+- **Behavior change in produzione**: 0 finché Max non setta unlock_hours>0; BONK con unlock_hours=1 è il primo caso reale, ora opera con semantica baseline corretta
+- **Linee di codice**: -1623 (monolite cancellato) + 1858 (package) + 51 (75b) + 13 (idle audit) + 4 (UI safety) + 6 (fix _CONFIG_FIELDS) + 30 (badge countdown) + 136 (75c baseline + test DD) = +475 nette
 - **PROJECT_STATE.md compaction**: 78 KB → 27 KB (-65%) con archivio 9.5 KB tracked
 
 ---
@@ -320,9 +383,12 @@ Da salvare nell'auto-memory:
   3. `bot/grid_runner/config_sync.py` → hot-reload branch
   Più (4) il bootstrap read in `bot/grid_runner/__init__.py` se il valore va passato al GridBot constructor. Saltare #2 produce un bug silenzioso: pytest verde, hot-reload no-op, comportamento al default `__init__`. Test fixture che setta l'attributo direttamente NON copre questo path.
 - **🆕 Test gap rivelato**: nessuna integration test esercita `SupabaseConfigReader → _sync_config_to_bot → bot` su payload realistici. Brief separato consigliato prima del prossimo brief che estende `bot_config`.
+- **🆕 Pattern "rimuovere il flag senza muovere il reference = no-op"**: emersa dal brief 75c. Quando un guard latcha su una quantità derivata (drawdown, ladder, idle elapsed…), per dare al bot una possibilità reale al timer-unlock bisogna anche resettare la quantità sorgente, non solo il flag latched. Applicabile a futuri guard time-based (cooldown su stop-loss TF, recalibrate proattivo per Sherpa, etc.).
 
 ---
 
 *Prossimo report CEO atteso: post-Sentinel/Sherpa DRY_RUN analysis (~25 maggio) o pre-go-live €100 — whichever comes first.*
 
 *Aggiornamento report: 2026-05-14 pomeriggio (post-bug 75b live + fix + badge countdown + state cleanup).*
+
+*Secondo aggiornamento report: 2026-05-14 tardo pomeriggio (post-bug "timer useless" + brief 75c baseline reset shipped, in attesa di verifica live alle ~14:35 UTC).*
