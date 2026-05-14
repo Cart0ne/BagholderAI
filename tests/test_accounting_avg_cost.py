@@ -1570,6 +1570,102 @@ def test_bb_profitable_sell_clears_unlock_timestamp():
           f"(no stale timer for next arm)")
 
 
+def test_dd_baseline_stops_immediate_re_arm_after_75b_unlock():
+    """Brief 75c (S76 2026-05-14, semantica B1): when the 75b unlock timer
+    fires, the bot records `_stop_buy_baseline_price = current_price`. The
+    next 39b check measures unrealized from THIS price instead of from
+    `avg_buy_price`. Without this fix, 39b would re-arm within one tick
+    of the unlock (the drawdown vs avg is unchanged after the timer).
+
+    This test reproduces the BONK case observed live on 2026-05-14:
+    avg=$0.00000745, current=$0.00000673 (~10% below avg), allocation
+    $150, stop_buy_drawdown_pct=2%. Without 75c the bot re-arms; with
+    75c the baseline shift makes unrealized 0 at unlock and the guard
+    stays clear until price drops another 2% from the baseline.
+    """
+    from datetime import datetime, timedelta
+    print("=" * 70)
+    print("TEST DD: brief 75c — baseline prevents immediate 39b re-arm post-unlock")
+    print("=" * 70)
+    bot = make_bot(capital=150.0, capital_per_trade=10.0)
+    bot.managed_by = "grid"
+    bot.is_active = True
+    bot.buy_pct = 99.0   # disable buy path so we isolate 39b
+    bot.sell_pct = 99.0
+    bot.stop_buy_drawdown_pct = 2.0
+    bot.stop_buy_unlock_hours = 1.0
+
+    # Mimic live BONK: established position at $0.00000745 average,
+    # large holdings so the 2% allocation threshold ($-3) is crossed
+    # easily by a small price drop.
+    bot._execute_percentage_buy(price=0.00000745)
+    bot.state.holdings = 14_813_917.0  # match live BONK managed holdings
+    bot.state.avg_buy_price = 0.00000745
+    bot._phantom_holdings = 0.0  # managed_holdings == state.holdings here
+
+    # Step 1: a tick at $0.00000673 (≈ −10% from avg) arms 39b normally
+    # because the baseline has never been set.
+    bot.check_price_and_execute(current_price=0.00000673)
+    assert bot._stop_buy_active is True, "39b must arm on first deep drawdown"
+    assert bot._stop_buy_baseline_price == 0.0, (
+        f"baseline must stay 0 until a 75b unlock fires, got {bot._stop_buy_baseline_price}"
+    )
+    print(f"  step 1: 39b armed normally (baseline still 0) ✓")
+
+    # Step 2: fast-forward the activation timestamp by 1.01h so the 75b
+    # unlock fires on the next tick. Same price → without 75c the 39b
+    # check would re-arm in the same tick because drawdown vs avg is
+    # unchanged. With 75c the baseline jumps to current and unrealized
+    # = 0 → no re-arm.
+    bot._stop_buy_activated_at = datetime.utcnow() - timedelta(hours=1, minutes=1)
+    bot.check_price_and_execute(current_price=0.00000673)
+    assert bot._stop_buy_active is False, (
+        f"75b unlock must clear the flag; got {bot._stop_buy_active}"
+    )
+    assert_close(bot._stop_buy_baseline_price, 0.00000673,
+                 label="baseline registered at unlock price")
+    print(f"  step 2: 75b unlock fired, baseline = "
+          f"{bot._stop_buy_baseline_price:.8f}, flag cleared ✓")
+
+    # Step 3: another tick at the SAME price. Without 75c, 39b would
+    # measure (current − avg) and re-arm. With 75c, the baseline IS the
+    # current, unrealized = 0, no re-arm.
+    bot.check_price_and_execute(current_price=0.00000673)
+    assert bot._stop_buy_active is False, (
+        "39b must NOT re-arm at the baseline price (75c keeps the flag clear)"
+    )
+    assert_close(bot._stop_buy_baseline_price, 0.00000673,
+                 label="baseline persists across non-arm ticks")
+    print(f"  step 3: 39b stayed clear at baseline price ✓ "
+          f"(this is the bug 75c fixes)")
+
+    # Step 4: price drops further below baseline until the −$3 (2% of
+    # $150 allocation) threshold is crossed. With 14.8M BONK holdings,
+    # we need (current − baseline) × 14_813_917 ≤ −3 → current ≤
+    # baseline − 3/14_813_917 ≈ baseline − 2.03e-7. A −4% drop comfortably
+    # crosses it (∆ ≈ −$3.99). NOW 39b legitimately re-arms because
+    # unrealized vs baseline trips the threshold. Baseline persists
+    # across re-arms (semantica B1) — only steps down at NEXT 75b unlock.
+    drop_price = 0.00000673 * (1 - 0.04)  # −4% from baseline
+    bot.check_price_and_execute(current_price=drop_price)
+    assert bot._stop_buy_active is True, (
+        f"39b must re-arm when current falls 2.5% below baseline; "
+        f"current={drop_price}, baseline={bot._stop_buy_baseline_price}"
+    )
+    assert_close(bot._stop_buy_baseline_price, 0.00000673,
+                 label="baseline B1: stays at last unlock value, not updated on re-arm")
+    print(f"  step 4: 39b re-armed at -2.5% from baseline ✓ "
+          f"(baseline still = unlock value, B1 semantics)")
+
+    # Step 5: a profitable sell would clear both flag + baseline. We
+    # simulate the relevant clears directly (the sell_pipeline does
+    # this on realized_pnl > 0).
+    bot._stop_buy_active = False
+    bot._stop_buy_activated_at = None
+    bot._stop_buy_baseline_price = 0.0  # 75c clear (matches sell_pipeline)
+    print(f"  step 5: profitable sell would reset all stop-buy state ✓")
+
+
 def main():
     tests = [
         test_a_simple_buy_then_sell,
@@ -1601,6 +1697,7 @@ def main():
         test_aa_stop_buy_unlock_holds_under_timeout,
         test_bb_profitable_sell_clears_unlock_timestamp,
         test_cc_idle_alerts_suppressed_when_stop_buy_active,
+        test_dd_baseline_stops_immediate_re_arm_after_75b_unlock,
     ]
     passed = 0
     failed = []

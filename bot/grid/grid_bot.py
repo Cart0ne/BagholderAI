@@ -151,6 +151,7 @@ class GridBot:
         self._stop_loss_triggered: bool = False  # 39a: latched once threshold is breached
         self._stop_buy_active: bool = False  # 39b: latched once drawdown breached, resets on profitable sell
         self._stop_buy_activated_at: Optional[datetime] = None  # 75b: timestamp for unlock timer
+        self._stop_buy_baseline_price: float = 0.0  # 75c: drawdown reference after a 75b unlock (0 = use avg_buy_price)
         self._take_profit_triggered: bool = False  # 39c: latched once +pct threshold reached
         self._profit_lock_triggered: bool = False  # 45f: latched once net-PnL threshold breached
         self._gain_saturation_triggered: bool = False  # 45g: latched once N positive sells in current period
@@ -579,14 +580,27 @@ class GridBot:
                 and self.state.holdings > 0
                 and self.state.avg_buy_price > 0
                 and not self._stop_buy_active):
-            unrealized = (current_price - self.state.avg_buy_price) * self.managed_holdings
+            # 75c (S76 2026-05-14): the drawdown reference is `avg_buy_price`
+            # by default, but after a 75b unlock we step it down to the price
+            # observed at that unlock moment (semantic B1). The next 39b arm
+            # then measures the drawdown from THAT point, not from avg —
+            # without this the timer is useless (39b re-arms within one tick
+            # of the unlock because avg-based unrealized is still below the
+            # threshold). The baseline persists across re-arms and only
+            # clears on BUY or profitable SELL (cycle closed).
+            ref_price = (self._stop_buy_baseline_price
+                         if self._stop_buy_baseline_price > 0
+                         else self.state.avg_buy_price)
+            unrealized = (current_price - ref_price) * self.managed_holdings
             buy_block_threshold = -(self.capital * self.stop_buy_drawdown_pct / 100)
             if unrealized <= buy_block_threshold:
+                ref_label = "baseline" if self._stop_buy_baseline_price > 0 else "avg"
                 logger.warning(
                     f"[{self.symbol}] STOP-BUY TRIGGERED: unrealized ${unrealized:.2f} "
                     f"<= threshold ${buy_block_threshold:.2f} "
-                    f"({self.stop_buy_drawdown_pct:.0f}% of allocation ${self.capital:.2f}). "
-                    f"New buys blocked until profitable sell."
+                    f"({self.stop_buy_drawdown_pct:.0f}% of allocation ${self.capital:.2f}, "
+                    f"ref={ref_label} {fmt_price(ref_price)}). "
+                    f"New buys blocked until profitable sell or 75b unlock."
                 )
                 self._stop_buy_active = True
                 self._stop_buy_activated_at = datetime.utcnow()  # 75b: arm unlock timer
@@ -595,11 +609,13 @@ class GridBot:
                     category="safety",
                     event="stop_buy_activated",
                     symbol=self.symbol,
-                    message=f"Manual stop-buy: unrealized ${unrealized:.2f} ≤ ${buy_block_threshold:.2f}",
+                    message=f"Manual stop-buy: unrealized ${unrealized:.2f} ≤ ${buy_block_threshold:.2f} (ref={ref_label})",
                     details={
                         "unrealized": unrealized,
                         "threshold": buy_block_threshold,
                         "pct": self.stop_buy_drawdown_pct,
+                        "reference_price": ref_price,
+                        "reference_kind": ref_label,
                     },
                 )
 
@@ -614,9 +630,16 @@ class GridBot:
                 and self._stop_buy_activated_at is not None):
             elapsed_sb = (datetime.utcnow() - self._stop_buy_activated_at).total_seconds() / 3600
             if elapsed_sb >= self.stop_buy_unlock_hours:
+                # 75c (S76 2026-05-14): step the drawdown baseline down to
+                # the current price at unlock. The next 39b check measures
+                # unrealized from THIS price, so the bot has room to live
+                # without instantly re-arming. Baseline persists across
+                # 39b re-arms and only clears on BUY or profitable SELL.
+                self._stop_buy_baseline_price = current_price
                 logger.info(
                     f"[{self.symbol}] STOP-BUY UNLOCK: {elapsed_sb:.1f}h >= "
-                    f"{self.stop_buy_unlock_hours}h threshold. Auto-resetting buy block."
+                    f"{self.stop_buy_unlock_hours}h threshold. Auto-resetting buy block. "
+                    f"New drawdown baseline = {fmt_price(current_price)} (75c)."
                 )
                 self._stop_buy_active = False
                 self._stop_buy_activated_at = None
@@ -625,10 +648,11 @@ class GridBot:
                     category="safety",
                     event="stop_buy_unlock_reset",
                     symbol=self.symbol,
-                    message=f"Stop-buy auto-reset after {elapsed_sb:.1f}h unlock window",
+                    message=f"Stop-buy auto-reset after {elapsed_sb:.1f}h unlock window, baseline={fmt_price(current_price)}",
                     details={
                         "elapsed_hours": float(elapsed_sb),
                         "unlock_hours": float(self.stop_buy_unlock_hours),
+                        "new_baseline_price": float(current_price),
                     },
                 )
 

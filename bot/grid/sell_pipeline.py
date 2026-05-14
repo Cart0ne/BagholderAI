@@ -496,6 +496,7 @@ def execute_percentage_sell(
     if bot._stop_buy_active and realized_pnl > 0:
         bot._stop_buy_active = False
         bot._stop_buy_activated_at = None  # 75b: clear unlock timer
+        bot._stop_buy_baseline_price = 0.0  # 75c: clear drawdown baseline (cycle closed)
         logger.info(
             f"[{bot.symbol}] STOP-BUY RESET: profitable sell ${realized_pnl:.2f} "
             f"cleared the block. Buys re-enabled."

@@ -213,6 +213,12 @@ def execute_percentage_buy(bot, price: float) -> Optional[dict]:
     bot.state.total_fees += fee
     bot.state.holdings += qty_acquired
 
+    # 75c (S76 2026-05-14): a successful BUY closes the drawdown cycle from
+    # the bot's perspective (the position is being averaged down right now).
+    # Clear any stop-buy baseline that a previous 75b unlock had registered,
+    # so the next 39b check goes back to comparing against the real avg.
+    bot._stop_buy_baseline_price = 0.0
+
     # Brief 72a P2 (S72): avg_buy_price = true USDT cost per coin held.
     # Numerator uses `cost` (USDT actually paid out of cash) and
     # denominator uses `qty_acquired` (coins that landed in the wallet).

@@ -28,12 +28,14 @@ def _upsert_runtime_state(trade_logger, bot, symbol: str) -> None:
         phantom = getattr(bot, "_phantom_holdings", 0.0) or 0.0
         last_recal = getattr(bot, "_last_trade_time", None)
         sb_activated = getattr(bot, "_stop_buy_activated_at", None)
+        sb_baseline = float(getattr(bot, "_stop_buy_baseline_price", 0.0) or 0.0)
         payload = {
             "symbol": symbol,
             "buy_reference_price": float(bot._pct_last_buy_price or 0) or None,
             "last_sell_price": float(bot._last_sell_price or 0) or None,
             "stop_buy_active": bool(getattr(bot, "_stop_buy_active", False)),
             "stop_buy_activated_at": sb_activated.isoformat() if sb_activated else None,
+            "stop_buy_baseline_price": sb_baseline if sb_baseline > 0 else None,  # 75c
             "phantom_holdings": float(phantom),
             "managed_holdings": float(managed) if managed is not None else None,
             "last_recalibrate_at": last_recal.isoformat() if last_recal else None,
