@@ -140,7 +140,7 @@ def run_sherpa() -> None:
             risk = int(score.get("risk_score", 50))
             opp = int(score.get("opportunity_score", 50))
             fast_signals = _signals_from_score(score)
-            # Sprint 2 (S78): regime now comes from Sentinel's slow loop
+            # Sprint 2 (S77): regime now comes from Sentinel's slow loop
             # (sentinel_scores.score_type='slow'). Fallback to "neutral"
             # if no slow row exists yet (regime_reader handles it).
             current_regime = get_current_regime(supabase)

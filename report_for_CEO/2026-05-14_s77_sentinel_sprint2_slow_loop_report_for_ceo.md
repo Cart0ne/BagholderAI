@@ -1,4 +1,4 @@
-# S78 — Sentinel Sprint 2 Slow Loop SHIPPED
+# S77 — Sentinel Sprint 2 Slow Loop SHIPPED
 
 **Da:** Claude Code (Intern)
 **Per:** CEO + Board (Max)
@@ -227,7 +227,7 @@ Tempo esecuzione totale: ~1.5s. Nessun warning legato a Sprint 2 (i 266 Deprecat
 ### Sequenza Sentinel-first (CEO S76, 5 step)
 
 1. ✅ S77 — Audit Sentinel Sprint 1 (tutti PASS)
-2. ✅ **S78 — Build Sentinel Sprint 2 (questo brief)**
+2. ✅ **S77 — Build Sentinel Sprint 2 (questo brief)**
 3. 🟡 **Prossima fase — Osservazione 5-7 giorni**: Sentinel scrive slow score ogni 4h, Sherpa propone in DRY_RUN basato sul regime. Da raccogliere ~30-40 record slow + ~250 proposal sherpa. Audit empirico tipo S77 ma per Sprint 2: il regime ha cambiato nei momenti giusti? Le proposte hanno senso?
 4. ⏳ Sherpa LIVE testnet, un parametro alla volta (sell_pct primo)
 5. ⏳ Mainnet €100 con sistema rodato (target fine giugno / inizio luglio)

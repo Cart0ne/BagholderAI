@@ -38,7 +38,7 @@ TELEGRAM_THROTTLE_S = 10 * 60  # max 1 alert of each type per 10 min
 RISK_ALERT_THRESHOLD = 70
 RISK_CRITICAL_THRESHOLD = 90
 
-# Sprint 2 (S78): slow loop cadence. Every SLOW_LOOP_INTERVAL_S the
+# Sprint 2 (S77): slow loop cadence. Every SLOW_LOOP_INTERVAL_S the
 # Sentinel pulls F&G + CMC, decides a regime, and writes a
 # score_type='slow' row. Sherpa reads the latest slow row to pick the
 # BASE_TABLE regime to start from.
