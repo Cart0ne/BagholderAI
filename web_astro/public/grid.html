@@ -958,11 +958,39 @@
         // row is missing (bot offline).
         var stopBuyPct = Number(cfg.stop_buy_drawdown_pct) || 0;
         var isStopBuyActive = !!rtState.stop_buy_active && stopBuyPct > 0;
+        // 75b (S76 2026-05-14): when the unlock timer is armed, append a
+        // live countdown to the badge so the operator can see when buys
+        // will auto-resume. Reads from bot_runtime_state.stop_buy_activated_at
+        // (UPSERTed each tick by the bot) and bot_config.stop_buy_unlock_hours.
+        var unlockHours = Number(cfg.stop_buy_unlock_hours) || 0;
+        var activatedAtIso = rtState.stop_buy_activated_at || null;
+        var unlockCountdownStr = '';
+        var unlockTooltipExtra = '';
+        if (isStopBuyActive && unlockHours > 0 && activatedAtIso) {
+          var activatedMs = Date.parse(activatedAtIso);
+          if (!Number.isNaN(activatedMs)) {
+            var unlockMs = activatedMs + unlockHours * 3600 * 1000;
+            var remainingMs = unlockMs - Date.now();
+            if (remainingMs <= 0) {
+              unlockCountdownStr = ' · unlock pending';
+              unlockTooltipExtra = ' Auto-unlock condition met — bot will clear the flag at next tick.';
+            } else {
+              var remMin = Math.floor(remainingMs / 60000);
+              var remH = Math.floor(remMin / 60);
+              var remMinRem = remMin % 60;
+              var humanRem = remH > 0 ? (remH + 'h ' + remMinRem + 'm') : (remMinRem + 'm');
+              unlockCountdownStr = ' · resets in ' + humanRem;
+              unlockTooltipExtra = ' Auto-unlock armed: resets in ' + humanRem + ' (after ' + unlockHours + 'h since activation).';
+            }
+          }
+        } else if (isStopBuyActive && unlockHours === 0) {
+          unlockTooltipExtra = ' Auto-unlock disabled (stop_buy_unlock_hours=0) — only a profitable sell will clear the guard.';
+        }
         var nextBuyCellHtml = isStopBuyActive
           ? '<div class="coin-stat" title="Bot drawdown exceeded ' + stopBuyPct.toFixed(0) +
-            '% of allocation. New buys are blocked until a profitable sell resets the guard. Existing holdings unaffected (Strategy A still applies).">' +
+            '% of allocation. New buys are blocked. Existing holdings unaffected (Strategy A still applies). Reset mechanisms: profitable sell (always), OR auto-unlock timer (if enabled).' + unlockTooltipExtra + '">' +
             '<div class="cs-label" style="color:var(--red);">Stop-buy active</div>' +
-            '<div class="cs-value" style="color:var(--red);font-size:11px;">BLOCKED · drawdown &gt; ' + stopBuyPct.toFixed(0) + '%</div></div>'
+            '<div class="cs-value" style="color:var(--red);font-size:11px;">BLOCKED · drawdown &gt; ' + stopBuyPct.toFixed(0) + '%' + unlockCountdownStr + '</div></div>'
           : '<div class="coin-stat"><div class="cs-label">Next buy if ↓</div>' +
             '<div class="cs-value" style="color:' + nextBuyColor + ';">' + nextBuyStr + '</div></div>';
         // Distanza % dal trigger di sell (negativo = ancora sotto trigger, positivo = già sopra)
