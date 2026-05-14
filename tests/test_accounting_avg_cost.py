@@ -1475,6 +1475,61 @@ def test_aa_stop_buy_unlock_holds_under_timeout():
           f"flag still latched, timestamp preserved")
 
 
+def test_cc_idle_alerts_suppressed_when_stop_buy_active():
+    """Audit S76 (2026-05-14, post-75b): when `_stop_buy_active=True` the
+    bot is blocked for a structural reason (drawdown > threshold). The
+    in-memory idle recalibrate still runs (grid_bot side), but the
+    Telegram echo becomes noise — the operator already knows the bot is
+    blocked. send_idle_alerts must suppress all messages in that state.
+
+    Default `stop_buy_active=False` preserves the original verbose behavior
+    so the other tests don't change."""
+    from bot.grid_runner.idle_alerts import send_idle_alerts
+    print("=" * 70)
+    print("TEST CC: audit S76 — idle alerts suppressed when stop-buy active")
+    print("=" * 70)
+
+    class MockNotifier:
+        def __init__(self):
+            self.sent = []
+        def send_message(self, msg):
+            self.sent.append(msg)
+
+    sample_alerts = [
+        {"symbol": "BONK/USDT", "elapsed_hours": 5.0,
+         "reference_price": 0.0000068, "recalibrate": True},
+        {"symbol": "SOL/USDT", "elapsed_hours": 24.0,
+         "reference_price": 90.0, "recalibrate": False},
+    ]
+
+    # Case 1: stop_buy_active=False (default) → both alerts go through.
+    notifier_off = MockNotifier()
+    send_idle_alerts(notifier_off, sample_alerts, stop_buy_active=False)
+    assert len(notifier_off.sent) == 2, (
+        f"with stop_buy_active=False expected 2 messages, got {len(notifier_off.sent)}"
+    )
+    assert "RECALIBRATE" in notifier_off.sent[0]
+    assert "RE-ENTRY" in notifier_off.sent[1]
+    print(f"  stop_buy=False: 2/2 messages sent ✓ (verbose preserved)")
+
+    # Case 2: stop_buy_active=True → all alerts suppressed (zero send_message calls).
+    notifier_on = MockNotifier()
+    send_idle_alerts(notifier_on, sample_alerts, stop_buy_active=True)
+    assert len(notifier_on.sent) == 0, (
+        f"with stop_buy_active=True expected 0 messages, got {len(notifier_on.sent)}: "
+        f"{notifier_on.sent}"
+    )
+    print(f"  stop_buy=True: 0/2 messages sent ✓ (suppressed)")
+
+    # Case 3: default param omitted → behaves like False (backward-compat).
+    notifier_default = MockNotifier()
+    send_idle_alerts(notifier_default, sample_alerts)
+    assert len(notifier_default.sent) == 2, (
+        f"with default param expected 2 messages, got {len(notifier_default.sent)}"
+    )
+    print(f"  default (no flag): 2/2 messages sent ✓ (backward-compat)")
+
+
 def test_bb_profitable_sell_clears_unlock_timestamp():
     """Brief 75b: a profitable sell must clear BOTH `_stop_buy_active`
     (39b's original event-based reset) AND `_stop_buy_activated_at`
@@ -1545,6 +1600,7 @@ def main():
         test_z_stop_buy_unlock_fires_after_timeout,
         test_aa_stop_buy_unlock_holds_under_timeout,
         test_bb_profitable_sell_clears_unlock_timestamp,
+        test_cc_idle_alerts_suppressed_when_stop_buy_active,
     ]
     passed = 0
     failed = []

@@ -14,8 +14,11 @@ import signal
 import time
 import logging
 from datetime import datetime, date, timezone
-from utils.telegram_notifier import SyncTelegramNotifier
 from utils.formatting import fmt_price
+# `SyncTelegramNotifier` is imported lazily inside run_grid_bot() so that
+# tests can `from bot.grid_runner.idle_alerts import send_idle_alerts`
+# without paying the python-telegram-bot dependency cost (and breaking on
+# environments where the library isn't installed).
 
 
 def _sigterm_to_keyboard_interrupt(signum, frame):
@@ -155,6 +158,7 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
         reserve_ledger = ReserveLedger()
 
     # Initialize Telegram
+    from utils.telegram_notifier import SyncTelegramNotifier  # lazy import (see top-of-file note)
     notifier = SyncTelegramNotifier()
 
     # 39a/39c/45f: TF stop-loss + take-profit + profit-lock thresholds live
@@ -597,8 +601,10 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
                 stop_reason = stop_reason_tag
                 break
 
-            # Idle re-entry / recalibrate alert: send BEFORE trade alerts so context arrives first
-            send_idle_alerts(notifier, bot.idle_reentry_alerts)
+            # Idle re-entry / recalibrate alert: send BEFORE trade alerts so context arrives first.
+            # S76 audit: suppress when stop-buy is active (structural block → idle is noise).
+            send_idle_alerts(notifier, bot.idle_reentry_alerts,
+                             stop_buy_active=getattr(bot, "_stop_buy_active", False))
 
             # Log trades
             if trades:
