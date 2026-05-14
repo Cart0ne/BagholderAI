@@ -495,6 +495,7 @@ def execute_percentage_sell(
     # we wait for a real profit event to confirm the cycle is digested.
     if bot._stop_buy_active and realized_pnl > 0:
         bot._stop_buy_active = False
+        bot._stop_buy_activated_at = None  # 75b: clear unlock timer
         logger.info(
             f"[{bot.symbol}] STOP-BUY RESET: profitable sell ${realized_pnl:.2f} "
             f"cleared the block. Buys re-enabled."
