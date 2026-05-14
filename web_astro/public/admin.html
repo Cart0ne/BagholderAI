@@ -1734,7 +1734,10 @@
     async function bootstrap() {
       try {
         // --- Sentinel ---
-        var last = await sbFetch('sentinel_scores?select=*&order=created_at.desc&limit=1');
+        // Filter score_type=fast: since Sprint 2 (S77 brief 77b), sentinel_scores
+        // also contains slow rows (regime detection) without btc_price/funding,
+        // which would skew "Last scan" and the trend chart's Y-axis if included.
+        var last = await sbFetch('sentinel_scores?select=*&score_type=eq.fast&order=created_at.desc&limit=1');
         renderLastScan(last[0]);
 
         // Sentinel slow loop banner (brief 77c widget A). Runs once at boot
@@ -1756,7 +1759,11 @@
         var fetchCap = currentRangeHours >= 720 ? 200000
                      : currentRangeHours >= 168 ? 60000
                      : 10000;
-        var sentinelRows = await sbFetchAll('sentinel_scores?select=created_at,risk_score,opportunity_score,btc_price,raw_signals&created_at=gte.' + encodeURIComponent(since) + '&order=created_at.asc', 1000, fetchCap);
+        // Filter score_type=fast: slow rows (Sprint 2) live in the same
+        // table but lack btc_price; including them flattens the chart's
+        // Y-axis and adds spurious risk/opp spikes (slow rows use
+        // regime-derived 20-80 values).
+        var sentinelRows = await sbFetchAll('sentinel_scores?select=created_at,risk_score,opportunity_score,btc_price,raw_signals&score_type=eq.fast&created_at=gte.' + encodeURIComponent(since) + '&order=created_at.asc', 1000, fetchCap);
         renderChart(sentinelRows);
         renderSpeedCounter(sentinelRows);
 
