@@ -1,8 +1,8 @@
 # BUSINESS_STATE.md
 
-**Last updated:** 2026-05-14 — Session 76 (CEO session: S76 diary prodotto, roadmap Sentinel-first definita, decisione mainnet posticipata a sistema completo, visione TF Tier 3 + Sentinel Sprint 3 parcheggiata, blog weekend pianificato).
-**Updated by:** CEO
-**Basato su:** PROJECT_STATE.md aggiornato 2026-05-14 (S76 chiusura, ultimo commit `fe58388`)
+**Last updated:** 2026-05-15 — Session 78 (CC session: primo blog post pubblicato in produzione, anticipato dal weekend 17-18 maggio a oggi).
+**Updated by:** CC
+**Basato su:** PROJECT_STATE.md aggiornato 2026-05-14 (S77 chiusura, ultimo commit `18a0362` post-blog-publish)
 
 ---
 
@@ -26,9 +26,11 @@ BagHolderAI è un progetto sperimentale dove un'AI (Claude) gestisce un micro-bu
 
 **Sito online:** TestnetBanner globale, Reconciliation table pubblica su /dashboard, TF "dal dottore" SVG inline, Sentinel/Sherpa badge TEST MODE. Dashboard P&L hero unificato. HWW v3 con Auditor entity. Blog infrastructure pronta (brief 75a shipped).
 
-**Blog weekend (17-18 maggio):** 2 post pianificati:
-- **Post 1 — "Why We're Not Live Yet (And When We Will Be)"**: decisione strategica di oggi — perché mainnet è posticipato, roadmap Sentinel-first, timeline onesta.
-- **Post 2 — Highlight da V1 o V2**: pezzo standalone per lettori nuovi (candidati: "The Day the Bot Ran Out of Money", "How We Taught an AI to Write Its Own Daily Log").
+**Blog primo post LIVE (2026-05-15):** "An AI That Can't Trade, a Human That Can't Say No" pubblicato su `bagholderai.lol/blog/an-ai-that-cant-trade`. Origin story dual-voice (Max + BagHolderAI CEO), tag `origin/introduction/behind-the-scenes`, CTA Volume 1. Pubblicazione anticipata dal weekend 17-18 maggio a oggi (brief 78a CEO).
+
+**Blog post successivi (TBD):**
+- **Post 2 candidato — "Why We're Not Live Yet (And When We Will Be)"**: decisione strategica S76 — perché mainnet è posticipato, roadmap Sentinel-first, timeline onesta.
+- **Post 3 candidato — Highlight da V1 o V2**: pezzo standalone per lettori nuovi (candidati: "The Day the Bot Ran Out of Money", "How We Taught an AI to Write Its Own Daily Log").
 
 Cadenza blog: irregolare ("variable reinforcement"), coerente con strategia X.
 
@@ -63,6 +65,7 @@ Cadenza blog: irregolare ("variable reinforcement"), coerente con strategia X.
 
 | Data | Decisione | Perché |
 |---|---|---|
+| 2026-05-15 (S78 CEO) | **Primo blog post pubblicato oggi (anticipato dal weekend 17-18)** | Origin story dual-voice già scritta e approvata. Brief 78a operativo (no testo touch, solo copy+build+push). Anticipa il "blog weekend" del Board, libera il weekend per Post 2 strategico ("why not live yet") |
 | 2026-05-14 (S76 CEO) | **Mainnet €100 posticipato a sistema completo (Grid + Sentinel testato + Sherpa attivato)** | Sherpa scriverà `bot_config` con soldi veri — va testato prima su testnet con Grid attivo. Grid-only mainnet avrebbe valore narrativo ma rischia quando Sherpa si accende. Sequenza: Sentinel fix → Sprint 2 → observe → Sherpa graduale su testnet → mainnet |
 | 2026-05-14 (S76 CEO) | **Roadmap Sentinel-first in 5 step** | Step 1: audit+fix Sprint 1. Step 2: build Sprint 2 (F&G, regime). Step 3: osservazione 1 settimana. Step 4: Sherpa LIVE su testnet (1 parametro alla volta). Step 5: mainnet con sistema rodato. Timeline: fine giugno / inizio luglio |
 | 2026-05-14 (S76 CEO) | **Sherpa attivazione graduale: un parametro alla volta** | Primo candidato: `sell_pct`. Osservare proposte per giorni prima di lasciar scrivere. Poi `buy_pct`. Permette di isolare problemi e bloccare fix |
@@ -101,7 +104,8 @@ Cadenza blog: irregolare ("variable reinforcement"), coerente con strategia X.
 | **Sentinel Sprint 1 fix** | Prossima sessione CC | Gate per tutto il resto della sequenza |
 | **Sentinel Sprint 2** | Post Sprint 1 fix | 2-3 sessioni CC |
 | **Sherpa LIVE su testnet** | Post osservazione Sentinel 1 settimana | Un parametro alla volta (sell_pct primo) |
-| **Blog primo post** | Weekend 17-18 maggio | 2 post pianificati con CEO |
+| **Blog primo post** | DONE 2026-05-15 | "An AI That Can't Trade" live su bagholderai.lol/blog |
+| **Blog Post 2** | TBD | "Why We're Not Live Yet" candidato — weekend 17-18 maggio o successivo |
 | **Volume 3** | Nessuna deadline | In accumulo, arco narrativo si forma |
 
 **Multi-macchina:** MBP (sviluppo) ↔ Mac Mini (runtime). Allineati su commit `9ceaa81` (S76 squash) + commit successivi S76 (fix + 75c + cleanup).
@@ -118,7 +122,7 @@ Cadenza blog: irregolare ("variable reinforcement"), coerente con strategia X.
 | **Sentinel Sprint 2** | Sprint 1 ha 3 bug noti. Fix prima, build dopo |
 | **Sherpa LIVE** | Dipende da Sentinel funzionante. Senza sensore affidabile, l'attuatore muove cose a caso |
 | **TF riattivazione** | ENABLE_TF=false. Tier 1-2 da testare su testnet quando ci si arriva. Tier 3 (shitcoin) richiede Sentinel Sprint 3. Post-mainnet |
-| **Blog contenuti** | Infrastruttura pronta (S75). Primo contenuto weekend 17-18 maggio |
+| **Blog contenuti (post 2+)** | Primo post pubblicato S78. Post 2 candidato "why not live yet" da scrivere (CEO), nessuna deadline fissa |
 | **Partnership / sponsorship** | Pre-traction. 0/30 views Payhip |
 | **Cambio prezzo volumi** | Nessun dato di vendita su cui ragionare |
 
