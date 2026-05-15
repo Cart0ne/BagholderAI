@@ -1,8 +1,8 @@
 # BUSINESS_STATE.md
 
-**Last updated:** 2026-05-15 — Session 78 (CC session: primo blog post pubblicato in produzione, anticipato dal weekend 17-18 maggio a oggi).
-**Updated by:** CC
-**Basato su:** PROJECT_STATE.md aggiornato 2026-05-14 (S77 chiusura, ultimo commit `18a0362` post-blog-publish)
+**Last updated:** 2026-05-15 — Session 78 (CC + CEO session: primo blog post pubblicato, tweet lancio + pin, reply strategy X definita, GSC sitemap fix, HN unflag request, audit Area 3 marketing+SEO+X CON RISERVE).
+**Updated by:** CC + CEO
+**Basato su:** PROJECT_STATE.md aggiornato 2026-05-15 (S78 chiusura, ultimo commit `4097a1f`)
 
 ---
 
@@ -26,21 +26,13 @@ BagHolderAI è un progetto sperimentale dove un'AI (Claude) gestisce un micro-bu
 
 **Sito online:** TestnetBanner globale, Reconciliation table pubblica su /dashboard, TF "dal dottore" SVG inline, Sentinel/Sherpa badge TEST MODE. Dashboard P&L hero unificato. HWW v3 con Auditor entity. Blog infrastructure pronta (brief 75a shipped).
 
-**Blog primo post LIVE (2026-05-15):** "An AI That Can't Trade, a Human That Can't Say No" pubblicato su `bagholderai.lol/blog/an-ai-that-cant-trade`. Origin story dual-voice (Max + BagHolderAI CEO), tag `origin/introduction/behind-the-scenes`, CTA Volume 1. Pubblicazione anticipata dal weekend 17-18 maggio a oggi (brief 78a CEO).
-
-**Blog post successivi (TBD):**
-- **Post 2 candidato — "Why We're Not Live Yet (And When We Will Be)"**: decisione strategica S76 — perché mainnet è posticipato, roadmap Sentinel-first, timeline onesta.
-- **Post 3 candidato — Highlight da V1 o V2**: pezzo standalone per lettori nuovi (candidati: "The Day the Bot Ran Out of Money", "How We Taught an AI to Write Its Own Daily Log").
-
-Cadenza blog: irregolare ("variable reinforcement"), coerente con strategia X.
-
-**Post X:** nessun post in coda. Scanner X cron settimanale attivo. Strategia: pubblica quando succede qualcosa di vero.
-
-**Payhip:** Volume 1 + Volume 2 live, 0/30 views totali.
-
-**Ads/monetizzazione:** A-Ads live (revenue trascurabile). Buy Me a Coffee attivo. Nessuna sponsorship.
-
-**SEO/Analytics:** Umami Cloud + Vercel Web Analytics. Sitemap reinviata S75, monitorare.
+- **Blog:** primo post LIVE 2026-05-15, "An AI That Can't Trade, a Human That Can't Say No" (`bagholderai.lol/blog/an-ai-that-cant-trade`). Prossimo: highlight da V1 o V2 (TBD). Cadenza irregolare ("variable reinforcement").
+- **X:** tweet lancio blog postato e pinnato. Reply strategy definita (doc: `reply_strategy_target_accounts.md`). Prossime 2 settimane: 2-3 reply/giorno, tracking risultati. Scanner X cron settimanale attivo.
+- **HN:** email a `hn@ycombinator.com` per unflag account Cart0ne. In attesa risposta.
+- **GSC:** 4 sitemap rimossi 2026-05-15 (cached failure da aprile, vedi audit Area 3). Reinviare solo `/sitemap-index.xml` tra 24-48h (entro il 17 maggio).
+- **Payhip:** Volume 1 + Volume 2 live, 0/30 views totali.
+- **Ads/monetizzazione:** A-Ads live (revenue trascurabile). Buy Me a Coffee attivo. Nessuna sponsorship.
+- **Analytics:** Umami Cloud + Vercel Web Analytics.
 
 ---
 
@@ -68,6 +60,9 @@ Cadenza blog: irregolare ("variable reinforcement"), coerente con strategia X.
 | Data | Decisione | Perché |
 |---|---|---|
 | 2026-05-15 (S78 CEO) | **Primo blog post pubblicato oggi (anticipato dal weekend 17-18)** | Origin story dual-voice già scritta e approvata. Brief 78a operativo (no testo touch, solo copy+build+push). Anticipa il "blog weekend" del Board, libera il weekend per Post 2 strategico ("why not live yet") |
+| 2026-05-15 (S78) | **Primo blog post = origin story a due voci (Max + CEO), non update strategico** | I lettori nuovi devono sapere chi siamo prima di interessarsi a dove siamo |
+| 2026-05-15 (S78) | **Reply strategy > posting frequency su X** | Il dato Montemagno (358 imp da una reply vs 78 media post) guida la nuova strategia. Vedi audit Area 3 marketing+SEO+X |
+| 2026-05-15 (S78) | **Tweet lancio blog: Opzione B (hook ironico)** | Scelta dal Board tra le opzioni presentate |
 | 2026-05-14 (S77) | **Sentinel Sprint 1 audit PASS** | Tutti e 3 i bug calibrazione confermati fix (SoF 2.3%, risk 5 valori, opp 3 valori). Nessun codice aggiuntivo necessario |
 | 2026-05-14 (S77) | **Sentinel Sprint 2 shipped** | Slow loop F&G + CMC ogni 4h, regime detection attivo. Sherpa propone con regime dinamico (prima era hardcoded "neutral") |
 | 2026-05-14 (S77) | **Mapping regime invertito (contrarian)** | extreme_fear = risk basso / opp alta. Correzione CC, approvata Board ("buy fearful sell greedy") |
