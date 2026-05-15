@@ -80,6 +80,11 @@ Per task piccoli (fix puntuale, < 50 righe): CC procede direttamente.
 ### E. Fine sessione CC
 
 1. CC rigenera PROJECT_STATE.md come ULTIMO step (regola CLAUDE.md [1]).
+   - Se CC ha shippato codice (commit + restart bot + migration) → la 
+     riga della sessione va in §10 "Sessioni shipped".
+   - §9 "Audit esterni" si tocca SOLO se CC era un Auditor (sessione 
+     fresh con `audits/audit_request_*.md`) e ha depositato il file 
+     `audits/audit_report_*.md`.
 2. CC committa + pusha (regola standard).
 3. Tu controlli che il commit sia in `origin/main` (CC te lo conferma).
 4. Niente altro. Sync GitHub → Project Knowledge è automatica.
@@ -98,14 +103,26 @@ Vedi `AUDIT_PROTOCOL.md` per dettagli. Trigger tipici:
 - **Area 2 (coerenza progetto)**: a fine ogni volume Diary
 - **Area 3 (marketing)**: trimestrale + pre-lancio
 
+**Regola di scope dell'Auditor (formalizzata 2026-05-15)**: l'Auditor 
+NON shipa codice, NON tocca brief in corso, NON esegue il lavoro che 
+sta auditando. Produce solo: (a) findings con file:linea, (b) verdetto 
+APPROVED / CON RISERVE / REJECTED, (c) file `audits/audit_report_*.md`, 
+(d) riga §9 in PROJECT_STATE.md. Se l'Auditor identifica fix necessari, 
+NON li applica: li flagga nel report; il fix lo fa una sessione CC 
+successiva, normale, con brief dedicato.
+
 Procedura:
 1. Crei `audits/audit_request_YYYYMMDD_topic.md` (cartella gitignored, 
    resta locale)
-2. Apri sessione CC FRESH e gli passi il file come brief
+2. Apri sessione CC FRESH e gli passi il file come brief. **Fresh** = 
+   nessun task di sviluppo prima nella stessa chat. Se la sessione è 
+   contaminata da shipping precedente, NON è Auditor.
 3. CC ti consegna il report
 4. Tu salvi in `audits/audit_report_YYYYMMDD_topic.md`
-5. Aggiorni PROJECT_STATE.md sezione 9 con la sintesi 1-2 righe (CC può 
-   farlo per te se glielo chiedi)
+5. L'Auditor stesso aggiorna PROJECT_STATE.md §9 con la sintesi 1-2 
+   righe (è l'unico autorizzato — vedi `CLAUDE.md §[1]`). Una sessione 
+   di sviluppo che ha shippato codice scrive in §10 "Sessioni shipped", 
+   MAI in §9.
 
 ---
 
@@ -160,7 +177,8 @@ Procedura:
 
 ---
 
-**Last updated**: 2026-05-07 — Session 63 (init)  
+**Last updated**: 2026-05-15 — bonifica drift audit (riga §G + §E + 
+nuova §10 PROJECT_STATE). Init: 2026-05-07 Session 63.  
 **Owner**: Max  
 **Manutenzione**: aggiorna quando il workflow cambia (raro). Ogni audit 
 Area 2 può proporre modifiche.

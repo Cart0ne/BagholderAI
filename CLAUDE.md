@@ -33,8 +33,8 @@ A FINE ogni sessione, prima di chiudere:
 Questa è la regola n.1: NON chiudere una sessione senza aggiornare 
 PROJECT_STATE.md. È più importante del report finale per il CEO.
 
-Inoltre, quando rigeneri PROJECT_STATE.md, controlla la sezione 9 
-(Audit esterni). Per ciascuna area, se l'ultimo audit chiuso è più 
+Inoltre, quando rigeneri PROJECT_STATE.md, controlla la cadenza degli 
+audit esterni. Per ciascuna area, se l'ultimo audit chiuso è più 
 vecchio della cadenza suggerita, segnalalo a Max nel report finale 
 della sessione come riga separata:
 
@@ -47,6 +47,26 @@ Formato del segnale: "⚠️ Audit Area X dovuto: ultimo era YYYY-MM-DD
 
 Se non c'è MAI stato un audit di un'area, considera l'età come 
 "infinita" e segnala.
+
+**REGOLA ANTI-DRIFT (formalizzata 2026-05-15)** — la conta della cadenza 
+si fa sui FILE `audits/audit_report_YYYYMMDD_topic.md`, NON sulle righe 
+di PROJECT_STATE.md §9. Motivo: prima di questa regola CC popolava §9 
+con le proprie sessioni di sviluppo etichettandole "Area 1", e il check 
+di cadenza risultava sempre fresco anche se nessun audit vero era mai 
+stato eseguito (conflitto di interessi strutturale: chi esegue il task 
+si auto-certifica come Auditor).
+
+Operativamente:
+1. `ls audits/audit_report_*.md` → estrai la data più recente per area
+2. Confronta con la cadenza
+3. Se vecchio o assente → segnala
+
+E NON scrivere mai una riga in §9 per la sessione che stai chiudendo 
+se hai shippato codice (commit + restart bot + migration). Quella riga 
+va in §10 "Sessioni shipped". Solo un Auditor (CC fresh con brief 
+`audits/audit_request_*.md`, vedi `AUDIT_PROTOCOL.md` e `WORKFLOW.md §G`) 
+ha titolo per aggiungere riga §9, e solo dopo aver depositato il file 
+`audits/audit_report_*.md` corrispondente.
 
 ═══════════════════════════════════════════
  [2] PROJECT_STATE.md — formato fisso
@@ -63,8 +83,15 @@ sempre nello stesso ordine):
 6. Domande aperte per CEO (cosa hai parcheggiato perché serve input strategico)
 7. Vincoli stagionali / deadline tecniche
 8. Cosa NON è stato fatto e perché (1 paragrafo)
-9. Audit esterni (sintesi): tabella data/area/topic/verdetto/findings/report
-   (vedi AUDIT_PROTOCOL.md; aggiungere riga ad ogni audit chiuso)
+9. Audit esterni (sintesi): tabella data/area/topic/verdetto/findings/report.
+   **Solo audit veri**: una riga §9 esiste se e solo se esiste il file
+   `audits/audit_report_YYYYMMDD_topic.md` corrispondente, prodotto da un
+   Auditor (sessione CC fresh con brief `audits/audit_request_*.md`).
+   Vedi `AUDIT_PROTOCOL.md` + `WORKFLOW.md §G`.
+10. Sessioni shipped (storico): tabella delle sessioni di sviluppo che 
+    hanno chiuso brief CEO con SHIPPED + commit + (eventuale) restart.
+    Stesse colonne data/area/topic/esito/sintesi. È QUI che CC scrive 
+    quando ha shippato codice — MAI in §9.
 
 Per popolare le sezioni leggi: git log ultimi 30 giorni, ultimi 5 file in 
 report_for_CEO/, ultimi 10 file in briefresolved.md/, TODO inline (62a/63a/...).
