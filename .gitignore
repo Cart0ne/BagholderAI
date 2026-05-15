@@ -37,6 +37,11 @@ scripts/output/backtest_trades.csv
 # Web prototypes (local-only, not deployed to Vercel)
 web_proto/
 
+# Blog inbox: CEO drafts + briefs passati a CC, locali al MBP.
+# Una volta processati, il .md va in web_astro/src/content/blog/ e il
+# brief in briefresolved.md/. Vedi blog/README.md per il flow.
+blog/
+
 # Old pre-Astro site (replaced by web_astro/, kept locally as backup)
 web/
 
