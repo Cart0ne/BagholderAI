@@ -233,12 +233,13 @@ Comm Sentinel↔Sherpa↔Grid via Supabase only. Telegram alerts: solo Grid trad
 
 | Data | Area | Topic | Verdetto | Findings + Report |
 |------|------|-------|----------|-------------------|
+| 2026-05-15 | 3 | **A3-S78** marketing + SEO/GSC + X performance audit pre-go-live (primo audit Area 3 mai eseguito) | **CON RISERVE** | **GSC**: 4 sitemap "Impossibile recuperare" da aprile = cached failure GSC, NON server-side (verificato: tutti 200 + `application/xml` + cache HIT + Googlebot UA OK + TLS valido + sitemap content valido 12 URL + zero noindex sulle pagine pubbliche). Fix 5min zero-codice: remove all sitemap in GSC + wait 24-48h + resubmit SOLO `https://bagholderai.lol/sitemap-index.xml`. **X** (55 post 25/03→14/05, 4.297 imp totali): 2 likes + 0 RT in tutto il periodo; trend reach decrescente monotono 108→85→39 imp/post in 7 settimane; top performer = storytelling/reply influencer (375/358/250 imp); flop = technical update senza human angle (post 14/05 = 4 imp). **CTA Volume 1 assenti** nei post recenti + blog post di oggi non ancora promosso. Raccomandazione strutturale: ratio 70/30 storytelling/technical (oggi inverso) + tweet di lancio blog + pinned refresh + 3-5 reply strategiche/giorno. Auditor non strict-fresh (disclaimer §0 nel report). Brief: [audits/audit_request_20260515_marketing_seo_x.md](audits/audit_request_20260515_marketing_seo_x.md). Report: [audits/audit_report_20260515_marketing_seo_x.md](audits/audit_report_20260515_marketing_seo_x.md). |
 | 2026-05-07 | 1 | **Phase 1** split grid_bot.py monolite (2242r) → 6 moduli (brief 62a) | APPROVED — zero regressioni | Verbatim diff before/after di ogni funzione spostata (`_execute_buy`, `_execute_percentage_buy`, …): identical (`self.` → `bot.`). 3 raccomandazioni: (1) deploy Phase 1 + monitoring 2h/48h; (2) Phase 2 (62b) può partire dai 7 TODO 62a markers; (3) drift count post-deploy non superi baseline (BONK 21, BTC 12, SOL 37 ultimi 7gg). Report: [audits/audit_report_20260507_phase1_grid_split_review.md](audits/audit_report_20260507_phase1_grid_split_review.md). |
 
 > **Stato cadenze al 2026-05-15** (conteggio sui FILE `audits/audit_report_*.md`, non sulle righe §9):
 > - **Area 1**: ultimo audit 2026-05-07 (8 gg fa) — entro cadenza 30gg ✅
 > - **Area 2**: mai eseguito — ⚠️ DOVUTO (cadenza 90gg o fine-volume Diary)
-> - **Area 3**: mai eseguito — ⚠️ DOVUTO (cadenza 90gg o pre-lancio)
+> - **Area 3**: ultimo audit 2026-05-15 (oggi) — pre-go-live ✅ (CON RISERVE — vedi raccomandazioni §5 del report)
 >
 > Audit area 0/1 pre-S70 (S67/S68/S69 + Clean Slate Step 0d) preservati in [audits/PROJECT_STATE_archive_pre-S76.md](audits/PROJECT_STATE_archive_pre-S76.md).
 >
