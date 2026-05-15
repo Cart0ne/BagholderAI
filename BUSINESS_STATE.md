@@ -52,7 +52,9 @@ Cadenza blog: irregolare ("variable reinforcement"), coerente con strategia X.
 
 **Volume 3** — in accumulo. Sessions 53+. Arco narrativo: Clean Slate → Testnet → Fee Reckoning → Stress Test → Sentinel-First Roadmap. Stima chiusura: sessioni 80-90.
 
-**Sessione corrente:** S76 BUILDING. S75 COMPLETE. Diary .docx S73/S74/S76 prodotti. S75 .docx prodotto.
+**Volume corrente:** 3 (in accumulo).
+**Diari completi:** fino a S77.
+**Backlog diary:** ~4-5 sessioni da scrivere.
 
 **Check di congruenza diary↔DB:** nessun check automatico attivo.
 
@@ -66,6 +68,11 @@ Cadenza blog: irregolare ("variable reinforcement"), coerente con strategia X.
 | Data | Decisione | Perché |
 |---|---|---|
 | 2026-05-15 (S78 CEO) | **Primo blog post pubblicato oggi (anticipato dal weekend 17-18)** | Origin story dual-voice già scritta e approvata. Brief 78a operativo (no testo touch, solo copy+build+push). Anticipa il "blog weekend" del Board, libera il weekend per Post 2 strategico ("why not live yet") |
+| 2026-05-14 (S77) | **Sentinel Sprint 1 audit PASS** | Tutti e 3 i bug calibrazione confermati fix (SoF 2.3%, risk 5 valori, opp 3 valori). Nessun codice aggiuntivo necessario |
+| 2026-05-14 (S77) | **Sentinel Sprint 2 shipped** | Slow loop F&G + CMC ogni 4h, regime detection attivo. Sherpa propone con regime dinamico (prima era hardcoded "neutral") |
+| 2026-05-14 (S77) | **Mapping regime invertito (contrarian)** | extreme_fear = risk basso / opp alta. Correzione CC, approvata Board ("buy fearful sell greedy") |
+| 2026-05-14 (S77) | **CMC logged-only Sprint 2 MVP** | Dati BTC dominance / mcap / volume salvati ma non usati nel calcolo regime. Riservato Sprint 2.5 |
+| 2026-05-14 (S77) | **3 design questions deferred** | speed_of_rise, funding morto testnet, opp score debole → rivalutare dopo osservazione Sprint 2 |
 | 2026-05-14 (S76 CEO) | **Mainnet €100 posticipato a sistema completo (Grid + Sentinel testato + Sherpa attivato)** | Sherpa scriverà `bot_config` con soldi veri — va testato prima su testnet con Grid attivo. Grid-only mainnet avrebbe valore narrativo ma rischia quando Sherpa si accende. Sequenza: Sentinel fix → Sprint 2 → observe → Sherpa graduale su testnet → mainnet |
 | 2026-05-14 (S76 CEO) | **Roadmap Sentinel-first in 5 step** | Step 1: audit+fix Sprint 1. Step 2: build Sprint 2 (F&G, regime). Step 3: osservazione 1 settimana. Step 4: Sherpa LIVE su testnet (1 parametro alla volta). Step 5: mainnet con sistema rodato. Timeline: fine giugno / inizio luglio |
 | 2026-05-14 (S76 CEO) | **Sherpa attivazione graduale: un parametro alla volta** | Primo candidato: `sell_pct`. Osservare proposte per giorni prima di lasciar scrivere. Poi `buy_pct`. Permette di isolare problemi e bloccare fix |
@@ -87,8 +94,6 @@ Cadenza blog: irregolare ("variable reinforcement"), coerente con strategia X.
 
 | Tema | Stato | Note |
 |---|---|---|
-| **Sentinel Sprint 1 audit + fix** | PROSSIMA SESSIONE CC | Verifica empirica 3 bug S63 (speed_of_fall, risk binario, opp morta). Dashboard /admin disponibile per osservazione live |
-| **Sentinel Sprint 2 build** | Post fix Sprint 1 | F&G API + CMC dominance + regime detection. 2-3 sessioni CC stimate |
 | **Integration test config reader chain** | Pre-prossimo brief bot_config | Gap strutturale scoperto S76. ~30-60 min |
 | **Buy trigger anchor (A/B/C)** | Parcheggiata | A=last_buy, B=avg, C=hybrid. Decisione strategica |
 | **Monitorare sitemap Search Console** | Aperta | Reinvio S75. Se ancora "Impossibile recuperare" provare ping |
@@ -101,11 +106,8 @@ Cadenza blog: irregolare ("variable reinforcement"), coerente con strategia X.
 | Vincolo | Scadenza | Note |
 |---|---|---|
 | **Go-live mainnet** | Fine giugno / inizio luglio | Posticipato da "18-21 maggio" a sistema completo: Grid + Sentinel testato + Sherpa attivato su testnet |
-| **Sentinel Sprint 1 fix** | Prossima sessione CC | Gate per tutto il resto della sequenza |
-| **Sentinel Sprint 2** | Post Sprint 1 fix | 2-3 sessioni CC |
 | **Sherpa LIVE su testnet** | Post osservazione Sentinel 1 settimana | Un parametro alla volta (sell_pct primo) |
 | **Blog primo post** | DONE 2026-05-15 | "An AI That Can't Trade" live su bagholderai.lol/blog |
-| **Blog Post 2** | TBD | "Why We're Not Live Yet" candidato — weekend 17-18 maggio o successivo |
 | **Volume 3** | Nessuna deadline | In accumulo, arco narrativo si forma |
 
 **Multi-macchina:** MBP (sviluppo) ↔ Mac Mini (runtime). Allineati su commit `9ceaa81` (S76 squash) + commit successivi S76 (fix + 75c + cleanup).
@@ -119,10 +121,11 @@ Cadenza blog: irregolare ("variable reinforcement"), coerente con strategia X.
 | Cosa | Perché |
 |---|---|
 | **Go-live mainnet €100** | Decisione S76 CEO: Sherpa scriverà bot_config con soldi veri, va testato prima su testnet. Sequenza Sentinel-first definita. Fine giugno target |
-| **Sentinel Sprint 2** | Sprint 1 ha 3 bug noti. Fix prima, build dopo |
-| **Sherpa LIVE** | Dipende da Sentinel funzionante. Senza sensore affidabile, l'attuatore muove cose a caso |
+| **Blog weekend (originale 17-18 maggio)** | Non ancora schedulato, diary backlog prioritario |
+| **Sherpa LIVE su testnet** | In attesa di 5-7 giorni osservazione Sprint 2 (~21-22 maggio) |
+| **Dashboard /admin regime section** | CC la implementa autonomamente (brief non necessario) |
+| **Sprint 3 (news feed)** | Post-osservazione Sprint 2, non prima di fine maggio |
 | **TF riattivazione** | ENABLE_TF=false. Tier 1-2 da testare su testnet quando ci si arriva. Tier 3 (shitcoin) richiede Sentinel Sprint 3. Post-mainnet |
-| **Blog contenuti (post 2+)** | Primo post pubblicato S78. Post 2 candidato "why not live yet" da scrivere (CEO), nessuna deadline fissa |
 | **Partnership / sponsorship** | Pre-traction. 0/30 views Payhip |
 | **Cambio prezzo volumi** | Nessun dato di vendita su cui ragionare |
 
