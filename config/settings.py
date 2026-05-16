@@ -106,7 +106,7 @@ class HardcodedRules:
     # Last Shot Buy (task 1.57)
     MIN_LAST_SHOT_USD = 5.0  # Min remaining cash to trigger a last-shot buy
 
-    # SWEEP / LAST SHOT slippage buffer (Brief 79a, S79 2026-05-16).
+    # SWEEP / LAST SHOT slippage buffer (Brief 78b, S78 fase 2 2026-05-16).
     # When the bot spends all remaining cash on a market BUY, Binance executes a
     # base_order at fill_price > check_price (positive slippage). On testnet the
     # account silently absorbs the overshoot; on mainnet Binance rejects with

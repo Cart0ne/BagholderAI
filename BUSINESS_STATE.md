@@ -1,8 +1,8 @@
 # BUSINESS_STATE.md
 
-**Last updated:** 2026-05-15 — Session 78 (CC + CEO session: primo blog post pubblicato, tweet lancio + pin, reply strategy X definita, GSC sitemap fix, HN unflag request, audit Area 3 marketing+SEO+X CON RISERVE).
+**Last updated:** 2026-05-16 — Session 78 fase 2 (CEO strategy + blog, CC diagnostic + slippage buffer fix). Sessione 78 estesa: fase 1 = 2026-05-15 (primo blog post + tweet lancio + reply strategy + GSC + HN + audit Area 3), fase 2 = 2026-05-16 (blog post 2 LIVE + SWEEP/LAST SHOT slippage buffer 3% shipped + restart Mac Mini + cover evolution memo).
 **Updated by:** CC + CEO
-**Basato su:** PROJECT_STATE.md aggiornato 2026-05-15 (S78 chiusura, ultimo commit `4097a1f`)
+**Basato su:** PROJECT_STATE.md aggiornato 2026-05-16 (S78 chiusura fase 2, ultimo commit `25541b9`)
 
 ---
 
@@ -26,10 +26,14 @@ BagHolderAI è un progetto sperimentale dove un'AI (Claude) gestisce un micro-bu
 
 **Sito online:** TestnetBanner globale, Reconciliation table pubblica su /dashboard, TF "dal dottore" SVG inline, Sentinel/Sherpa badge TEST MODE. Dashboard P&L hero unificato. HWW v3 con Auditor entity. Blog infrastructure pronta (brief 75a shipped).
 
-- **Blog:** primo post LIVE 2026-05-15, "An AI That Can't Trade, a Human That Can't Say No" (`bagholderai.lol/blog/an-ai-that-cant-trade`). Prossimo: highlight da V1 o V2 (TBD). Cadenza irregolare ("variable reinforcement").
+- **Blog:** 2 post LIVE.
+  - Post 1 LIVE 2026-05-15: "An AI That Can't Trade, a Human That Can't Say No" (`bagholderai.lol/blog/an-ai-that-cant-trade`).
+  - Post 2 LIVE 2026-05-16: "The Day Our Bot Ran Out of Money" (`bagholderai.lol/blog/the-day-our-bot-ran-out-of-money`, type highlight, coverSession 16, V1). Pubblicato dal commit `dcc4372` + push → Vercel auto-deploy.
+  - Idea futura: "Cover Evolution" — storia di come le copertine V1→V2→V3 evolvono (memo in `drafts/cover_evolution_memo.md`). Timing: quando V3 è vicino a chiusura.
+  - Cadenza irregolare ("variable reinforcement").
 - **X:** tweet lancio blog postato e pinnato. Reply strategy definita (doc: `reply_strategy_target_accounts.md`). Prossime 2 settimane: 2-3 reply/giorno, tracking risultati. Scanner X cron settimanale attivo.
 - **HN:** email a `hn@ycombinator.com` per unflag account Cart0ne. In attesa risposta.
-- **GSC:** 4 sitemap rimossi 2026-05-15 (cached failure da aprile, vedi audit Area 3). Reinviare solo `/sitemap-index.xml` tra 24-48h (entro il 17 maggio).
+- **GSC:** 4 sitemap rimossi 2026-05-15 (cached failure da aprile, vedi audit Area 3). Reinvio `/sitemap-index.xml` da verificare (deadline 17 maggio scaduta — controllare se fatto).
 - **Payhip:** Volume 1 + Volume 2 live, 0/30 views totali.
 - **Ads/monetizzazione:** A-Ads live (revenue trascurabile). Buy Me a Coffee attivo. Nessuna sponsorship.
 - **Analytics:** Umami Cloud + Vercel Web Analytics.
@@ -45,8 +49,8 @@ BagHolderAI è un progetto sperimentale dove un'AI (Claude) gestisce un micro-bu
 **Volume 3** — in accumulo. Sessions 53+. Arco narrativo: Clean Slate → Testnet → Fee Reckoning → Stress Test → Sentinel-First Roadmap. Stima chiusura: sessioni 80-90.
 
 **Volume corrente:** 3 (in accumulo).
-**Diari completi:** fino a S77.
-**Backlog diary:** ~4-5 sessioni da scrivere.
+**Diari completi:** fino a S78.
+**Backlog diary:** S78 = no diary (session notes only). Nessun arretrato.
 
 **Check di congruenza diary↔DB:** nessun check automatico attivo.
 
@@ -59,10 +63,16 @@ BagHolderAI è un progetto sperimentale dove un'AI (Claude) gestisce un micro-bu
 
 | Data | Decisione | Perché |
 |---|---|---|
-| 2026-05-15 (S78 CEO) | **Primo blog post pubblicato oggi (anticipato dal weekend 17-18)** | Origin story dual-voice già scritta e approvata. Brief 78a operativo (no testo touch, solo copy+build+push). Anticipa il "blog weekend" del Board, libera il weekend per Post 2 strategico ("why not live yet") |
-| 2026-05-15 (S78) | **Primo blog post = origin story a due voci (Max + CEO), non update strategico** | I lettori nuovi devono sapere chi siamo prima di interessarsi a dove siamo |
-| 2026-05-15 (S78) | **Reply strategy > posting frequency su X** | Il dato Montemagno (358 imp da una reply vs 78 media post) guida la nuova strategia. Vedi audit Area 3 marketing+SEO+X |
-| 2026-05-15 (S78) | **Tweet lancio blog: Opzione B (hook ironico)** | Scelta dal Board tra le opzioni presentate |
+| 2026-05-16 (S78 fase 2 CEO) | **TF Tier 1-2 reactivation parcheggiata** | Meccanismo tf_grid esiste, rischio basso, ma aggiungere variabili durante osservazione Sentinel Sprint 2 contamina baseline. Rivisitare dopo 5-7 giorni |
+| 2026-05-16 (S78 fase 2 CC) | **SWEEP slippage buffer 3% shipped** | Root cause cashLeft<0: slippage SWEEP (+1.19% su BONK), non skim guard mancante. Buffer uniforme 3% in HardcodedRules. Ricalibrare post-mainnet (slippage mainnet tipicamente 10x più basso) |
+| 2026-05-16 (S78 fase 2 CC) | **Banner buysLeft <= 0 corretto** | Non shortcut — buysLeft<0 è fisiologico post-SWEEP. Branch dedicato "swept, $X over by slippage" |
+| 2026-05-16 (S78 fase 2 CC) | **Gitignore anchored fix** | `blog/` matchava ricorsivamente → blog post futuri silenziosamente esclusi. Fix: `/blog/` anchored a root |
+| 2026-05-16 (S78 fase 2 CEO) | **Blog post 2 LIVE: "The Day Our Bot Ran Out of Money"** | Highlight V1 S16. Standalone, accessibile a nuovi lettori. Commit `dcc4372` + push → Vercel auto-deploy |
+| 2026-05-16 (S78 fase 2 CEO) | **Cover evolution memo creato** | Storia copertine V1 (notte) → V2 (alba) → V3 (tempesta + mascotte easter egg). Per blog post futuro legato a V3 |
+| 2026-05-15 (S78 fase 1 CEO) | **Primo blog post pubblicato (anticipato dal weekend 17-18)** | Origin story dual-voice già scritta e approvata. Brief 78a operativo (no testo touch, solo copy+build+push). Anticipa il "blog weekend" del Board, libera il weekend per Post 2 strategico ("why not live yet") |
+| 2026-05-15 (S78 fase 1) | **Primo blog post = origin story a due voci (Max + CEO), non update strategico** | I lettori nuovi devono sapere chi siamo prima di interessarsi a dove siamo |
+| 2026-05-15 (S78 fase 1) | **Reply strategy > posting frequency su X** | Il dato Montemagno (358 imp da una reply vs 78 media post) guida la nuova strategia. Vedi audit Area 3 marketing+SEO+X |
+| 2026-05-15 (S78 fase 1) | **Tweet lancio blog: Opzione B (hook ironico)** | Scelta dal Board tra le opzioni presentate |
 | 2026-05-14 (S77) | **Sentinel Sprint 1 audit PASS** | Tutti e 3 i bug calibrazione confermati fix (SoF 2.3%, risk 5 valori, opp 3 valori). Nessun codice aggiuntivo necessario |
 | 2026-05-14 (S77) | **Sentinel Sprint 2 shipped** | Slow loop F&G + CMC ogni 4h, regime detection attivo. Sherpa propone con regime dinamico (prima era hardcoded "neutral") |
 | 2026-05-14 (S77) | **Mapping regime invertito (contrarian)** | extreme_fear = risk basso / opp alta. Correzione CC, approvata Board ("buy fearful sell greedy") |
@@ -73,15 +83,8 @@ BagHolderAI è un progetto sperimentale dove un'AI (Claude) gestisce un micro-bu
 | 2026-05-14 (S76 CEO) | **Sherpa attivazione graduale: un parametro alla volta** | Primo candidato: `sell_pct`. Osservare proposte per giorni prima di lasciar scrivere. Poi `buy_pct`. Permette di isolare problemi e bloccare fix |
 | 2026-05-14 (S76 CEO) | **TF non abbandonato, ridefinito per tier** | Tier 1-2: stesso motore tecnico, regole swap più snelle, nessun Sentinel. Tier 3 (shitcoin): TF scout + Sentinel Sprint 3 valida catalyst → entry con timeout. Post-mainnet, richiede Sprint 3 funzionante |
 | 2026-05-14 (S76 CEO) | **Blog weekend 17-18 maggio: 2 post** | Post strategico "why not live yet" + highlight V1/V2. Queste decisioni SONO il contenuto del blog |
-| 2026-05-14 (S76 CC) | **Refactor grid_runner.py → package 8 moduli** | 1623 righe monolite → package modulare. Prerequisito per 75b/75c. Zero behavior change |
-| 2026-05-14 (S76 CC) | **Brief 75b + 75c stop-buy unlock con baseline** | Timer per-coin che sblocca stop-buy dopo N ore + baseline reset al current price per evitare re-arm immediato. 2 bug trovati da Board testing live |
-| 2026-05-13 (S75) | **Blog: partire da V1/V2, non V3** | Chi arriva non ha contesto. V1/V2 chiusi = materiale stabile |
-| 2026-05-13 (S75) | **Project Knowledge > GitHub web_fetch per state files** | PK aggiornato, GitHub fermo a S63 |
-| 2026-05-12 (S74b) | **bot_runtime_state come primitiva canonical** | Bot scrive stato in-memory ogni tick. Dashboard legge da lì |
-| 2026-05-12 (S74b) | **Partial fill = trade reale (brief 74c)** | Mainnet-gating chiusa |
-| 2026-05-12 (S73) | **Tutti i 4 cervelli su testnet prima del go-live** | Confermata e rafforzata nella S76 CEO session |
-| 2026-05-11 (S72) | **Holdings = fetch_balance() golden source** | Wallet Binance unica verità |
-| 2026-05-11 (S72) | **Frontend canonical refactor** | `pnl-canonical.js` shared, 4 superfici stessa funzione |
+
+> Decisioni S76 CC e precedenti spostate fuori dalla tabella per restare entro ~15 voci. Storico completo in git history e `PROJECT_STATE.md §4`.
 
 ---
 
@@ -116,14 +119,15 @@ BagHolderAI è un progetto sperimentale dove un'AI (Claude) gestisce un micro-bu
 | Cosa | Perché |
 |---|---|
 | **Go-live mainnet €100** | Decisione S76 CEO: Sherpa scriverà bot_config con soldi veri, va testato prima su testnet. Sequenza Sentinel-first definita. Fine giugno target |
-| **Blog weekend (originale 17-18 maggio)** | Non ancora schedulato, diary backlog prioritario |
+| **TF non attivo** | parked post-osservazione Sentinel Sprint 2. Rivisitare ~S81-82 |
+| **Audit Area 2 non eseguito** | dovuto (cadenza 90gg). CC ha flaggato in S78 fase 2 report. Proporre in prossima sessione di breathing |
+| **Cover V3 non generata** | solo concept (tempesta + mascotte easter egg). Timing: quando V3 è vicino a chiusura |
 | **Sherpa LIVE su testnet** | In attesa di 5-7 giorni osservazione Sprint 2 (~21-22 maggio) |
 | **Dashboard /admin regime section** | CC la implementa autonomamente (brief non necessario) |
 | **Sprint 3 (news feed)** | Post-osservazione Sprint 2, non prima di fine maggio |
-| **TF riattivazione** | ENABLE_TF=false. Tier 1-2 da testare su testnet quando ci si arriva. Tier 3 (shitcoin) richiede Sentinel Sprint 3. Post-mainnet |
 | **Partnership / sponsorship** | Pre-traction. 0/30 views Payhip |
 | **Cambio prezzo volumi** | Nessun dato di vendita su cui ragionare |
 
 ---
 
-*Prossimo aggiornamento: post blog weekend, o post Sentinel Sprint 1 fix — whichever comes first.*
+*Prossimo aggiornamento: post osservazione Sentinel Sprint 2 (5-7gg, ~21-22 maggio), o pubblicazione blog post 3 — whichever comes first.*

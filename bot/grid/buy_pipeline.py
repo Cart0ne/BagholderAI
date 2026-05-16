@@ -94,7 +94,7 @@ def execute_percentage_buy(bot, price: float) -> Optional[dict]:
 
     # Last-shot logic: use remaining cash if below standard cost but above minimum.
     # Sweep logic: if remaining cash after this buy < one trade size, spend it all now.
-    # Brief 79a (S79 2026-05-16): apply SLIPPAGE_BUFFER_PCT on SWEEP / LAST SHOT cost
+    # Brief 78b (S78 fase 2 2026-05-16): apply SLIPPAGE_BUFFER_PCT on SWEEP / LAST SHOT cost
     # so Binance fill (with positive slippage) does not overshoot USDT free and
     # trigger -2010 INSUFFICIENT_FUNDS on mainnet.
     if cash_before >= standard_cost:

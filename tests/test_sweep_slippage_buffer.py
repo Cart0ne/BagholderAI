@@ -1,5 +1,5 @@
 """
-Brief 79a (S79 2026-05-16) — SWEEP / LAST SHOT slippage buffer test.
+Brief 78b (S78 fase 2 2026-05-16) — SWEEP / LAST SHOT slippage buffer test.
 
 When the bot enters SWEEP or LAST SHOT path (`cost = cash_before * (1 - SLIPPAGE_BUFFER_PCT)`),
 the cost spent must be reduced by HardcodedRules.SLIPPAGE_BUFFER_PCT (3% default), so
@@ -180,7 +180,7 @@ def test_d_below_min_last_shot_skip():
 
 if __name__ == "__main__":
     print("\n" + "=" * 70)
-    print("Brief 79a — SWEEP/LAST SHOT slippage buffer (S79 2026-05-16)")
+    print("Brief 78b — SWEEP/LAST SHOT slippage buffer (S78 fase 2 2026-05-16)")
     print("=" * 70 + "\n")
 
     test_a_normal_buy_no_buffer()

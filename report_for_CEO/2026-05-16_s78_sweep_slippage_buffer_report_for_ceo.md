@@ -1,9 +1,9 @@
-# S79 — SWEEP/LAST SHOT slippage buffer + banner fix SHIPPED + LIVE
+# S78 fase 2 — SWEEP/LAST SHOT slippage buffer + banner fix SHIPPED + LIVE
 
 **Da:** Claude Code (Intern)
 **Per:** CEO + Board (Max)
 **Data:** 2026-05-16 sera
-**Brief di riferimento:** [config/brief_79a_skim_aware_buy_guard.md](../config/brief_79a_skim_aware_buy_guard.md) (tracked in `config/`)
+**Brief di riferimento:** [config/brief_78b_sweep_slippage_buffer.md](../config/brief_78b_sweep_slippage_buffer.md) (tracked in `config/`)
 **Modalità:** diagnosi 3-step su sintomi dashboard `/grid` → 2 ipotesi smentite empiricamente → root cause vera → fix mirato
 **Test suite:** 4/4 nuovi (`test_sweep_slippage_buffer.py`) + 30/30 non-regression (`test_accounting_avg_cost.py`)
 **Restart bot:** **FATTO** — Mac Mini PID parent 33579, log `/Users/max/orchestrator_20260516_214616.log`
@@ -43,8 +43,8 @@ Diagnosi profonda ha smentito **due** ipotesi iniziali:
 
 **Commit pushati su `main`**:
 - `dcc4372` — blog post 2 "The Day Our Bot Ran Out of Money" + fix `.gitignore` anchored (collaterale: scoperto che `blog/` matchava ricorsivamente anche `web_astro/src/content/blog/`)
-- `afd97ce` — brief 79a implementation (codice + test)
-- `64d6c89` — docs: PROJECT_STATE S79 commit hash
+- `afd97ce` — brief 78b implementation (codice + test)
+- `64d6c89` — docs: PROJECT_STATE S78 fase 2 commit hash
 
 **Verifica empirica restart Mac Mini (21:46 CET 2026-05-16)**:
 - Graceful kill PID 90540 (15s wait → 0 processi) → relaunch caffeinate
@@ -59,7 +59,7 @@ Diagnosi profonda ha smentito **due** ipotesi iniziali:
 Storia onesta perché credo serva al CEO sapere come è andato il percorso, non solo il risultato.
 
 **Step 1 — Ipotesi iniziale "skim-aware guard mancante"**:
-Vedendo `cashLeft = alloc − netSpent − skim ≈ −$0.50 BONK`, ho dedotto che il bot facesse buy basandosi solo su `alloc − netSpent` (ignorando skim) mentre dashboard sottraeva skim. Brief 79a v1 proponeva guard skim-aware + replay byte-identical.
+Vedendo `cashLeft = alloc − netSpent − skim ≈ −$0.50 BONK`, ho dedotto che il bot facesse buy basandosi solo su `alloc − netSpent` (ignorando skim) mentre dashboard sottraeva skim. Brief 78b v1 proponeva guard skim-aware + replay byte-identical.
 CEO ha approvato con 2 note (no-silent-fallback + byte-identity formula).
 **Smentita**: prima di toccare codice, ho verificato `_available_cash()` e ho trovato che già sottrae `reserve_ledger.get_reserve_total()`. Ipotesi falsa.
 
@@ -91,7 +91,7 @@ Decisione Board (Max): SWEEP/LAST SHOT è regola voluta, no cash morto, drift su
 
 ---
 
-## 3. Decisioni Board (nuove in S79)
+## 3. Decisioni Board (nuove in S78 fase 2)
 
 **D1 — Buffer uniforme 3% scelto su per-coin parametrizzato**
 - RAZIONALE: in mainnet non sappiamo ancora con quali monete lavoreremo. Per-coin in `bot_config` ora rischia di buttare lavoro se il mix cambia.
@@ -101,7 +101,7 @@ Decisione Board (Max): SWEEP/LAST SHOT è regola voluta, no cash morto, drift su
 **D2 — "Scorciatoia banner" inizialmente respinta era in realtà la fix giusta**
 - Max ha respinto la patch `=== 0 → <= 0` come "scorciatoia" all'inizio.
 - Una volta capito che SWEEP è by design, **il caso `buysLeft < 0` è fisiologico**, non patologico. Il banner non lo gestiva = bug del banner, non sintomo di drift.
-- Patch finale (S79 commit afd97ce): `<= 0` con branch dedicato `< 0` che mostra "swept, $X over by slippage" — coerente con la card BONK "−1 buys left" già esistente.
+- Patch finale (S78 fase 2 commit afd97ce): `<= 0` con branch dedicato `< 0` che mostra "swept, $X over by slippage" — coerente con la card BONK "−1 buys left" già esistente.
 
 **D3 — `gitignore` regola anchored**
 - Bug pre-esistente da S78: `blog/` matchava ricorsivamente anche `web_astro/src/content/blog/`. I 2 blog post precedenti erano nel repo solo per timing (aggiunti prima del gitignore).
@@ -132,7 +132,7 @@ Decisione Board (Max): SWEEP/LAST SHOT è regola voluta, no cash morto, drift su
 
 ## 6. Memorie salvate
 
-- `project_sweep_last_shot_by_design.md` — Board regola "no cash morto"; drift sub-dollar atteso testnet; mainnet protetto da buffer (S79 brief 79a)
+- `project_sweep_last_shot_by_design.md` — Board regola "no cash morto"; drift sub-dollar atteso testnet; mainnet protetto da buffer (S78 fase 2 brief 78b)
 - `reference_available_cash_already_skim_aware.md` — `_available_cash()` già sottrae reserve_ledger; NON proporre fix "skim-aware guard"
 
 Entrambe linkate da MEMORY.md per visibilità ai CC futuri.
@@ -143,14 +143,14 @@ Entrambe linkate da MEMORY.md per visibilità ai CC futuri.
 
 1. **Osservazione 24-48h**: il prossimo sell di BTC/SOL/BONK libererà cassa e potrebbe innescare SWEEP/LAST SHOT — sarà la prima verifica live del buffer.
 2. **Brief 77c admin widgets**: rimane in attesa OK CEO (4 punti aperti su palette/F&G overlay/polling/posizione).
-3. **Volume 3 Diary**: non toccato in S79. Continua quando vorrai.
+3. **Volume 3 Diary**: non toccato in S78 fase 2. Continua quando vorrai.
 4. **Audit Area 2**: proporre quando finiamo il volume Diary.
 
 ---
 
 ## File chiave
 
-- Brief: [config/brief_79a_skim_aware_buy_guard.md](../config/brief_79a_skim_aware_buy_guard.md)
+- Brief: [config/brief_78b_sweep_slippage_buffer.md](../config/brief_78b_sweep_slippage_buffer.md)
 - Commits: `dcc4372`, `afd97ce`, `64d6c89` su `origin/main`
 - PROJECT_STATE.md aggiornato (§1, §3, §4, §10)
 - Log restart Mac Mini: `/Users/max/orchestrator_20260516_214616.log` (Mac Mini)

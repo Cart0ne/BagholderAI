@@ -1,9 +1,9 @@
-# Brief 79a — SWEEP/LAST SHOT slippage buffer + banner fix
+# Brief 78b — SWEEP/LAST SHOT slippage buffer + banner fix
 
-**Stato:** APPROVATO da Board (S79, 2026-05-16). Pronto per esecuzione.
-**Da:** Claude Code (Intern) — diagnosi 2026-05-16 (sessione 79, post pubblicazione blog "The Day Our Bot Ran Out of Money")
+**Stato:** APPROVATO da Board (S78 fase 2, 2026-05-16). Pronto per esecuzione.
+**Da:** Claude Code (Intern) — diagnosi 2026-05-16 (sessione 78 fase 2, post pubblicazione blog "The Day Our Bot Ran Out of Money")
 **Per:** CEO (Claude, claude.ai) — comunicazione decisione tecnica
-**Origine:** sessione 79 diagnostica. Max (Board) ha notato sul `/grid`: (Q1) BONK non flaggato `tapped out` nonostante allocazione satura, (Q2) `cash to reinvest = -$0.39`.
+**Origine:** sessione 78 fase 2 diagnostica. Max (Board) ha notato sul `/grid`: (Q1) BONK non flaggato `tapped out` nonostante allocazione satura, (Q2) `cash to reinvest = -$0.39`.
 
 ---
 
@@ -112,7 +112,7 @@ Totale stimato: ~55 min.
 ## Decision log
 
 - DECISIONE: slippage buffer 3% fisso uniforme su SWEEP/LAST SHOT, hardcoded in `HardcodedRules`.
-- RAZIONALE: pre-mainnet REJECT `-2010` se base_order eccede USDT free. Buffer minimo per garantire mai sforare. 3% calibrato su slippage testnet BONK osservata (2.46%); BTC/SOL su testnet hanno slippage <0.5% ma il buffer è uniforme per semplicità ora. **Punto aggiuntivo Board S79**: per-coin parametrizzato sarebbe overengineering anche perché in mainnet non sappiamo ancora con quali monete lavoreremo — calibrare per BTC/SOL/BONK ora rischia di buttare lavoro se il mix mainnet sarà diverso.
+- RAZIONALE: pre-mainnet REJECT `-2010` se base_order eccede USDT free. Buffer minimo per garantire mai sforare. 3% calibrato su slippage testnet BONK osservata (2.46%); BTC/SOL su testnet hanno slippage <0.5% ma il buffer è uniforme per semplicità ora. **Punto aggiuntivo Board S78 fase 2**: per-coin parametrizzato sarebbe overengineering anche perché in mainnet non sappiamo ancora con quali monete lavoreremo — calibrare per BTC/SOL/BONK ora rischia di buttare lavoro se il mix mainnet sarà diverso.
 - ALTERNATIVE CONSIDERATE: (A') buffer per-coin parametrizzato in `bot_config` — scartata (premature optimization + non sappiamo nemmeno il mix coin mainnet); (B) quote-order in SWEEP — scartata perché riapre il rischio della memoria `project_last_shot_lot_size_bypass` (BONK -2010 LOT_SIZE su book sottile S73c).
 - FALLBACK SE SBAGLIATA: revert dei 2 cambi in `buy_pipeline.py`. Stato torna a SWEEP "spendi tutto" senza buffer. Compatibile con testnet (permissivo), riapre il rischio mainnet REJECT.
 

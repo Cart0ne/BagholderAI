@@ -666,7 +666,7 @@
         var sym = cfg.symbol;
         var analysis = analyzeCoin(sym, cfg);
         if (analysis.buysLeft < 0) {
-          // Brief 79a (S79): SWEEP/LAST SHOT con slippage positivo lascia cashLeft<0;
+          // Brief 78b (S78 fase 2): SWEEP/LAST SHOT con slippage positivo lascia cashLeft<0;
           // fisiologico, non bug. cashLeft è già negativo, mostriamo |cashLeft| come "over".
           alerts.push({ type: 'red', text: SHORT[sym] + ' is tapped out (swept) — $' + fmt(Math.abs(analysis.cashLeft)) + ' over by slippage' });
         } else if (analysis.buysLeft === 0) {
