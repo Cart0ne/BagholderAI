@@ -40,7 +40,8 @@ web_proto/
 # Blog inbox: CEO drafts + briefs passati a CC, locali al MBP.
 # Una volta processati, il .md va in web_astro/src/content/blog/ e il
 # brief in briefresolved.md/. Vedi blog/README.md per il flow.
-blog/
+# Anchored a root: NON deve ignorare web_astro/src/content/blog/.
+/blog/
 
 # Old pre-Astro site (replaced by web_astro/, kept locally as backup)
 web/
