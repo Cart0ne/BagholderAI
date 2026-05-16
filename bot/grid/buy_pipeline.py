@@ -94,24 +94,30 @@ def execute_percentage_buy(bot, price: float) -> Optional[dict]:
 
     # Last-shot logic: use remaining cash if below standard cost but above minimum.
     # Sweep logic: if remaining cash after this buy < one trade size, spend it all now.
+    # Brief 79a (S79 2026-05-16): apply SLIPPAGE_BUFFER_PCT on SWEEP / LAST SHOT cost
+    # so Binance fill (with positive slippage) does not overshoot USDT free and
+    # trigger -2010 INSUFFICIENT_FUNDS on mainnet.
     if cash_before >= standard_cost:
         remaining_after = cash_before - standard_cost
         if 0 < remaining_after < standard_cost:
-            cost = cash_before  # sweep stranded remainder into this trade
+            cost = cash_before * (1 - HardcodedRules.SLIPPAGE_BUFFER_PCT)
             last_shot = True
             logger.info(
-                f"SWEEP BUY: spending ${cash_before:.2f} (remaining ${remaining_after:.2f} "
-                f"< trade size ${standard_cost:.2f}) for {bot.symbol}"
+                f"SWEEP BUY: spending ${cost:.2f} (cash ${cash_before:.2f} − "
+                f"{HardcodedRules.SLIPPAGE_BUFFER_PCT*100:.1f}% slippage buffer, "
+                f"remaining ${remaining_after:.2f} < trade size ${standard_cost:.2f}) "
+                f"for {bot.symbol}"
             )
         else:
             cost = standard_cost
             last_shot = False
     elif cash_before >= HardcodedRules.MIN_LAST_SHOT_USD:
-        cost = cash_before
+        cost = cash_before * (1 - HardcodedRules.SLIPPAGE_BUFFER_PCT)
         last_shot = True
         logger.info(
-            f"LAST SHOT: buying with remaining ${cash_before:.2f} "
-            f"(reduced from standard ${standard_cost:.2f}) for {bot.symbol}"
+            f"LAST SHOT: buying ${cost:.2f} (cash ${cash_before:.2f} − "
+            f"{HardcodedRules.SLIPPAGE_BUFFER_PCT*100:.1f}% slippage buffer, "
+            f"reduced from standard ${standard_cost:.2f}) for {bot.symbol}"
         )
     else:
         logger.warning(
