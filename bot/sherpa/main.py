@@ -357,15 +357,27 @@ def _handle_bot(
         # already captures the row; doubling it in bot_events_log added
         # ~2,400 rows/day with no information gain. Lifecycle/cooldown/
         # error events still go through log_event below.
-        # Brief 79c (S79): add heartbeat as 4th condition so a "Sherpa
-        # silenzioso" (would_have_changed=false for 10+ min) still
-        # surfaces a row per symbol — dashboards can detect alive vs
-        # crashed. The first tick post-restart always writes (default 0).
+        # Brief 79c S79.1 (S79 same-night fix): the original guard used
+        # `would_have_changed` (proposed != current bot_config). In DRY_RUN
+        # Sherpa never writes bot_config, so `current` never moves and
+        # `would_have_changed` stays true cronicamente — 100% of cycles
+        # passed the filter, defeating 79c (verified live: 45 rows/30min
+        # vs 44 baseline, ~0% reduction).
+        #
+        # Switched to `proposal_changed` (proposed differs from previous
+        # cycle's proposed). DRY_RUN: stabile → 0 write except heartbeat.
+        # LIVE: behaves identically since on write current catches up to
+        # proposed at the next tick, and proposal stability matches
+        # bot_config stability.
+        #
+        # `proposed_stop_buy_active` and `cooldown_active` retained as
+        # "salient event" passes — these are state flips that always
+        # warrant a record. Heartbeat 600s ensures alive signal.
         now_ts = time.time()
         heartbeat_due = (
             now_ts - last_write_ts_per_symbol.get(symbol, 0.0)
         ) >= SHERPA_HEARTBEAT_S
-        if would_have_changed or proposed_stop_buy_active or cooldown_active or heartbeat_due:
+        if proposal_changed or proposed_stop_buy_active or cooldown_active or heartbeat_due:
             _insert_proposal(
                 supabase=supabase,
                 symbol=symbol,
