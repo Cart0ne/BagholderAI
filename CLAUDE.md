@@ -99,6 +99,24 @@ report_for_CEO/, ultimi 10 file in briefresolved.md/, TODO inline (62a/63a/...).
 NON includere nel file: codice intero, log verbose, output di test, 
 contenuto dei brief vecchi (basta linkarli).
 
+**REGOLA COMPACTION (formalizzata 2026-05-18 S79)** — quando il file vivo 
+supera 40KB, NON cancellare in toto le sezioni vecchie. Workflow:
+
+1. Identifica le sezioni da rimuovere (di solito header narrativi di 
+   sessioni passate + voci §3 in-flight di sessioni shipped + voci §4 
+   decisioni più vecchie di ~15 righe)
+2. **PRIMA** di cancellare, appendi il loro contenuto in 
+   `audits/PROJECT_STATE_archive.md` con header:
+   ```
+   ## Rimosso in sessione SXX (YYYY-MM-DD) — <ragione compaction>
+   ```
+3. Poi cancella le stesse sezioni da `PROJECT_STATE.md`
+4. Commit unico con messaggio che cita entrambi i file
+
+L'archive cresce nel tempo (single growing file, non viene letto a ogni 
+sessione, solo on-demand quando serve il "perché abbiamo deciso X in S65?"). 
+Mai eliminare in toto. Sempre archiviare prima.
+
 ═══════════════════════════════════════════
  [3] PROTOCOLLO PER TASK NON BANALI
 ═══════════════════════════════════════════

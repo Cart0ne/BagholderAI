@@ -4,7 +4,7 @@
 
 **Owner del file:** Claude Code (Intern). Rigenerato a ogni fine sessione.
 
-> Storico header sessioni precedenti compattato nelle sezioni §4 Decisioni recenti e §10 Sessioni shipped. Archive narrativo pre-S76 in [audits/PROJECT_STATE_archive_pre-S76.md](audits/PROJECT_STATE_archive_pre-S76.md).
+> Storico header sessioni precedenti compattato nelle sezioni §4 Decisioni recenti e §10 Sessioni shipped. Archive narrativo pre-S76 in [audits/PROJECT_STATE_archive.md](audits/PROJECT_STATE_archive.md).
 
 ---
 
@@ -51,7 +51,7 @@ bot/
 db/, utils/, scripts/, web_astro/  (DB client, telegram, daily reports, sito Astro maintenance)
 scripts/reconcile_binance.py  S70 Step A: reconciliation Binance ↔ DB trades (cron 03:00 Europe/Rome)
 config/                    settings, validation_and_control_system.md, brief parcheggiati (DUST + evaluate_trading_skills)
-audits/                    gitignored — formula_verification_s66 + 2026-05-08_pre-reset-s67/ + PROJECT_STATE_archive_pre-S76.md
+audits/                    gitignored — formula_verification_s66 + 2026-05-08_pre-reset-s67/ + PROJECT_STATE_archive.md (growing, append-on-compaction)
 tests/                     test_accounting_avg_cost.py **29/29 verdi** (post-S76)
 ```
 
@@ -107,7 +107,7 @@ Sintesi delle sessioni shipped vive in §10. Dettagli narrativi spostati per con
 
 - **2026-05-15 (S78, brief 78a — primo blog post LIVE) — Pubblicazione anticipata dal weekend 17-18 maggio**. Brief operativo CC, no codice trading: copia file in content collection + build verde + commit + push. Naming rinominato `brief_77b_blog_post_publish.md` → `brief_78a_blog_post_publish.md` per evitare collision con `brief_77b_sentinel_sprint2_slow_loop.md` già archiviato. Decisione minore (autonoma CC). Commit `18a0362`. — *why:* il post era già scritto e approvato dal Board, l'anticipazione libera il weekend per il Post 2 strategico ("why we're not live yet"); BUSINESS_STATE §2 aggiornato di conseguenza.
 
-> Decisioni S77 e precedenti spostate fuori dalla tabella (storico in §10 + commit log). Archive pre-S76 narrativo: [audits/PROJECT_STATE_archive_pre-S76.md](audits/PROJECT_STATE_archive_pre-S76.md).
+> Decisioni S77 e precedenti spostate fuori dalla tabella (storico in §10 + commit log). Archive pre-S76 narrativo: [audits/PROJECT_STATE_archive.md](audits/PROJECT_STATE_archive.md).
 
 ## 5. Bug noti
 
@@ -148,7 +148,7 @@ Sintesi delle sessioni shipped vive in §10. Dettagli narrativi spostati per con
 - **Tradermonty full-repo scan** parcheggiato (memoria `project_tradermonty_full_scan`).
 - **Esposizione pubblica Validation & Control System** rimandata.
 
-> Domande risolte S70-S76: chiuse nelle voci §3 In-flight e §10 Sessioni shipped. Storico completo nei commit log e in `audits/PROJECT_STATE_archive_pre-S76.md`.
+> Domande risolte S70-S76: chiuse nelle voci §3 In-flight e §10 Sessioni shipped. Storico completo nei commit log e in `audits/PROJECT_STATE_archive.md`.
 
 ## 7. Vincoli stagionali / deadline tecniche
 
@@ -181,7 +181,7 @@ Sintesi delle sessioni shipped vive in §10. Dettagli narrativi spostati per con
 > - **Area 2**: mai eseguito — ⚠️ DOVUTO (cadenza 90gg o fine-volume Diary) — flaggato anche in S78 fase 2 senza follow-up
 > - **Area 3**: ultimo audit 2026-05-15 (3 gg fa) — pre-go-live ✅ (CON RISERVE — vedi raccomandazioni §5 del report)
 >
-> Audit area 0/1 pre-S70 (S67/S68/S69 + Clean Slate Step 0d) preservati in [audits/PROJECT_STATE_archive_pre-S76.md](audits/PROJECT_STATE_archive_pre-S76.md).
+> Audit area 0/1 pre-S70 (S67/S68/S69 + Clean Slate Step 0d) preservati in [audits/PROJECT_STATE_archive.md](audits/PROJECT_STATE_archive.md).
 >
 > **Nota S77 fase 1**: la fase 1 di S77 (Sentinel Sprint 1 audit empirico) ha lavorato audit-style ("zero codice trading toccato") MA è stata eseguita nella stessa sessione che poi ha shippato Sprint 2 (fasi 2+3) — quindi non era CC fresh, conflitto di interessi strutturale. Per la regola §9 non conta come audit; il suo report di fase 1 vive in `report_for_CEO/2026-05-14_s77_sentinel_sprint1_audit_report_for_ceo.md` (report CEO, non audit report). Se servirà ri-validare Sprint 1 con audit vero, aprire CC fresh con `audit_request_YYYYMMDD_sentinel_sprint1.md`.
 

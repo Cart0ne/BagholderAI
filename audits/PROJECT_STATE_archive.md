@@ -1,0 +1,178 @@
+# PROJECT_STATE.md — Archivio storico
+
+**Pattern formalizzato:** 2026-05-18 (chiusura S79, idea Max). Prima esisteva solo come snapshot one-off `pre-S76`; ora è file canonico growing.
+
+**Scopo:** preserva il contenuto rimosso dal `PROJECT_STATE.md` vivo durante ogni compaction. La regola del file vivo è 40KB; per mantenerla, quando si supera il cap le sezioni rimosse vengono **appese qui** prima di essere cancellate dal file vivo. Mai eliminare in toto senza archivio.
+
+**Workflow di append:**
+1. PROJECT_STATE.md supera 40KB → identifica sezioni da comprimere
+2. Append a questo file con header `## Rimosso in sessione SXX (YYYY-MM-DD) — <ragione compaction>`
+3. Cancella le stesse sezioni da PROJECT_STATE.md
+4. Commit unico con riferimento ai file modificati
+
+**Cosa contiene questo archivio (cronologico inverso):**
+- **S79 compaction (2026-05-18)**: header narrativi S78 fase 2 + S77 fase 1-4 + S76; §3 in-flight blocchi S77→S70; §4 decisioni S77→S70
+- **S76 compaction originale (2026-05-14)**: header storici S72→S75 + decisioni S69 + audit table Area 1/0 pre-S70
+
+**Cosa NON contiene:**
+- Le voci ancora vive nel `PROJECT_STATE.md` corrente
+- I commit git (sono in `git log` con messaggio + diff completo)
+
+Per recuperare lo stato esatto di un'altra sessione: `git show <commit>:PROJECT_STATE.md` con il commit di chiusura della sessione che cerchi (vedi `git log --grep "S<NN> chiusura"`).
+
+---
+
+## Rimosso in sessione S79 (2026-05-18) — compaction da 60KB→38.6KB sotto cap 40KB
+
+Le seguenti sezioni vivevano nel `PROJECT_STATE.md` fino al commit `542b190` (pre-compaction). Sono state rimosse dal file vivo in commit `fe8fca9` perché ridondanti con §10 Sessioni shipped (che le riassume in 1 riga ciascuna).
+
+### Header narrativi (pre-S78 fase 2)
+
+**Sessione 78 fase 2 — SWEEP/LAST SHOT slippage buffer + banner fix (brief 78b)**: diagnosi profonda 3-step ha smentito due ipotesi iniziali (skim-aware guard mancante → esiste già in `_available_cash` line 218-221; drift inventory BONK come root cause → trascurabile, riguarda 18.446 fantasma testnet S72). Root cause vera = SWEEP/LAST SHOT path manda base_order su `cost=cash_before`, Binance esegue con slippage positivo (+1.19% sul trade 2026-05-15 05:39 BONK), `res["cost"]` reale > cash_before previsto → cassa va in -$0.44. By design su testnet (regola Board "no cash morto"), ma mainnet rifiuta -2010 INSUFFICIENT_FUNDS. Fix: `SLIPPAGE_BUFFER_PCT = 0.03` in `HardcodedRules`, applicato in SWEEP + LAST SHOT cost. Banner `=== 0` → `<= 0` con testo "swept, $X over by slippage" per buysLeft<0. Test 4/4 verdi + non-regression 30/30. Brief tracked in `config/brief_78b_*.md`. Commit `afd97ce`. Restart Mac Mini LIVE 2026-05-16 21:46 CET, nuovo PID parent 33579 (Max decide quando).
+
+**Fase 1 — Audit Sentinel Sprint 1 (brief 77a)**: tutti PASS empirici su 6.081 fast scan post-70b. SoF firing 2.32% (era ~30%), risk 5 valori distinti, opp 3 valori. 2 issue parcheggiate dal CEO: SoF mono-laterale by design, funding dead-by-design su testnet. Zero codice toccato. Commit `39460a9`.
+
+**Fase 2 — Build Sentinel Sprint 2 (brief 77b)**: piano italiano approvato + 8 step granulari + pytest verde a ogni step. 5 file nuovi (`inputs/alternative_fng.py` 73r, `inputs/cmc_global.py` 87r, `regime_analyzer.py` 136r, `slow_loop.py` 137r, `sherpa/regime_reader.py` 66r), 2 modifiche chirurgiche (`sentinel/main.py` 207→238 +31r; `sherpa/main.py` 535→540 +5r). Pattern modulare anticipativa (lezione S76 grid_runner). Pytest **37 → 85 verdi** (+48 nuovi). Nessun file > 250 righe. 3 decision log: inversione mapping regime→risk/opp (extreme_fear=opp alta, risk basso — "buy fearful sell greedy"), boundaries F&G inclusive low (20→extreme_fear, 21→fear), boot-init counter a MAX (primo slow tick immediato). Commit `a62e5d5` (nota: commit message usa "s78" per errore di numerazione, è S77).
+
+**Fase 3 — Restart Mac Mini LIVE + verifica end-to-end**: graceful kill PID 87923 + relaunch con caffeinate. **Nuovo orchestrator PID 90540** (restart 2026-05-14 21:46 CET). Primo slow tick scattato 2s dopo start (boot-init counter): `regime=fear, risk=30, opp=65, fng=34, cmc=yes, inserted=yes`. DB conferma riga slow con tutti i campi (regime, F&G 34/Fear, BTC dominance 60.24%, decision_log completo). Sherpa cycle successivo (19:48:23 UTC) mostra `proposed_regime=fear` con BTC buy 1.0→1.8, sell 1.5→1.2, idle 1.0→2.0 — diverso dal ciclo precedente (`proposed_regime=neutral` di 2 min prima, pre-slow-tick). **Macchina viva e end-to-end verificata.**
+
+**Fase 4 — Brief 77c proposto** (admin widgets per visualizzare Sentinel slow): in attesa OK CEO. Stima 45-60 min implementazione.
+
+`CMC_API_KEY` aggiunta a `config/.env` Mac Mini da Max prima del restart. Free tier 10.000 crediti/mese, uso atteso ~180.
+
+**Sessione 76**: squash `9ceaa81` + 5 commit feature-branch + 2 migration Supabase + 3 restart watch verdi. Refactor grid_runner package (1623→8 moduli), brief 75b stop_buy_unlock_hours timer, audit idle suppression, UI Safety. Test suite 25→29 verdi. Brief 77a CEO eseguito in FASE 1 puro (6.081 fast scan post-fix 70b analizzate via Supabase MCP). **Tutti e 3 i bug 70b PASS**: SoF firing 2.32% (criterio <10%, era ~30%); risk_score 5 valori distinti 20/26/32/46/52 (era binario); opp_score 3 valori 20/25/30 (era morta a 20). 2 issue strutturali emerse → tutte parcheggiate dal CEO con razionale "va bene così, Sprint 2 risolverà": (A) SoF resta mono-laterale (capitulations crypto asimmetriche per natura, no `speed_of_rise`); (B) funding signal dead-by-design su testnet (soglie 70b calibrate per mainnet 0.01-0.03%, testnet ~10× sotto, riapparirà su mainnet); (C) opp debole accettata fino a Sprint 2 (F&G + regime sono il vero moltiplicatore). Roadmap.ts aggiornata: Phase 4 description con sequenza Sentinel-first S76, Phase 6 description + timeframe aggiornati ("Target late June / early July 2026").
+
+### §3 In-flight blocchi (pre-S79)
+
+#### S77 fase 2 — Sentinel Sprint 2 slow loop SHIPPED + LIVE
+- **🟢 Brief 77b — Sentinel Sprint 2 slow loop**: piano italiano approvato + 8 step granulari + pytest verde a ogni step. 5 file nuovi (`inputs/alternative_fng.py` 73r, `inputs/cmc_global.py` 87r, `regime_analyzer.py` 136r, `slow_loop.py` 137r, `sherpa/regime_reader.py` 66r), 2 file modificati chirurgicamente. Pattern modulare anticipativa: nessun file > 250 righe, ogni modulo testabile in isolamento. Commit `a62e5d5` (msg dice "s78" per typo, è S77).
+- **🟢 Test +48**: `test_fng_input.py` 7, `test_cmc_input.py` 7, `test_regime_analyzer.py` 21, `test_slow_loop.py` 6, `test_regime_reader.py` 7. Suite globale **37 → 85 verdi**.
+- **🟢 Decisioni delegate a CC**: inversione mapping `extreme_fear → risk=20/opp=80` (trading-sense "buy fearful sell greedy") vs brief originale `risk=80/opp=20`; boundaries F&G inclusive low documentate; contatore boot-init a MAX (primo slow tick immediato).
+- **🟢 Architettura**: `slow_loop.py` separato anziché aggiunto a `main.py` (lezione S76 grid_runner monolite 1623r). Pattern simmetrico per Sprint 3 news feed.
+- **🟢 CMC_API_KEY** aggiunta a `/Volumes/Archivio/bagholderai/config/.env` da Max. Free tier 10.000 crediti/mese, uso atteso 180/mese.
+- **🟢 raw_signals jsonb slow**: contiene `regime`, `decision_log`, `fng_value/label/timestamp`, e se presente CMC `btc_dominance/total_market_cap_usd/total_volume_24h_usd/active_cryptocurrencies`. Sprint 2 logga CMC ma NON lo usa nel regime calc — riservato a Sprint 2.5.
+- **🟢 NEVER-raise contract** uniforme sui 2 nuovi input + slow_loop tick.
+
+#### S77 fase 3 — Restart Mac Mini + verifica end-to-end LIVE
+- Graceful kill PID 87923 + relaunch caffeinate. Nuovo PID parent: 90540. 6 processi python + 1 caffeinate.
+- Primo slow tick scattato 2s dopo start (boot-init counter): `regime=fear, risk=30, opp=65, fng=34, cmc=yes, inserted=yes`.
+- DB: prima riga `score_type='slow'` con regime=fear, fng_value=34, fng_label="Fear", btc_dominance=60.24%, decision_log completo.
+- Sherpa transizione `neutral → fear` visibile 2 min dopo (BTC: buy 1.0→1.8, sell 1.5→1.2, idle 1.0→2.0).
+
+#### S77 fase 4 — Brief 77c admin widgets (PROPOSTO)
+- **🟡 Brief 77c** scritto e parcheggiato in `config/brief_77c_admin_sentinel_slow_widgets.md`. Propone 2 widget per `/admin`: Widget A = regime banner (15 min), Widget B = regime timeline 7gg (30 min). CC in standby per implementazione appena CEO approva i 4 punti aperti (palette colori, F&G line overlay, polling rate, posizione in /admin).
+
+#### S77 fase 1 — Sentinel Sprint 1 audit empirico (brief 77a) SHIPPED
+- 6.081 fast scan post-fix 70b (~4.5 giorni di DRY_RUN), 6 query brief + 3 query custom asimmetria via Supabase MCP. Tutti e 3 i bug 70b PASS sui criteri brief. 2 issue strutturali (SoF asimmetrico, funding dead) parcheggiate dal CEO con decisione "va bene così, Sprint 2 risolverà". Report consegnato (ora in `report_for_CEO/resolved/`).
+- Roadmap.ts aggiornata: Phase 4 description con sequenza Sentinel-first S76, task added as done, rename "Sherpa Sprint 2" → "Sentinel Sprint 2", aggiunto task "Sherpa LIVE one parameter at a time (sell_pct first)". Commit `39460a9`.
+
+#### S76 SHIPPED (squash `9ceaa81`)
+- **🟢 Refactor `grid_runner.py` → package 8 moduli**: 1623 → 779 main loop + 7 moduli specializzati. Orchestrator entrypoint preservato. BTC tradato al primo tick post-restart 11:50 UTC. Pytest 25/25 ad ogni step. Lazy import `SyncTelegramNotifier` per testabilità.
+- **🟢 Brief 75b — stop_buy_unlock_hours timer**: 2 migration (`bot_config.stop_buy_unlock_hours` REAL DEFAULT 0 CHECK 0..168 + `bot_runtime_state.stop_buy_activated_at` TIMESTAMPTZ). Default 0 = 39b preservato. Profitable sell ha priorità sul timer. Test +3 (Z/AA/BB).
+- **🟢 Audit idle alert suppression**: `send_idle_alerts(stop_buy_active=False)` — quando True, recalibrate interno avviene comunque, solo Telegram silenziato. Test +1 (CC). Verificato live SOL/BONK restart 12:18 UTC.
+- **🟢 UI `/grid` Safety — `stop_buy_unlock_hours`**: riga editabile in Safety section, pattern 74d, sublabel didattica.
+
+#### S75 SHIPPED
+- **🟢 howwework v3** (`f62f781`): page + diagram refactor con Auditor entity, rules of engagement drift fix, badge content refresh.
+- **🟢 Brief 75a — Blog infrastructure** (`67f1f57`): Astro Content Collections (v6 path `src/content.config.ts`). 6 file nuovi: config schema + placeholder + BlogCTA volume-aware + BlogPostCard + index + slug. SiteHeader 7 voci con Blog in posizione 3. STYLEGUIDE § 22 nuova.
+- **🟢 Fix dashboard meta description** (`cd8ce65`): Layout.astro propaga unico prop a meta + og + twitter card.
+
+#### S74b SHIPPED
+- **🟢 Brief 74c — Partial fills recovery** (`02b030f`): `_normalize_order_response` spezzato in due branch + event `ORDER_PARTIAL_FILL`. Test W/X/Y → 25/25. Orphan BONK 21190 recuperato via script ad-hoc.
+- **🟢 Brief 74b — Stop-buy badge + trigger drift via `bot_runtime_state`** (`f278dea` + `2f67533`): nuova table UPSERT ogni tick. /grid widget anchored al bot, /admin drift filtrato latest-run-per-symbol.
+- **🟢 Brief 74d — DEAD_ZONE_HOURS per-coin in `bot_config`** (`5a29075`): hot-reload, /grid Safety editable con sublabel.
+
+#### S73 SHIPPED
+- **🟢 73c BONK lot_size + BTC phantom mainnet-safe** (`d10b5ad` + `5061a29`): `place_market_buy_base` amount-based + `_phantom_holdings` registrato al boot + `managed_holdings` property in 9 punti hot path.
+- **🟢 73b dust trap hotfix** (`bc39aeb` + `d85f4be`): criterio "fully sold out" da `holdings <= 0` esatto a residual_notional < MIN_NOTIONAL/threshold.
+- **🟢 73a Dead Zone recalibrate** (`27c909b`): reset `_last_sell_price=0` + `_pct_last_buy_price=current` quando ladder mode + idle ≥ 4h.
+
+#### S72 / S71 / S70 SHIPPED (riepiloghi compatti)
+- **🟢 S72 brief 72a Fee Unification + canonical refactor + TF removal** (11 commit `a1ad217` → `e975a71`): 3 invariants + 18 sell backfillati + 4 superfici frontend unificate via `pnl-canonical.js`. TF sparito dai totali pubblici.
+- **🟢 S71 brief 71a cleanup pending (5 task)** (4 commit): P&L hero unification + LAST SHOT pre-rounding + reason check_price+slippage + mobile recon table + cron wrapper.
+- **🟢 S70/S70a/S70b/S70c**: avg-cost trading completo + reconciliation Binance Step A/B/C + Sentinel ricalibrazione + sell_pct net-of-fees + post-fill warning + /admin overhaul + sito pubblico relaunch + roadmap.ts Phase 13.
+
+### §4 Decisioni (pre-S79, da S77 fase 2 in giù)
+
+- **2026-05-14 (S77 fase 2+3, Sprint 2 slow loop SHIPPED + LIVE) — Sentinel ora ha slow loop ogni 4h, Sherpa legge regime dinamico, verificato end-to-end su Mac Mini**. Architettura: 5 file nuovi + 2 chirurgici, nessun monolite (lezione S76). 3 decision log: (1) **inversione mapping regime→risk/opp** (Board approved): extreme_fear → opp=80/risk=20, extreme_greed → opp=20/risk=80, mapping monotono simmetrico attorno a neutral=40/40. Razionale trading: panic = buy zone, euphoria = top. (2) **`slow_loop.py` come modulo separato** (Board explicit request "evitiamo 2000 righe in un file"). (3) **boot-friendly counter**: parte a MAX → primo slow tick immediato. Pytest +48 nuovi test = 85 verdi totali. — *why:* sblocca step 3 sequenza Sentinel-first.
+
+- **2026-05-14 (S77 chiusura, audit-only) — Sentinel Sprint 1 chiuso con tutti PASS + 3 design questions parcheggiate dal CEO**. Findings critici: (a) firing rate SoF crollato da ~30% a 2.32%, fix structural via floor `change_1h ≤ -0.5%` funziona; (b) risk distribution 5 valori distinti, ladder granulare 70b funziona; (c) opp distribution 3 valori ma vita debole (92% a base 20) → dipende interamente da BTC ladder, funding signal zero firing; (d) gap risk-opp = +26 quando SoF acceso, ~0 quando spento. CEO ha deciso: NO `speed_of_rise`, accetta funding dead-by-design su testnet, non tunare opp adesso (Sprint 2 sarà il moltiplicatore). — *why:* Sprint 1 è già "good enough" per la sequenza Sentinel-first.
+
+- **2026-05-14 (S76 chiusura, squash `9ceaa81` + 5 sub-commit + 2 migration + 3 restart) — Refactor grid_runner package + brief 75b + audit idle + UI**. Strategia: refactor PRIMA come prerequisito strutturale (zero behavior change), perché i due brief successivi toccano esattamente i moduli `runtime_state.py` (75b) e `idle_alerts.py` (audit). Pattern shipping: 8 step granulari, pytest verde dopo ognuno, smoke su Mac Mini con 3 restart osservativi. Default 0 ovunque per i 3 bot live → zero behavior change live finché Max non edita.
+
+- **2026-05-13 (S75 chiusura, 3 commit) — Sito pubblico ampliato**: howwework v3 + blog infrastructure + dashboard meta fix. HWW v3 opzione B (coerenza completa: prose hero + meta + badge + diagramma React Auditor). Blog Astro Content Collections v6 path `src/content.config.ts`. Dashboard meta description specifica $500 testnet + reconciliation. — *why:* chiusura del "private-first then public" pivot di S74.
+
+- **2026-05-12 (S74b chiusa, 4 commit + 2 migration) — Strada B canonical: nuova table `bot_runtime_state` come primitiva**. Trigger: Bug 2 (trigger drift widget vs bot, ~1.5% BONK) richiedeva esporre `_pct_last_buy_price`. Scelta B (mirror table) su A (events log + recompute) per primitiva canonical riusabile. Schema 6 colonne UPSERT ogni tick. — *why:* gate canonical state mainnet €100 chiuse strutturalmente.
+
+- **2026-05-11 (S73 hotfix Dead Zone, commit `27c909b`) — brief 73a SHIPPED in <1h**. Trigger: BTC/SOL/BONK fermi 19h/5h/21h post-sell run per incrocio 3 meccanismi S69-S70 (ladder + buy guard + IDLE recalibrate skip). Fix Opzione A "mirata": reset `_last_sell_price=0` + `_pct_last_buy_price=current` dopo DEAD_ZONE_HOURS idle quando ladder attivo + current>avg. — *why:* sblocco rapido critico; Opzione A additiva, basso rischio.
+
+- **2026-05-11 (S72 chiusura DEFINITIVA, 11 commit) — Brief 72a Fee Unification + audit visivo + canonical refactor + TF removal**. Sessione doppia: brief 72a CEO + audit Max che rivela 5 problemi strutturali (frontend P2 non uniforme, lexical drift S70 rename 4 callsite tf.html broken 49gg, 2 implementazioni P&L divergenti → `pnl-canonical.js` shared, inline script bypass dashboard.astro, TF nei totali Grid). Tutti risolti. — *why:* l'audit visivo Max funziona come secondo paio d'occhi pre-go-live €100.
+
+- **2026-05-11 (S72 inizio — sessione diagnosi) — Brief 71b assorbito in 72a "Fee Unification"**. Diagnosi via `fetch_my_trades` Mac Mini: fee BONK reale 30.726,2 BONK (0.1% lordo) + initial balance fantasma testnet +18.446 BONK pre-S67. Svolta design: **holdings = `fetch_balance()` golden source**. — *why:* "fee unification, non voglio più avere problemi".
+
+- **2026-05-10 (S70c chiusura) — Sito online + decisione editoriale "story is process, not numbers"**. Bug strutturale `realized_pnl per-trade gross` emerso e parcheggiato (Strada 2 — poi cancellato in S79 perché FIFO is dead). Decisione editoriale: cambiare convenzione contabile retroattivamente OK.
+
+- **2026-05-10 (S70 + S70b) — Reconciliation Binance Step A + /admin overhaul + rename `manual→grid`**. Script `reconcile_binance.py` aggrega fill per orderId + match `exchange_order_id` con fallback ts. Primo run: 24/24 ordini matched, zero drift. Open question 19 chiusa.
+
+- **2026-05-10 (S70 brief 70a + 70b) — sell_pct net-of-fees + sell ladder + Sentinel ricalibrazione**. FEE_RATE 0.00075→0.001. Trigger Grid: `reference × (1+sell_pct/100+FEE)/(1-FEE)`. Sentinel: ladder drop/pump granulare + funding intermedi + sof floor -0.5%. Test 15/15 verdi.
+
+---
+
+## Rimosso in sessione S76 (2026-05-14) — pulizia originale
+
+### Header storici (sessioni S72 → S75)
+
+### Sessione 75 chiusura — 2026-05-13 sera
+
+3 commit pushati, sito pubblico. Commit: `f62f781` (howwework v3 — Auditor entity + state-files narrative + badge content refresh), `67f1f57` (brief 75a — blog infrastructure: Content Collections + listing + post + CTA), `cd8ce65` (fix dashboard meta description, era fallback home). Mac Mini fast-forward `b38b88b..cd8ce65` (13 file, +1044/−110), no restart orchestrator (zero impatto bot — tutto in web_astro / STYLEGUIDE / briefresolved / drafts). Brief 75a archiviato in `briefresolved.md/`. Draft `2026-05-07_howwework_v3.md` archiviato in `drafts/applied/2026-05/`. Roadmap 2026-05-14 fissata: (1) refactor `grid_runner.py` (1623 righe), (2) brief 75b stop_buy_unlock_hours (fotocopia di 74d), (3) audit messaggi idle re-entry / recalibrate quando stop_buy attivo. Motivazione empirica al brief 75b: perdita reale 2026-05-13 causata da stop-buy che ha bloccato BUY in down-trend (opportunità DCA persa → avg cost non si è abbassato).
+
+### Sessione 74b chiusura — 2026-05-12 sera tarda
+
+4 commit pushati + 2 migration Supabase + 2 restart bot Mac Mini. Commit: `02b030f` (74c partial fills + orphan recovery script), `f278dea` (74b Bug 1 stop-buy badge + /admin drift freshness), `5a29075` (74d DEAD_ZONE_HOURS per-coin in `bot_config` + tooltip esplicativo), `2f67533` (74b Bug 2 + Bug 1 refactor via nuova table `bot_runtime_state`). Migration: `bot_config.dead_zone_hours` + nuova `bot_runtime_state` (RLS service-role write + anon SELECT, 1 riga per symbol, UPSERT ogni tick). Orphan BONK 21190 (1.37M, $10.38) recuperato in DB via `scripts/insert_orphan_trade_74c.py --write`, reconcile post-cleanup `matched=24 drift=0 orphan=0`. Pulizia chiusura sessione: 3 brief archiviati (65b/72a/74b), 4 vecchi CEO report archiviati, roadmap aggiornata con S71→S74b, Apple Notes letta in sola lettura. **Gate canonical state mainnet €100 ora tutte chiuse**; restano solo mobile test reale + analisi Sentinel/Sherpa 7gg DRY_RUN + Board approval.
+
+### Sessione 74 — 2026-05-12 16:50 UTC
+
+5 commit pushati: `3f3e349` (grid public IT→EN labels, brief 74a Task 4 invertito a EN), `d289a8a` (Telegram "Buying at market" branching fix, brief 74a Task 2), `93dc00d` (Telegram privato standardizzato EN, 9 stringhe IT residue tradotte), `a4674e6` (admin dashboard polish: Opp offset on Sentinel chart + range selector 12h/24h/7d/1m sincronizzato across 5 chart + Opp linea su reaction chart + overlay BTC top-center + reconciliation footnote drift fix), `3535184` (drop hardcoded "24h" da chart titles). Bot Mac Mini restartato 18:32 UTC (Tasks 16+17 live). **TCC fix shipped manualmente**: Max ha attivato python3.13 in FDA, test cron 18:18 verde. Cron reconcile produzione torna OK. Bug critico isolato (brief 74c) poi shipped in S74b. Decisioni strategiche aperte parcheggiate: (a) buy trigger anchor A=last_buy / B=avg_buy / C=hybrid, (b) stop-buy time-limit. HWW v3 (brief 74a Task 1) deferred a S75.
+
+### Sessione 73c chiusura — 2026-05-12
+
+2 fix mainnet-safe SHIPPED. Commits `d10b5ad` (BONK lot_size + BTC phantom) + `5061a29` (ccxt option fix). Diagnosi post-S73b: (1) BONK BUY rejected -2010 LOT_SIZE 6 volte per via di `quoteOrderQty` Binance che ricalcola amount sul fill_price slipped → no lot_step compliance; (2) BTC stop_buy "unrealized $-5,308" mentre managed = $-0.50 perché `state.holdings × (current−avg)` include fantasma BTC ~1.0. **Fix 1**: nuovo `place_market_buy_base(amount)` in `bot/exchange_orders.py` + buy_pipeline preferisce path amount-based quando lot_step_size noto + ccxt option `createMarketBuyOrderRequiresPrice=False`. **Fix 2**: `_phantom_holdings` registrato in `_reconcile_holdings_against_exchange` come `max(0, real_qty−replayed_qty)` + `managed_holdings` property usata in 9 punti critici. Mainnet-safe: fix 1 funziona identico, fix 2 phantom=0 → managed=raw, zero behavior change. Test V nuovo (22/22). Brief separato managed_holdings chiuso strutturalmente.
+
+### Sessione 73b — 2026-05-12 08:35 UTC
+
+Hotfix dust trap SHIPPED. Commits `bc39aeb` (sell_pipeline runtime) + `d85f4be` (state_manager replay). Diagnosi post-osservazione 10h: BONK in loop "BUY BLOCKED" da 23:26 UTC perché 0.8 BONK residue ($0.000006, dust unsellable) post full-sellout S73 non scattava il criterio `holdings <= 0` esatto. Fix in 2 punti: (a) `sell_pipeline.py` aggiunge criterion economico `residual_notional < min_notional`; (b) `state_manager.py` replay aggiunge threshold $0.50 USDT. Test 21/21 verdi (test U nuovo).
+
+### Sessione 73 inizio — 2026-05-11 sera
+
+Hotfix Dead Zone (brief 73a) SHIPPED in <1h. Commit `27c909b`. Fix in `grid_bot.py:576-647`: blocco DEAD ZONE RECALIBRATE prima del SELL CHECK. Quando Grid resta con `_last_sell_price > 0` (ladder attivo), `holdings > 0`, `current > avg`, idle ≥ 4h → reset `_last_sell_price=0` + `_pct_last_buy_price=current`. Test S/T verdi (20/20 totali). Restart Mac Mini 23:26 UTC. Risultati live al primo tick: BONK quasi full-sellout (+$0.4370), SOL 1 lotto venduto (+$0.3832), BTC stop_buy auto-resettato dal restart. DEAD_ZONE_HOURS=4.0 hardcoded; Max ha confermato spostamento in dashboard come parametro per-coin (poi shipped in 74d).
+
+### Sessione 72 chiusura DEFINITIVA — 2026-05-11 pomeriggio
+
+Brief 72a "Fee Unification" SHIPPED + audit visivo Max + frontend canonical refactor + TF rimosso dai totali pubblici. 11 commit pushati. Backend: 3 invariants P1/P2/P3 + 18 sell testnet backfillati (cumulato realized $11.6319 → $10.5347, Δ −$1.097). Boot reconcile golden source asymmetric (negative >2% FAIL, positive sempre WARN). Frontend: 4 superfici (home + dashboard + grid.html + tf.html) ora chiamano la STESSA `computeCanonicalState` via `web_astro/public/lib/pnl-canonical.js`. 4 callsite legacy S70 rename `trend_follower→tf` fixati. TF sparito dai totali. Cron reconcile installato `0 3 * * * Europe/Rome`. Zero ORDER_REJECTED post-restart. 6 processi vivi sul Mac Mini. Bit-identical sui valori chiusi (Net Realized $9.32+vivo). Bias documentato −$0.22 su netRealized testnet.
+
+---
+
+## Decisioni recenti pre-S70 (preservate)
+
+- **2026-05-09 (S69) — Strategy A simmetrico SHIPPED**: buy guard "no buy above avg if holdings>0" specular del 68a sell guard (commit `74a13fa`). IDLE recalibrate guard `current > avg → skip` (commit `84e46ea`). DROP COLUMN `bot_config` × 5. fifo_queue.py via, fixed mode via, cleanup completo ~880 righe.
+- **2026-05-09 (S69) — brief s70 FASE 1 + 2 SHIPPED**: avg-cost trading completo, niente più FIFO logic, trigger su state.avg_buy_price.
+
+---
+
+## Audit esterni pre-S70 (preservati, area 0 e 1)
+
+| Data | Area | Topic | Verdetto | Findings chiave | Report |
+|------|------|-------|----------|-----------------|--------|
+| 2026-05-07 | 1 | Phase 1 split grid_bot.py | APPROVED | 0 regressioni, 0 risk gates aperti | `audits/audit_report_20260507_phase1_grid_split_review.md` |
+| 2026-05-08 | 1 | Operation Clean Slate Step 0d (formula verification) | CRITICAL FINDING SHIPPED FIX | Bias `realized_pnl` +$26.97 (+29%) certificato | `audits/2026-05-08_pre-clean-slate/formula_verification_s66.md` |
+| 2026-05-08 | 1 | S67 brief 67a Step 2-4 (testnet order placement) | SHIPPED + 4 BUG INTERNI | 6 buy + 1 sell live testnet. 4 bug fixati nella stessa sessione | `report_for_CEO/2026-05-08_s67_fee_usdt_design_decision_report_for_ceo.md` |
+| 2026-05-08 | 1 | Pre-reset Supabase backup | COMPLETE | 22 tabelle, 51,943 righe, 22.47 MB JSONL | `audits/2026-05-08_pre-reset-s67/_manifest.json` |
+| 2026-05-09 | 1 | S68a sell-in-loss guard fix | SHIPPED + TEST 8/8 | Doppio standard FIFO+avg-cost risolto | `report_for_CEO/2026-05-09_s68_brief_68a_shipped_report_for_ceo.md` |
+| 2026-05-09 | 1 | S68b refactor folder + managed_by (codice) | SHIPPED | bot/strategies/ → bot/grid/, 'trend_follower' → 'tf', 'manual' → 'grid' | commit `39e05b7` |
+| 2026-05-09 | 0 | S68 audit Supabase 22 tabelle | COMPLETE + CLEANUP SHIPPED | 22→19 tabelle | `report_for_CEO/2026-05-09_s68_chiusura_finale_report_for_ceo.md` |
+| 2026-05-09 | 1 | S69 BLOCCO 1 B+C: FIFO contabile via dashboard | SHIPPED | Tutto frontend + commentary + health check su avg-cost | commit `6335633`, `7231db7`, `f11b04e` |
+| 2026-05-09 | 1 | S69 brief s70 FASE 1+2: avg-cost trading completo | SHIPPED + TEST 11/11 | ~880 righe via, DROP COLUMN × 5, Strategy A simmetrico, IDLE recalibrate guard | commit `cb21179` |
+
+---
+
+*Per il contenuto S70+ vai a `PROJECT_STATE.md` corrente. Per cose ancora più antiche di S67 → `git log`.*
