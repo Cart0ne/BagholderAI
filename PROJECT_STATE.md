@@ -146,7 +146,7 @@ Comm Sentinel↔Sherpa↔Grid via Supabase only. Telegram alerts: solo Grid trad
 - **🟡 [S72] Telegram messages post-72a focus**: la riga "Have SOL: $547.23 → Sell $19.94" mostra TOTALE wallet inclusi phantom testnet. Funzionalmente OK, narrativamente confonde. Fix cosmetico (mostrare wallet vs grid-owned, o eliminare riga). Vincolo Max: non toccare canonical computeCanonicalState.
 - **🟡 [S72] Code debt: `buildSection` morto in dashboard-live.ts**: ~10 min cleanup post-go-live.
 - **🟡 [S70c] Sito mobile review approfondito**: smoke iPhone fatto, test su device reale richiede Max sul telefono.
-- **🟡 [S70c] Brief "P&L netto canonico" (Strada 2)**: ~3-4h. Fix per-riga `realized_pnl` (sottrazione fee_usdt) + cambio formula avg_buy_price + backfill cumulato + verifica identità. Pre o post go-live €100? Decisione Max.
+- **🟡 [S70c → S78] Verifica identità accounting** (residuo Strada 2): ~30 min. Check empirico Realized + Unrealized = Equity P&L (cash_delta + Σ holdings × spot) sul dataset live, post-go-live €100. Componenti originali "Strada 2" già chiusi: fee_usdt sottratta in 72a (`sell_pipeline.py:409`); "cambio formula avg_buy_price → FIFO" cancellato (FIFO è finzione contabile, non esiste su exchange — bot usa avg-cost coerente con Binance reality); backfill DB pre-72a (~$0.47 testnet) trascurabile su capitale paper ("story is process not numbers").
 - **🟡 [S70] Sherpa rule-aware sell_pct**: in DRY_RUN propone sell_pct=1.5 per BONK ignorando hotfix slippage. Pre-SHERPA_MODE=live, rule engine deve preservare buffer per coin.
 - **🟡 [S70/S78 fase 2] sell_pct + slippage_buffer parametrico per coin**: S78 fase 2 ha introdotto `SLIPPAGE_BUFFER_PCT=0.03` uniforme in `HardcodedRules` (mirato a SWEEP/LAST SHOT, no `sell_pct` ancora). Estensione futura post-mainnet: parametrizzare per-coin in `bot_config` quando avremo dati slippage reali e mix coin definito.
 - **🟡 [S67 residuo]** Brief 67a Step 5 superato da reconciliation S70 Step A.
@@ -186,7 +186,7 @@ Comm Sentinel↔Sherpa↔Grid via Supabase only. Telegram alerts: solo Grid trad
 ## 5. Bug noti
 
 ### 🔴 Aperti
-- **🔴 [S70c]** `realized_pnl` per-trade gross: `revenue - cost_basis` in [sell_pipeline.py:397](bot/grid/sell_pipeline.py#L397) NON sottrae `fee_usdt`. Conseguenza: ogni "Recent trades" gonfiato ~$0.024 su trade da $24 (~0.1%). Cumulato 458 sell ≈ $30 overstatement. Bias secondo-ordine su avg_buy_price (~0.1%). Hero "Total P&L" non affetto (parte da Net Worth Binance vero). Fix in Strada 2 (~3-4h, brief separato).
+- ~~**🔴 [S70c]** `realized_pnl` per-trade gross~~ → **CHIUSO in S72 brief 72a** (commit `a1ad217`...`e975a71`, 2026-05-11). Oggi `sell_pipeline.py:409` fa `revenue - cost_basis - fee` (netto). Residuo cosmetico: righe DB pre-2026-05-11 ancora con valore gross (~$0.47 testnet drift cumulato), non vale backfill su capitale paper.
 - **🔴 [S67]** `exchange_order_id=null` su sell OP/USDT — fallback timestamp gestisce reconciliation, ma debt cosmetico.
 
 ### 🟡 Aperti
@@ -208,7 +208,7 @@ Comm Sentinel↔Sherpa↔Grid via Supabase only. Telegram alerts: solo Grid trad
 ## 6. Domande aperte per CEO
 
 - 🆕 **[S74 NEW] Buy trigger anchor: A=last_buy / B=avg_buy / C=hybrid**: bot ancora a `last_buy_price`. User mental model "DCA below avg" si aspetta avg. Simulazione 4-buy in downtrend: A spread 10%, B compresso 5%. Proposta CC: opzione C ibrida `max(avg × (1−buy_pct), last_buy × (1−min_gap))`. Riguarda trading logic, brief dedicato.
-- 🟡 **[S70c NEW] Brief separato "P&L netto canonico" (Strada 2)**: ~3-4h. Combina fix per-riga `realized_pnl` + cambio formula avg_buy_price + backfill cumulato + verifica identità. Decisione editoriale già confermata: cambi retroattivi raccontati nel diary. Pre o post go-live €100?
+- 🟡 **[S70c → S78] Verifica identità accounting** (residuo Strada 2): post-go-live €100, ~30 min. Componenti originali chiusi (vedi §3 in-flight). FIFO superato: bot usa avg-cost coerente con exchange reality.
 - 🟡 **[S70c] Ripristino sito pubblico**: brief CEO necessario (post-S70c, cross-fertilization /admin pattern).
 - 🟡 **[S70] sell_pct + slippage_buffer parametrico per coin**: estensione brief 70a pre-mainnet.
 - 🟡 **[S70] Sherpa rule-aware sull'hotfix slippage**: prima di SHERPA_MODE=live.
