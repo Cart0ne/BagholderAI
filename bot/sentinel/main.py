@@ -45,6 +45,11 @@ RISK_CRITICAL_THRESHOLD = 90
 SLOW_LOOP_INTERVAL_S = 4 * 60 * 60  # 4 hours
 SLOW_LOOP_EVERY_N_TICKS = SLOW_LOOP_INTERVAL_S // SCAN_INTERVAL_S  # 240
 
+# Brief 79c (S79 2026-05-18): write sentinel_scores fast rows only when
+# (risk, opp) change or after SENTINEL_HEARTBEAT_S since last write.
+# Idle market (risk=20 opp=20 constant) goes from ~1440/day to ~144/day.
+SENTINEL_HEARTBEAT_S = 600  # 10 min
+
 # Brief 70b (S70 2026-05-10): default OFF al riavvio post-DRY_RUN per
 # evitare spam Telegram durante calibrazione. Max abilita via env quando
 # vuole. Memoria `feedback_no_telegram_alerts`: feature di monitoring
@@ -108,6 +113,11 @@ def run_sentinel() -> None:
     # iteration fires a slow tick. After that, every SLOW_LOOP_EVERY_N_TICKS
     # ticks (=240 ticks = 4h) it fires again.
     slow_tick_counter = SLOW_LOOP_EVERY_N_TICKS
+    # Brief 79c (S79): write-on-change cache for sentinel_scores fast row.
+    # First tick post-restart always writes (last_write_ts=0).
+    last_written_risk: int | None = None
+    last_written_opp: int | None = None
+    last_write_ts: float = 0.0
 
     while not shutting_down["v"]:
         try:
@@ -134,25 +144,43 @@ def run_sentinel() -> None:
                 "breakdown": breakdown,
             }
 
-            try:
-                supabase.table("sentinel_scores").insert({
-                    "score_type": "fast",
-                    "risk_score": risk,
-                    "opportunity_score": opp,
-                    "btc_price": snapshot.get("btc_price"),
-                    "btc_change_1h": snapshot.get("btc_change_1h"),
-                    "btc_change_24h": snapshot.get("btc_change_24h"),
-                    "funding_rate": funding_rate,
-                    "raw_signals": raw_signals,
-                }).execute()
-            except Exception as e:
-                logger.error(f"sentinel_scores insert failed: {e}")
-                log_event(
-                    severity="error",
-                    category="error",
-                    event="SENTINEL_ERROR",
-                    message=f"sentinel_scores insert failed: {e}",
-                    details={"source": "supabase_insert"},
+            # Brief 79c (S79): skip write if (risk, opp) unchanged AND
+            # last write < SENTINEL_HEARTBEAT_S ago. Heartbeat is mandatory
+            # so a silent Sentinel is still distinguishable from a crashed
+            # one (dashboard / monitoring expect recent rows).
+            now_ts = time.time()
+            score_changed = (
+                risk != last_written_risk or opp != last_written_opp
+            )
+            heartbeat_due = (now_ts - last_write_ts) >= SENTINEL_HEARTBEAT_S
+            if score_changed or heartbeat_due:
+                try:
+                    supabase.table("sentinel_scores").insert({
+                        "score_type": "fast",
+                        "risk_score": risk,
+                        "opportunity_score": opp,
+                        "btc_price": snapshot.get("btc_price"),
+                        "btc_change_1h": snapshot.get("btc_change_1h"),
+                        "btc_change_24h": snapshot.get("btc_change_24h"),
+                        "funding_rate": funding_rate,
+                        "raw_signals": raw_signals,
+                    }).execute()
+                    last_written_risk = risk
+                    last_written_opp = opp
+                    last_write_ts = now_ts
+                except Exception as e:
+                    logger.error(f"sentinel_scores insert failed: {e}")
+                    log_event(
+                        severity="error",
+                        category="error",
+                        event="SENTINEL_ERROR",
+                        message=f"sentinel_scores insert failed: {e}",
+                        details={"source": "supabase_insert"},
+                    )
+            else:
+                logger.debug(
+                    "sentinel write skipped: no change (risk=%s opp=%s)",
+                    risk, opp,
                 )
 
             # Per-scan event logging removed: every scan already lands as

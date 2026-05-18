@@ -31,11 +31,46 @@ Contract:
 """
 
 import logging
+import time
 from datetime import timezone
 
 from db.client import get_client
 
 _logger = logging.getLogger("bagholderai.snapshots")
+
+# Brief 79c (S79 2026-05-18): write-on-change + heartbeat for
+# bot_state_snapshots. State fields are compared with the last written
+# row; if nothing meaningful changed and the heartbeat hasn't elapsed,
+# the write is skipped. Heartbeat is mandatory so dashboards can
+# distinguish a dormant bot from a crashed one.
+SNAPSHOT_HEARTBEAT_S = 300  # 5 min
+
+# Fields whose change justifies an immediate write. `unrealized_pnl` is
+# DELIBERATELY EXCLUDED — it tracks the live spot price and would change
+# on every tick, defeating the filter. The MtM value is still captured
+# every SNAPSHOT_HEARTBEAT_S, which is enough granularity for the
+# equity timeline. realized_pnl_cumulative IS included because it only
+# moves on actual sells (discrete, meaningful events).
+_SNAPSHOT_COMPARE_KEYS = (
+    "holdings",
+    "avg_buy_price",
+    "cash_available",
+    "realized_pnl_cumulative",
+    "open_lots_count",
+    "pct_last_buy_price",
+    "stop_loss_active",
+    "stop_buy_active",
+)
+
+# Per-symbol cache of the last row written. Module-level — resets on
+# process restart (which intentionally forces a fresh write on the first
+# call post-restart).
+_last_snapshot_per_symbol: dict[str, dict] = {}
+
+
+def _snapshot_changed(current: dict, last: dict) -> bool:
+    """True if any field in _SNAPSHOT_COMPARE_KEYS differs."""
+    return any(current.get(k) != last.get(k) for k in _SNAPSHOT_COMPARE_KEYS)
 
 
 def write_state_snapshot(bot, symbol: str) -> None:
@@ -93,6 +128,21 @@ def write_state_snapshot(bot, symbol: str) -> None:
             "last_trade_at": last_trade_at_iso,
         }
 
-        get_client().table("bot_state_snapshots").insert(row).execute()
+        # Brief 79c (S79): skip if nothing meaningful changed AND last
+        # write < SNAPSHOT_HEARTBEAT_S ago. Always writes the first time
+        # after process restart (last cache is empty).
+        now_ts = time.time()
+        last = _last_snapshot_per_symbol.get(symbol)
+        heartbeat_due = (
+            last is None
+            or (now_ts - last.get("_write_ts", 0)) >= SNAPSHOT_HEARTBEAT_S
+        )
+        if last is None or heartbeat_due or _snapshot_changed(row, last):
+            get_client().table("bot_state_snapshots").insert(row).execute()
+            _last_snapshot_per_symbol[symbol] = {**row, "_write_ts": now_ts}
+        else:
+            _logger.debug(
+                "[%s] bot_state_snapshots write skipped: no change", symbol,
+            )
     except Exception as e:
         _logger.warning(f"[{symbol}] bot_state_snapshots write failed: {e}")

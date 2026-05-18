@@ -43,6 +43,12 @@ from bot.sherpa.regime_reader import get_current_regime
 logger = logging.getLogger("bagholderai.sherpa")
 
 LOOP_INTERVAL_S = 120
+
+# Brief 79c (S79 2026-05-18): even when the existing on-change filter
+# (would_have_changed OR stop_buy_active OR cooldown_active) skips an
+# insert, write at least one row per symbol per SHERPA_HEARTBEAT_S so
+# dashboards know Sherpa is alive.
+SHERPA_HEARTBEAT_S = 600  # 10 min
 STALE_SCORE_S = 5 * 60          # >5 min old triggers a stale warning
 TELEGRAM_THROTTLE_S = 10 * 60   # 1 message per kind per bot per 10 min
 PROPOSED_PARAMS = ("buy_pct", "sell_pct", "idle_reentry_hours")
@@ -117,6 +123,10 @@ def run_sherpa() -> None:
     # last_stop_buy_active mirrors the same logic for the boolean
     # proposed_stop_buy_active flag — only alert when it flips.
     last_stop_buy_active: dict[str, bool] = {}
+    # Brief 79c (S79): per-symbol heartbeat — write a row at least every
+    # SHERPA_HEARTBEAT_S even when the existing on-change filter skips it.
+    # First tick post-restart always writes (default 0.0).
+    last_write_ts_per_symbol: dict[str, float] = {}
 
     while not shutting_down["v"]:
         try:
@@ -172,6 +182,7 @@ def run_sherpa() -> None:
                     last_alert_ts=last_alert_ts,
                     last_proposed=last_proposed,
                     last_stop_buy_active=last_stop_buy_active,
+                    last_write_ts_per_symbol=last_write_ts_per_symbol,
                 )
 
         except Exception as e:
@@ -304,6 +315,7 @@ def _handle_bot(
     last_alert_ts: dict,
     last_proposed: dict,
     last_stop_buy_active: dict,
+    last_write_ts_per_symbol: dict,
 ) -> None:
     symbol = bot["symbol"]
     current = {
@@ -345,7 +357,15 @@ def _handle_bot(
         # already captures the row; doubling it in bot_events_log added
         # ~2,400 rows/day with no information gain. Lifecycle/cooldown/
         # error events still go through log_event below.
-        if would_have_changed or proposed_stop_buy_active or cooldown_active:
+        # Brief 79c (S79): add heartbeat as 4th condition so a "Sherpa
+        # silenzioso" (would_have_changed=false for 10+ min) still
+        # surfaces a row per symbol — dashboards can detect alive vs
+        # crashed. The first tick post-restart always writes (default 0).
+        now_ts = time.time()
+        heartbeat_due = (
+            now_ts - last_write_ts_per_symbol.get(symbol, 0.0)
+        ) >= SHERPA_HEARTBEAT_S
+        if would_have_changed or proposed_stop_buy_active or cooldown_active or heartbeat_due:
             _insert_proposal(
                 supabase=supabase,
                 symbol=symbol,
@@ -362,6 +382,9 @@ def _handle_bot(
                 btc_price=btc_price,
                 symbol_price=symbol_price,
             )
+            last_write_ts_per_symbol[symbol] = now_ts
+        else:
+            logger.debug("sherpa write skipped for %s: no change", symbol)
         # Alert gate: would_have_changed is the precondition (no point
         # telling Max "I'd adjust" when proposed == current), AND the
         # proposal must have moved since last cycle. Stop-buy flip is
