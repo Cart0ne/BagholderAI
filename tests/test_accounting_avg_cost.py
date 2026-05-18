@@ -1666,6 +1666,119 @@ def test_dd_baseline_stops_immediate_re_arm_after_75b_unlock():
     print(f"  step 5: profitable sell would reset all stop-buy state ✓")
 
 
+def test_ee_idle_suppressed_when_capital_exhausted():
+    """Brief 79a (S79): when available cash < MIN_LAST_SHOT_USD, both idle
+    paths (recalibrate Path B and re-entry Path A) must be suppressed:
+    - _pct_last_buy_price unchanged
+    - idle_reentry_alerts empty (no Telegram)
+    - _last_trade_time advanced (prevents per-cycle spam)
+    - state.holdings unchanged
+
+    Specular check (CASE 3): when cash is healthy, recalibrate fires as
+    before (regression guard on the elif chain).
+    """
+    from datetime import datetime, timedelta
+    from config.settings import HardcodedRules
+    print("=" * 70)
+    print("TEST EE: brief 79a — idle suppressed when capital exhausted")
+    print("=" * 70)
+
+    # --- CASE 1: Path B (recalibrate) suppressed when cash exhausted ---
+    bot = make_bot(capital=100.0)
+    bot.is_active = True
+    bot.idle_reentry_hours = 4.0
+    bot.buy_pct = 99.0   # disable buy path
+    bot.sell_pct = 99.0  # disable sell path
+
+    # Hold some BONK at avg $0.0000067, current $0.0000060 (below avg, would normally recalibrate)
+    bot._execute_percentage_buy(price=0.0000067)
+    initial_ref = bot._pct_last_buy_price
+    initial_holdings = bot.state.holdings
+    assert initial_holdings > 0, "setup: holdings must be > 0 for Path B"
+
+    # Drain available cash below the floor (MIN_LAST_SHOT_USD = 5.0)
+    # capital=100, total_invested already ~$50; bump it so available <= 5.
+    bot.state.total_invested = 96.0  # available = 100 - 96 + received(~0) = ~4 < 5
+    available_before = bot._available_cash()
+    assert available_before < HardcodedRules.MIN_LAST_SHOT_USD, (
+        f"setup: available {available_before} should be < {HardcodedRules.MIN_LAST_SHOT_USD}"
+    )
+    print(f"  CASE 1 setup: holdings>0, available=${available_before:.2f} < floor ${HardcodedRules.MIN_LAST_SHOT_USD:.2f}")
+
+    # Trigger idle window
+    bot._last_trade_time = datetime.utcnow() - timedelta(hours=5)
+    bot.idle_reentry_alerts.clear()
+    last_trade_before = bot._last_trade_time
+
+    # Price WAY below avg → would normally recalibrate. With guard, must suppress.
+    bot.check_price_and_execute(current_price=0.0000060)
+
+    assert bot._pct_last_buy_price == initial_ref, (
+        f"Path B suppressed: ref should be unchanged. was {initial_ref}, now {bot._pct_last_buy_price}"
+    )
+    assert bot.state.holdings == initial_holdings, (
+        f"Path B suppressed: holdings should be unchanged. was {initial_holdings}, now {bot.state.holdings}"
+    )
+    assert len(bot.idle_reentry_alerts) == 0, (
+        f"Path B suppressed: no Telegram alert. got {bot.idle_reentry_alerts}"
+    )
+    assert bot._last_trade_time > last_trade_before, (
+        f"Path B suppressed: _last_trade_time must advance to prevent spam"
+    )
+    print(f"  CASE 1: Path B (recalibrate) SUPPRESSED ✓ ref unchanged, no alert, time advanced")
+
+    # --- CASE 2: Path A (re-entry) suppressed when cash exhausted ---
+    bot2 = make_bot(capital=100.0)
+    bot2.is_active = True
+    bot2.idle_reentry_hours = 4.0
+    bot2.buy_pct = 99.0
+    bot2.sell_pct = 99.0
+
+    # Establish a buy reference, then simulate full sellout (holdings=0) plus drained cash.
+    bot2._execute_percentage_buy(price=10.0)
+    initial_ref2 = bot2._pct_last_buy_price
+    bot2.state.holdings = 0.0  # simulate fully sold out
+    bot2.state.total_invested = 96.0  # drain cash to ~$4 available
+    available_before2 = bot2._available_cash()
+    assert available_before2 < HardcodedRules.MIN_LAST_SHOT_USD
+    print(f"  CASE 2 setup: holdings=0, available=${available_before2:.2f} < floor")
+
+    bot2._last_trade_time = datetime.utcnow() - timedelta(hours=5)
+    bot2.idle_reentry_alerts.clear()
+    last_trade_before2 = bot2._last_trade_time
+
+    bot2.check_price_and_execute(current_price=10.0)
+
+    assert bot2._pct_last_buy_price == initial_ref2, (
+        f"Path A suppressed: ref unchanged (no reset to 0). was {initial_ref2}, now {bot2._pct_last_buy_price}"
+    )
+    assert bot2.state.holdings == 0.0, "Path A suppressed: no buy executed"
+    assert len(bot2.idle_reentry_alerts) == 0, "Path A suppressed: no Telegram alert"
+    assert bot2._last_trade_time > last_trade_before2, "Path A suppressed: _last_trade_time advanced"
+    print(f"  CASE 2: Path A (re-entry) SUPPRESSED ✓ ref unchanged, no buy, time advanced")
+
+    # --- CASE 3: regression — recalibrate FIRES when cash is healthy ---
+    bot3 = make_bot(capital=1000.0)
+    bot3.is_active = True
+    bot3.idle_reentry_hours = 4.0
+    bot3.buy_pct = 99.0
+    bot3.sell_pct = 99.0
+    bot3._execute_percentage_buy(price=100.0)  # avg=$100, ~$50 invested, ~$950 available
+    available3 = bot3._available_cash()
+    assert available3 >= HardcodedRules.MIN_LAST_SHOT_USD, (
+        f"setup: cash must be healthy, got ${available3:.2f}"
+    )
+    bot3._last_trade_time = datetime.utcnow() - timedelta(hours=5)
+    bot3.idle_reentry_alerts.clear()
+
+    # Current $95 < avg $100 → recalibrate must fire (not skipped by 70a guard, not suppressed by 79a)
+    bot3.check_price_and_execute(current_price=95.0)
+    assert_close(bot3._pct_last_buy_price, 95.0, label="recalibrate fires when cash healthy")
+    fired = [a for a in bot3.idle_reentry_alerts if a.get("recalibrate") is True]
+    assert len(fired) == 1, f"expected 1 recalibrate alert with healthy cash, got {bot3.idle_reentry_alerts}"
+    print(f"  CASE 3: cash healthy → recalibrate FIRES ✓ (regression guard on elif chain)")
+
+
 def main():
     tests = [
         test_a_simple_buy_then_sell,
@@ -1698,6 +1811,7 @@ def main():
         test_bb_profitable_sell_clears_unlock_timestamp,
         test_cc_idle_alerts_suppressed_when_stop_buy_active,
         test_dd_baseline_stops_immediate_re_arm_after_75b_unlock,
+        test_ee_idle_suppressed_when_capital_exhausted,
     ]
     passed = 0
     failed = []

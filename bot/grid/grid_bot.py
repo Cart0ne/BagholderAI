@@ -25,6 +25,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from utils.formatting import fmt_price
 from db.event_logger import log_event
+from config.settings import HardcodedRules
 
 from bot.grid import (
     state_manager,
@@ -905,7 +906,47 @@ class GridBot:
                     f"| will_fire={'YES' if elapsed >= self.idle_reentry_hours else 'NOT YET'}"
                 )
             if elapsed >= self.idle_reentry_hours:
-                if self.state.holdings <= 0:
+                # Brief 79a (S79): suppress both idle paths when available
+                # cash is below MIN_LAST_SHOT_USD. Recalibrate would just
+                # reset _pct_last_buy_price without any cash to act on the
+                # next signal (noise in logs + Telegram). Re-entry would
+                # fail the buy attempt. Suppression is orthogonal to the
+                # stop_buy_active suppression in idle_alerts.py.
+                available = self._available_cash()
+                if available < HardcodedRules.MIN_LAST_SHOT_USD:
+                    path_label = "re-entry" if self.state.holdings <= 0 else "recalibrate"
+                    event_name = (
+                        "idle_reentry_suppressed_no_cash"
+                        if self.state.holdings <= 0
+                        else "idle_recalibrate_suppressed_no_cash"
+                    )
+                    logger.info(
+                        f"[{self.symbol}] Idle {path_label} suppressed: "
+                        f"capital exhausted (${available:.2f} available, "
+                        f"floor ${HardcodedRules.MIN_LAST_SHOT_USD:.2f})"
+                    )
+                    log_event(
+                        severity="info",
+                        category="trade_audit",
+                        event=event_name,
+                        symbol=self.symbol,
+                        message=(
+                            f"Suppressed {path_label}: available "
+                            f"${available:.2f} < floor "
+                            f"${HardcodedRules.MIN_LAST_SHOT_USD:.2f}"
+                        ),
+                        details={
+                            "available_cash": float(available),
+                            "floor": float(HardcodedRules.MIN_LAST_SHOT_USD),
+                            "holdings": float(self.state.holdings),
+                            "elapsed_hours": float(elapsed),
+                        },
+                    )
+                    # Advance last_trade_time so the next idle check fires
+                    # after another full window (prevents per-cycle spam).
+                    self._last_trade_time = datetime.utcnow()
+                    self._idle_logged_hour = -1
+                elif self.state.holdings <= 0:
                     # --- Path A: no holdings → force re-entry buy ---
                     logger.info(
                         f"[{self.symbol}] Idle re-entry after {elapsed:.1f}h: "
