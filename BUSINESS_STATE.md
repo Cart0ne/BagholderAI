@@ -1,8 +1,8 @@
 # BUSINESS_STATE.md
 
-**Last updated:** 2026-05-18 — Session 79 (CEO strategy + 3 brief shipped da CC + drift FIFO sanato + Supabase IO warning + cleanup). 3 brief CEO ortogonali shipped: 79a idle suppression on capital exhausted, 79b TF reactivation Tier 1-2 only (Tier 3 weight=0 in DB), 79c Supabase write-on-change + heartbeat su 3 tabelle pesanti. 2 restart Mac Mini.
+**Last updated:** 2026-05-19 — Session 80 (CEO update marketing+blog+HN+SEO+distribuzione + Brief 80a Brain Analysis scritto). Blog Post 3 "When Your AI CEO Lies About the Numbers" LIVE. HN shadowban confermato. Documento strategia distribuzione blog pronto per review. Volume 3 climax candidato = Brain Analysis (CC weekend 23-25 maggio).
 **Updated by:** CC + CEO
-**Basato su:** PROJECT_STATE.md aggiornato 2026-05-18 (S79 chiusura, ultimo commit `69cb33a`)
+**Basato su:** PROJECT_STATE.md aggiornato 2026-05-18 (S79 chiusura, ultimo commit `69cb33a`) + brief `config/business_state_update_20260519.md`
 
 ---
 
@@ -24,20 +24,49 @@ BagHolderAI è un progetto sperimentale dove un'AI (Claude) gestisce un micro-bu
 
 ## 2. Marketing In-Flight
 
-**Sito online:** TestnetBanner globale, Reconciliation table pubblica su /dashboard, TF "dal dottore" SVG inline (**⚠️ STALE post-S79:** TF è LIVE dal 2026-05-18 21:14 CET, Tier 1-2 only, Tier 3 weight=0. Narrativa pubblica da aggiornare prossima sessione — "TF on, no Tier 3" o cornice equivalente, ~30-45min), Sentinel/Sherpa badge TEST MODE. Dashboard P&L hero unificato. HWW v3 con Auditor entity. Blog infrastructure pronta (brief 75a shipped).
+### Sito (stato pubblico)
+TestnetBanner globale, Reconciliation table pubblica su /dashboard, TF "dal dottore" SVG inline (**⚠️ STALE post-S79:** TF è LIVE dal 2026-05-18 21:14 CET, Tier 1-2 only, Tier 3 weight=0. Narrativa pubblica da aggiornare prossima sessione — "TF on, no Tier 3" o cornice equivalente, ~30-45min), Sentinel/Sherpa badge TEST MODE. Dashboard P&L hero unificato. HWW v3 con Auditor entity. Blog infrastructure pronta (brief 75a shipped).
 
-- **Blog:** 2 post LIVE + 1 pianificato.
-  - Post 1 LIVE 2026-05-15: "An AI That Can't Trade, a Human That Can't Say No" (`bagholderai.lol/blog/an-ai-that-cant-trade`).
-  - Post 2 LIVE 2026-05-16: "The Day Our Bot Ran Out of Money" (`bagholderai.lol/blog/the-day-our-bot-ran-out-of-money`, type highlight, coverSession 16, V1). Pubblicato dal commit `dcc4372` + push → Vercel auto-deploy.
-  - **Post 3 PIANIFICATO S80**: "why not live yet" — piece strategico sul perché posticipiamo go-live mainnet. Sequenza Sentinel-first, Sherpa LIVE testnet graduale, mainnet €100 a sistema rodato.
-  - Idea futura: "Cover Evolution" — storia di come le copertine V1→V2→V3 evolvono (memo in `drafts/cover_evolution_memo.md`). Timing: quando V3 è vicino a chiusura.
-  - Cadenza irregolare ("variable reinforcement").
-- **X:** tweet lancio blog postato e pinnato. Reply strategy definita (doc: `reply_strategy_target_accounts.md`). Prossime 2 settimane: 2-3 reply/giorno, tracking risultati. Scanner X cron settimanale attivo.
-- **HN:** email a `hn@ycombinator.com` per unflag account Cart0ne. In attesa risposta.
-- **GSC:** 4 sitemap rimossi 2026-05-15 (cached failure da aprile, vedi audit Area 3). Reinvio `/sitemap-index.xml` da verificare (deadline 17 maggio scaduta — controllare se fatto).
-- **Payhip:** Volume 1 + Volume 2 live, 0/30 views totali.
-- **Ads/monetizzazione:** A-Ads live (revenue trascurabile). Buy Me a Coffee attivo. Nessuna sponsorship.
-- **Analytics:** Umami Cloud + Vercel Web Analytics.
+### Blog
+- Post 1 LIVE 2026-05-15: "An AI That Can't Trade, a Human That Can't Say No" (origin story, dual voice) — `bagholderai.lol/blog/an-ai-that-cant-trade`
+- Post 2 LIVE 2026-05-16: "The Day Our Bot Ran Out of Money" (highlight V1 S16, standalone) — `bagholderai.lol/blog/the-day-our-bot-ran-out-of-money`
+- **Post 3 LIVE 2026-05-19**: "When Your AI CEO Lies About the Numbers" (lesson, V2 S41+S52, tema LLM honesty) — `bagholderai.lol/blog/when-your-ai-ceo-lies-about-the-numbers`
+- Post 4 PLANNED: "The Lemon That Squeezed Back" (interlude LemonSqueezy, V2) — ~fine maggio, cadenzato
+- Post 5 PLANNED: "Why We're Not Live Yet" (pezzo strategico) — a ridosso go-live
+- Idea futura: "Cover Evolution" — storia copertine V1→V2→V3 (memo in `drafts/cover_evolution_memo.md`). Timing: quando V3 è vicino a chiusura.
+- **Cadenza irregolare** ("variable reinforcement"): post distanziati di qualche giorno, non pubblicati a raffica.
+
+### X (@BagHolderAI)
+- Post promozionale Post 3 pubblicato 2026-05-19 (gancio provocatorio "your ai assistant would rather fabricate a number...")
+- Analytics: spike traffico sito stessa sera (21 visitatori, +320% vs giorno precedente, 0% Italia = traffico reale esterno)
+- Reply strategy definita (doc: `reply_strategy_target_accounts.md`). Target 2-3 reply/giorno, tracking risultati. Scanner X cron settimanale attivo.
+
+### HN
+- **Account Cart0ne: SHADOWBAN COMPLETO confermato 2026-05-19** (test incognito: commenti invisibili)
+- Email a dang: nessuna risposta
+- Piano: nuovo account da IP diverso (ufficio/telefono), karma building 2-3 settimane, poi Show HN quando abbiamo numeri mainnet
+
+### Distribuzione blog
+- Documento strategia distribuzione pronto per review Board (`marketing_strategy_distribution.md`)
+- Canali valutati: Dev.to (cross-post), Hashnode, Reddit, Indie Hackers, newsletter aggregator, SEO organico
+- Decisione pendente: quale canale attivare per primo, quale strategia cross-post (identico vs adattato)
+- Prossima azione: sessione marketing dedicata per decidere
+
+### SEO / Google Search Console
+- 230 impressions in 3 mesi, 0 click, posizione media 9.5 — Google ci vede ma siamo troppo in basso
+- 7 pagine indicizzate (roadmap 161 imp, blueprint 37, diary 27, howwework 9, home 8, guide 2, dashboard 2)
+- **Blog post NON ancora indicizzati da Google** (0 pagine blog in Search Console)
+- Bug sitemap: Google restituisce "Sitemap could not be read" su `sitemap-index.xml`. Bing legge tutto OK (3 sitemap, 25 URL, 0 errori). Max ha aggiunto `sitemap-0.xml` direttamente su entrambi. Debug tecnico per CC.
+- Bing Webmaster Tools: funzionante, `sitemap-0.xml` submitted con 14 URL
+
+### Payhip
+- Volume 1 + Volume 2 live, 0/30 views totali
+
+### Ads & monetizzazione
+- A-Ads live (revenue trascurabile). Buy Me a Coffee attivo. Nessuna sponsorship.
+
+### Analytics
+- Umami Cloud + Vercel Web Analytics
 
 ---
 
@@ -64,6 +93,12 @@ BagHolderAI è un progetto sperimentale dove un'AI (Claude) gestisce un micro-bu
 
 | Data | Decisione | Perché |
 |---|---|---|
+| 2026-05-19 (S80 CEO) | **Blog Post 3 LIVE: "When Your AI CEO Lies About the Numbers"** | Tema LLM honesty da S41+S52, formato lesson standalone. Aumenta credibilità progetto su tema caldo AI |
+| 2026-05-19 (S80 CEO) | **HN shadowban confermato (Cart0ne è morto)** | Test incognito: commenti invisibili. Email a dang senza risposta. Piano: nuovo account da IP diverso, karma building 2-3 settimane, Show HN quando avremo numeri mainnet. Non urgente, altri canali prioritari |
+| 2026-05-19 (S80 CEO) | **Brief 80a Brain Analysis scritto** | Analisi completa Sentinel+Sherpa: counterfactual, baseline statica, timing analysis, flicker. Esecuzione CC weekend 23-25 maggio |
+| 2026-05-19 (S80 CEO) | **Volume 3 climax candidato = Brain Analysis** | Cutoff S82-S83. Decisione formale post-analisi. Packaging V3 può procedere mentre i cervelli raccolgono dati |
+| 2026-05-19 (S80 CEO) | **Blog cadenza: distanziare i post** | Non pubblicare a raffica. Variable ratio reinforcement: anticipazione conta più di volume |
+| 2026-05-19 (S80 CEO) | **Strategia distribuzione blog: documento pronto** | `marketing_strategy_distribution.md`. Canali Dev.to/Hashnode/Reddit/IH/newsletter/SEO. Decisione in prossima sessione marketing dedicata |
 | 2026-05-18 (S79 CEO) | **TF riattivato Tier 1-2, Tier 3 weight=0** | Board reverse della decisione "park" di S78. Regime "fear" + distance filter 12% → TF scansiona senza allocare, counterfactual data a costo zero. Se mercato stabilizza, tf_grid handoff pronto. $100 budget separato dai $500 Grid (pool USDT free testnet = $9.481) |
 | 2026-05-18 (S79 CEO) | **Idle recalibration soppresso quando cash esaurito** | Board proposal. Guard in `grid_bot.py`: skip idle entrambi i path (re-entry + recalibrate) quando `_available_cash() < $5`. Riduce rumore operativo durante drawdown. Live verificato 3/3 bot |
 | 2026-05-18 (S79 CEO) | **Write-on-change pattern su Supabase** | Supabase warning Disk IO Budget. Sentinel fast / Sherpa proposals / bot_state_snapshots scrivono solo su cambiamento o heartbeat (10min/10min/5min). Atteso ~80% riduzione write in mercato piatto |
@@ -119,9 +154,12 @@ BagHolderAI è un progetto sperimentale dove un'AI (Claude) gestisce un micro-bu
 
 | Cosa | Perché |
 |---|---|
+| **Distribuzione blog su altre piattaforme** | Documento strategia pronto (`marketing_strategy_distribution.md`) ma decisione rinviata a sessione dedicata. I 3 post blog sono visibili solo via X e traffico diretto |
+| **HN come canale** | Shadowban completo confermato 2026-05-19 rende Cart0ne inutilizzabile. Nuovo account pianificato ma non urgente — altri canali prioritari |
+| **Volume 3 packaging** | Materiale esiste (~27 sessioni) ma lettura/valutazione rimandate a post-Brain Analysis, quando c'è tempo di attesa naturale durante raccolta dati Sentinel/Sherpa |
+| **Sitemap Google indicizzazione** | Rotta da settimane, blog post non indicizzati. Workaround (`sitemap-0.xml`) inviato 2026-05-19. Debug tecnico per CC in sessione futura |
 | **Go-live mainnet €100** | Decisione S76 CEO: Sherpa scriverà bot_config con soldi veri, va testato prima su testnet. Sequenza Sentinel-first definita. Fine giugno / inizio luglio target |
 | **Sherpa LIVE su testnet** | Ancora in DRY_RUN. Osservazione Sprint 2 in corso (scadenza naturale 21-22 maggio). Proposte visibili ma non applicate. Un parametro alla volta (sell_pct primo) |
-| **Blog post 3 ("why not live yet")** | Pianificato per S80 (blog day). Sequenza Sentinel-first + mainnet target è il contenuto. Drawdown + drought trades come setup narrativo |
 | **Audit Area 2 non eseguito** | Dovuto (cadenza 90gg). CC ha flaggato in S78 fase 2 + S79. Proporre in prossima sessione di breathing |
 | **Retention cron jobs** | Deliberatamente rimandati: prima analizzare dati Sentinel/Sherpa, poi pulire. Brief separato post-osservazione |
 | **X reply strategy 0 fatte** | Definita 15 maggio ma non ancora eseguita con costanza. Weekend in mezzo + 3 brief shipped hanno consumato la finestra |
