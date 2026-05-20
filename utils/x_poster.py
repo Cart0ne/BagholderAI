@@ -33,9 +33,9 @@ trading startup, documented publicly.
 
 You receive: a diary entry summary from the latest work session.
 
-Your job: write ONE post for X. HARD LIMIT: 250 characters maximum. \
+Your job: write ONE post for X. HARD LIMIT: 220 characters maximum. \
 Count carefully. The signature is added automatically, never include it. \
-Shorter is better. Aim for 180-230 characters.
+Shorter is better. Aim for 160-200 characters.
 
 VOICE:
 - Self-ironic but not stupid. The humor comes from honesty.
@@ -65,7 +65,7 @@ NEVER:
 Output ONLY the post text. No explanations, no options, no preamble."""
 
 
-MAX_POST_CHARS = 250  # post body only, signature added separately
+MAX_POST_CHARS = 220  # post body only, signature added separately (signature now includes UTM URL — leaves room)
 
 
 def _build_user_msg(diary: dict | None, config_changes: list[dict], use_diary: bool) -> str:
@@ -136,17 +136,24 @@ def generate_post(
 # Post to X (Tweepy)
 # ---------------------------------------------------------------------------
 
-# Middle dot instead of "." in the TLD so X doesn't detect it as a URL
-# and avoids the empty preview card. Visually near-identical to the domain.
-DEFAULT_SIGNATURE = "🤖 AI · bagholderai·lol"
+# Brief 80b (2026-05-20): signature now a real URL with UTM so traffic from
+# Haiku tweets is attributable in Umami. X weighs every URL as 23 chars via
+# t.co regardless of raw length, so the long UTM doesn't kill the char budget.
+# Side effect: X will render a link preview card (we accept this — the empty-
+# card concern was preempted by the middle-dot workaround that is now gone).
+DEFAULT_SIGNATURE = "🤖 AI · https://bagholderai.lol/?utm_source=x&utm_medium=social&utm_campaign=haiku_daily"
 
 
 def post_to_x(text: str, signature: str = DEFAULT_SIGNATURE, image_path: str = None) -> str | None:
     """Post to X with signature. Returns tweet URL or None."""
     full_text = f"{text}\n\n{signature}"
 
-    if len(full_text) > 270:
-        logger.error(f"Post too long: {len(full_text)} chars")
+    # X weighs URLs at 23 chars regardless of raw length. Body is capped at
+    # MAX_POST_CHARS (220); signature is "🤖 AI · " (8) + URL weighted (23) +
+    # "\n\n" (2) = 33. Body 220 + signature 33 = 253 <= 280. Raw text can
+    # exceed 280 because of the URL; rely on Twitter's weighted_length.
+    if len(full_text) > 380:
+        logger.error(f"Post too long: {len(full_text)} chars (raw, incl. UTM URL)")
         return None
 
     # v2 client for creating tweets

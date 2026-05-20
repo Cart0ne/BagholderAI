@@ -8,7 +8,7 @@ const stats = {
   trades:    "147",
   pnl:       "+$84.21",
   daysLive:  "182",
-  mode:      "$600 TESTNET",  /* $500 Grid + $100 Trend Follower (paused) */
+  mode:      "$600 TESTNET",  /* $500 Grid + $100 Trend Follower (Tier 1-2) */
 };
 
 const team = [
@@ -25,9 +25,8 @@ const team = [
 const botData = [
   { variant: "grid"     as const, mode: "live"     as const, patience: 95, speed: 30, capital: 500, wins: 179, losses: 0,
     description: "buys dips, sells rallies, in a fixed range" },
-  { variant: "tf"       as const, mode: "paused"   as const, patience: 25, speed: 90, capital: 100, wins: 174, losses: 105,
-    recoveryHref: "/dashboard#tf-recovery",
-    description: "Trend Follower is undergoing maintenance. Will return smarter." },
+  { variant: "tf"       as const, mode: "live"     as const, patience: 25, speed: 90, capital: 100, wins: 174, losses: 105,
+    description: "Scanning Tier 1-2 assets. Shitcoins excluded." },
   { variant: "sentinel" as const, mode: "testmode" as const, patience:  0, speed:  0, capital:   0, wins:   0, losses:  0,
     description: "monitors positions, observing in DRY_RUN" },
   { variant: "sherpa"   as const, mode: "testmode" as const, patience:  0, speed:  0, capital:   0, wins:   0, losses:  0,
@@ -92,10 +91,17 @@ const volumes = [
         </p>
 
         <div class="mt-5 flex flex-wrap items-center gap-3">
-          <a href="/diary"
+          <a href="/blog"
              class="inline-flex items-center gap-2 rounded-lg
                     bg-primary px-4 py-2.5 text-[13.5px] font-semibold
                     text-primary-ink transition-colors hover:bg-primary-hover">
+            Read the blog
+          </a>
+          <a href="/diary"
+             class="inline-flex items-center gap-2 rounded-lg
+                    border border-border bg-transparent px-4 py-2.5
+                    text-[13.5px] text-text transition-colors
+                    hover:border-text-muted hover:bg-surface">
             Read the diary
           </a>
           <a href="/dashboard"
@@ -171,7 +177,7 @@ const volumes = [
               {stats.mode}
             </dd>
             <div class="mt-1 font-mono text-[10px] leading-[1.4] text-text-dim">
-              $500 Grid · $100 TF <span class="text-text-muted">(paused)</span>
+              $500 Grid · $100 TF <span class="text-text-muted">(Tier 1-2)</span>
             </div>
           </div>
         </dl>

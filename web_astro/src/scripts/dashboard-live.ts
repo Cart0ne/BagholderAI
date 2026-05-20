@@ -584,6 +584,14 @@ function analyzeCoin(trades: AllTrade[]): {
       gridAllTrades, gridSkimLocal, prices, GRID_BUDGET,
     );
 
+    /* S80 brief 80b: TF reactivated Tier 1-2 only — bind TF stats card via
+       same canonical path used by Grid. tfActive/tfAllTrades already split
+       by tfManagedBy filter; skimFor restricts reserve_ledger to TF symbols. */
+    const tfSkimLocal = skimFor(tfActive, tfAllTrades);
+    const tf = computeCanonicalState(
+      tfAllTrades, tfSkimLocal, prices, TF_BUDGET,
+    );
+
     /* Day counters from each bot's start date. */
     const daysSince = (iso: string) => {
       const start = new Date(iso).getTime();
@@ -618,9 +626,36 @@ function analyzeCoin(trades: AllTrade[]): {
     }));
     renderCashBar("grid-cash-bar", gridPerCoinTagged, GRID_BUDGET - grid.skim);
 
-    /* ============ Render coin cards (Grid only) ============ */
-    renderTfNatives("tf-natives", []);        /* empty: TF off */
-    renderSharedCards("shared-cards", []);    /* empty: no tf_grid in public view */
+    /* ============ Render TF totals (S80 brief 80b) ============ */
+    setText("tf-budget", `$${TF_BUDGET.toFixed(0)}`);
+    setText("tf-day", String(daysSince(TF_LAUNCH_ISO)));
+    setText("tf-cash-reinvest", fmtUsd(tf.cash));
+    setText("tf-nw", fmtUsd(tf.netWorth));
+    const tfPnl = tf.totalPnL;
+    const tfPct = TF_BUDGET > 0 ? (tfPnl / TF_BUDGET) * 100 : 0;
+    const tfPnlEl = document.getElementById("tf-pnl-pct");
+    if (tfPnlEl) {
+      tfPnlEl.classList.remove("text-pos", "text-neg", "text-text-muted");
+      tfPnlEl.classList.add(tfPnl >= 0 ? "text-pos" : "text-neg");
+      tfPnlEl.textContent = `${fmtSigned(tfPnl)} (${fmtPct(tfPct)})`;
+    }
+    applyMetric("tf-unrealized", tf.unrealized);
+    applyFees("tf-fees", tf.fees);
+    applySkim("tf-skim", tf.skim);
+    const tfOperationalBudget = TF_BUDGET - tf.skim;
+    const tfCashPct = tfOperationalBudget > 0 ? (tf.cash / tfOperationalBudget) * 100 : 0;
+    setText("tf-cash-pct", `${tfCashPct.toFixed(0)}%`);
+    const tfPerCoinTagged = tf.perCoin.map(c => ({
+      ...c, managed_by: "tf" as const,
+      alloc: 0, mtmValue: c.mtm, openCost: c.openCost,
+      avgBuy: c.avgBuyPrice, holdings: c.holdings, livePrice: c.livePrice,
+      realized: c.realized, unrealized: c.unrealized,
+    }));
+    renderCashBar("tf-cash-bar", tfPerCoinTagged, TF_BUDGET - tf.skim);
+
+    /* ============ Render coin cards (Grid + TF) ============ */
+    renderTfNatives("tf-natives", tfPerCoinTagged);
+    renderSharedCards("shared-cards", []);    /* tf_grid coins, populated when allocated */
     renderGridNatives("grid-natives", gridPerCoinTagged, []);
   } catch (err) {
     console.warn("[dashboard-live] § 2 instruments failed:", err);

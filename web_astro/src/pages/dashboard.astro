@@ -1,7 +1,6 @@
 ---
 import Layout from "../layouts/Layout.astro";
 import TestnetBanner from "../components/TestnetBanner.astro";
-import TfDoctor from "../components/TfDoctor.astro";
 import {
   mockSnapshot, mockGrid, mockTF, mockTools,
   mockTrades, mockCEOLog, fmtUsd, fmtSigned, fmtPct, fmtPrice, fmtTime, fmtDate,
@@ -42,9 +41,9 @@ const tfSubtitle   = "The breakout hunter";
     </h1>
 
     <p class="mt-3 max-w-2xl text-[14.5px] leading-[1.55] text-text-dim sm:text-[15px]">
-      Three instruments. One live, three staged. Capital at risk:
-      <span class="font-mono text-text">$500</span>
-      <span class="font-mono text-text-muted">(Grid only — TF paused, Sentinel/Sherpa shadow-only)</span>.
+      Two live, two shadowed. Capital at risk:
+      <span class="font-mono text-text">$500 Grid + $100 TF (Tier 1-2)</span>
+      <span class="font-mono text-text-muted">(Sentinel/Sherpa shadow-only)</span>.
       Snapshot recorded {mockSnapshot.asOfLabel}.
     </p>
 
@@ -158,32 +157,76 @@ const tfSubtitle   = "The breakout hunter";
       </h2>
 
       {/* ============ HORIZONTAL PIPELINE LAYOUT ============
-           Hybrid: TF doctor (left) keeps Claude Design look (rounded-2xl,
-           bg-#0d1626, no internal padding — SVG is the content), Grid Bot
-           card (right) keeps the ORIGINAL look (rounded-lg, border-border,
-           bg-surface, p-6) so its internal numbers don't get diluted by a
-           huge aspect-locked frame. Shared center handoff arrow restored.
-           grid-natives (3 coin cards) back under Grid (row 2 col 3).
-           See config/TF_RESTORE_INSTRUCTIONS.md for the future TF revival. */}
+           TF card (left) + shared coins (center) + Grid card (right).
+           Both bot cards mirror the same frame (rounded-lg, border-border,
+           bg-surface, p-6). Shared-cards container in the center holds
+           tf_grid coins (picked by TF, managed by Grid). */}
       <div class="relative grid grid-cols-1 lg:grid-cols-[1fr_140px_1fr]
                   gap-x-3 gap-y-4 items-stretch">
 
-        {/* === TF "dal dottore" (left) — matches Grid card frame (rounded-lg,
-            border-border, bg-surface) so the two cards look like siblings. */}
-        <div class="rounded-lg border border-border bg-surface overflow-hidden">
-          <TfDoctor class="h-full w-full" />
-        </div>
+        {/* === TF CARD (left) — mirror of Grid card frame. */}
+        <article class="h-full rounded-lg border border-border bg-surface p-6">
+          <div class="flex items-center gap-3 mb-4 flex-wrap">
+            <div class="w-[3px] h-[22px] rounded-sm" style="background:#f59e0b"></div>
+            <div class="font-mono text-[14px] text-text uppercase tracking-[0.05em] font-semibold">
+              Trend Follower
+            </div>
+            <div class="font-mono text-[10px] text-text-muted">— <span id="tf-budget">…</span> · live · Tier 1-2</div>
+          </div>
+          <div class="font-sans text-[12px] text-text-muted italic mb-2">{tfSubtitle}</div>
+
+          {/* Day + Cash to reinvest — populated by JS */}
+          <div class="font-mono text-[10px] text-text-muted mb-3 flex flex-wrap gap-x-3 gap-y-1">
+            <span>Day <span id="tf-day">…</span></span>
+            <span class="text-border">·</span>
+            <span>Cash to reinvest: <span id="tf-cash-reinvest" class="text-text">…</span></span>
+          </div>
+
+          <div class="font-mono text-[11px] text-text-muted">Net worth</div>
+          <div class="flex items-baseline gap-2 flex-wrap mt-1">
+            <span id="tf-nw"
+                  class="text-[clamp(28px,5vw,38px)] font-bold tracking-tight text-text leading-none">
+              —
+            </span>
+            <span id="tf-pnl-pct" class="font-mono text-[12px] text-text-muted">
+              —
+            </span>
+          </div>
+
+          <div class="my-4 border-t border-border-soft"></div>
+          <div class="grid grid-cols-3 gap-y-3 gap-x-4 font-mono">
+            <div>
+              <div class="text-[10px] text-text-muted">Unrealized</div>
+              <div id="tf-unrealized" class="text-[14px] font-medium text-text-muted">—</div>
+            </div>
+            <div>
+              <div class="text-[10px] text-text-muted">Fees paid</div>
+              <div id="tf-fees" class="text-[14px] font-medium text-text-muted">—</div>
+            </div>
+            <div>
+              <div class="text-[10px] text-text-muted">Skim</div>
+              <div id="tf-skim" class="text-[14px] font-medium text-text-muted">—</div>
+            </div>
+          </div>
+
+          <div class="my-4 border-t border-border-soft"></div>
+          <div class="flex justify-between font-mono mb-2">
+            <span class="text-[10px] text-text-muted">Cash</span>
+            <span id="tf-cash-pct" class="text-[10px] text-text">—</span>
+          </div>
+          <div id="tf-cash-bar" class="h-2 bg-border rounded-md overflow-hidden flex"></div>
+        </article>
 
         {/* === SHARED COINS (center) === */}
         <div class="relative flex flex-col items-center justify-start
                     px-2 lg:px-4 self-start pt-4">
 
           {/* Horizontal arrow with sliding-gradient shimmer.
-              "I tried, your turn" — TF's ironic handoff to GRID. */}
+              Handoff: TF picks Tier 1-2 coins, Grid manages them. */}
           <div class="flex flex-col items-center mb-3 w-full">
             <span class="font-mono text-[9px] uppercase tracking-[0.22em] mb-1 text-center leading-[1.4]"
                   style="color:#38bdf8">
-              I tried,<br/>your turn
+              TF picks,<br/>Grid manages
             </span>
             <div class="pipeline-arrow w-full max-w-[200px] h-[14px] relative">
               <span class="pipeline-arrow-tip"></span>
@@ -191,8 +234,7 @@ const tfSubtitle   = "The breakout hunter";
           </div>
 
           {/* Shared cards stacked vertically — populated by JS from
-              bot_config WHERE managed_by='tf_grid' AND is_active=true.
-              Currently empty (TF paused). */}
+              bot_config WHERE managed_by='tf_grid' AND is_active=true. */}
           <div id="shared-cards" class="flex flex-col gap-2 w-full"></div>
 
           <div class="mt-4 font-mono text-[9px] uppercase tracking-[0.18em] text-text-muted text-center">
@@ -254,10 +296,9 @@ const tfSubtitle   = "The breakout hunter";
         </article>
 
         {/* === BOTTOM ROW (inside same grid):
-            col 1 (sotto TF) + col 2 (centro) = vuoti, col 3 = grid natives.
-            TF natives intentionally NOT here while TF is paused; see
-            TF_RESTORE_INSTRUCTIONS.md for the revival step. */}
-        <div></div>
+            col 1 = tf-natives (TF-managed coins, populated by JS),
+            col 2 = empty, col 3 = grid-natives. */}
+        <div id="tf-natives" class="grid grid-cols-2 gap-2 h-full"></div>
         <div></div>
         <div id="grid-natives" class="grid grid-cols-3 gap-2 h-full"></div>
       </div>
