@@ -1,8 +1,8 @@
 # BUSINESS_STATE.md
 
-**Last updated:** 2026-05-19 — Session 80 (CEO update marketing+blog+HN+SEO+distribuzione + Brief 80a Brain Analysis scritto). Blog Post 3 "When Your AI CEO Lies About the Numbers" LIVE. HN shadowban confermato. Documento strategia distribuzione blog pronto per review. Volume 3 climax candidato = Brain Analysis (CC weekend 23-25 maggio).
-**Updated by:** CC + CEO
-**Basato su:** PROJECT_STATE.md aggiornato 2026-05-18 (S79 chiusura, ultimo commit `69cb33a`) + brief `config/business_state_update_20260519.md`
+**Last updated:** 2026-05-20 — Session 80 (marketing + traffic analysis + funnel diagnosis + Dev.to launch + Brief 80b homepage fix SHIPPED). Blog Post 3 LIVE. Dev.to account attivo, primo cross-post in draft. UTM system operativo (Brief 80b shipped CC commit `b8bdc12`).
+**Updated by:** CEO + CC
+**Basato su:** PROJECT_STATE.md aggiornato 2026-05-18 (S79 chiusura, ultimo commit `69cb33a`) + analisi traffico live 20 maggio + brief `config/business_state_update_s80.md`
 
 ---
 
@@ -25,42 +25,58 @@ BagHolderAI è un progetto sperimentale dove un'AI (Claude) gestisce un micro-bu
 ## 2. Marketing In-Flight
 
 ### Sito (stato pubblico)
-TestnetBanner globale, Reconciliation table pubblica su /dashboard, TF "dal dottore" SVG inline (**⚠️ STALE post-S79:** TF è LIVE dal 2026-05-18 21:14 CET, Tier 1-2 only, Tier 3 weight=0. Narrativa pubblica da aggiornare prossima sessione — "TF on, no Tier 3" o cornice equivalente, ~30-45min), Sentinel/Sherpa badge TEST MODE. Dashboard P&L hero unificato. HWW v3 con Auditor entity. Blog infrastructure pronta (brief 75a shipped).
+TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live card on home + dashboard SHIPPED 2026-05-20 (Brief 80b, commit `b8bdc12`)** — "dal dottore" SVG sostituito con card stile Grid (orange accent, mirror frame), hero text aggiornato a "$500 Grid + $100 TF (Tier 1-2)", pipeline arrow "I tried, your turn" → "TF picks, Grid manages". **Homepage CTA swap SHIPPED (Brief 80b)**: "Read the blog" primario, "Read the diary" + "Live numbers →" secondari outline. Sentinel/Sherpa badge TEST MODE. Dashboard P&L hero unificato. HWW v3 con Auditor entity. Blog infrastructure pronta (brief 75a shipped).
 
 ### Blog
-- Post 1 LIVE 2026-05-15: "An AI That Can't Trade, a Human That Can't Say No" (origin story, dual voice) — `bagholderai.lol/blog/an-ai-that-cant-trade`
-- Post 2 LIVE 2026-05-16: "The Day Our Bot Ran Out of Money" (highlight V1 S16, standalone) — `bagholderai.lol/blog/the-day-our-bot-ran-out-of-money`
-- **Post 3 LIVE 2026-05-19**: "When Your AI CEO Lies About the Numbers" (lesson, V2 S41+S52, tema LLM honesty) — `bagholderai.lol/blog/when-your-ai-ceo-lies-about-the-numbers`
-- Post 4 PLANNED: "The Lemon That Squeezed Back" (interlude LemonSqueezy, V2) — ~fine maggio, cadenzato
-- Post 5 PLANNED: "Why We're Not Live Yet" (pezzo strategico) — a ridosso go-live
-- Idea futura: "Cover Evolution" — storia copertine V1→V2→V3 (memo in `drafts/cover_evolution_memo.md`). Timing: quando V3 è vicino a chiusura.
-- **Cadenza irregolare** ("variable reinforcement"): post distanziati di qualche giorno, non pubblicati a raffica.
+- Post 1 LIVE 2026-05-15: "An AI That Can't Trade, a Human That Can't Say No"
+- Post 2 LIVE 2026-05-16: "The Day Our Bot Ran Out of Money"
+- Post 3 LIVE 2026-05-19: "When Your AI CEO Lies About the Numbers"
+- Post 4 PLANNED: "The Lemon That Squeezed Back" — ~fine maggio
+- Post 5 PLANNED: "Why We're Not Live Yet" — a ridosso go-live
+- **Blog Content Pipeline:** 12 post concreti nel backlog (Apple Note "BagHolderAI — Blog Content Pipeline"), ~3 mesi di contenuto senza inventare nulla
+- Idea futura: "Cover Evolution" (memo in `drafts/cover_evolution_memo.md`). Timing: quando V3 è vicino a chiusura.
+- Cadenza irregolare ("variable reinforcement")
+
+### Dev.to (NUOVO)
+- **Account creato 2026-05-20** (GitHub login, username da verificare)
+- **Post 1 cross-post in DRAFT:** "An AI That Can't Trade, a Human That Can't Say No" — canonical URL `bagholderai.lol`, UTM footer, serie "BagHolderAI"
+- **Pubblicazione:** stasera ~17:00-18:00 italiana (finestra US lunch hour)
+- Piano: 1 cross-post ogni 2-3 giorni (Post 2 venerdì/sabato, Post 3 settimana prossima)
 
 ### X (@BagHolderAI)
 - Post promozionale Post 3 pubblicato 2026-05-19 (gancio provocatorio "your ai assistant would rather fabricate a number...")
-- Analytics: spike traffico sito stessa sera (21 visitatori, +320% vs giorno precedente, 0% Italia = traffico reale esterno)
-- Reply strategy definita (doc: `reply_strategy_target_accounts.md`). Target 2-3 reply/giorno, tracking risultati. Scanner X cron settimanale attivo.
+- Post Dev.to launch da pubblicare stasera contemporaneamente al cross-post
+- Reply strategy attiva (doc: `reply_strategy_target_accounts.md`)
+- Scanner X cron settimanale attivo
 
 ### HN
-- **Account Cart0ne: SHADOWBAN COMPLETO confermato 2026-05-19** (test incognito: commenti invisibili)
-- Email a dang: nessuna risposta
-- Piano: nuovo account da IP diverso (ufficio/telefono), karma building 2-3 settimane, poi Show HN quando abbiamo numeri mainnet
+- Account Cart0ne: SHADOWBAN COMPLETO confermato 2026-05-19
+- Piano: nuovo account da IP diverso, karma building, timeline indefinita
+
+### UTM (NUOVO)
+- **Sistema UTM operativo** (Apple Note "BagHolderAI — UTM Reference")
+- **Haiku template + Telegram report: SHIPPED 2026-05-20 (Brief 80b, commit `b8bdc12`)**. X poster signature ora URL completo con `utm_source=x&utm_medium=social&utm_campaign=haiku_daily`. Telegram 3 firme convertite in `<a href>` cliccabili con `utm_source=telegram&utm_medium=social&utm_campaign=daily_report`. Mac Mini restart pending per applicare alle prossime emissioni.
+- Link bio X resta manuale (a carico Max)
+- Regola operativa: ogni link che esce dal progetto DEVE avere UTM
 
 ### Distribuzione blog
-- Documento strategia distribuzione pronto per review Board (`marketing_strategy_distribution.md`)
-- Canali valutati: Dev.to (cross-post), Hashnode, Reddit, Indie Hackers, newsletter aggregator, SEO organico
-- Decisione pendente: quale canale attivare per primo, quale strategia cross-post (identico vs adattato)
-- Prossima azione: sessione marketing dedicata per decidere
+- Documento strategia distribuzione `marketing_strategy_distribution.md`
+- Dev.to scelto come primo canale (cross-post, audience dev built-in, SEO resta nostro)
+- Reddit/Hashnode/Indie Hackers/newsletter: valutazione futura post-Dev.to baseline
 
 ### SEO / Google Search Console
-- 230 impressions in 3 mesi, 0 click, posizione media 9.5 — Google ci vede ma siamo troppo in basso
-- 7 pagine indicizzate (roadmap 161 imp, blueprint 37, diary 27, howwework 9, home 8, guide 2, dashboard 2)
-- **Blog post NON ancora indicizzati da Google** (0 pagine blog in Search Console)
-- Bug sitemap: Google restituisce "Sitemap could not be read" su `sitemap-index.xml`. Bing legge tutto OK (3 sitemap, 25 URL, 0 errori). Max ha aggiunto `sitemap-0.xml` direttamente su entrambi. Debug tecnico per CC.
-- Bing Webmaster Tools: funzionante, `sitemap-0.xml` submitted con 14 URL
+- 230 impressions, 0 click, posizione media 9.5
+- Blog post NON ancora indicizzati
+- Bug sitemap ("Sitemap could not be read"): debug per CC nel todo
+
+### Analytics — insight S80
+- **Traffico reale ~25 umani/giorno** (30% bot da datacenter: Falkenstein, Helsinki, Nürnberg)
+- Pubblico prevalentemente US (47%), attivo 18:00-02:00 CET
+- **Funnel rotto:** home 34 visitatori → blog 4 (12%). Entry/exit sempre "/". Brief 80b CTA swap shipped come fix minimo, misurare 1 settimana.
+- Payhip: 39 views maggio, 0 vendite, 0 ordini
 
 ### Payhip
-- Volume 1 + Volume 2 live, 0/30 views totali
+- Volume 1 + Volume 2 live, 39 views totali maggio, 0 vendite
 
 ### Ads & monetizzazione
 - A-Ads live (revenue trascurabile). Buy Me a Coffee attivo. Nessuna sponsorship.
@@ -93,6 +109,13 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard, TF "dal dott
 
 | Data | Decisione | Perché |
 |---|---|---|
+| 2026-05-20 (S80) | **Dev.to come primo canale distribuzione blog** | Cross-post con canonical URL, audience dev built-in, SEO resta nostro. Primo di 6 canali valutati. Account creato, Post 1 in draft, lancio stasera |
+| 2026-05-20 (S80) | **UTM su tutti i touchpoint (Apple Note + Brief 80b)** | Senza UTM, 97% del traffico finisce in "Direct" — impossibile misurare cosa funziona. Brief 80b ha cablato Haiku X + Telegram report (commit `b8bdc12`) |
+| 2026-05-20 (S80) | **Hero CTA swap: blog primario, diary secondario (Brief 80b shipped)** | Dati Umami: 90% visitatori non trova il blog. Fix minimo prima di ristrutturare layout. SHIPPED commit `b8bdc12` |
+| 2026-05-20 (S80) | **NO sezione blog su homepage (Board veto)** | Sposterebbe bot cards sotto la piega. Prima misurare effetto CTA swap per 1 settimana |
+| 2026-05-20 (S80) | **Blog Content Pipeline: 12 post mappati, ~3 mesi autonomia** | Backlog V1+V2+V3, nessun contenuto da inventare. Apple Note dedicata |
+| 2026-05-20 (S80) | **~30% traffico Umami è bot datacenter** | Falkenstein/Helsinki/Nürnberg: 100% bounce, 0s. Sottrarre un terzo ai numeri grezzi |
+| 2026-05-19 (S80) | **Blog Post 3 LIVE + HN shadowban confermato** | Post 3 genera +162% traffico. HN chiuso, Dev.to/Reddit come alternative |
 | 2026-05-19 (S80 CEO) | **Blog Post 3 LIVE: "When Your AI CEO Lies About the Numbers"** | Tema LLM honesty da S41+S52, formato lesson standalone. Aumenta credibilità progetto su tema caldo AI |
 | 2026-05-19 (S80 CEO) | **HN shadowban confermato (Cart0ne è morto)** | Test incognito: commenti invisibili. Email a dang senza risposta. Piano: nuovo account da IP diverso, karma building 2-3 settimane, Show HN quando avremo numeri mainnet. Non urgente, altri canali prioritari |
 | 2026-05-19 (S80 CEO) | **Brief 80a Brain Analysis scritto** | Analisi completa Sentinel+Sherpa: counterfactual, baseline statica, timing analysis, flicker. Esecuzione CC weekend 23-25 maggio |
@@ -154,7 +177,9 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard, TF "dal dott
 
 | Cosa | Perché |
 |---|---|
-| **Distribuzione blog su altre piattaforme** | Documento strategia pronto (`marketing_strategy_distribution.md`) ma decisione rinviata a sessione dedicata. I 3 post blog sono visibili solo via X e traffico diretto |
+| **Nessuna blog section su homepage** | Board veto: sposterebbe bot cards sotto la piega. Prima misuriamo effetto CTA swap (Brief 80b shipped) per 1 settimana con UTM |
+| **Nessun cross-post Reddit** | Dev.to prima (più facile, meno rischio spam flag). Reddit richiede karma building pre-esistente |
+| **Distribuzione blog su altre piattaforme (oltre Dev.to)** | Dev.to scelto come primo canale 2026-05-20. Reddit/Hashnode/IH/newsletter restano in valutazione post-baseline Dev.to |
 | **HN come canale** | Shadowban completo confermato 2026-05-19 rende Cart0ne inutilizzabile. Nuovo account pianificato ma non urgente — altri canali prioritari |
 | **Volume 3 packaging** | Materiale esiste (~27 sessioni) ma lettura/valutazione rimandate a post-Brain Analysis, quando c'è tempo di attesa naturale durante raccolta dati Sentinel/Sherpa |
 | **Sitemap Google indicizzazione** | Rotta da settimane, blog post non indicizzati. Workaround (`sitemap-0.xml`) inviato 2026-05-19. Debug tecnico per CC in sessione futura |
