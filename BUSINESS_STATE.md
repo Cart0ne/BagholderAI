@@ -1,8 +1,8 @@
 # BUSINESS_STATE.md
 
-**Last updated:** 2026-05-20 — Session 80 (marketing + traffic analysis + funnel diagnosis + Dev.to launch + Brief 80b homepage fix SHIPPED). Blog Post 3 LIVE. Dev.to account attivo, primo cross-post in draft. UTM system operativo (Brief 80b shipped CC commit `b8bdc12`).
+**Last updated:** 2026-05-21 — Session 80 day 3 (Dev.to community engagement attivo, Post 1 LIVE, Post 2 DRAFT pronto per domani). Da 2026-05-22 ripartono i 3 attori in parallelo (CEO + CC + Max).
 **Updated by:** CEO + CC
-**Basato su:** PROJECT_STATE.md aggiornato 2026-05-18 (S79 chiusura, ultimo commit `69cb33a`) + analisi traffico live 20 maggio + brief `config/business_state_update_s80.md`
+**Basato su:** PROJECT_STATE.md aggiornato 2026-05-18 (S79 chiusura) + brief `config/business_state_update_s80_day3.md`
 
 ---
 
@@ -37,11 +37,16 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 - Idea futura: "Cover Evolution" (memo in `drafts/cover_evolution_memo.md`). Timing: quando V3 è vicino a chiusura.
 - Cadenza irregolare ("variable reinforcement")
 
-### Dev.to (NUOVO)
-- **Account creato 2026-05-20** (GitHub login, username da verificare)
-- **Post 1 cross-post in DRAFT:** "An AI That Can't Trade, a Human That Can't Say No" — canonical URL `bagholderai.lol`, UTM footer, serie "BagHolderAI"
-- **Pubblicazione:** stasera ~17:00-18:00 italiana (finestra US lunch hour)
-- Piano: 1 cross-post ogni 2-3 giorni (Post 2 venerdì/sabato, Post 3 settimana prossima)
+### Dev.to (cart0ne)
+- **Account creato:** 2026-05-20 (GitHub login, username: `cart0ne`)
+- **Profilo completato:** bio, coding section, work section, series "BagHolderAI"
+- **Post 1 LIVE:** "An AI That Can't Trade, a Human That Can't Say No" — canonical URL `bagholderai.lol`, UTM footer, serie "BagHolderAI". Pubblicato 2026-05-20 sera. Views/reactions: ancora ~0 (account nuovo, nessun follower, algoritmo non spinge).
+- **Post 2 DRAFT:** da pubblicare 2026-05-22 (domani). Stesso workflow: markdown dal repo, canonical URL, UTM footer.
+- **Community engagement attivo:**
+  - Commento su "Is Writing a Tech Blog Still Worth It?" (Deneth Rajapaksha) → 2 like, risposta dell'autore che chiede il link al blog → reply con link UTM + invito feedback
+  - Presentazione nel Welcome Thread v376 → risposta entusiasta di Lenard Francis (FastAPI AlertEngine) → reply dettagliato con 3 errori strategici del CEO, 3 link UTM, domanda di chiusura
+- **Strategia:** engagement first (commenti, risposte, conversazioni), contenuto secondo. L'algoritmo Dev.to premia le relazioni, non i post isolati. I commenti portano più visibilità del post stesso in fase iniziale.
+- **Prossimi passi:** Post 2 cross-post domani, continuare engagement nei commenti, monitorare se le conversazioni portano click (UTM campaign `comment_deneth` e `comment_lenard`)
 
 ### X (@BagHolderAI)
 - Post promozionale Post 3 pubblicato 2026-05-19 (gancio provocatorio "your ai assistant would rather fabricate a number...")
@@ -109,6 +114,9 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 
 | Data | Decisione | Perché |
 |---|---|---|
+| 2026-05-21 (S80) | **Dev.to engagement-first strategy** | I commenti e le conversazioni portano più visibilità di un post su account nuovo con 0 follower. Prima costruisci relazioni, poi l'algoritmo ti aiuta |
+| 2026-05-21 (S80) | **UTM nascosti nei link markdown Dev.to** | Formato `[testo visibile](url?utm_...)` — l'utente vede il testo pulito, il tracking funziona |
+| 2026-05-21 (S80) | **Bio X: UTM visibile nel campo Website → workaround** | Rimosso UTM dal campo Website (visibile, brutto). Serve redirect `/x → homepage con UTM`, brief CC futuro |
 | 2026-05-20 (S80) | **Dev.to come primo canale distribuzione blog** | Cross-post con canonical URL, audience dev built-in, SEO resta nostro. Primo di 6 canali valutati. Account creato, Post 1 in draft, lancio stasera |
 | 2026-05-20 (S80) | **UTM su tutti i touchpoint (Apple Note + Brief 80b)** | Senza UTM, 97% del traffico finisce in "Direct" — impossibile misurare cosa funziona. Brief 80b ha cablato Haiku X + Telegram report (commit `b8bdc12`) |
 | 2026-05-20 (S80) | **Hero CTA swap: blog primario, diary secondario (Brief 80b shipped)** | Dati Umami: 90% visitatori non trova il blog. Fix minimo prima di ristrutturare layout. SHIPPED commit `b8bdc12` |
