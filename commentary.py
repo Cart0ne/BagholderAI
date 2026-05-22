@@ -35,7 +35,9 @@ Rules:
 - Self-ironic but not stupid. The humor comes from honesty.
 - Never hype. Never "bullish." If something went well, say "not bad."
 - Never give financial advice or trading signals.
-- Keep it to 3-4 lines maximum (~250 characters). This is a micro-blog, not an essay.
+- LENGTH: Write 80 words. Never exceed 100. Every word must earn its place.
+- NUMBERS: The reader already has the portfolio data. Do NOT list each coin's percentage individually unless something changed dramatically (>3pp move in a single day). Give the meaning, not the data.
+- DIRECTION: When comparing today's performance to yesterday, ALWAYS use the vs_yesterday.direction field if present. Do not independently calculate whether the portfolio improved or worsened.
 - Reference yesterday's commentary if relevant for narrative continuity.
 - Comment on config changes if any — what Max changed and whether it makes sense.
 - If nothing interesting happened, say that. "Quiet day" is valid content.
@@ -54,7 +56,7 @@ TESTNET_RESTART_DATE = date(2026, 5, 8)
 
 def get_yesterday_commentary(supabase_client):
     """Fetch yesterday's commentary for narrative continuity."""
-    yesterday = str(date.today() - __import__('datetime').timedelta(days=1))
+    yesterday = str(date.today() - timedelta(days=1))
     try:
         result = (
             supabase_client.table("daily_commentary")
@@ -69,6 +71,41 @@ def get_yesterday_commentary(supabase_client):
     except Exception as e:
         logger.warning(f"Could not fetch yesterday's commentary: {e}")
     return None
+
+
+def get_yesterday_pnl_pct(supabase_client):
+    """Brief 81b: fetch yesterday's aggregate total_pnl_pct from
+    daily_commentary.prompt_data so Haiku can be given a pre-computed
+    direction flag (better / worse / flat) instead of parsing a percentage
+    from prose. Returns None if not available — caller must omit the
+    vs_yesterday block entirely so Haiku doesn't compare with nothing.
+    """
+    yesterday = str(date.today() - timedelta(days=1))
+    try:
+        result = (
+            supabase_client.table("daily_commentary")
+            .select("prompt_data")
+            .eq("date", yesterday)
+            .order("created_at", desc=True)
+            .limit(1)
+            .execute()
+        )
+        if not result.data:
+            return None
+        prompt_data = result.data[0].get("prompt_data")
+        # prompt_data is stored as JSONB but the python-supabase client
+        # sometimes returns it as a JSON string depending on the column
+        # definition — handle both.
+        if isinstance(prompt_data, str):
+            prompt_data = json.loads(prompt_data)
+        if not isinstance(prompt_data, dict):
+            return None
+        agg = prompt_data.get("aggregate_portfolio") or {}
+        val = agg.get("total_pnl_pct")
+        return float(val) if val is not None else None
+    except Exception as e:
+        logger.warning(f"Could not fetch yesterday's pnl_pct: {e}")
+        return None
 
 
 def get_config_changes(supabase_client):
@@ -620,6 +657,30 @@ def generate_daily_commentary(portfolio_data, supabase_client):
         agg_today_sells = grid_today_sells + tf_state["sells_today"]
         agg_today_realized = grid_today_realized + tf_state["realized_today"]
 
+        # Brief 81b: pre-compute the today-vs-yesterday direction in Python
+        # so Haiku doesn't have to compare negative percentages (Day 15
+        # error: -5.03 misread as "better" than -4.12). The block is omitted
+        # entirely when yesterday is unavailable.
+        today_pnl_pct = round(
+            (agg_total_pnl / agg_initial * 100) if agg_initial else 0, 2
+        )
+        yesterday_pnl_pct = get_yesterday_pnl_pct(supabase_client)
+        vs_yesterday = None
+        if yesterday_pnl_pct is not None:
+            change_pp = round(today_pnl_pct - yesterday_pnl_pct, 2)
+            if today_pnl_pct > yesterday_pnl_pct + 0.1:
+                direction = "better"
+            elif today_pnl_pct < yesterday_pnl_pct - 0.1:
+                direction = "worse"
+            else:
+                direction = "flat"
+            vs_yesterday = {
+                "yesterday_pnl_pct": round(yesterday_pnl_pct, 2),
+                "today_pnl_pct": today_pnl_pct,
+                "change_pp": change_pp,
+                "direction": direction,
+            }
+
         prompt_data = {
             "date": str(date.today()),
             "day_number": day_number,
@@ -677,6 +738,11 @@ def generate_daily_commentary(portfolio_data, supabase_client):
             "config_changes": config_changes,
             "yesterday_commentary": yesterday_commentary,
         }
+        # Brief 81b: only insert vs_yesterday when yesterday's pnl is
+        # actually known. Omitting (vs. setting null) keeps Haiku from
+        # trying to compare with a None value.
+        if vs_yesterday is not None:
+            prompt_data["vs_yesterday"] = vs_yesterday
 
         # Call Haiku
         client = anthropic.Anthropic(api_key=api_key)
