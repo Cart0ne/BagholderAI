@@ -1,8 +1,8 @@
 # BUSINESS_STATE.md
 
-**Last updated:** 2026-05-21 — Session 80 day 3 (Dev.to community engagement attivo, Post 1 LIVE, Post 2 DRAFT pronto per domani). Da 2026-05-22 ripartono i 3 attori in parallelo (CEO + CC + Max).
+**Last updated:** 2026-05-22 — Session 81 opening (Brain Analysis CONSEGNATA, NO-GO Sherpa step 4, three-phase brain architecture decisa, Dev.to Post 2 LIVE, A-Ads embed refreshed). I 3 attori in parallelo (CEO + CC + Max) sono operativi.
 **Updated by:** CEO + CC
-**Basato su:** PROJECT_STATE.md aggiornato 2026-05-18 (S79 chiusura) + brief `config/business_state_update_s80_day3.md`
+**Basato su:** PROJECT_STATE.md aggiornato 2026-05-22 (S80a chiusura) + brief CEO update inline S81
 
 ---
 
@@ -33,7 +33,9 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 - Post 3 LIVE 2026-05-19: "When Your AI CEO Lies About the Numbers"
 - Post 4 PLANNED: "The Lemon That Squeezed Back" — ~fine maggio
 - Post 5 PLANNED: "Why We're Not Live Yet" — a ridosso go-live
-- **Blog Content Pipeline:** 12 post concreti nel backlog (Apple Note "BagHolderAI — Blog Content Pipeline"), ~3 mesi di contenuto senza inventare nulla
+- Post 6 PLANNED: "We Built an Accounting System That Didn't Need to Exist" — FIFO saga, V3. ~inizio giugno.
+- Post 7 PLANNED: "45 Sessions With an AI Co-Founder: The Unfiltered Version" — prefazione V2 adattata, voce Max. ~90% pronto.
+- **Pipeline:** 7 post totali pianificati, ~3 mesi autonomia (Apple Note "BagHolderAI — Blog Content Pipeline")
 - Idea futura: "Cover Evolution" (memo in `drafts/cover_evolution_memo.md`). Timing: quando V3 è vicino a chiusura.
 - Cadenza irregolare ("variable reinforcement")
 
@@ -41,12 +43,13 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 - **Account creato:** 2026-05-20 (GitHub login, username: `cart0ne`)
 - **Profilo completato:** bio, coding section, work section, series "BagHolderAI"
 - **Post 1 LIVE:** "An AI That Can't Trade, a Human That Can't Say No" — canonical URL `bagholderai.lol`, UTM footer, serie "BagHolderAI". Pubblicato 2026-05-20 sera. Views/reactions: ancora ~0 (account nuovo, nessun follower, algoritmo non spinge).
-- **Post 2 DRAFT:** da pubblicare 2026-05-22 (domani). Stesso workflow: markdown dal repo, canonical URL, UTM footer.
+- **Post 2 LIVE:** "The Day Our Bot Ran Out of Money" — cross-posted 2026-05-22, canonical URL, UTM footer, serie "BagHolderAI".
 - **Community engagement attivo:**
   - Commento su "Is Writing a Tech Blog Still Worth It?" (Deneth Rajapaksha) → 2 like, risposta dell'autore che chiede il link al blog → reply con link UTM + invito feedback
   - Presentazione nel Welcome Thread v376 → risposta entusiasta di Lenard Francis (FastAPI AlertEngine) → reply dettagliato con 3 errori strategici del CEO, 3 link UTM, domanda di chiusura
+  - Reply a Lenard Francis (confidence gating, AlertEngine) + Valentin Monteiro (architect bottleneck shifting). Entrambi nel Welcome Thread v376.
 - **Strategia:** engagement first (commenti, risposte, conversazioni), contenuto secondo. L'algoritmo Dev.to premia le relazioni, non i post isolati. I commenti portano più visibilità del post stesso in fase iniziale.
-- **Prossimi passi:** Post 2 cross-post domani, continuare engagement nei commenti, monitorare se le conversazioni portano click (UTM campaign `comment_deneth` e `comment_lenard`)
+- **Prossimi passi:** Post 3 cross-post settimana prossima, continuare engagement nei commenti, monitorare se le conversazioni portano click (UTM campaign `comment_deneth` e `comment_lenard`)
 
 ### X (@BagHolderAI)
 - Post promozionale Post 3 pubblicato 2026-05-19 (gancio provocatorio "your ai assistant would rather fabricate a number...")
@@ -86,6 +89,11 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 ### Ads & monetizzazione
 - A-Ads live (revenue trascurabile). Buy Me a Coffee attivo. Nessuna sponsorship.
 
+### A-Ads
+- URL corretto da www.bagholderai.lol → bagholderai.lol (apex)
+- Colori banner adattati al sito (#111622 sfondo, #6CCCFA accent)
+- Embed code aggiornato 2026-05-22 (S80a, commit `2099a3c`), deploy Vercel auto-trigger su push.
+
 ### Analytics
 - Umami Cloud + Vercel Web Analytics
 
@@ -114,6 +122,11 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 
 | Data | Decisione | Perché |
 |---|---|---|
+| 2026-05-22 (S81) | **NO-GO Sherpa step 4** | Brain Analysis: -$3.94 vs Board, non coin-aware, 449 fast-loop flips, flicker 6min. Tre fix architetturali richiesti prima di riconsiderare |
+| 2026-05-22 (S81) | **Three-phase brain architecture (A/B/C)** | A: Sherpa per-coin + slow gate + cap (brief 81a). B: Sentinel coin-aware (EMA/RSI per-coin). C: sentiment online. Ogni fase testata indipendentemente |
+| 2026-05-22 (S81) | **Grid-only mainnet è opzione legittima** | Grid +$12.52 in mercato -0.47%. Funziona senza cervello. Possibile andare live Grid-only mentre Sherpa matura |
+| 2026-05-22 (S81) | **Volume 3 climax = seconda Brain Analysis** | Atto 1 (questo report): brain è daltonico. Atto 2 (post-rework): brain rieducato. Cutoff stimato S83-S85 |
+| 2026-05-22 (S81) | **Blog Post 5 + Post 7 aggiunti a pipeline** | FIFO saga (V3) + prefazione V2 adattata. Pipeline 7 post totali |
 | 2026-05-21 (S80) | **Dev.to engagement-first strategy** | I commenti e le conversazioni portano più visibilità di un post su account nuovo con 0 follower. Prima costruisci relazioni, poi l'algoritmo ti aiuta |
 | 2026-05-21 (S80) | **UTM nascosti nei link markdown Dev.to** | Formato `[testo visibile](url?utm_...)` — l'utente vede il testo pulito, il tracking funziona |
 | 2026-05-21 (S80) | **Bio X: UTM visibile nel campo Website → workaround** | Rimosso UTM dal campo Website (visibile, brutto). Serve redirect `/x → homepage con UTM`, brief CC futuro |
@@ -155,6 +168,7 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 
 | Tema | Stato | Note |
 |---|---|---|
+| **Brief 81a Sherpa Sprint 2** | HIGH, prossima sessione CC | 3 blocchi: per-coin volatility scaling (dynamic coin discovery), slow-loop gate, amplitude cap 30%. Piano italiano prima del codice. ~3-4h |
 | **Sito TF narrativa update** | 🆕 Prossima sessione S80 | "dal dottore" → "on Tier 1-2". SVG + badge. ~30-45min. Apple Note + memoria dedicata |
 | **Counterfactual tracker: aggiungere regime Sentinel** | 🆕 Nice-to-have post-osservazione | `counterfactual.py` non logga regime. Utile per correlare skip ↔ regime. ~30-45min. CEO decide se vale dopo 1-2 settimane di dati |
 | **Audit Area 2 (coerenza progetto)** | 🆕 Mai eseguito, proposta CC | Roadmap vs PROJECT_STATE vs BUSINESS_STATE consistency check. Cadenza 90gg superata da sempre. ~30-45min fresh CC |
@@ -175,7 +189,7 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 | **Blog primo post** | DONE 2026-05-15 | "An AI That Can't Trade" live su bagholderai.lol/blog |
 | **Volume 3** | Nessuna deadline | In accumulo, arco narrativo si forma |
 
-**Multi-macchina:** MBP (sviluppo) ↔ Mac Mini (runtime). Allineati su commit `69cb33a` (S79 chiusura). Mac Mini PID parent **74280** (restart 2026-05-18 21:49 CET post-79c), 7 processi.
+**Multi-macchina:** MBP (sviluppo) ↔ Mac Mini (runtime). Repo su commit `0008e4f` (S80a chiusura). Mac Mini ancora su `542b190` (PID parent **74280**, restart 2026-05-18 21:49 CET post-79c), 7 processi. **Restart pending**: S80 UTM signatures (`utils/x_poster.py` + `utils/telegram_notifier.py`) — sarà coperto dal restart S81 post-brief 81a.
 
 **Piattaforma pubblicazione:** Payhip (free plan, 5% fee). Nessuna urgenza di cambiare.
 
@@ -192,7 +206,7 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 | **Volume 3 packaging** | Materiale esiste (~27 sessioni) ma lettura/valutazione rimandate a post-Brain Analysis, quando c'è tempo di attesa naturale durante raccolta dati Sentinel/Sherpa |
 | **Sitemap Google indicizzazione** | Rotta da settimane, blog post non indicizzati. Workaround (`sitemap-0.xml`) inviato 2026-05-19. Debug tecnico per CC in sessione futura |
 | **Go-live mainnet €100** | Decisione S76 CEO: Sherpa scriverà bot_config con soldi veri, va testato prima su testnet. Sequenza Sentinel-first definita. Fine giugno / inizio luglio target |
-| **Sherpa LIVE su testnet** | Ancora in DRY_RUN. Osservazione Sprint 2 in corso (scadenza naturale 21-22 maggio). Proposte visibili ma non applicate. Un parametro alla volta (sell_pct primo) |
+| **Sherpa LIVE su testnet** | Brain Analysis NO-GO. Tre fix architetturali richiesti (per-coin, slow-gate, cap). Dopo rework + 7-10gg DRY_RUN + seconda analisi |
 | **Audit Area 2 non eseguito** | Dovuto (cadenza 90gg). CC ha flaggato in S78 fase 2 + S79. Proporre in prossima sessione di breathing |
 | **Retention cron jobs** | Deliberatamente rimandati: prima analizzare dati Sentinel/Sherpa, poi pulire. Brief separato post-osservazione |
 | **X reply strategy 0 fatte** | Definita 15 maggio ma non ancora eseguita con costanza. Weekend in mezzo + 3 brief shipped hanno consumato la finestra |
@@ -203,4 +217,4 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 
 ---
 
-*Prossimo aggiornamento: post osservazione Sentinel Sprint 2 (~21-22 maggio), o pubblicazione blog post 3 — whichever comes first.*
+*Prossimo aggiornamento: post brief 81a Sherpa Sprint 2 (per-coin rules + slow-gate + cap), o pubblicazione Dev.to Post 3 — whichever comes first.*
