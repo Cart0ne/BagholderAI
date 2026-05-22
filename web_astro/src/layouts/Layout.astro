@@ -94,6 +94,23 @@ const canonical = new URL(Astro.url.pathname, "https://bagholderai.lol").toStrin
         }
       } catch(e) {}
     </script>
+    {/* Vercel Speed Insights — Core Web Vitals RUM (LCP / INP / CLS / TTFB).
+       Same inline pattern as Web Analytics for consistency: no npm dep,
+       served from origin (adblock-resistant), respects the same
+       va.disabled localStorage flag so the owner is auto-excluded from
+       both at once. Enable Speed Insights in the Vercel dashboard
+       (Settings → Speed Insights → Enable) for the data to be ingested;
+       the script loads cleanly even before enable, sending no events. */}
+    <script is:inline>
+      try {
+        if (localStorage.getItem('va.disabled') !== '1') {
+          var si = document.createElement('script');
+          si.defer = true;
+          si.src = '/_vercel/speed-insights/script.js';
+          document.head.appendChild(si);
+        }
+      } catch(e) {}
+    </script>
   </head>
 
   <body class="font-sans antialiased">

@@ -564,8 +564,8 @@
         </div>
       </div>
 
-      <!-- Reaction chart: Sentinel risk + opp × Sherpa proposals -->
-      <div class="section-title sherpa">📊 Sentinel (risk + opp) → Sherpa reaction</div>
+      <!-- Sentinel fast (risk + opp) vs Sherpa proposed — post brief 81a Block 2 -->
+      <div class="section-title sherpa">📊 Sentinel fast (risk + opp) vs Sherpa proposed</div>
       <div class="chart-wrap">
         <canvas id="reaction-chart"></canvas>
         <div class="chart-legend">
@@ -577,15 +577,10 @@
           <span class="item"><span class="swatch" style="background: var(--text-dim);"></span> right axis: buy_pct (0.3-3.0)</span>
         </div>
         <div class="footnote">
-          When Sentinel's <strong>risk + opp scores</strong> move, do the 3 Sherpa lines react?
-          A flat market shows flat lines — that's fine. A volatile market should show
-          the 3 buy_pct lines moving in response to both risk spikes (drop ladders) and
-          opp spikes (pump ladders, funding short squeezes). Half of Sherpa's
-          adjustment ladders are opp-side, so the green line is part of the decision
-          input, not just a passive signal.
-          <br>Risk + Opp are vertically offset by ±2px so they stay visible when they
-          coincide. The 3 buy_pct lines are offset by ±3px (BTC up, SOL center, BONK
-          down). Exact values are in the proposals table above.
+          <strong>By design (brief 81a Block 2): the 3 Sherpa lines should look mostly flat against the rumoroso Sentinel risk + opp lines.</strong>
+          Sprint 1 had Sherpa reading fast-loop scores → 449 risk_score flips ≥20pp in 16 days produced 6-minute proposal flicker (Brain Analysis 2026-05-22). Sprint 2 decouples Sherpa from the fast loop: Sherpa now reads only the slow-loop regime (4h cadence), so proposals change at most every few hours when regime transitions. Per-coin volatility scaling makes the 3 lines diverge in <em>level</em> (BONK higher band, BTC lower) but their <em>shape</em> follows the regime, not the second-by-second risk_score.
+          <br>What to look for: (a) Sherpa lines clearly separated by coin (per-coin scaling working), (b) Sherpa lines stable between regime transitions, (c) noisy red/green still allowed — that's Sentinel doing its job, the decoupling is intentional.
+          <br>Risk + Opp are vertically offset by ±2px so they stay visible when they coincide. The 3 buy_pct lines are offset by ±3px (BTC up, SOL center, BONK down). Exact values are in the proposals table above.
         </div>
       </div>
 
@@ -628,38 +623,37 @@
           <tbody>
             <tr><td>extreme_fear</td><td class="num">2.5</td><td class="num">1.0</td><td class="num">4.0</td></tr>
             <tr><td>fear</td><td class="num">1.8</td><td class="num">1.2</td><td class="num">2.0</td></tr>
-            <tr style="background: rgba(124, 132, 252, 0.08);"><td>neutral <span style="color: var(--purple);">← active (Sprint 1)</span></td><td class="num">1.0</td><td class="num">1.5</td><td class="num">1.0</td></tr>
+            <tr><td>neutral</td><td class="num">1.0</td><td class="num">1.5</td><td class="num">1.0</td></tr>
             <tr><td>greed</td><td class="num">0.8</td><td class="num">2.0</td><td class="num">0.75</td></tr>
             <tr><td>extreme_greed</td><td class="num">0.5</td><td class="num">3.0</td><td class="num">0.5</td></tr>
           </tbody>
         </table>
+        <div class="footnote" style="margin-top: 6px;">
+          The active regime is shown in the <em>Current regime</em> banner above (driven by Sentinel's slow loop). The base values for that regime are scaled by the per-coin volatility multiplier below before the absolute clamps and the amplitude cap are applied.
+        </div>
 
-        <div style="font-family: var(--mono); font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; margin: 16px 0 8px;">Adjustment ladders — fast-signal deltas on top of base</div>
+        <div style="font-family: var(--mono); font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; margin: 16px 0 8px;">Volatility multipliers — per-coin amplitude scaling (Sprint 2, brief 81a)</div>
         <table class="rules">
           <thead>
             <tr>
-              <th>Ladder</th>
-              <th>Trigger</th>
-              <th class="num">Δ buy</th>
-              <th class="num">Δ sell</th>
-              <th class="num">Δ idle</th>
+              <th>Coin</th>
+              <th class="num">multiplier</th>
+              <th>Notes</th>
             </tr>
           </thead>
           <tbody>
-            <tr><td>btc_drop_10pct_1h</td><td>BTC 1h ≤ −10%</td><td class="num"><span class="pos">+1.5</span></td><td class="num"><span class="neg">−0.7</span></td><td class="num">+3.0</td></tr>
-            <tr><td>btc_drop_5pct_1h</td><td>BTC 1h ≤ −5%</td><td class="num"><span class="pos">+1.0</span></td><td class="num"><span class="neg">−0.5</span></td><td class="num">+2.0</td></tr>
-            <tr><td>btc_drop_3pct_1h</td><td>BTC 1h ≤ −3%</td><td class="num"><span class="pos">+0.5</span></td><td class="num"><span class="neg">−0.3</span></td><td class="num">+1.0</td></tr>
-            <tr><td>btc_pump_5pct_1h</td><td>BTC 1h ≥ +5%</td><td class="num"><span class="neg">−0.5</span></td><td class="num"><span class="pos">+1.0</span></td><td class="num">−0.5</td></tr>
-            <tr><td>btc_pump_3pct_1h</td><td>BTC 1h ≥ +3%</td><td class="num"><span class="neg">−0.3</span></td><td class="num"><span class="pos">+0.5</span></td><td class="num">−0.3</td></tr>
-            <tr><td>speed_of_fall_accelerating</td><td>fall accelerating</td><td class="num"><span class="pos">+0.3</span></td><td class="num"><span class="neg">−0.2</span></td><td class="num">+0.5</td></tr>
-            <tr><td>funding_long_strong</td><td>funding &gt; 0.05%</td><td class="num"><span class="pos">+0.4</span></td><td class="num"><span class="neg">−0.2</span></td><td class="num">+0.5</td></tr>
-            <tr><td>funding_long</td><td>funding &gt; 0.03%</td><td class="num"><span class="pos">+0.2</span></td><td class="num"><span class="neg">−0.1</span></td><td class="num">+0.3</td></tr>
-            <tr><td>funding_short_strong</td><td>funding &lt; −0.03%</td><td class="num"><span class="neg">−0.2</span></td><td class="num"><span class="pos">+0.3</span></td><td class="num">−0.3</td></tr>
-            <tr><td>funding_short</td><td>funding &lt; −0.01%</td><td class="num"><span class="neg">−0.1</span></td><td class="num"><span class="pos">+0.1</span></td><td class="num">−0.2</td></tr>
+            <tr><td>BTC/USDT</td><td class="num">1.00</td><td>anchor — by definition</td></tr>
+            <tr><td>SOL/USDT</td><td class="num">1.60</td><td>~1.6× BTC stdev (7d, 1h candles)</td></tr>
+            <tr><td>BONK/USDT</td><td class="num">2.09</td><td>~2.1× BTC stdev — wider sell_pct / buy_pct band</td></tr>
           </tbody>
         </table>
+        <div class="footnote" style="margin-top: 6px;">
+          Multiplier = <code>stdev(log_returns(coin, 7d, 1h))</code> / <code>stdev(log_returns(BTC, 7d, 1h))</code>.
+          Applied to <strong>buy_pct</strong> and <strong>sell_pct</strong> only (idle_reentry_hours is time, not amplitude). Computed by <code>bot/sherpa/volatility.py</code> with 1h cache + dynamic coin discovery from <code>bot_config</code> (no hardcoded list — any active symbol works).
+          <br>Values above are a static snapshot taken at commit <code>3ba1132</code> (2026-05-22 S81). Live values move slowly: refresh manually next time you audit.
+        </div>
 
-        <div style="font-family: var(--mono); font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; margin: 16px 0 8px;">RANGES — absolute clamps</div>
+        <div style="font-family: var(--mono); font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; margin: 16px 0 8px;">RANGES — absolute clamps + amplitude cap</div>
         <table class="rules">
           <thead>
             <tr><th>Parameter</th><th class="num">min</th><th class="num">max</th></tr>
@@ -670,11 +664,14 @@
             <tr><td>idle_reentry_hours</td><td class="num">0.5</td><td class="num">6.0</td></tr>
           </tbody>
         </table>
+        <div class="footnote" style="margin-top: 6px;">
+          After the regime base × volatility multiplier is computed and absolute-clamped above, an <strong>amplitude cap</strong> bounds the change vs the current <code>bot_config</code> value:
+          <code>current × (1 − MAX_DELTA_PCT) ≤ proposed ≤ current × (1 + MAX_DELTA_PCT)</code>, with <code>MAX_DELTA_PCT = 0.30</code> (30%). Skipped when current is <code>None</code> or 0 (first run). Cap source: <code>config/settings.py → HardcodedRules.MAX_DELTA_PCT</code>.
+          <br>Stop-buy lamp: <code>proposed_stop_buy_active = (regime == "extreme_fear")</code> — derived from the slow loop, no longer from the fast-loop risk_score threshold. Stop-buy is Board-only (Sherpa never writes it, only logs would-have).
+        </div>
 
         <div class="footnote">
-          Source: <code>bot/sherpa/parameter_rules.py</code> — parsed manually at build time.
-          Sprint 1 only uses regime <em>neutral</em>; other regimes are pre-wired for Sprint 2 (slow loop / regime detection).
-          Drop ladder and pump ladder are mutually exclusive (only the strongest match fires).
+          Source: <code>bot/sherpa/parameter_rules.py</code> + <code>bot/sherpa/volatility.py</code> — parsed manually at build time. Sprint 2 active: <code>final = clamp_amplitude( clamp_range( BASE_TABLE[regime] × volatility_multiplier ), current )</code>. The Sprint-1 fast-signal ladders (drop/pump/funding/speed_of_fall) were removed in brief 81a Block 2 because they fired on fast-loop noise and produced 6-minute proposal flicker. Phase B will reintroduce fast intelligence on the Sentinel side, not here.
         </div>
       </div>
       </details>
