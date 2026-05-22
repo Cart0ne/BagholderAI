@@ -1,22 +1,32 @@
-"""Sherpa entry point (Sprint 1).
+"""Sherpa entry point (Sprint 2, Brief 81a).
 
 Loop:
     every 120s:
-        1. read latest sentinel_scores row (score_type='fast')
-        2. if no score yet -> log + sleep
-        3. for each Grid bot active+manual in bot_config:
+        1. read latest sentinel_scores row with score_type='slow'
+           (4h cadence; falls back to defaults if no row yet)
+        2. read regime via regime_reader (slow-loop derived)
+        3. compute per-coin volatility multipliers (cached 1h)
+        4. for each Grid bot active+manual in bot_config:
              a. read current parameters
-             b. compute proposed parameters (parameter_rules)
-             c. compute proposed_stop_buy_active = (risk > 90)
+             b. compute proposed parameters (parameter_rules):
+                base(regime) × volatility_multiplier, clamped, capped vs current
+             c. compute proposed_stop_buy_active = (regime == "extreme_fear")
              d. check cooldown (cooldown_manager)
              e. if SHERPA_MODE=dry_run (default):
-                   INSERT sherpa_proposals + log SHERPA_PROPOSAL
+                   INSERT sherpa_proposals (with on-change + heartbeat filter)
              f. if SHERPA_MODE=live:
                    for each non-cooldown changed param: config_writer.write_parameter
-                   log SHERPA_ADJUSTMENT (or SHERPA_COOLDOWN per skipped param)
 
-Communication is via Supabase only. If Sentinel is down, Sherpa just
-keeps reading the last score it can find — Grid keeps trading on the
+Brief 81a explicit changes vs Sprint 1:
+- Fast-loop signals removed (449 flips in 16d caused 6-minute flicker).
+- Per-coin volatility scaling (BONK no longer gets BTC's sell_pct=1.5).
+- Amplitude cap |Δ|/current ≤ MAX_DELTA_PCT (configurable).
+
+Sentinel is NOT modified by this brief; the decoupling is implemented
+via query filter (score_type='slow') on Sherpa's side only.
+
+Communication is via Supabase only. If Sentinel is down, Sherpa keeps
+reading the last available slow score — Grid keeps trading on the
 parameters bot_config currently holds.
 """
 
@@ -39,6 +49,7 @@ from bot.sherpa.config_writer import write_parameter
 from bot.sherpa.cooldown_manager import latest_manual_change, parameters_in_cooldown
 from bot.sherpa.parameter_rules import calculate_parameters, is_changed
 from bot.sherpa.regime_reader import get_current_regime
+from bot.sherpa.volatility import get_volatility_multipliers
 
 logger = logging.getLogger("bagholderai.sherpa")
 
@@ -49,10 +60,15 @@ LOOP_INTERVAL_S = 120
 # insert, write at least one row per symbol per SHERPA_HEARTBEAT_S so
 # dashboards know Sherpa is alive.
 SHERPA_HEARTBEAT_S = 600  # 10 min
-STALE_SCORE_S = 5 * 60          # >5 min old triggers a stale warning
+# Brief 81a (Sprint 2): Sherpa now reads slow-loop rows, emitted every 4h.
+# Stale window is 6h = 4h cadence + 2h slack for backend hiccups.
+STALE_SCORE_S = 6 * 60 * 60
 TELEGRAM_THROTTLE_S = 10 * 60   # 1 message per kind per bot per 10 min
 PROPOSED_PARAMS = ("buy_pct", "sell_pct", "idle_reentry_hours")
-RISK_STOP_BUY_THRESHOLD = 90    # would-have-activated stop_buy on Grid
+# Brief 81a Block 2: stop_buy is now derived from the slow-loop regime
+# (decision Board 2026-05-22: extreme_fear → stop_buy lamp ON), replacing
+# the Sprint-1 fast-loop threshold risk_score > 90.
+STOP_BUY_REGIME = "extreme_fear"
 
 # Brief 70b (S70 2026-05-10): default OFF al riavvio post-DRY_RUN per
 # evitare spam Telegram durante calibrazione. Max abilita via env quando
@@ -130,53 +146,77 @@ def run_sherpa() -> None:
 
     while not shutting_down["v"]:
         try:
-            score = _fetch_latest_score(supabase)
+            # Brief 81a Block 2: read slow-loop row only (4h cadence).
+            # If no slow row yet, fall back to defaults — the loop still
+            # proposes neutral params so dashboards stay alive.
+            score = _fetch_latest_slow_score(supabase)
             if score is None:
-                logger.info("No sentinel_scores yet; sleeping.")
-                time.sleep(LOOP_INTERVAL_S)
-                continue
+                logger.info("No slow sentinel_scores row yet; using defaults.")
+                risk = 50
+                opp = 50
+                btc_price = None
+            else:
+                score_age_s = _score_age_seconds(score)
+                if score_age_s is not None and score_age_s > STALE_SCORE_S:
+                    logger.warning(
+                        f"Slow sentinel score is {score_age_s:.0f}s old (stale)."
+                    )
+                    log_event(
+                        severity="warn",
+                        category="safety",
+                        event="SHERPA_STALE_SCORE",
+                        message=f"Slow score age {score_age_s:.0f}s",
+                        details={
+                            "score_age_seconds": score_age_s,
+                            "last_score_at": score.get("created_at"),
+                            "score_type": "slow",
+                        },
+                    )
+                risk = int(score.get("risk_score") or 50)
+                opp = int(score.get("opportunity_score") or 50)
+                btc_price = score.get("btc_price")
 
-            score_age_s = _score_age_seconds(score)
-            if score_age_s is not None and score_age_s > STALE_SCORE_S:
-                logger.warning(f"Sentinel score is {score_age_s:.0f}s old (stale).")
-                log_event(
-                    severity="warn",
-                    category="safety",
-                    event="SHERPA_STALE_SCORE",
-                    message=f"Score age {score_age_s:.0f}s",
-                    details={"score_age_seconds": score_age_s, "last_score_at": score.get("created_at")},
-                )
-
-            risk = int(score.get("risk_score", 50))
-            opp = int(score.get("opportunity_score", 50))
-            fast_signals = _signals_from_score(score)
-            # Sprint 2 (S77): regime now comes from Sentinel's slow loop
-            # (sentinel_scores.score_type='slow'). Fallback to "neutral"
-            # if no slow row exists yet (regime_reader handles it).
             current_regime = get_current_regime(supabase)
-            proposed_params, breakdown = calculate_parameters(
-                regime=current_regime, fast_signals=fast_signals
-            )
-            proposed_stop_buy_active = risk > RISK_STOP_BUY_THRESHOLD
-            proposed_regime = breakdown.get("regime", current_regime)
+            proposed_stop_buy_active = (current_regime == STOP_BUY_REGIME)
 
             bots = _fetch_active_manual_bots(supabase)
+            # Brief 81a Block 1: per-coin volatility multipliers, computed
+            # once per cycle and cached 1h inside volatility module.
+            symbols = [b["symbol"] for b in bots]
+            multipliers = get_volatility_multipliers(symbols)
+
             for bot in bots:
+                symbol = bot["symbol"]
+                current_params = {
+                    "buy_pct": _f(bot.get("buy_pct")),
+                    "sell_pct": _f(bot.get("sell_pct")),
+                    "idle_reentry_hours": _f(bot.get("idle_reentry_hours")),
+                }
+                vol_mult = multipliers.get(symbol, 1.0)
+                proposed_params, breakdown = calculate_parameters(
+                    regime=current_regime,
+                    current_params=current_params,
+                    volatility_multiplier=vol_mult,
+                )
+                proposed_regime = breakdown.get("regime", current_regime)
+
                 # symbol_price is fetched per-bot from Binance spot. Best-
                 # effort: a fetch failure logs and stores None — the row
                 # still gets written, replay can fall back to klines for
                 # that timestamp.
-                symbol_price = _fetch_symbol_price(bot["symbol"])
+                symbol_price = _fetch_symbol_price(symbol)
                 _handle_bot(
                     supabase=supabase,
                     notifier=notifier,
                     bot=bot,
                     risk=risk,
                     opp=opp,
+                    current=current_params,
                     proposed=proposed_params,
                     proposed_regime=proposed_regime,
                     proposed_stop_buy_active=proposed_stop_buy_active,
-                    btc_price=score.get("btc_price"),
+                    volatility_multiplier=vol_mult,
+                    btc_price=btc_price,
                     symbol_price=symbol_price,
                     dry_run=dry_run,
                     last_alert_ts=last_alert_ts,
@@ -237,11 +277,17 @@ def _bootstrap_last_proposed(supabase) -> dict[str, dict]:
     return out
 
 
-def _fetch_latest_score(supabase) -> Optional[dict]:
+def _fetch_latest_slow_score(supabase) -> Optional[dict]:
+    """Read the most recent score_type='slow' row from sentinel_scores.
+
+    Brief 81a Block 2: Sherpa no longer reads fast-loop rows. The slow
+    loop emits every 4h, so risk_score / opportunity_score / btc_price
+    move at most every 4h — proposals stay stable between emissions.
+    """
     res = (
         supabase.table("sentinel_scores")
         .select("*")
-        .eq("score_type", "fast")
+        .eq("score_type", "slow")
         .order("created_at", desc=True)
         .limit(1)
         .execute()
@@ -259,18 +305,6 @@ def _score_age_seconds(score: dict) -> Optional[float]:
     except Exception:
         return None
     return (datetime.now(timezone.utc) - ts).total_seconds()
-
-
-def _signals_from_score(score: dict) -> dict:
-    """Sentinel writes the raw signals back into sentinel_scores.raw_signals;
-    fall back to the top-level columns when raw_signals is missing.
-    """
-    raw = score.get("raw_signals") or {}
-    return {
-        "btc_change_1h": raw.get("btc_change_1h", score.get("btc_change_1h")),
-        "speed_of_fall_accelerating": raw.get("speed_of_fall_accelerating", False),
-        "funding_rate": score.get("funding_rate"),
-    }
 
 
 def _fetch_active_manual_bots(supabase) -> list[dict]:
@@ -306,9 +340,11 @@ def _handle_bot(
     bot: dict,
     risk: int,
     opp: int,
+    current: dict,
     proposed: dict,
     proposed_regime: str,
     proposed_stop_buy_active: bool,
+    volatility_multiplier: float,
     btc_price,
     symbol_price,
     dry_run: bool,
@@ -318,11 +354,6 @@ def _handle_bot(
     last_write_ts_per_symbol: dict,
 ) -> None:
     symbol = bot["symbol"]
-    current = {
-        "buy_pct": _f(bot.get("buy_pct")),
-        "sell_pct": _f(bot.get("sell_pct")),
-        "idle_reentry_hours": _f(bot.get("idle_reentry_hours")),
-    }
 
     cooldown_locked = parameters_in_cooldown(supabase, symbol, PROPOSED_PARAMS)
     cooldown_active = bool(cooldown_locked)
@@ -444,6 +475,8 @@ def _handle_bot(
                     "old": current[parameter],
                     "new": proposed[parameter],
                     "risk_score": risk,
+                    "regime": proposed_regime,
+                    "volatility_multiplier": volatility_multiplier,
                 },
             )
     if (would_have_changed and proposal_changed

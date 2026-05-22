@@ -1,25 +1,36 @@
-"""Sherpa parameter rules (Sprint 1).
+"""Sherpa parameter rules (Sprint 2, Brief 81a).
 
-Two-layer architecture (per CEO brief, board-approved):
-    final = base(regime) + sum(delta_i(fast_signals)), clamped to ranges.
+Three structural changes vs Sprint 1:
 
-In Sprint 1 only the adjustment layer is active: regime is hardcoded to
-"neutral". The base table for the other regimes is present in this file
-ready for Sprint 2 (slow loop / regime detection from F&G + CMC) — at
-that point parameter_rules.calculate_parameters will simply receive a
-regime != "neutral" and the same code path will work unchanged.
+1. **Per-coin volatility scaling** — buy_pct and sell_pct from the base
+   regime table are scaled by a per-symbol multiplier (BTC anchor = 1.0).
+   A more volatile coin (e.g. BONK with ~3× BTC stdev) gets a wider
+   sell_pct, so Sherpa stops proposing identical numbers for BTC/SOL/BONK.
+   idle_reentry_hours is a time, not an amplitude — left unscaled.
 
-The risk_score is mapped to fast-signal flags via _signals_from_risk
-so Sprint 1 stays read-from-DB (we only have sentinel_scores.risk_score
-and a few raw_signals fields). When Sprint 2 wires the slow-loop tables,
-this can be replaced with a signal-aware version.
+2. **Slow-loop only** — the Sprint-1 fast-signal ladders
+   (DROP_LADDER / PUMP_LADDER / FUNDING_*_LADDER / SPEED_OF_FALL_DELTA)
+   are gone. Brain Analysis 2026-05-22 documented 449 fast-loop flips
+   in 16 days driving a 6-minute proposal flicker. With Sprint 2 the
+   only dynamic input is the slow-loop regime, which transitions every
+   few hours. fast_signals is no longer a parameter of this function.
+
+3. **Amplitude cap** — after base × multiplier and after absolute
+   clamps, the final value is bounded to
+       current * (1 - MAX_DELTA_PCT)  <=  proposed  <=  current * (1 + MAX_DELTA_PCT)
+   so a single Sherpa tick cannot double or halve a parameter. The
+   cap is skipped when current is None (parameter missing in
+   bot_config — let the first proposal populate it).
 """
 
 from __future__ import annotations
 
 from typing import Optional
 
-# Base layer — Sprint 1 uses NEUTRAL only. Other rows exist for Sprint 2.
+from config.settings import HardcodedRules
+
+# Base layer — one row per regime, anchored on BTC volatility (multiplier=1.0).
+# Other coins multiply the buy_pct/sell_pct entries by their volatility ratio.
 BASE_TABLE: dict[str, dict[str, float]] = {
     "extreme_fear":   {"buy_pct": 2.5, "sell_pct": 1.0, "idle_reentry_hours": 4.0},
     "fear":           {"buy_pct": 1.8, "sell_pct": 1.2, "idle_reentry_hours": 2.0},
@@ -28,115 +39,89 @@ BASE_TABLE: dict[str, dict[str, float]] = {
     "extreme_greed":  {"buy_pct": 0.5, "sell_pct": 3.0, "idle_reentry_hours": 0.5},
 }
 
-# Adjustment layer — fast-signal deltas applied on top of the base.
-# Each tuple is (rule_name, predicate_kwarg, d_buy, d_sell, d_idle).
-# Drop ladder is mutually exclusive (only the strongest match fires);
-# pump ladder likewise. Funding has its own pair of ladders. speed_of_fall
-# is independent.
-DROP_LADDER = [
-    # threshold_pct, name, d_buy, d_sell, d_idle
-    (-10, "btc_drop_10pct_1h", 1.5, -0.7, 3.0),
-    (-5,  "btc_drop_5pct_1h",  1.0, -0.5, 2.0),
-    (-3,  "btc_drop_3pct_1h",  0.5, -0.3, 1.0),
-]
-PUMP_LADDER = [
-    (5, "btc_pump_5pct_1h", -0.5, 1.0, -0.5),
-    (3, "btc_pump_3pct_1h", -0.3, 0.5, -0.3),
-]
-FUNDING_LONG_LADDER = [
-    (0.0005, "funding_long_strong",  0.4, -0.2, 0.5),
-    (0.0003, "funding_long",         0.2, -0.1, 0.3),
-]
-FUNDING_SHORT_LADDER = [
-    (-0.0003, "funding_short_strong", -0.2, 0.3, -0.3),
-    (-0.0001, "funding_short",        -0.1, 0.1, -0.2),
-]
-SPEED_OF_FALL_DELTA = (0.3, -0.2, 0.5)  # d_buy, d_sell, d_idle
-
-# Absolute clamps. Hard limits regardless of regime + delta arithmetic.
+# Absolute hard clamps. Final guard regardless of regime × multiplier.
+# Kept identical to Sprint 1 — Brief 81a Block 3 instructs CC to start
+# from the existing ranges and ask the Board if saturation appears.
 RANGES = {
     "buy_pct":            (0.3, 3.0),
     "sell_pct":           (0.8, 4.0),
     "idle_reentry_hours": (0.5, 6.0),
 }
 
+# Parameters that scale with per-coin volatility. idle_reentry_hours is
+# time (not amplitude) and is left unscaled.
+VOLATILITY_SCALED = ("buy_pct", "sell_pct")
+
 
 def calculate_parameters(
-    regime: str = "neutral",
-    fast_signals: Optional[dict] = None,
+    regime: str,
+    current_params: dict,
+    volatility_multiplier: float = 1.0,
 ) -> tuple[dict, dict]:
-    """Apply base + delta and return (final_params, breakdown).
+    """Apply base(regime) × per-coin volatility, then absolute clamps,
+    then amplitude cap relative to current_params. Returns (final, breakdown).
 
-    final_params keys: buy_pct, sell_pct, idle_reentry_hours.
-    breakdown lists which rules fired with their per-rule deltas, for
-    logging in sherpa_proposals.cooldown_parameters / raw_signals.
+    Args:
+        regime: one of BASE_TABLE keys; unknown values fall back to "neutral".
+        current_params: {buy_pct, sell_pct, idle_reentry_hours} as currently
+            stored in bot_config for this symbol. None values are allowed
+            (e.g. first run) — the amplitude cap is skipped for those keys.
+        volatility_multiplier: per-symbol scalar from volatility module.
+            BTC anchor = 1.0. Coins with > 1.0 get wider amplitude params.
+
+    breakdown logs the regime, base row, multiplier used, raw scaled
+    values, clamp_applied flags, cap_applied flags, and the final dict —
+    so sherpa_proposals.raw_signals stays auditable.
     """
     if regime not in BASE_TABLE:
         regime = "neutral"
     base = BASE_TABLE[regime]
-    fast_signals = fast_signals or {}
 
-    breakdown: dict = {"regime": regime, "base": dict(base), "rules": []}
-    d_buy = d_sell = d_idle = 0.0
-
-    change_1h = fast_signals.get("btc_change_1h")
-    if change_1h is not None:
-        for threshold, name, db, ds, di in DROP_LADDER:
-            if change_1h <= threshold:
-                d_buy += db
-                d_sell += ds
-                d_idle += di
-                breakdown["rules"].append({"name": name, "d_buy": db, "d_sell": ds, "d_idle": di})
-                break
+    # Step 1: base × volatility (only for amplitude params).
+    raw: dict[str, float] = {}
+    for k in BASE_TABLE[regime]:
+        if k in VOLATILITY_SCALED:
+            raw[k] = base[k] * float(volatility_multiplier)
         else:
-            for threshold, name, db, ds, di in PUMP_LADDER:
-                if change_1h >= threshold:
-                    d_buy += db
-                    d_sell += ds
-                    d_idle += di
-                    breakdown["rules"].append({"name": name, "d_buy": db, "d_sell": ds, "d_idle": di})
-                    break
+            raw[k] = base[k]
 
-    if fast_signals.get("speed_of_fall_accelerating"):
-        db, ds, di = SPEED_OF_FALL_DELTA
-        d_buy += db
-        d_sell += ds
-        d_idle += di
-        breakdown["rules"].append(
-            {"name": "speed_of_fall_accelerating", "d_buy": db, "d_sell": ds, "d_idle": di}
-        )
+    # Step 2: absolute clamps.
+    clamped: dict[str, float] = {}
+    clamp_applied: dict[str, bool] = {}
+    for k, v in raw.items():
+        c = _clamp(k, v)
+        clamped[k] = c
+        clamp_applied[k] = c != round(v, 4)
 
-    funding = fast_signals.get("funding_rate")
-    if funding is not None:
-        if funding > 0:
-            for threshold, name, db, ds, di in FUNDING_LONG_LADDER:
-                if funding > threshold:
-                    d_buy += db
-                    d_sell += ds
-                    d_idle += di
-                    breakdown["rules"].append(
-                        {"name": name, "d_buy": db, "d_sell": ds, "d_idle": di}
-                    )
-                    break
-        else:
-            for threshold, name, db, ds, di in FUNDING_SHORT_LADDER:
-                if funding < threshold:
-                    d_buy += db
-                    d_sell += ds
-                    d_idle += di
-                    breakdown["rules"].append(
-                        {"name": name, "d_buy": db, "d_sell": ds, "d_idle": di}
-                    )
-                    break
+    # Step 3: amplitude cap relative to current_params. Skipped where
+    # current is missing (None) or zero (cap formula degenerate).
+    final: dict[str, float] = {}
+    cap_applied: dict[str, bool] = {}
+    max_delta = HardcodedRules.MAX_DELTA_PCT
+    for k, v in clamped.items():
+        cur = current_params.get(k)
+        if cur is None or float(cur) <= 0:
+            final[k] = v
+            cap_applied[k] = False
+            continue
+        cur_f = float(cur)
+        up = cur_f * (1.0 + max_delta)
+        down = cur_f * (1.0 - max_delta)
+        capped = max(down, min(up, v))
+        final[k] = round(capped, 4)
+        cap_applied[k] = capped != v
 
-    raw = {
-        "buy_pct": base["buy_pct"] + d_buy,
-        "sell_pct": base["sell_pct"] + d_sell,
-        "idle_reentry_hours": base["idle_reentry_hours"] + d_idle,
+    breakdown = {
+        "regime": regime,
+        "base": dict(base),
+        "volatility_multiplier": round(float(volatility_multiplier), 4),
+        "raw": {k: round(v, 4) for k, v in raw.items()},
+        "clamped": dict(clamped),
+        "clamp_applied": clamp_applied,
+        "cap_applied": cap_applied,
+        "max_delta_pct": max_delta,
+        "final": dict(final),
     }
-    final = {k: _clamp(k, v) for k, v in raw.items()}
-    breakdown["delta_total"] = {"d_buy": d_buy, "d_sell": d_sell, "d_idle": d_idle}
-    breakdown["final"] = dict(final)
     return final, breakdown
 
 
@@ -148,8 +133,7 @@ def _clamp(name: str, v: float) -> float:
 def is_changed(current: Optional[float], proposed: float, tol: float = 0.01) -> bool:
     """Rule-of-thumb equality check used by the Sherpa loop. None means
     the parameter is missing in bot_config — treat as a change so it gets
-    populated.
-    """
+    populated."""
     if current is None:
         return True
     return abs(float(current) - float(proposed)) > tol

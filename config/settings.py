@@ -106,6 +106,16 @@ class HardcodedRules:
     # Last Shot Buy (task 1.57)
     MIN_LAST_SHOT_USD = 5.0  # Min remaining cash to trigger a last-shot buy
 
+    # Sherpa amplitude cap (Brief 81a, Sprint 2 2026-05-22).
+    # Maximum per-step relative change Sherpa is allowed to propose on any
+    # of (buy_pct, sell_pct, idle_reentry_hours). After per-coin volatility
+    # scaling and absolute clamps, the final value is bounded to
+    #     current * (1 - MAX_DELTA_PCT)  <=  proposed  <=  current * (1 + MAX_DELTA_PCT)
+    # Prevents the rule engine from doubling or halving a parameter in a
+    # single tick even when the underlying volatility / regime change
+    # would justify it. Set to 0.30 per brief default.
+    MAX_DELTA_PCT = 0.30
+
     # SWEEP / LAST SHOT slippage buffer (Brief 78b, S78 fase 2 2026-05-16).
     # When the bot spends all remaining cash on a market BUY, Binance executes a
     # base_order at fill_price > check_price (positive slippage). On testnet the

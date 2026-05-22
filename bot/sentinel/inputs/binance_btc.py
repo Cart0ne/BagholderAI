@@ -71,3 +71,19 @@ def fetch_klines_1m(symbol: str = "BTCUSDT", limit: int = 60) -> list[tuple[int,
     raw = r.json()
     # Each kline is [openTime, open, high, low, close, volume, closeTime, ...].
     return [(int(k[6]), float(k[4])) for k in raw]
+
+
+def fetch_klines_1h(symbol: str, limit: int = 168) -> list[tuple[int, float]]:
+    """GET /api/v3/klines?interval=1h — used by Sherpa volatility module
+    to compute per-coin rolling stdev over N days (default 168 = 7 days).
+    Returns a list of (close_time_ms, close_price) tuples in chronological
+    order. Symbol must be Binance format (e.g. 'BTCUSDT', 'BONKUSDT').
+    """
+    r = requests.get(
+        f"{_BASE}/api/v3/klines",
+        params={"symbol": symbol, "interval": "1h", "limit": limit},
+        timeout=_TIMEOUT,
+    )
+    r.raise_for_status()
+    raw = r.json()
+    return [(int(k[6]), float(k[4])) for k in raw]
