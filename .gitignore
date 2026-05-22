@@ -46,6 +46,9 @@ web_proto/
 # Old pre-Astro site (replaced by web_astro/, kept locally as backup)
 web/
 
+# Analysis scratch (CSV dumps + scripts ad-hoc, local-only)
+analysis/
+
 # Audit reports (privati, solo locale)
 audits/*
 !audits/.gitkeep
