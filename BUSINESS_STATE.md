@@ -1,8 +1,8 @@
 # BUSINESS_STATE.md
 
-**Last updated:** 2026-05-22 — Session 81 opening (Brain Analysis CONSEGNATA, NO-GO Sherpa step 4, three-phase brain architecture decisa, Dev.to Post 2 LIVE, A-Ads embed refreshed). I 3 attori in parallelo (CEO + CC + Max) sono operativi.
+**Last updated:** 2026-05-22 — Session 81 closure (Sherpa Sprint 2 SHIPPED end-to-end live, brief 81b Haiku commentary direction safety SHIPPED, restart Mac Mini PID 28217, Dev.to engagement S81 attivo, IH valutazione). I 3 attori in parallelo (CEO + CC + Max) sono operativi.
 **Updated by:** CEO + CC
-**Basato su:** PROJECT_STATE.md aggiornato 2026-05-22 (S80a chiusura) + brief CEO update inline S81
+**Basato su:** PROJECT_STATE.md aggiornato 2026-05-22 (S81 chiusura) + brief CEO `business_state_update_s81.md`
 
 ---
 
@@ -44,7 +44,8 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 - **Profilo completato:** bio, coding section, work section, series "BagHolderAI"
 - **Post 1 LIVE:** "An AI That Can't Trade, a Human That Can't Say No" — canonical URL `bagholderai.lol`, UTM footer, serie "BagHolderAI". Pubblicato 2026-05-20 sera. Views/reactions: ancora ~0 (account nuovo, nessun follower, algoritmo non spinge).
 - **Post 2 LIVE:** "The Day Our Bot Ran Out of Money" — cross-posted 2026-05-22, canonical URL, UTM footer, serie "BagHolderAI".
-- **Community engagement attivo:**
+- **Engagement S81:** commento dettagliato su "AI Agent Failure Modes Beyond Hallucination" (Maxim Saplin) — 6 failure modes mappati all'esperienza BagHolderAI con link UTM al blog. Pubblicato 2026-05-22.
+- **Community engagement attivo (storico):**
   - Commento su "Is Writing a Tech Blog Still Worth It?" (Deneth Rajapaksha) → 2 like, risposta dell'autore che chiede il link al blog → reply con link UTM + invito feedback
   - Presentazione nel Welcome Thread v376 → risposta entusiasta di Lenard Francis (FastAPI AlertEngine) → reply dettagliato con 3 errori strategici del CEO, 3 link UTM, domanda di chiusura
   - Reply a Lenard Francis (confidence gating, AlertEngine) + Valentin Monteiro (architect bottleneck shifting). Entrambi nel Welcome Thread v376.
@@ -70,7 +71,8 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 ### Distribuzione blog
 - Documento strategia distribuzione `marketing_strategy_distribution.md`
 - Dev.to scelto come primo canale (cross-post, audience dev built-in, SEO resta nostro)
-- Reddit/Hashnode/Indie Hackers/newsletter: valutazione futura post-Dev.to baseline
+- **Indie Hackers in valutazione (2026-05-22 S81)**: possibile target per cross-post automation Dev.to + IH + sito. Decisione rimandata al weekend.
+- Reddit/Hashnode/newsletter: valutazione futura post-Dev.to baseline
 
 ### SEO / Google Search Console
 - 230 impressions, 0 click, posizione media 9.5
@@ -122,6 +124,10 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 
 | Data | Decisione | Perché |
 |---|---|---|
+| 2026-05-22 (S81 closure) | **Brief 81a Sherpa Sprint 2 SHIPPED**: per-coin volatility + slow-loop gate + amplitude cap 30% | Chiude i 3 pre-requisiti minimi del Brain Analysis. BONK ora riceve sell_pct ~2× di BTC (live: BTC 1.20 / SOL 1.30 / BONK 2.52). Proposte cambiano max ogni 4h (regime slow), non più ogni 2 minuti |
+| 2026-05-22 (S81 closure) | **Brief 81b Haiku commentary SHIPPED**: `vs_yesterday.direction` pre-calcolato in Python + prompt stretto (80 parole, max 100) | Audit 60 entry trovò 1 errore (Day 15: -5.03% misclassificato "better" di -4.12%). Fix strutturale: Python calcola direction, Haiku la legge. Prompt sostituisce "3-4 lines ~250 chars" con "80 words / max 100" + 2 nuove regole NUMBERS/DIRECTION |
+| 2026-05-22 (S81) | **Fast ladder (DROP/PUMP/FUNDING/SPEED_OF_FALL) cancellate da Sherpa** | Phase B le sposterà in Sentinel coin-aware. Codice morto rimosso, git history preserva. Decisione 2a delegata da Board |
+| 2026-05-22 (S81) | **`proposed_stop_buy_active` legato a `regime == "extreme_fear"`** | De-coupling completo dal fast loop. Lampada ON solo nei regimi più gravi (slow cadence 4h). Decisione 1a delegata da Board |
 | 2026-05-22 (S81) | **NO-GO Sherpa step 4** | Brain Analysis: -$3.94 vs Board, non coin-aware, 449 fast-loop flips, flicker 6min. Tre fix architetturali richiesti prima di riconsiderare |
 | 2026-05-22 (S81) | **Three-phase brain architecture (A/B/C)** | A: Sherpa per-coin + slow gate + cap (brief 81a). B: Sentinel coin-aware (EMA/RSI per-coin). C: sentiment online. Ogni fase testata indipendentemente |
 | 2026-05-22 (S81) | **Grid-only mainnet è opzione legittima** | Grid +$12.52 in mercato -0.47%. Funziona senza cervello. Possibile andare live Grid-only mentre Sherpa matura |
@@ -168,7 +174,9 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 
 | Tema | Stato | Note |
 |---|---|---|
-| **Brief 81a Sherpa Sprint 2** | HIGH, prossima sessione CC | 3 blocchi: per-coin volatility scaling (dynamic coin discovery), slow-loop gate, amplitude cap 30%. Piano italiano prima del codice. ~3-4h |
+| **[S81 NEW] Cross-post automation Dev.to + Indie Hackers** | Decisione rimandata post-weekend | Quando un post va live su `web_astro/src/content/blog/`, script che pubblica su Dev.to via API (canonical URL, tags, serie) + prepara testo adattato per IH. ~2-3h stimato |
+| **[S81 NEW] Audit Area 2 durante osservazione Sherpa** | Proposto CC | Eseguibile nei 7-10gg DRY_RUN Sherpa Sprint 2. Fresh CC + brief `audit_request_*.md`. ~30-45min |
+| ~~Brief 81a Sherpa Sprint 2~~ | ✅ DONE (S81) | Shipped commit `3ba1132`. Verifica live: BTC/SOL/BONK proposals diversi |
 | **Sito TF narrativa update** | 🆕 Prossima sessione S80 | "dal dottore" → "on Tier 1-2". SVG + badge. ~30-45min. Apple Note + memoria dedicata |
 | **Counterfactual tracker: aggiungere regime Sentinel** | 🆕 Nice-to-have post-osservazione | `counterfactual.py` non logga regime. Utile per correlare skip ↔ regime. ~30-45min. CEO decide se vale dopo 1-2 settimane di dati |
 | **Audit Area 2 (coerenza progetto)** | 🆕 Mai eseguito, proposta CC | Roadmap vs PROJECT_STATE vs BUSINESS_STATE consistency check. Cadenza 90gg superata da sempre. ~30-45min fresh CC |
@@ -185,11 +193,12 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 | Vincolo | Scadenza | Note |
 |---|---|---|
 | **Go-live mainnet** | Fine giugno / inizio luglio | Posticipato da "18-21 maggio" a sistema completo: Grid + Sentinel testato + Sherpa attivato su testnet |
-| **Sherpa LIVE su testnet** | Post osservazione Sentinel 1 settimana | Un parametro alla volta (sell_pct primo) |
+| **Sherpa LIVE su testnet** | Post seconda Brain Analysis (S83-S85 candidato) | Un parametro alla volta (sell_pct primo) |
+| **DRY_RUN Sherpa Sprint 2 osservazione** | 7-10 giorni da 2026-05-22 (~29 maggio - 1 giugno) | Restart PID 28217. Seconda Brain Analysis dopo. Board decide step 4 dopo analisi |
 | **Blog primo post** | DONE 2026-05-15 | "An AI That Can't Trade" live su bagholderai.lol/blog |
 | **Volume 3** | Nessuna deadline | In accumulo, arco narrativo si forma |
 
-**Multi-macchina:** MBP (sviluppo) ↔ Mac Mini (runtime). Repo su commit `0008e4f` (S80a chiusura). Mac Mini ancora su `542b190` (PID parent **74280**, restart 2026-05-18 21:49 CET post-79c), 7 processi. **Restart pending**: S80 UTM signatures (`utils/x_poster.py` + `utils/telegram_notifier.py`) — sarà coperto dal restart S81 post-brief 81a.
+**Multi-macchina:** MBP (sviluppo) ↔ Mac Mini (runtime). Repo su commit `326fd87` (S81 chiusura). Mac Mini su `51204cf` (PID parent **28217**, restart 2026-05-22 20:31 CET post brief 81a+81b), 7 processi. **Restart S81 copre anche UTM signatures S80** (`utils/x_poster.py` + `utils/telegram_notifier.py` ora attivi).
 
 **Piattaforma pubblicazione:** Payhip (free plan, 5% fee). Nessuna urgenza di cambiare.
 
@@ -200,14 +209,15 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 | Cosa | Perché |
 |---|---|
 | **Nessuna blog section su homepage** | Board veto: sposterebbe bot cards sotto la piega. Prima misuriamo effetto CTA swap (Brief 80b shipped) per 1 settimana con UTM |
+| **Nessun cross-post automatico** | Dev.to e IH sono manuali. Automazione in valutazione, decisione post-weekend |
 | **Nessun cross-post Reddit** | Dev.to prima (più facile, meno rischio spam flag). Reddit richiede karma building pre-esistente |
 | **Distribuzione blog su altre piattaforme (oltre Dev.to)** | Dev.to scelto come primo canale 2026-05-20. Reddit/Hashnode/IH/newsletter restano in valutazione post-baseline Dev.to |
 | **HN come canale** | Shadowban completo confermato 2026-05-19 rende Cart0ne inutilizzabile. Nuovo account pianificato ma non urgente — altri canali prioritari |
 | **Volume 3 packaging** | Materiale esiste (~27 sessioni) ma lettura/valutazione rimandate a post-Brain Analysis, quando c'è tempo di attesa naturale durante raccolta dati Sentinel/Sherpa |
 | **Sitemap Google indicizzazione** | Rotta da settimane, blog post non indicizzati. Workaround (`sitemap-0.xml`) inviato 2026-05-19. Debug tecnico per CC in sessione futura |
 | **Go-live mainnet €100** | Decisione S76 CEO: Sherpa scriverà bot_config con soldi veri, va testato prima su testnet. Sequenza Sentinel-first definita. Fine giugno / inizio luglio target |
-| **Sherpa LIVE su testnet** | Brain Analysis NO-GO. Tre fix architetturali richiesti (per-coin, slow-gate, cap). Dopo rework + 7-10gg DRY_RUN + seconda analisi |
-| **Audit Area 2 non eseguito** | Dovuto (cadenza 90gg). CC ha flaggato in S78 fase 2 + S79. Proporre in prossima sessione di breathing |
+| **Sherpa LIVE su testnet** | Sprint 2 SHIPPED in S81 (per-coin / slow-gate / cap). Ora 7-10gg DRY_RUN osservazione + seconda Brain Analysis prima di abilitarlo. Target ~29 maggio - 1 giugno per analisi |
+| **Audit Area 2 non eseguito** | Dovuto (cadenza 90gg). CC ha flaggato in S78fp2/S79/S80/S80a/S81. Proposta CC: eseguirlo nei 7-10gg osservazione Sherpa con fresh CC + audit brief |
 | **Retention cron jobs** | Deliberatamente rimandati: prima analizzare dati Sentinel/Sherpa, poi pulire. Brief separato post-osservazione |
 | **X reply strategy 0 fatte** | Definita 15 maggio ma non ancora eseguita con costanza. Weekend in mezzo + 3 brief shipped hanno consumato la finestra |
 | **Cover V3 non generata** | Solo concept (tempesta + mascotte easter egg). Timing: quando V3 è vicino a chiusura (~S85-90) |
@@ -217,4 +227,4 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 
 ---
 
-*Prossimo aggiornamento: post brief 81a Sherpa Sprint 2 (per-coin rules + slow-gate + cap), o pubblicazione Dev.to Post 3 — whichever comes first.*
+*Prossimo aggiornamento: post seconda Brain Analysis (~29 maggio - 1 giugno), o decisione cross-post automation post-weekend, o pubblicazione Dev.to Post 3 — whichever comes first.*
