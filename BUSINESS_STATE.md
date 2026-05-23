@@ -1,6 +1,6 @@
 # BUSINESS_STATE.md
 
-**Last updated:** 2026-05-22 — Session 81 closure (Sherpa Sprint 2 SHIPPED end-to-end live, brief 81b Haiku commentary direction safety SHIPPED, restart Mac Mini PID 28217, Dev.to engagement S81 attivo, IH valutazione). I 3 attori in parallelo (CEO + CC + Max) sono operativi.
+**Last updated:** 2026-05-23 — Session 82 closure **LOCAL ONLY** (no push). Sito home: nuova sezione **Blog** sotto hero (3 ultimi post live cliccabili → /blog), sezione **Diary** spostata sotto Bots, **card Sentinel/Sherpa rifatte** come `THE WATCHTOWER` (duo Sentinel + NewsKeeper LOCKED) e `SHERPA` (Parameter Tuner LOCKED) con mascot custom da Claude Design. 3 stat-row LIVE-WIRED via Supabase (REGIME, BOTS, STOP BUY). NewsKeeper visibile per la prima volta sul sito (locked, dim). **Push deferito**: rivelazione pubblica attende il brief newskeeper Board.
 **Updated by:** CEO + CC
 **Basato su:** PROJECT_STATE.md aggiornato 2026-05-22 (S81 chiusura) + brief CEO `business_state_update_s81.md`
 
@@ -25,7 +25,7 @@ BagHolderAI è un progetto sperimentale dove un'AI (Claude) gestisce un micro-bu
 ## 2. Marketing In-Flight
 
 ### Sito (stato pubblico)
-TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live card on home + dashboard SHIPPED 2026-05-20 (Brief 80b, commit `b8bdc12`)** — "dal dottore" SVG sostituito con card stile Grid (orange accent, mirror frame), hero text aggiornato a "$500 Grid + $100 TF (Tier 1-2)", pipeline arrow "I tried, your turn" → "TF picks, Grid manages". **Homepage CTA swap SHIPPED (Brief 80b)**: "Read the blog" primario, "Read the diary" + "Live numbers →" secondari outline. Sentinel/Sherpa badge TEST MODE. Dashboard P&L hero unificato. HWW v3 con Auditor entity. Blog infrastructure pronta (brief 75a shipped).
+TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live card on home + dashboard SHIPPED 2026-05-20 (Brief 80b, commit `b8bdc12`)** — "dal dottore" SVG sostituito con card stile Grid (orange accent, mirror frame), hero text aggiornato a "$500 Grid + $100 TF (Tier 1-2)", pipeline arrow "I tried, your turn" → "TF picks, Grid manages". **Homepage CTA swap SHIPPED (Brief 80b)**: "Read the blog" primario, "Read the diary" + "Live numbers →" secondari outline. **Homepage layout update SHIPPED LOCAL S82 (2026-05-23, no push)**: sezione Blog sotto hero (ultimi 3 post cliccabili), sezione Diary spostata sotto Bots. **Watchtower + Sherpa cards SHIPPED LOCAL S82**: card Sentinel→`THE WATCHTOWER` (duo Sentinel + NewsKeeper, primo cameo pubblico del 5° bot dim/locked) + card Sherpa→`SHERPA Parameter Tuner` con mascot Claude Design (flag + mappa). 3 stat-row LIVE-WIRED via Supabase REST: REGIME (5 pip, oggi `FEAR`), BOTS (3 pip rossi auto-adatta), STOP BUY (1 pip, oggi OFF). Dashboard P&L hero unificato. HWW v3 con Auditor entity. Blog infrastructure pronta (brief 75a shipped). **Push S82 deferito**: in attesa del brief newskeeper Board prima di rivelare il cameo pubblicamente.
 
 ### Blog
 - Post 1 LIVE 2026-05-15: "An AI That Can't Trade, a Human That Can't Say No"
@@ -124,6 +124,9 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 
 | Data | Decisione | Perché |
 |---|---|---|
+| 2026-05-23 (S82) | **Homepage Blog section + Diary swap SHIPPED LOCAL** | Blog ora subito sotto hero (alta visibilità per i 3 post live, niente click extra), Diary spostato sotto Bots dove fa da "dietro le quinte" delle card. Reduce funnel friction senza occupare il prime real estate hero-adjacent |
+| 2026-05-23 (S82) | **Watchtower + Sherpa cards rifatte LOCAL** | Sentinel/Sherpa erano placeholder "?" silhouette con 5 zeri. Ora hanno identità grafica forte (mascot custom, palette dim ma riconoscibile), 3 dati LIVE veri (REGIME, BOTS, STOP BUY) e narrazione: Watchtower = duo che vede arrivare. NewsKeeper introdotto come cameo dim (locked) sulla card Watchtower |
+| 2026-05-23 (S82) | **Push deferito a brief newskeeper** | Il sito non rivela NewsKeeper pubblicamente finché non c'è uno stato Python compatibile (brief newskeeper Board ancora untracked in repo). Coerenza: la storia visiva e quella runtime devono procedere insieme |
 | 2026-05-22 (S81 closure) | **Brief 81a Sherpa Sprint 2 SHIPPED**: per-coin volatility + slow-loop gate + amplitude cap 30% | Chiude i 3 pre-requisiti minimi del Brain Analysis. BONK ora riceve sell_pct ~2× di BTC (live: BTC 1.20 / SOL 1.30 / BONK 2.52). Proposte cambiano max ogni 4h (regime slow), non più ogni 2 minuti |
 | 2026-05-22 (S81 closure) | **Brief 81b Haiku commentary SHIPPED**: `vs_yesterday.direction` pre-calcolato in Python + prompt stretto (80 parole, max 100) | Audit 60 entry trovò 1 errore (Day 15: -5.03% misclassificato "better" di -4.12%). Fix strutturale: Python calcola direction, Haiku la legge. Prompt sostituisce "3-4 lines ~250 chars" con "80 words / max 100" + 2 nuove regole NUMBERS/DIRECTION |
 | 2026-05-22 (S81) | **Fast ladder (DROP/PUMP/FUNDING/SPEED_OF_FALL) cancellate da Sherpa** | Phase B le sposterà in Sentinel coin-aware. Codice morto rimosso, git history preserva. Decisione 2a delegata da Board |
@@ -198,7 +201,7 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 | **Blog primo post** | DONE 2026-05-15 | "An AI That Can't Trade" live su bagholderai.lol/blog |
 | **Volume 3** | Nessuna deadline | In accumulo, arco narrativo si forma |
 
-**Multi-macchina:** MBP (sviluppo) ↔ Mac Mini (runtime). Repo su commit `326fd87` (S81 chiusura). Mac Mini su `51204cf` (PID parent **28217**, restart 2026-05-22 20:31 CET post brief 81a+81b), 7 processi. **Restart S81 copre anche UTM signatures S80** (`utils/x_poster.py` + `utils/telegram_notifier.py` ora attivi).
+**Multi-macchina:** MBP (sviluppo) ↔ Mac Mini (runtime). Repo locale MBP avanti di 1 commit S82 (locale, no push). Mac Mini su `51204cf` (PID parent **28217**, restart 2026-05-22 20:31 CET post brief 81a+81b), 7 processi. Niente restart necessario per S82 (solo modifiche sito Astro, no codice bot Python). **Restart S81 copre anche UTM signatures S80** (`utils/x_poster.py` + `utils/telegram_notifier.py` ora attivi).
 
 **Piattaforma pubblicazione:** Payhip (free plan, 5% fee). Nessuna urgenza di cambiare.
 

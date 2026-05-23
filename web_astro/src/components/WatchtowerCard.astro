@@ -1,0 +1,162 @@
+---
+/* THE WATCHTOWER — locked duo card (Sentinel + NewsKeeper).
+   Replaces the standalone Sentinel `BotCardOriginal` on the homepage.
+   Reuses the same CSS shell classes (`.bot-card`, `.bot-frame`,
+   `.bot-stat-row`, `.bot-footer`) as Grid/TF so the 4 cards align
+   pixel-perfect in the .bots-row flex container. */
+import SentinelMascot   from "./SentinelMascot.astro";
+import NewsKeeperMascot from "./NewsKeeperMascot.astro";
+
+const SENTINEL   = "#3b82f6";
+const NEWSKEEPER = "#a855f7";
+---
+
+<article class="bot-card sentinel-active dim tilt-l">
+  <span class="bot-pill testmode-sentinel">TEST</span>
+
+  <div class="bot-head">
+    <span class="bot-name sentinel">THE WATCHTOWER</span>
+    <span class="bot-rarity">DUO · LOCKED</span>
+  </div>
+  <div class="bot-subtitle">Sentinel × NewsKeeper · early warning</div>
+
+  <div class="bot-frame sentinel watchtower-frame">
+    <div class="bot-scanlines"></div>
+    <div class="watchtower-question">?</div>
+    <div class="watchtower-glow"></div>
+
+    <div class="watchtower-duo">
+      <div class="watchtower-mascot watchtower-sentinel">
+        <SentinelMascot size={88} />
+        <span class="watchtower-label" style={`color:${SENTINEL}`}>SENTINEL</span>
+      </div>
+      <div class="watchtower-mascot watchtower-newskeeper">
+        <NewsKeeperMascot size={96} />
+        <span class="watchtower-label" style={`color:${NEWSKEEPER}`}>NEWSKEEPER</span>
+      </div>
+    </div>
+  </div>
+
+  {/* 5 stat rows — same shell as Grid/TF, compacted to 1 line each */}
+  <div class="bot-stat-row">
+    <span class="bot-stat-label">SOURCES</span>
+    <div class="bot-stat-bar-track wt-bar-segmented">
+      <div class="wt-seg" style={`background:${SENTINEL}`}></div>
+      <div class="wt-seg" style={`background:${SENTINEL}`}></div>
+      <div class="wt-seg" style={`background:${SENTINEL}`}></div>
+      <div class="wt-seg" style={`background:${NEWSKEEPER}`}></div>
+    </div>
+    <span class="bot-stat-value" style={`color:${SENTINEL}; opacity:0.85;`}>4</span>
+  </div>
+
+  <div class="bot-stat-row dim">
+    <span class="bot-stat-label">SCAN FREQ</span>
+    <div class="bot-stat-bar-track"><div class="bot-stat-bar-fill" style="width:60%;"></div></div>
+    <span class="bot-stat-value" style="min-width:54px;">60s · 4h</span>
+  </div>
+
+  {/* REGIME — 5 discrete pips (extreme_fear → extreme_greed), one
+       illuminated by watchtower-live.ts based on sentinel_scores.raw_signals.regime. */}
+  <div class="bot-stat-row">
+    <span class="bot-stat-label">REGIME</span>
+    <div class="bot-stat-bar-track wt-bar-segmented wt-regime-bar">
+      <div class="wt-regime-pip" data-regime="extreme_fear"  style="background:#ef4444"></div>
+      <div class="wt-regime-pip" data-regime="fear"          style="background:#f97316"></div>
+      <div class="wt-regime-pip" data-regime="neutral"       style="background:#94a3b8"></div>
+      <div class="wt-regime-pip" data-regime="greed"         style="background:#fcd34d"></div>
+      <div class="wt-regime-pip" data-regime="extreme_greed" style="background:#22c55e"></div>
+    </div>
+    <span class="bot-stat-value" id="wt-regime-value" style="color:rgba(255,255,255,0.4); min-width:64px;">—</span>
+  </div>
+
+  <div class="bot-stat-row dim">
+    <span class="bot-stat-label">ACCURACY</span>
+    <div class="bot-stat-bar-track"><div class="bot-stat-bar-fill" style="width:0%;"></div></div>
+    <span class="bot-stat-value">TBD</span>
+  </div>
+
+  <div class="bot-stat-row dim">
+    <span class="bot-stat-label">ALERTS</span>
+    <div class="bot-stat-bar-track"><div class="bot-stat-bar-fill" style="width:0%;"></div></div>
+    <span class="bot-stat-value">—</span>
+  </div>
+
+  <div class="bot-footer"><span class="arrow sentinel">▸ </span>One reads charts. One reads news. Together they see it coming.</div>
+</article>
+
+<style>
+  .watchtower-frame {
+    position: relative;
+    overflow: hidden;
+  }
+  /* Shared: segmented bar (used by SOURCES, REGIME) */
+  .wt-bar-segmented {
+    display: flex;
+    gap: 2px;
+    background: transparent;
+    overflow: visible;
+  }
+  /* SOURCES segments — 3 sentinel-blue + 1 newskeeper-violet */
+  .wt-seg {
+    flex: 1;
+    height: 100%;
+    border-radius: 2px;
+    opacity: 0.75;
+  }
+  /* REGIME pips — default dim until live-script lights the active one */
+  .wt-regime-pip {
+    flex: 1;
+    height: 100%;
+    border-radius: 2px;
+    opacity: 0.25;
+    transition: opacity 400ms ease-out;
+  }
+  .wt-regime-pip.active { opacity: 1; }
+  .watchtower-question {
+    position: absolute;
+    top: 14px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: var(--font-mono);
+    font-size: 80px;
+    font-weight: 700;
+    line-height: 1;
+    color: rgba(59, 130, 246, 0.07);
+    pointer-events: none;
+  }
+  .watchtower-glow {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse 70% 60% at center,
+                                rgba(59, 130, 246, 0.16) 0%,
+                                rgba(168, 85, 247, 0.10) 45%,
+                                transparent 75%);
+    pointer-events: none;
+  }
+  .watchtower-duo {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 0;
+    width: 100%;
+    height: 100%;
+  }
+  .watchtower-mascot {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    line-height: 1;
+  }
+  .watchtower-sentinel   { filter: drop-shadow(0 0 8px rgba(59, 130, 246, 0.4)); transform: translate(8px, 2px) rotate(3deg); z-index: 2; }
+  .watchtower-newskeeper { filter: drop-shadow(0 0 8px rgba(168, 85, 247, 0.4)); transform: translate(-8px, 0)  rotate(-2deg); z-index: 1; }
+  .watchtower-label {
+    margin-top: 2px;
+    font-family: var(--font-mono);
+    font-size: 7px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    opacity: 0.85;
+  }
+</style>

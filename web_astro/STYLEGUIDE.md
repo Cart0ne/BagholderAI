@@ -640,24 +640,50 @@ per pagina.
 
 ---
 
-## 16. Quando mettere `is:inline` su `<style>`
+## 16. Quando mettere `is:inline` (o `is:global`) su `<style>`
 
 ```astro
 <style is:inline>
   /* ... */
 </style>
+
+<style is:global>
+  /* ... */
+</style>
 ```
 
-`is:inline` impedisce ad Astro di processare/scopare lo stile e lo
-emette verbatim. Usalo quando:
-- Hai bisogno di selezionare elementi generati dinamicamente
-- Stai applicando regole con scope custom (`.roadmap-page details > summary`)
-- Lo stile ha pseudo-elementi (`::before`, `::after`) che Astro
-  scoping potrebbe rompere
-
 Default Astro scopa gli stili al componente (li prefissa con
-`[data-astro-cid-XXX]`). Ottimo per stili locali, problematico per
-pseudo-elementi e selettori discendenti.
+`[data-astro-cid-XXX]`). Ottimo per stili locali, problematico in 3 casi:
+
+- **Pseudo-elementi e selettori discendenti** che Astro scoping potrebbe
+  rompere (es. `details > summary` o `::before`)
+- **Regole con scope custom** (es. `.roadmap-page details > summary`)
+- **Elementi DOM creati dinamicamente via JavaScript** (`document.createElement`)
+  — questi nascono SENZA l'attributo `data-astro-cid-XXX`, quindi il CSS
+  scoped del componente non li matcha e perdono lo styling
+
+`is:inline` vs `is:global`:
+- `is:inline` emette verbatim lo stile inline nell'HTML (niente bundling,
+  niente scope). Buono per regole molto piccole e localizzate
+- `is:global` lascia che Astro bundle lo stile ma rimuove lo scope. Da
+  usare quando vuoi stili condivisi tra istanze + elementi creati da JS
+
+### Lezione dolorosa S82 (2026-05-23)
+
+In `SherpaLockedCard.astro` la riga BOTS rendeva 3 pip rossi server-side
+(stylati correttamente grazie al `data-astro-cid` scoped). Lo script
+`sherpa-live.ts` poi faceva `bar.innerHTML = ""` + `createElement` per
+ricostruire la barra con il count live da `bot_config`. I nuovi `<div>`
+non avevano l'attributo data-astro-cid → CSS scoped non matchava → pip
+invisibili.
+
+Fix: `<style>` → `<style is:global>` nel componente, classi prefissate
+con identificatore unico del componente (`sherpa-bot-pip`, `sherpa-pip-row`,
+ecc.) per evitare collisioni globali.
+
+**Regola operativa**: se il `<script>` del tuo componente crea elementi
+DOM da stilare con classi del `<style>`, **passa `is:global`** o sposta
+quelle classi specifiche in `src/styles/global.css`.
 
 ---
 
