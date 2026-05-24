@@ -1,6 +1,6 @@
 # BUSINESS_STATE.md
 
-**Last updated:** 2026-05-24 — Session 83 closure (con riferimenti a S84 SEO fix shipped same-day). (a) **NewsKeeper Brain #5 LIVE come scaffold standalone Mac Mini** (PID 78098, RSS feeds CoinDesk + CoinTelegraph + Decrypt, classifier keyword MVP rumoroso noto, ship as-is per osservazione 7gg data-first). Pivot Board-approved da CryptoPanic (free Developer tier discontinued 1 aprile 2026) → RSS zero-auth. (b) **SEO audit fix S84 shipped same-day** (commit `c89c8cc`): title/description rewrite su 8 pagine pubbliche, JSON-LD WebSite+Article, sitemap lastmod, drift S47 WebSite schema chiuso. (c) **Dev.to Post 3** cross-postato 24 maggio (22 readers, 0 reactions — account fresco, engagement da costruire). (d) **Volume 3 "From Brain to Eyes"** chiuso a S82, in rilettura. Lancio Payhip previsto settimana 26-31 maggio. **Volume 4 aperto a S83** — arco narrativo: NewsKeeper build → go-live → primi risultati reali. (e) Apple Notes pulizia: 4 attive, 8 obsolete da cancellare manualmente (Max). Todo riscritta per era V4/NewsKeeper. Distribution Channels: integrata strategia Reddit + post killer da nota HN obsoleta.
+**Last updated:** 2026-05-24 — Session 83 closure + addendum stessa giornata (Distribution Channels post-mainnet + CoinDesk Data API scartata). (a) **NewsKeeper Brain #5 LIVE come scaffold standalone Mac Mini** (PID 78098, RSS feeds CoinDesk + CoinTelegraph + Decrypt, classifier keyword MVP rumoroso noto, ship as-is per osservazione 7gg data-first). Pivot Board-approved da CryptoPanic (free Developer tier discontinued 1 aprile 2026) → RSS zero-auth. **CoinDesk Data API anche scartata** (free tier chiuso 21 maggio 2026, paid da $999+/mese fuori budget). (b) **SEO audit fix S84 shipped same-day** (commit `c89c8cc`): title/description rewrite su 8 pagine pubbliche, JSON-LD WebSite+Article, sitemap lastmod, drift S47 WebSite schema chiuso. (c) **Dev.to Post 3** cross-postato 24 maggio (22 readers, 0 reactions — account fresco, engagement da costruire). (d) **Volume 3 "From Brain to Eyes"** chiuso a S82, in rilettura. Lancio Payhip previsto settimana 26-31 maggio. **Volume 4 aperto a S83** — arco narrativo: NewsKeeper build → go-live → primi risultati reali. (e) Apple Notes pulizia: 4 attive, 8 obsolete da cancellare manualmente (Max). Todo riscritta per era V4/NewsKeeper. Distribution Channels: integrata strategia Reddit + post killer da nota HN obsoleta. **Indie Hackers + Product Hunt confermati post-mainnet** (serve storia completa + numeri veri, testnet non funziona come prova).
 **Updated by:** CEO + CC
 **Basato su:** PROJECT_STATE.md aggiornato 2026-05-24 (S83 + S84 closure) + brief CEO BUSINESS_STATE update S83
 
@@ -71,8 +71,10 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 
 ### Distribuzione blog
 - Documento strategia distribuzione `marketing_strategy_distribution.md`
+- **Stato 2026-05-24:** X + Dev.to attivi, nessun nuovo canale aggiunto. Indie Hackers e Product Hunt confermati come **post-mainnet** (serve storia completa + numeri veri).
 - Dev.to scelto come primo canale (cross-post, audience dev built-in, SEO resta nostro)
-- **Indie Hackers in valutazione (2026-05-22 S81)**: possibile target per cross-post automation Dev.to + IH + sito. Decisione rimandata al weekend.
+- **Indie Hackers post-mainnet** (decisione 2026-05-24): community IH vuole numeri veri anche se piccoli, testnet non funziona come prova
+- **Product Hunt post-mainnet + risultati reali** (decisione 2026-05-24, aggiunto a Apple Notes Distribution Channels backlog): lancio one-shot, serve storia completa
 - Reddit/Hashnode/newsletter: valutazione futura post-Dev.to baseline
 
 ### SEO / Google Search Console
@@ -128,6 +130,9 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 
 | Data | Decisione | Perché |
 |---|---|---|
+| 2026-05-24 (S83/S84) | **CoinDesk Data API scartata**: free tier chiuso il 21/05/2026, paid tier da $999+/mese, fuori budget | RSS gratis + Haiku classifier in Sprint 2 è la soluzione corretta per NewsKeeper al nostro stadio. Nessun budget per news API paid pre-mainnet |
+| 2026-05-24 (S83/S84) | **Product Hunt aggiunto a Distribution Channels backlog** (Apple Notes aggiornato) con timing post-mainnet + risultati reali | Lancio one-shot, serve storia completa e numeri veri — non si fa launch su PH senza traction da mostrare |
+| 2026-05-24 (S83/S84) | **Indie Hackers confermato post-mainnet**, dopo prima settimana di risultati reali | Community IH vuole numeri veri anche se piccoli, testnet non funziona come prova credibile |
 | 2026-05-24 (S83/S84) | **CryptoPanic morto, pivot a RSS feeds** (CoinDesk + CoinTelegraph + Decrypt). Zero costo | CryptoPanic free Developer tier discontinued 1 aprile 2026 (verificato live: endpoint 404). Alternative paid sforavano budget brief <€1. RSS zero-auth, zero paywall risk |
 | 2026-05-24 (S83/S84) | **Haiku classifier promosso da S3-4 a S2** | RSS non ha sentiment nativo (CryptoPanic invece sì). Classifier keyword MVP rumoroso ~60% falsi positivi (visibili a campione). Calibration o Haiku-classify anticipato in S2 |
 | 2026-05-24 (S83/S84) | **Ship classifier rumoroso as-is per osservazione 7gg** | Data-first principle (feedback memory `feedback_data_first_then_review`). Raccolta dataset reale prima di tuning |
@@ -215,6 +220,7 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 | **X reply strategy 0 fatte** | Definita 15 maggio ma non ancora eseguita con costanza. Weekend in mezzo + brief shipped hanno consumato la finestra |
 | **Cover V3 non generata** | Solo concept (tempesta + mascotte easter egg). Timing: quando V3 va su Payhip (settimana 26-31 maggio) |
 | **NewsKeeper Sessions 2-4 non ancora in build** | Session 1 SHIPPED in S83 (scaffold + Module 1 RSS feeds standalone). Sessions 2-4 partono dopo osservazione 7gg classifier (~31 maggio) |
+| **Nessuna nuova fonte dati per NewsKeeper** | Le API news gratuite sono morte (CryptoPanic free tier 1 aprile, CoinDesk Data API 21 maggio) o paid-only (CMC content, CoinGecko News PRO). RSS + Haiku resta il piano. Niente budget per news API paid pre-mainnet |
 | **Futures/hedging** | Parcheggiato S90+. Richiede capitale >€100, stack separato, KYC aggiuntivo. Post-mainnet |
 | **Partnership / sponsorship** | Pre-traction. 0/30 views Payhip |
 | **Cambio prezzo volumi** | Nessun dato di vendita su cui ragionare |
