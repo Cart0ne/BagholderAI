@@ -24,6 +24,11 @@ export default defineConfig({
       /* Exclude operative control rooms — they're for Max + the CEO,
          not for the public. Google should not index them. */
       filter: (page) => !page.includes('/tf') && !page.includes('/grid'),
+      /* <lastmod> on every URL. Build-time Date — refreshed on each
+         deploy. Required signal for Google to re-crawl; missing lastmod
+         was a contributing factor to the "Couldn't fetch sitemap"
+         status reported in Search Console (S84 SEO audit fix). */
+      lastmod: new Date(),
     }),
   ],
 });

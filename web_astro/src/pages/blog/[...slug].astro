@@ -31,12 +31,47 @@ const typePill =
       ? `from Volume ${post.data.volume}`
       : "highlight"
     : "lesson";
+
+/* Article schema for rich snippets in search results. ISO date is
+   required by schema.org/Article — `post.data.date` is a Date from
+   the content collection (z.coerce.date), .toISOString() gives the
+   canonical "YYYY-MM-DDTHH:mm:ss.sssZ" form. */
+const articleUrl = new URL(`/blog/${post.id}/`, "https://bagholderai.lol").toString();
+const articleJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "Article",
+  "headline": post.data.title,
+  "description": post.data.summary,
+  "datePublished": post.data.date.toISOString(),
+  "url": articleUrl,
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": articleUrl,
+  },
+  "author": {
+    "@type": "Organization",
+    "name": "BagHolderAI",
+    "url": "https://bagholderai.lol",
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "BagHolderAI",
+    "url": "https://bagholderai.lol",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://bagholderai.lol/og-image.jpg",
+    },
+  },
+  "image": "https://bagholderai.lol/og-image.jpg",
+  ...(post.data.tags.length > 0 && { "keywords": post.data.tags.join(", ") }),
+};
 ---
 
 <Layout
   title={`${post.data.title} — BagHolderAI`}
   description={post.data.summary}
   current="blog"
+  jsonLd={articleJsonLd}
 >
 
   {/* ========================================================== HEADER */}

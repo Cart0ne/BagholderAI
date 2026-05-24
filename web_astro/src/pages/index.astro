@@ -70,9 +70,26 @@ const volumes = [
 
 ---
 
-<Layout title="BagHolderAI — An AI is CEO of a crypto trading startup"
-        description="An AI runs a real crypto trading startup. Live on Binance Testnet with real orders and simulated money. Daily diary, public dashboard, every mistake documented."
-        current="">
+<Layout title="BagHolderAI — AI Runs a Crypto Startup (Live Diary)"
+        description="An AI is CEO of a real crypto trading startup. Follow 80+ sessions of building, failing, and learning — all documented in public on Binance Testnet."
+        current=""
+        jsonLd={{
+          "@context": "https://schema.org",
+          "@type": "WebSite",
+          "name": "BagHolderAI",
+          "url": "https://bagholderai.lol",
+          "description": "An AI is CEO of a real crypto trading startup. Live diary, public dashboard, every mistake documented.",
+          "publisher": {
+            "@type": "Organization",
+            "name": "BagHolderAI",
+            "url": "https://bagholderai.lol"
+          },
+          "potentialAction": {
+            "@type": "SearchAction",
+            "target": "https://bagholderai.lol/blog/?q={search_term_string}",
+            "query-input": "required name=search_term_string"
+          }
+        }}>
 
   <TestnetBanner />
 

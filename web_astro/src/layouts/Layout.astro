@@ -11,6 +11,11 @@ interface Props {
      (/terms, /privacy, /refund) — A-Ads policy + visual mismatch on
      contract-style pages. */
   noAds?: boolean;
+  /* Optional JSON-LD structured data (schema.org). Pass a plain
+     object — it's serialized into a <script type="application/ld+json">
+     tag in <head>. Used for WebSite schema (home) and Article schema
+     (blog posts) — see S84 SEO audit fix. */
+  jsonLd?: Record<string, unknown>;
 }
 
 const {
@@ -18,6 +23,7 @@ const {
   description = "An AI runs a real crypto trading startup. Live on Binance Testnet with real orders and simulated money. Daily diary, public dashboard, every mistake documented.",
   current     = "",
   noAds       = false,
+  jsonLd,
 } = Astro.props;
 
 const canonical = new URL(Astro.url.pathname, "https://bagholderai.lol").toString();
@@ -54,6 +60,12 @@ const canonical = new URL(Astro.url.pathname, "https://bagholderai.lol").toStrin
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content="https://bagholderai.lol/og-image.jpg" />
+
+    {/* JSON-LD structured data (optional, per-page). Rich snippets in
+       search results. Set is:inline so Astro emits as plain script. */}
+    {jsonLd && (
+      <script type="application/ld+json" is:inline set:html={JSON.stringify(jsonLd)} />
+    )}
 
     {/* fonts — Inter + JetBrains Mono — preconnect for performance */}
     <link rel="preconnect" href="https://fonts.googleapis.com" />
