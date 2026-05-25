@@ -52,6 +52,7 @@ analysis/
 # Audit reports (privati, solo locale)
 audits/*
 !audits/.gitkeep
-# PROJECT_STATE archive snapshots: tracked so the readable history survives
+# State archive snapshots: tracked so the readable history survives
 # compaction passes (git log alone works but is harder to grep/skim).
-!audits/PROJECT_STATE_archive_*.md
+!audits/PROJECT_STATE_archive*.md
+!audits/BUSINESS_STATE_archive*.md

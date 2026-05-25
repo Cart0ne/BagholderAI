@@ -118,6 +118,52 @@ sessione, solo on-demand quando serve il "perché abbiamo deciso X in S65?").
 Mai eliminare in toto. Sempre archiviare prima.
 
 ═══════════════════════════════════════════
+ [2b] BUSINESS_STATE.md — stessa regola di compaction
+═══════════════════════════════════════════
+
+Anche `BUSINESS_STATE.md` vive in root del repo e ha cap 40 KB. È il file 
+che il CEO (Claude su claude.ai) usa per i vincoli strategici, decisioni 
+Board, deadline non-tecniche, marketing, diary status.
+
+Il file è AGGIORNATO da CC: il CEO scrive cosa modificare (in chat o via 
+brief .md in `briefresolved.md/`), CC applica le modifiche, committa, pusha. 
+Quindi la regola di compaction è di CC, esattamente come per PROJECT_STATE.
+
+**Sezioni canoniche** (tipiche, possono variare leggermente nel tempo):
+1. Header (last updated, basato su)
+2. Marketing in-flight (sito, X, blog, Dev.to, Payhip)
+3. Diary status (volumi, sessioni in accumulo)
+4. Decisioni strategiche recenti (~15 voci max, formato data — decisione — why)
+5. Domande aperte per CC (idee tech non ancora in brief)
+6. Vincoli / deadline non-tecnici (go-live, multi-macchina, audit)
+7. Cosa NON sta succedendo e perché
+
+**REGOLA COMPACTION** — quando il file vivo supera 40KB, stesso workflow 
+di PROJECT_STATE:
+
+1. Identifica le sezioni da rimuovere (di solito voci §4 decisioni più 
+   vecchie di ~15 righe + voci §5 chiuse/superate con strikethrough + 
+   header narrativi di sessioni passate + voci §7 duplicate)
+2. **PRIMA** di cancellare, appendi il contenuto in 
+   `audits/BUSINESS_STATE_archive.md` con header:
+   ```
+   ## Rimosso in sessione SXX (YYYY-MM-DD) — <ragione compaction>
+   ```
+3. Poi cancella le stesse sezioni da `BUSINESS_STATE.md`
+4. Commit unico che cita entrambi i file
+
+L'archive è stato creato in S85 (2026-05-25) ricostruendo retroattivamente 
+le compaction S71 e S79 dalla git history (commit `0ae0610` e `7945b54`). 
+Da ora in avanti, ogni cleanup che il CEO chiede su BUSINESS_STATE va 
+prima archiviato.
+
+**Caso speciale — istruzioni CEO tipo "rimuovi le voci più vecchie di Sxx"**: 
+quando il brief CEO ti dice esplicitamente di tagliare/rimuovere/comprimere 
+righe, NON cancellarle senza archiviare. Estrai prima il contenuto da 
+cancellare, appendilo all'archive, poi applica il cleanup. Il CEO si 
+fida che tu mantenga lo storico.
+
+═══════════════════════════════════════════
  [3] PROTOCOLLO PER TASK NON BANALI
 ═══════════════════════════════════════════
 
