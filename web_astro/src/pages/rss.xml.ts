@@ -1,6 +1,9 @@
 import rss from "@astrojs/rss";
 import { getCollection } from "astro:content";
 import type { APIContext } from "astro";
+import MarkdownIt from "markdown-it";
+
+const parser = new MarkdownIt({ html: true, linkify: true });
 
 export async function GET(context: APIContext) {
   const posts = (
@@ -20,6 +23,7 @@ export async function GET(context: APIContext) {
       description: post.data.summary,
       link: `/blog/${post.id}/`,
       categories: post.data.tags,
+      content: parser.render(post.body ?? ""),
     })),
     customData: "<language>en-us</language>",
   });
