@@ -125,9 +125,10 @@ Anche `BUSINESS_STATE.md` vive in root del repo e ha cap 40 KB. È il file
 che il CEO (Claude su claude.ai) usa per i vincoli strategici, decisioni 
 Board, deadline non-tecniche, marketing, diary status.
 
-Il file è AGGIORNATO da CC: il CEO scrive cosa modificare (in chat o via 
-brief .md in `briefresolved.md/`), CC applica le modifiche, committa, pusha. 
-Quindi la regola di compaction è di CC, esattamente come per PROJECT_STATE.
+Il file è AGGIORNATO da CC SOLO SU ISTRUZIONE ESPLICITA di Max o del CEO 
+(in chat o via brief .md). NON modificare BUSINESS_STATE di propria 
+iniziativa, nemmeno per "manutenzione". Il contenuto è territorio strategico, 
+non tecnico.
 
 **Sezioni canoniche** (tipiche, possono variare leggermente nel tempo):
 1. Header (last updated, basato su)
@@ -138,8 +139,19 @@ Quindi la regola di compaction è di CC, esattamente come per PROJECT_STATE.
 6. Vincoli / deadline non-tecnici (go-live, multi-macchina, audit)
 7. Cosa NON sta succedendo e perché
 
-**REGOLA COMPACTION** — quando il file vivo supera 40KB, stesso workflow 
-di PROJECT_STATE:
+**REGOLA COMPACTION — richiede autorizzazione di Max**
+
+A differenza di PROJECT_STATE (dove la compaction è autonoma di CC), per 
+BUSINESS_STATE la compaction NON va eseguita di iniziativa, nemmeno quando 
+il file supera 40KB. Anche se durante un'update authorized noto che il 
+file è sopra soglia, segnalo a Max:
+
+> "⚠️ BUSINESS_STATE è a 41KB, vuoi che compatti adesso?"
+
+Procedo SOLO se Max conferma. La compaction è atto strategico (decide 
+cosa resta visibile a chi legge il file vivo) e va autorizzata.
+
+**Quando autorizzato**, workflow identico a PROJECT_STATE:
 
 1. Identifica le sezioni da rimuovere (di solito voci §4 decisioni più 
    vecchie di ~15 righe + voci §5 chiuse/superate con strikethrough + 
@@ -153,15 +165,13 @@ di PROJECT_STATE:
 4. Commit unico che cita entrambi i file
 
 L'archive è stato creato in S85 (2026-05-25) ricostruendo retroattivamente 
-le compaction S71 e S79 dalla git history (commit `0ae0610` e `7945b54`). 
-Da ora in avanti, ogni cleanup che il CEO chiede su BUSINESS_STATE va 
-prima archiviato.
+le compaction S71 e S79 dalla git history (commit `0ae0610` e `7945b54`).
 
 **Caso speciale — istruzioni CEO tipo "rimuovi le voci più vecchie di Sxx"**: 
 quando il brief CEO ti dice esplicitamente di tagliare/rimuovere/comprimere 
-righe, NON cancellarle senza archiviare. Estrai prima il contenuto da 
-cancellare, appendilo all'archive, poi applica il cleanup. Il CEO si 
-fida che tu mantenga lo storico.
+righe, è già un'autorizzazione implicita. NON cancellarle senza archiviare: 
+estrai prima il contenuto da cancellare, appendilo all'archive, poi applica 
+il cleanup. Il CEO si fida che tu mantenga lo storico.
 
 ═══════════════════════════════════════════
  [3] PROTOCOLLO PER TASK NON BANALI
