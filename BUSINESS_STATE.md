@@ -1,8 +1,8 @@
 # BUSINESS_STATE.md
 
-**Last updated:** 2026-05-24 — Session 83 closure + addendum stessa giornata (Distribution Channels post-mainnet + CoinDesk Data API scartata). (a) **NewsKeeper Brain #5 LIVE come scaffold standalone Mac Mini** (PID 78098, RSS feeds CoinDesk + CoinTelegraph + Decrypt, classifier keyword MVP rumoroso noto, ship as-is per osservazione 7gg data-first). Pivot Board-approved da CryptoPanic (free Developer tier discontinued 1 aprile 2026) → RSS zero-auth. **CoinDesk Data API anche scartata** (free tier chiuso 21 maggio 2026, paid da $999+/mese fuori budget). (b) **SEO audit fix S84 shipped same-day** (commit `c89c8cc`): title/description rewrite su 8 pagine pubbliche, JSON-LD WebSite+Article, sitemap lastmod, drift S47 WebSite schema chiuso. (c) **Dev.to Post 3** cross-postato 24 maggio (22 readers, 0 reactions — account fresco, engagement da costruire). (d) **Volume 3 "From Brain to Eyes"** chiuso a S82, in rilettura. Lancio Payhip previsto settimana 26-31 maggio. **Volume 4 aperto a S83** — arco narrativo: NewsKeeper build → go-live → primi risultati reali. (e) Apple Notes pulizia: 4 attive, 8 obsolete da cancellare manualmente (Max). Todo riscritta per era V4/NewsKeeper. Distribution Channels: integrata strategia Reddit + post killer da nota HN obsoleta. **Indie Hackers + Product Hunt confermati post-mainnet** (serve storia completa + numeri veri, testnet non funziona come prova).
+**Last updated:** 2026-05-25 — Session 85 (strategia distribuzione + RSS feed Dev.to + Reddit canale primario). (a) **RSS feed blog SHIPPED** (commit `8c9c2fc` + `18eaa24` per body completo via `content:encoded`) → Dev.to Feed Import configurabile. (b) **Blog: ordine editoriale NON cronologico** (vetrina, non racconto lineare); **frequenza ~1 post ogni 7-10 giorni** con distribuzione attiva a raffiche. (c) **Reddit r/ClaudeAI canale di distribuzione primario** (primo commento postato in thread da 643 upvote, account `Cart0neM`). (d) **Newsletter/mailing list valutata post-lancio V3** (Buttondown o Substack gratuito). (e) **Target traffico definiti**: 3 mesi 50-80/giorno, 6 mesi 100-150/giorno, 12 mesi 200-400/giorno. (f) **UTM link bio X abbandonato** (non mascherabile, referrer sufficiente).
 **Updated by:** CEO + CC
-**Basato su:** PROJECT_STATE.md aggiornato 2026-05-24 (S83 + S84 closure) + brief CEO BUSINESS_STATE update S83
+**Basato su:** PROJECT_STATE.md aggiornato 2026-05-24 (S83 + S84 closure) + brief CEO BUSINESS_STATE update S85 (chat 2026-05-25)
 
 ---
 
@@ -35,9 +35,11 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 - Post 5 PLANNED: "Why We're Not Live Yet" — a ridosso go-live
 - Post 6 PLANNED: "We Built an Accounting System That Didn't Need to Exist" — FIFO saga, V3. ~inizio giugno.
 - Post 7 PLANNED: "45 Sessions With an AI Co-Founder: The Unfiltered Version" — prefazione V2 adattata, voce Max. ~90% pronto.
-- **Pipeline:** 20 post totali (7 PROSSIMI + 12 BACKLOG + 1 IDEA FUTURA), ~5 mesi autonomia (Apple Note "BagHolderAI — Blog Content Pipeline", aggiornata 23 maggio con 5 post backlog V3: Operation Clean Slate, 4 Bugs in 60 Seconds, The Intern Runs the Office, Brain Can't Tell BONK from Bitcoin, The One Where Nobody Writes Code)
+- **Pipeline (aggiornata S85):** 13 post schedulati + 11 in backlog (Apple Note "BagHolderAI — Blog Content Pipeline"). Backlog V3 include: Operation Clean Slate, 4 Bugs in 60 Seconds, The Intern Runs the Office, Brain Can't Tell BONK from Bitcoin, The One Where Nobody Writes Code.
 - Idea futura: "Cover Evolution" (memo in `drafts/cover_evolution_memo.md`). Timing: quando V3 è vicino a chiusura.
-- Cadenza irregolare ("variable reinforcement")
+- **Ordine editoriale NON cronologico** (S85): ogni post autonomo, pescato da qualsiasi punto della timeline — vetrina, non racconto lineare.
+- **Frequenza ~1 post ogni 7-10 giorni** (S85), pubblicazione a raffiche con distribuzione attiva. No calendario fisso ("variable reinforcement").
+- **RSS feed live** (S85, commit `8c9c2fc` + `18eaa24`): `https://bagholderai.lol/rss.xml` con `<content:encoded>` (body completo). Autodiscovery `<link rel="alternate">` nel Layout.
 
 ### Dev.to (cart0ne)
 - **Account creato:** 2026-05-20 (GitHub login, username: `cart0ne`)
@@ -51,6 +53,8 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
   - Presentazione nel Welcome Thread v376 → risposta entusiasta di Lenard Francis (FastAPI AlertEngine) → reply dettagliato con 3 errori strategici del CEO, 3 link UTM, domanda di chiusura
   - Reply a Lenard Francis (confidence gating, AlertEngine) + Valentin Monteiro (architect bottleneck shifting). Entrambi nel Welcome Thread v376.
 - **Strategia:** engagement first (commenti, risposte, conversazioni), contenuto secondo. L'algoritmo Dev.to premia le relazioni, non i post isolati. I commenti portano più visibilità del post stesso in fase iniziale.
+- **Engagement S85:** Rohini Gaonkar (AWS) aggiunta al giro di interazioni attive (oltre Valentin Monteiro già citato).
+- **Feed Import RSS da configurare (S85):** `https://bagholderai.lol/rss.xml` da incollare in `dev.to/dashboard/feed_imports`. Dev.to importa i nuovi post come bozze con canonical URL automatica al blog originale (no SEO duplicate penalty). Body completo via `<content:encoded>`.
 - **Prossimi passi:** Post 3 cross-post settimana prossima, continuare engagement nei commenti, monitorare se le conversazioni portano click (UTM campaign `comment_deneth` e `comment_lenard`)
 
 ### X (@BagHolderAI)
@@ -63,11 +67,16 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 - Account Cart0ne: SHADOWBAN COMPLETO confermato 2026-05-19
 - Piano: nuovo account da IP diverso, karma building, timeline indefinita
 
+### Reddit (NUOVO S85)
+- **Account:** `Cart0neM`
+- **Canale di distribuzione primario** (decisione S85): r/ClaudeAI identificato come community più aderente al pubblico-target (architetti/founder che usano AI per progetti tecnici).
+- **Primo commento postato in thread da 643 upvote** (2026-05-25). Inizio engagement-first analogo a Dev.to.
+
 ### UTM (NUOVO)
 - **Sistema UTM operativo** (Apple Note "BagHolderAI — UTM Reference")
 - **Haiku template + Telegram report: SHIPPED 2026-05-20 (Brief 80b, commit `b8bdc12`)**. X poster signature ora URL completo con `utm_source=x&utm_medium=social&utm_campaign=haiku_daily`. Telegram 3 firme convertite in `<a href>` cliccabili con `utm_source=telegram&utm_medium=social&utm_campaign=daily_report`. Mac Mini restart pending per applicare alle prossime emissioni.
-- Link bio X resta manuale (a carico Max)
-- Regola operativa: ogni link che esce dal progetto DEVE avere UTM
+- **UTM link bio X abbandonato (S85)**: non mascherabile (X mostra l'URL espanso), referrer X sufficiente per tracking.
+- Regola operativa: ogni link che esce dal progetto DEVE avere UTM (dove possibile)
 
 ### Distribuzione blog
 - Documento strategia distribuzione `marketing_strategy_distribution.md`
@@ -75,7 +84,10 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 - Dev.to scelto come primo canale (cross-post, audience dev built-in, SEO resta nostro)
 - **Indie Hackers post-mainnet** (decisione 2026-05-24): community IH vuole numeri veri anche se piccoli, testnet non funziona come prova
 - **Product Hunt post-mainnet + risultati reali** (decisione 2026-05-24, aggiunto a Apple Notes Distribution Channels backlog): lancio one-shot, serve storia completa
-- Reddit/Hashnode/newsletter: valutazione futura post-Dev.to baseline
+- Reddit/Hashnode: valutazione futura post-Dev.to baseline. **Reddit ora attivo (S85, vedi sub-sezione Reddit sopra).**
+
+### Newsletter / Mailing list (futuro)
+- **Decisione S85**: valutare post-lancio V3 (Buttondown o Substack gratuito). Pre-V3 prematuro: nessuna baseline traffico, nessuna lista naturale da costruire.
 
 ### SEO / Google Search Console
 - Baseline pre-S84 (audit A3-S78 + audit GSC CEO 2026-05-24): 256 impressions, 0 click, posizione media 10.7
@@ -88,6 +100,12 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 - Pubblico prevalentemente US (47%), attivo 18:00-02:00 CET
 - **Funnel rotto:** home 34 visitatori → blog 4 (12%). Entry/exit sempre "/". Brief 80b CTA swap shipped come fix minimo, misurare 1 settimana.
 - Payhip: 39 views maggio, 0 vendite, 0 ordini
+
+### Target traffico (definiti S85)
+- **3 mesi**: 50-80 visitatori/giorno
+- **6 mesi**: 100-150/giorno
+- **12 mesi**: 200-400/giorno
+- Baseline attuale (~25/giorno) implica ×2 a 3 mesi, ×4-6 a 6 mesi, ×8-16 a 12 mesi. Distribuzione attiva (Dev.to + Reddit + RSS) è la leva primaria.
 
 ### Payhip
 - Volume 1 + Volume 2 live, 39 views totali maggio, 0 vendite
@@ -130,6 +148,13 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 
 | Data | Decisione | Perché |
 |---|---|---|
+| 2026-05-25 (S85) | **Blog: ordine editoriale NON cronologico** | Ogni post autonomo, pescato da qualsiasi punto della timeline. Vetrina, non racconto lineare. Massimizza autonomia di ogni pezzo come unità di marketing |
+| 2026-05-25 (S85) | **Blog frequenza ~1 post ogni 7-10 giorni, pubblicazione a raffiche con distribuzione attiva** | No calendario fisso ("variable reinforcement"). Quantità + cadenza regolare battute da qualità + distribuzione mirata per ogni post |
+| 2026-05-25 (S85) | **UTM link bio X abbandonato** | Non mascherabile (X mostra l'URL espanso), referrer X sufficiente per tracking. Manutenzione manuale > valore informativo |
+| 2026-05-25 (S85) | **RSS feed blog aggiunto** (commit `8c9c2fc` + `18eaa24` per body completo) | Dev.to Feed Import ora configurabile (auto-import nuovi post come bozze con canonical URL). Esteso a feed reader generici per audience tecnica |
+| 2026-05-25 (S85) | **r/ClaudeAI canale di distribuzione primario** (account `Cart0neM`) | Community più aderente al pubblico-target (architetti/founder con AI). Primo commento postato in thread da 643 upvote come test engagement |
+| 2026-05-25 (S85) | **Newsletter/mailing list: valutare post-lancio V3** (Buttondown o Substack gratuito) | Pre-V3 prematuro: nessuna baseline traffico, nessuna lista naturale da costruire. Post-V3 c'è una storia chiusa da promuovere ai nuovi iscritti |
+| 2026-05-25 (S85) | **Target traffico definiti** (3 mesi 50-80/giorno, 6 mesi 100-150/giorno, 12 mesi 200-400/giorno) | Baseline attuale ~25/giorno. Numeri ancorano le scelte di canale: target richiede ×2-16 sulla baseline, ottenibile solo con distribuzione attiva multi-canale |
 | 2026-05-24 (S83/S84) | **CoinDesk Data API scartata**: free tier chiuso il 21/05/2026, paid tier da $999+/mese, fuori budget | RSS gratis + Haiku classifier in Sprint 2 è la soluzione corretta per NewsKeeper al nostro stadio. Nessun budget per news API paid pre-mainnet |
 | 2026-05-24 (S83/S84) | **Product Hunt aggiunto a Distribution Channels backlog** (Apple Notes aggiornato) con timing post-mainnet + risultati reali | Lancio one-shot, serve storia completa e numeri veri — non si fa launch su PH senza traction da mostrare |
 | 2026-05-24 (S83/S84) | **Indie Hackers confermato post-mainnet**, dopo prima settimana di risultati reali | Community IH vuole numeri veri anche se piccoli, testnet non funziona come prova credibile |
