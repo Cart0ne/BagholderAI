@@ -61,17 +61,13 @@
 
 ---
 
-## ⚠️ Anomalie rilevate (segnalazione per audit Area 2)
+## Audit Area 2 in-flight (chiarimento Max post-report)
 
-**File `audits/audit_report_20260527_area2_coherence.md` è misnamed**: il filename inizia con `audit_report_` ma il contenuto è un **Audit Request** (header "Audit Request 20260527"). Scrive le 6 domande guida ma nessun verdetto, nessun finding, nessuna review reale.
+CC aveva inizialmente flaggato il file `audits/audit_report_20260527_area2_coherence.md` come misnamed (contenuto = request, non report). Max ha chiarito: il brief Auditor è stato **pre-generato in sessione precedente** insieme alle istruzioni per la chat audit. Il filename `audit_report_*` è intenzionale per preparare il nome del report finale che l'Auditor produrrà sovrascrivendolo.
 
-Per la regola CLAUDE.md §[1] aggiornata 2026-05-15, una riga §9 esiste se e solo se esiste il file `audits/audit_report_YYYYMMDD_topic.md`. Il file `_report_` esiste → la cadenza Area 2 "passerebbe" come fatta. **In realtà l'audit Area 2 non è ancora stato eseguito** (cadenza 90gg, mai eseguito, segnalata dovuta dal 2026-04-15 in 5+ sessioni consecutive).
+L'esecuzione era pianificata per **2026-05-25** ma è stata slittata per problemi internet. **Nuova ETA: 2026-05-27** (CC fresh come Auditor con quel brief come input).
 
-**Action richiesta a Max**:
-1. Rename file: `audit_report_20260527_*` → `audit_request_20260527_*` (fix retroattivo, allinea filename al contenuto).
-2. Decidere se eseguire l'audit Area 2 ora (sessione CC fresh con quel brief come input) o riprogrammare. Il brief 20260527 è già scritto in modo completo, basta una sessione fresh per eseguirlo.
-
-Ho aggiornato §9 di PROJECT_STATE con questa segnalazione e Area 2 resta marcata ⚠️ DOVUTO.
+§9 di PROJECT_STATE aggiornato di conseguenza: Area 2 marcata "IN-FLIGHT" con ETA 2026-05-27, nessuna riga §9 finché non c'è verdetto.
 
 ---
 
@@ -89,9 +85,8 @@ Conteggio sui file `audits/audit_report_*.md`:
 
 ### Action a Max (post-deploy)
 1. **Verifica live su `bagholderai.lol`** (Vercel auto-deploy completato ~1-2min dopo push): home con box status badge sotto l'hero; `/admin` con bande regime sui 3 chart.
-2. **Rename file audit misnamed** (vedi anomalie sopra): `audits/audit_report_20260527_area2_coherence.md` → `audits/audit_request_20260527_area2_coherence.md`.
-3. **Decidere se eseguire audit Area 2** ora (CC fresh) o riprogrammare per dopo S2 NewsKeeper.
-4. **Sessione futura per grid.html overlay**: agendare quando vuoi.
+2. **Audit Area 2 in-flight**: brief già pronto in `audits/audit_report_20260527_area2_coherence.md` (filename intenzionale), esecuzione 2026-05-27 con CC fresh come Auditor.
+3. **Sessione futura per grid.html overlay**: agendare quando vuoi.
 
 ### Action al CEO (questo report)
 1. Leggere il report; flaggare se ci sono note/correzioni.
