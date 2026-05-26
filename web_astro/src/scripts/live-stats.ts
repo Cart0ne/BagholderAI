@@ -229,10 +229,15 @@ type DiaryRow = {
   status: string;
 };
 
-sbq<DiaryRow[]>(
+/* Shared promise: project_status (section 6) needs the latest session
+   number too. Resolves to null on error so the status badge still
+   renders without the "Session NN" prefix. */
+const diaryPromise: Promise<DiaryRow[] | null> = sbq<DiaryRow[]>(
   "diary_entries",
   "select=session,title,date,status&order=session.desc&limit=3",
-).then(rows => {
+).catch(() => null);
+
+diaryPromise.then(rows => {
   if (!rows || !rows.length) return;
   const sessionEl = document.getElementById("stat-session");
   if (sessionEl) sessionEl.textContent = String(rows[0].session);
@@ -255,4 +260,53 @@ sbq<DiaryRow[]>(
     const slot = list.querySelector(`[data-slot="${i}"]`) as HTMLElement | null;
     if (slot) slot.style.display = "none";
   }
-}).catch(() => {});
+});
+
+/* ---------- 6. project_status badge (Brief 86a) ----------
+   Single-row table updatable by CEO/Max/CC via plain UPDATE. The badge
+   stays hidden until the fetch resolves (no fallback text, better
+   nothing than broken — brief 86a). Joins with diaryPromise so the
+   "Session NN · Updated X" meta line gets the live session number. */
+type ProjectStatusRow = {
+  status_text: string;
+  status_emoji: string;
+  updated_at: string;
+};
+
+const relativeTime = (iso: string): string => {
+  const then = new Date(iso).getTime();
+  if (!Number.isFinite(then)) return "";
+  const diffMs = Date.now() - then;
+  if (diffMs < 60 * 60 * 1000) return "Updated just now";
+  const hours = Math.floor(diffMs / (60 * 60 * 1000));
+  if (hours < 24) return `Updated ${hours}h ago`;
+  const days = Math.floor(diffMs / (24 * 60 * 60 * 1000));
+  if (days <= 30) return `Updated ${days}d ago`;
+  return `Updated ${new Date(iso).toISOString().slice(0, 10)}`;
+};
+
+Promise.all([
+  sbq<ProjectStatusRow[]>(
+    "project_status",
+    "select=status_text,status_emoji,updated_at&limit=1",
+  ).catch(() => null),
+  diaryPromise,
+]).then(([statusRows, diaryRows]) => {
+  const box = document.getElementById("project-status-box");
+  if (!box) return;
+  if (!statusRows || !statusRows.length || !statusRows[0].status_text) return;
+  const row = statusRows[0];
+  const emojiEl = document.getElementById("project-status-emoji");
+  const textEl = document.getElementById("project-status-text");
+  const metaEl = document.getElementById("project-status-meta");
+  if (emojiEl) emojiEl.textContent = row.status_emoji || "";
+  if (textEl) textEl.textContent = row.status_text;
+  const session = diaryRows && diaryRows.length ? diaryRows[0].session : null;
+  const updated = relativeTime(row.updated_at);
+  if (metaEl) {
+    metaEl.textContent = session != null
+      ? `Session ${session} · ${updated}`
+      : updated;
+  }
+  box.classList.remove("hidden");
+});

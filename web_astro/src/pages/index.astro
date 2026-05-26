@@ -145,16 +145,9 @@ const volumes = [
           </a>
         </div>
 
-        {/* Session counter — populated live by live-stats.ts; fallback shown
-            until the diary_entries query returns. */}
-        <p class="mt-4 font-mono text-[10.5px] uppercase tracking-[0.18em]
-                  text-text-muted">
-          <span class="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-pos
-                       shadow-[0_0_8px_rgba(134,239,172,0.7)]"></span>
-          Session <span id="stat-session" class="text-text-dim">…</span>
-          <span class="text-border mx-1">·</span>
-          in progress
-        </p>
+        {/* Brief 86a — session number consumer (kept hidden, used by the
+            status badge meta line below the hero). */}
+        <span id="stat-session" class="hidden">…</span>
       </div>
 
       {/* right: live status panel — promotes data above the fold */}
@@ -243,6 +236,30 @@ const volumes = [
           full dashboard →
         </a>
       </aside>
+    </div>
+  </section>
+
+  {/* ====================================================== STATUS BADGE */}
+  {/* Brief 86a — dynamic status from Supabase project_status table.
+       Full-width under the hero, above the Blog section. Updatable by
+       CEO/Max/CC via plain UPDATE on the row; no deploy needed. Hidden
+       by default; live-stats.ts unhides after the row resolves. */}
+  <section class="mx-auto max-w-6xl px-4 pt-1 pb-3 sm:px-6 sm:pt-2 sm:pb-4">
+    <div
+      id="project-status-box"
+      class="hidden rounded-lg flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1"
+      style="background: rgba(94, 202, 165, 0.06);
+             border: 1px solid rgba(94, 202, 165, 0.12);
+             padding: 14px 16px;">
+      <div class="flex items-baseline gap-x-3 min-w-0 flex-shrink">
+        <span id="project-status-emoji" style="font-size: 22px; line-height: 1;"></span>
+        <span id="project-status-text"
+              style="font-size: 16px; font-weight: 500; color: #5DCAA5;
+                     line-height: 1.4;"></span>
+      </div>
+      <span id="project-status-meta"
+            class="font-mono text-text-dim ml-auto whitespace-nowrap"
+            style="font-size: 12px;"></span>
     </div>
   </section>
 
