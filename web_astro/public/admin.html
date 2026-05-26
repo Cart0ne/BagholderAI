@@ -453,6 +453,19 @@
           <span class="item"><span class="swatch" style="background: var(--blue);"></span> BTC price (right axis)</span>
           <span class="item"><span class="swatch" style="background: var(--yellow); height: 8px; border-left: 2px dashed var(--yellow);"></span> Speed of fall fired</span>
         </div>
+        <!-- Brief 86b — regime background bands legend. Same palette as
+             Widget A (Sentinel slow loop banner above) — financial
+             convention: fear = cool (cyan/blue), greed = warm (amber/red).
+             Bands are drawn on all 3 charts below, but the legend lives
+             here (chart 1) only — repeating it 5× would be noise. -->
+        <div class="chart-legend" style="margin-top: 6px;">
+          <span class="item" style="color: var(--text-dim);">Regime bands:</span>
+          <span class="item"><span class="swatch" style="background: var(--regime-extreme-fear); height: 8px;"></span> extreme_fear</span>
+          <span class="item"><span class="swatch" style="background: var(--regime-fear); height: 8px;"></span> fear</span>
+          <span class="item"><span class="swatch" style="background: var(--regime-neutral); height: 8px;"></span> neutral</span>
+          <span class="item"><span class="swatch" style="background: var(--regime-greed); height: 8px;"></span> greed</span>
+          <span class="item"><span class="swatch" style="background: var(--regime-extreme-greed); height: 8px;"></span> extreme_greed</span>
+        </div>
       </div>
 
       <!-- Sentinel scoring rules — STATIC (parsed manually from score_engine.py) -->
@@ -802,6 +815,12 @@
     // Updated by the .range-selector buttons; bootstrap() reads it on every refresh.
     var currentRangeHours = 24;
 
+    // Brief 86b — slow-loop regime rows for the current range, fetched once
+    // in bootstrap and reused as background bands across the 3 charts below
+    // (renderChart, renderReactionChart, renderParamChart). Empty until the
+    // first fetch resolves; bands silently skipped in that case.
+    var __slowRegimeRows = [];
+
     // === AUTH (identical to tf.html / grid.html) ===
     async function sha256(msg) {
       var buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(msg));
@@ -990,6 +1009,69 @@
       document.getElementById('s-speed-counter').textContent = todayCount + '× today';
     }
 
+    // Brief 86b — format a time-axis label based on the current range.
+    // 12h/24h get HH:MM (still readable, useful intra-day). 7d/1m switch
+    // to DD/MM because HH:MM repeats indistinguishably across days and
+    // hides the actual time span. Used by all 3 charts.
+    function formatTimeLabel(d, rangeHours) {
+      if (rangeHours <= 48) {
+        return String(d.getHours()).padStart(2, '0') + ':' +
+               String(d.getMinutes()).padStart(2, '0');
+      }
+      return String(d.getDate()).padStart(2, '0') + '/' +
+             String(d.getMonth() + 1).padStart(2, '0');
+    }
+
+    // Brief 86b — paint regime background bands on a chart canvas.
+    // Reads __slowRegimeRows (filled by bootstrap). Each slow row marks the
+    // start of a regime period; the period runs until the next row's
+    // created_at, or t1 (chart's right edge) for the last row. Palette
+    // mirrors Widget A (CSS --regime-* vars) — financial convention:
+    // fear = cool (cyan/blue), greed = warm (amber/red).
+    function drawRegimeBands(ctx, t0, t1, span, tx, pad, plotH) {
+      if (!__slowRegimeRows || !__slowRegimeRows.length) return;
+      var COLORS = {
+        extreme_fear:  '#7dd3fc',
+        fear:          '#67e8f9',
+        neutral:       '#9aa3b8',
+        greed:         '#f59e0b',
+        extreme_greed: '#ef4444'
+      };
+      // Alpha bumped vs brief spec (was 0.10/0.06) — too faint when the
+      // regime is uniform on the whole range (no transition contrast to
+      // help the eye). Extremes get a stronger band so they read clearly
+      // even alone; neutral stays lighter so it doesn't drown the lines.
+      var ALPHAS = {
+        extreme_fear:  0.20,
+        fear:          0.14,
+        neutral:       0.10,
+        greed:         0.14,
+        extreme_greed: 0.20
+      };
+      var rows = __slowRegimeRows.slice().sort(function(a, b) {
+        return new Date(a.created_at) - new Date(b.created_at);
+      });
+      ctx.save();
+      for (var i = 0; i < rows.length; i++) {
+        var raw = rows[i].raw_signals || {};
+        var regime = raw.regime || 'neutral';
+        var color = COLORS[regime] || COLORS.neutral;
+        var alpha = ALPHAS[regime] != null ? ALPHAS[regime] : 0.06;
+        var startMs = new Date(rows[i].created_at).getTime();
+        var endMs = i + 1 < rows.length
+          ? new Date(rows[i + 1].created_at).getTime()
+          : t1;
+        // Clip to chart range so we don't draw outside the plot area.
+        if (endMs <= t0 || startMs >= t1) continue;
+        var s = Math.max(startMs, t0);
+        var e = Math.min(endMs, t1);
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = color;
+        ctx.fillRect(tx(s), pad.t, Math.max(0, tx(e) - tx(s)), plotH);
+      }
+      ctx.restore();
+    }
+
     // === RENDER: 24H CHART (risk + opp + BTC overlay + speed markers) ===
     function renderChart(rows) {
       var canvas = document.getElementById('sentinel-chart');
@@ -1042,6 +1124,9 @@
       function tx(ts) { return pad.l + (ts - t0) / span * plotW; }
       function tyScore(v) { return pad.t + plotH - (v / 100) * plotH; }
       function tyBtc(v) { return pad.t + plotH - (v - btcMin) / btcRange * plotH; }
+
+      // Brief 86b — regime bands behind everything else.
+      drawRegimeBands(ctx, t0, t1, span, tx, pad, plotH);
 
       // Background grid (horizontal lines on score 0/25/50/75/100)
       ctx.strokeStyle = 'rgba(255,255,255,0.04)';
@@ -1133,13 +1218,13 @@
         ctx.fillText('$' + label, W - pad.r + 6, tyBtc(v) + 3);
       });
 
-      // X-axis labels (3 timestamps)
+      // X-axis labels (3 timestamps) — format switches HH:MM ↔ DD/MM
+      // based on currentRangeHours (brief 86b fix: 7d/1m used to show
+      // indistinguishable HH:MM labels across days).
       ctx.textAlign = 'center';
       [0, 0.5, 1].forEach(function(f) {
-        var ts = t0 + span * f;
-        var d = new Date(ts);
-        var label = d.getHours().toString().padStart(2, '0') + ':' + d.getMinutes().toString().padStart(2, '0');
-        ctx.fillText(label, pad.l + plotW * f, H - 8);
+        var d = new Date(t0 + span * f);
+        ctx.fillText(formatTimeLabel(d, currentRangeHours), pad.l + plotW * f, H - 8);
       });
     }
 
@@ -1232,6 +1317,9 @@
       function tyScore(v) { return pad.t + plotH - (v / 100) * plotH; }
       function tyBuy(v) { return pad.t + plotH - (v - buyMin) / (buyMax - buyMin) * plotH; }
 
+      // Brief 86b — regime bands behind grid + data lines.
+      drawRegimeBands(ctx, t0, t1, span, tx, pad, plotH);
+
       // background grid
       ctx.strokeStyle = 'rgba(255,255,255,0.04)';
       ctx.lineWidth = 1;
@@ -1316,12 +1404,11 @@
       [0.5, 1.0, 1.5, 2.0, 2.5, 3.0].forEach(function(v) {
         ctx.fillText(v.toFixed(1), W - pad.r + 6, tyBuy(v) + 3);
       });
-      // X-axis labels
+      // X-axis labels — same range-aware format as renderChart (86b fix).
       ctx.textAlign = 'center';
       [0, 0.5, 1].forEach(function(f) {
         var d = new Date(t0 + span * f);
-        var label = d.getHours().toString().padStart(2, '0') + ':' + d.getMinutes().toString().padStart(2, '0');
-        ctx.fillText(label, pad.l + plotW * f, H - 8);
+        ctx.fillText(formatTimeLabel(d, currentRangeHours), pad.l + plotW * f, H - 8);
       });
     }
 
@@ -1330,7 +1417,7 @@
     // Left y-axis: integer ticks 0..yMax. Right y-axis: 3 colored live values
     // for BTC/SOL/BONK, stacked top-down with anti-collision. unit is appended
     // to every label (e.g. "h" for idle_reentry_hours).
-    function renderParamChart(canvasId, sherpaRowsBySymbol, fieldName, yMax, unit) {
+    function renderParamChart(canvasId, sherpaRowsBySymbol, fieldName, yMax, unit, showXLabels) {
       unit = unit || '';
       var canvas = document.getElementById(canvasId);
       var ctx = canvas.getContext('2d');
@@ -1352,12 +1439,18 @@
       var span = t1 - t0 || 1;
 
       var yMin = 0;  // integer scale starts at 0
-      var pad = { l: 30, r: 60, t: 4, b: 4 };  // wider right pad for live-value labels
+      // Brief 86b — extra bottom padding only when this mini-chart shows
+      // x-axis labels (last in stack, idle_reentry_hours). The other two
+      // (buy/sell) stay tight against the chart above.
+      var pad = { l: 30, r: 60, t: 4, b: showXLabels ? 18 : 4 };
       var plotW = W - pad.l - pad.r;
       var plotH = H - pad.t - pad.b;
 
       function tx(ts) { return pad.l + (ts - t0) / span * plotW; }
       function ty(v) { return pad.t + plotH - (v - yMin) / (yMax - yMin) * plotH; }
+
+      // Brief 86b — regime bands behind grid + per-coin lines.
+      drawRegimeBands(ctx, t0, t1, span, tx, pad, plotH);
 
       // Light grid lines at every integer tick
       ctx.strokeStyle = 'rgba(255,255,255,0.04)';
@@ -1423,6 +1516,19 @@
         ctx.fillStyle = SYMBOL_COLOR[lbl.sym];
         ctx.fillText(lbl.v.toFixed(1) + unit, W - pad.r + 4, lbl.y + 3);
       });
+
+      // Brief 86b — X-axis labels (only on the last mini-chart in the
+      // stack — idle_reentry_hours — so the 3 mini-charts share one
+      // time axis like a single tall chart).
+      if (showXLabels) {
+        ctx.fillStyle = '#9aa3b8';
+        ctx.font = '10px monospace';
+        ctx.textAlign = 'center';
+        [0, 0.5, 1].forEach(function(f) {
+          var d = new Date(t0 + span * f);
+          ctx.fillText(formatTimeLabel(d, currentRangeHours), pad.l + plotW * f, H - 4);
+        });
+      }
     }
 
     // === RECONCILIATION (Binance) ===
@@ -1761,6 +1867,28 @@
         // Y-axis and adds spurious risk/opp spikes (slow rows use
         // regime-derived 20-80 values).
         var sentinelRows = await sbFetchAll('sentinel_scores?select=created_at,risk_score,opportunity_score,btc_price,raw_signals&score_type=eq.fast&created_at=gte.' + encodeURIComponent(since) + '&order=created_at.asc', 1000, fetchCap);
+
+        // Brief 86b — slow rows for regime background bands. Two queries:
+        //   1. All slow rows IN the chart range (created_at >= since)
+        //   2. The single most recent slow row BEFORE the range, no matter
+        //      how old (handles gaps in the data — e.g. bot paused for 17h).
+        // Prepending (2) makes its band backfill from t0 to the first
+        // in-range tick. Without it, ranges starting in a data gap show
+        // no band on their left edge. Slow loop is 4h cadence → 1-month
+        // window ~180 rows + 1 prior = comfortably under the 10k cap.
+        var slowInRangeP = sbFetchAll(
+          'sentinel_scores?select=created_at,raw_signals&score_type=eq.slow&created_at=gte.' +
+          encodeURIComponent(since) + '&order=created_at.asc',
+          1000, 10000
+        );
+        var slowPriorP = sbFetch(
+          'sentinel_scores?select=created_at,raw_signals&score_type=eq.slow&created_at=lt.' +
+          encodeURIComponent(since) + '&order=created_at.desc&limit=1'
+        );
+        var slowInRange = await slowInRangeP;
+        var slowPrior = await slowPriorP;
+        __slowRegimeRows = (slowPrior && slowPrior.length ? slowPrior : []).concat(slowInRange);
+
         renderChart(sentinelRows);
         renderSpeedCounter(sentinelRows);
 
@@ -1781,7 +1909,7 @@
         renderReactionChart(sentinelRows, bySym);
         renderParamChart('param-buy-chart', bySym, 'proposed_buy_pct', 3, '');
         renderParamChart('param-sell-chart', bySym, 'proposed_sell_pct', 4, '');
-        renderParamChart('param-idle-chart', bySym, 'proposed_idle_reentry_hours', 6, 'h');
+        renderParamChart('param-idle-chart', bySym, 'proposed_idle_reentry_hours', 6, 'h', true);
 
         // --- Reconciliation Binance (Step B, S70b) ---
         // Reads reconciliation_runs (S70 Step A schema). Empty until reconcile_binance.py
