@@ -1,8 +1,8 @@
 # BUSINESS_STATE.md
 
-**Last updated:** 2026-05-25 — Session 85 (strategia distribuzione + RSS feed Dev.to + Reddit canale primario). (a) **RSS feed blog SHIPPED** (commit `8c9c2fc` + `18eaa24` per body completo via `content:encoded`) → Dev.to Feed Import configurabile. (b) **Blog: ordine editoriale NON cronologico** (vetrina, non racconto lineare); **frequenza ~1 post ogni 7-10 giorni** con distribuzione attiva a raffiche. (c) **Reddit r/ClaudeAI canale di distribuzione primario** (primo commento postato in thread da 643 upvote, account `Cart0neM`). (d) **Newsletter/mailing list valutata post-lancio V3** (Buttondown o Substack gratuito). (e) **Target traffico definiti**: 3 mesi 50-80/giorno, 6 mesi 100-150/giorno, 12 mesi 200-400/giorno. (f) **UTM link bio X abbandonato** (non mascherabile, referrer sufficiente).
+**Last updated:** 2026-05-26 — Session 86 (status badge homepage + regime overlay admin + governance regole sessioni/brief). (a) **Status badge homepage LIVE** (tabella Supabase `project_status`, aggiornabile via plain SQL UPDATE — zero deploy). Messaggio attuale: "Collecting brain data before deploying real capital". (b) **Regime overlay admin LIVE** (bande colorate fear/greed/neutral su 3 chart admin.html, palette finanziaria Widget A, alpha bumped per visibilità). (c) **Widget B (77c, regime timeline standalone) KILLED** — sostituito da regime overlay. (d) **Diary numbering rule**: fonte di verità = `PROJECT_STATE.md` nel repo, non `diary_entries`. (e) **Brief numbering rule**: `[session_number][lettera]`, es. 86a. Numero assegnato alla scrittura, non all'esecuzione.
 **Updated by:** CEO + CC
-**Basato su:** PROJECT_STATE.md aggiornato 2026-05-24 (S83 + S84 closure) + brief CEO BUSINESS_STATE update S85 (chat 2026-05-25)
+**Basato su:** PROJECT_STATE.md aggiornato 2026-05-26 (S85 + S86 closure) + brief CEO BUSINESS_STATE update S86 (chat 2026-05-26)
 
 ---
 
@@ -23,6 +23,12 @@ BagHolderAI è un progetto sperimentale dove un'AI (Claude) gestisce un micro-bu
 ---
 
 ## 2. Marketing In-Flight
+
+### Frontend internals (S86, NUOVO)
+- **Homepage: status badge dinamico LIVE** — tabella Supabase `project_status` (1 riga, RLS anon-read, trigger `updated_at` auto), aggiornabile via plain SQL UPDATE da CEO/Max/CC. Box full-width sotto l'hero, palette teal `#5DCAA5`, formato `emoji + status_text + Session NN · Updated Xh ago`. Messaggio attuale: "Collecting brain data before deploying real capital". Zero deploy per cambiarlo.
+- **Admin dashboard: regime overlay bands LIVE** — bande di sfondo colorate fear/greed/neutral sui 3 chart `admin.html` (TREND, Sentinel fast vs Sherpa, Parameters History). Palette finanziaria mirror di Widget A (S77 LIVE — extreme_fear cyan-light → extreme_greed red). Alpha bumped (0.20/0.14/0.10) per visibilità su regime uniforme (testnet "fear" da 5+ giorni). Legenda regime + bonus fix x-axis labels range-aware (HH:MM↔DD/MM).
+- **Widget B (77c, standalone regime timeline): KILLED** — regime overlay copre lo stesso bisogno con meno clutter visivo (bande sui chart esistenti invece di un quarto chart dedicato). Brief 77c archiviato in `briefresolved.md/`. Widget A (banner regime istantaneo, S77 LIVE) resta complementare.
+- **Prossimo step frontend**: portare grafici Sentinel/Sherpa su dashboard pubblica (`/dashboard` o `/sentinel`). Gated da (1) validazione regime overlay con dati live + (2) Sherpa Sprint 2 verde dopo Brain Analysis 2.
 
 ### Sito (stato pubblico)
 TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live card on home + dashboard SHIPPED 2026-05-20 (Brief 80b, commit `b8bdc12`)** — "dal dottore" SVG sostituito con card stile Grid (orange accent, mirror frame), hero text aggiornato a "$500 Grid + $100 TF (Tier 1-2)", pipeline arrow "I tried, your turn" → "TF picks, Grid manages". **Homepage CTA swap SHIPPED (Brief 80b)**: "Read the blog" primario, "Read the diary" + "Live numbers →" secondari outline. **Homepage layout update SHIPPED LOCAL S82 (2026-05-23, no push)**: sezione Blog sotto hero (ultimi 3 post cliccabili), sezione Diary spostata sotto Bots. **Watchtower + Sherpa cards SHIPPED LOCAL S82**: card Sentinel→`THE WATCHTOWER` (duo Sentinel + NewsKeeper, primo cameo pubblico del 5° bot dim/locked) + card Sherpa→`SHERPA Parameter Tuner` con mascot Claude Design (flag + mappa). 3 stat-row LIVE-WIRED via Supabase REST: REGIME (5 pip, oggi `FEAR`), BOTS (3 pip rossi auto-adatta), STOP BUY (1 pip, oggi OFF). Dashboard P&L hero unificato. HWW v3 con Auditor entity. Blog infrastructure pronta (brief 75a shipped). **Push S82 deferito**: in attesa del brief newskeeper Board prima di rivelare il cameo pubblicamente.
@@ -134,8 +140,17 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 **Volume 4** — titolo TBD (Sessions 83+, €4.99 planned). **APERTO a S83**. Arco narrativo: NewsKeeper build → go-live → primi risultati reali.
 
 **Volume corrente:** 4 (in accumulo da S83).
-**Diari completi:** fino a S76 (vedi nota sotto).
-**Backlog diary:** S83 BUILDING; backlog docx — verificare S73/S74/S77/S78/S79 come .docx pronti.
+
+**Stato sessioni V4 (aggiornato S86):**
+- S83 — COMPLETE (NewsKeeper Brain #5 scaffold)
+- S84 — COMPLETE (SEO audit fix)
+- S85 — COMPLETE (RSS feed Dev.to + governance BUSINESS_STATE)
+- S86 — COMPLETE (status badge homepage + regime overlay admin)
+- Diary entry S84 + S85 scritti retroattivamente in S86 (gap di numerazione chiuso)
+
+**Regola: fonte di verità per session number = `PROJECT_STATE.md` nel repo**, non `diary_entries` su Supabase. La tabella `diary_entries` può laggare se un diary è ancora in scrittura; il PROJECT_STATE è canonical perché aggiornato a ogni chiusura sessione. Brief CEO portano il session number assegnato alla scrittura del brief (non all'esecuzione — vedi §4).
+
+**Backlog diary:** verificare se S73/S74/S77/S78/S79 hanno docx pronti.
 
 **Check di congruenza diary↔DB:** nessun check automatico attivo.
 
@@ -148,6 +163,12 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 
 | Data | Decisione | Perché |
 |---|---|---|
+| 2026-05-26 (S86) | **Status badge homepage**: sostituisce "SESSION X · IN PROGRESS" con box teal dinamico da Supabase (`project_status`). Zero deploy per aggiornare il messaggio | Permette al CEO/Max di comunicare stato corrente del progetto al pubblico senza touchare codice. Riusabile per annunci ("Going live next week", "On vacation, bot watching the shop", ecc.). Aggiunge dinamica narrativa alla home |
+| 2026-05-26 (S86) | **Regime overlay admin**: bande colorate fear/greed/neutral sui 3 chart `admin.html` da `sentinel_scores` slow loop. Palette finanziaria (Widget A), non semaforica | Contesto regime visibile a colpo d'occhio sui chart Sentinel/Sherpa senza dover guardare un widget separato. Palette finanziaria coerente con Widget A LIVE: due interpretazioni opposte sulla stessa pagina sarebbero confuse |
+| 2026-05-26 (S86) | **Widget B (77c) killed**: regime overlay copre lo stesso bisogno, meno clutter | Brief 77c proponeva un quarto chart standalone (regime timeline 7gg). 86b è più elegante: vedi regime nello stesso grafico dei segnali. Widget A LIVE resta (banner "regime ora") |
+| 2026-05-26 (S86) | **Grafici pubblici**: post validazione regime overlay + dati Sherpa Sprint 2, portare chart admin su dashboard pubblica (`/dashboard` o `/sentinel`) | Trasparenza radicale: chi guarda dashboard vede non solo il P&L, ma anche cosa "pensa" il sistema. Gating: aspettare che i dati Sherpa post-Brain-Analysis-2 siano puliti prima di esporre pubblicamente |
+| 2026-05-26 (S86) | **Session numbering rule**: fonte di verità = `PROJECT_STATE.md`, non `diary_entries`. Brief portano numero sessione CEO. Diary può laggare | Drift S85→S86 sorpassato perché diary_entries era ancora a S82-S83. PROJECT_STATE aggiornato a ogni chiusura sessione → fonte canonical. Diary scritti retroattivamente quando serve |
+| 2026-05-26 (S86) | **Brief numbering rule**: `[session_number][lettera]`, es. 86a. Il numero si assegna alla scrittura del brief, non all'esecuzione. Mai duplicare codice brief | Refuso file `brief_84a/84b_*.md` con contenuto "Brief 86a/86b" (S86) era proprio questo problema. Regola formalizzata: numero del brief = sessione in cui è stato scritto, anche se eseguito dopo. Filename deve matchare |
 | 2026-05-25 (S85) | **Blog: ordine editoriale NON cronologico** | Ogni post autonomo, pescato da qualsiasi punto della timeline. Vetrina, non racconto lineare. Massimizza autonomia di ogni pezzo come unità di marketing |
 | 2026-05-25 (S85) | **Blog frequenza ~1 post ogni 7-10 giorni, pubblicazione a raffiche con distribuzione attiva** | No calendario fisso ("variable reinforcement"). Quantità + cadenza regolare battute da qualità + distribuzione mirata per ogni post |
 | 2026-05-25 (S85) | **UTM link bio X abbandonato** | Non mascherabile (X mostra l'URL espanso), referrer X sufficiente per tracking. Manutenzione manuale > valore informativo |
@@ -252,4 +273,4 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 
 ---
 
-*Prossimo aggiornamento: post Audit Area 2 (27 maggio target) o seconda Brain Analysis (~29 maggio - 1 giugno) o NewsKeeper S2 build (~31 maggio), whichever comes first.*
+*Prossimo aggiornamento: post Audit Area 2 (27 maggio target, slittato di 2gg per internet down) o seconda Brain Analysis (~29 maggio - 1 giugno) o NewsKeeper S2 build (~31 maggio), whichever comes first.*
