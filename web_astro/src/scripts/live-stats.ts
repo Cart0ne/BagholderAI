@@ -176,12 +176,25 @@ sbq<{ created_at: string }[]>(
     Math.floor((Date.now() - first.getTime()) / 86_400_000) + 1,
   );
   setText("stat-days", String(days));
+
+  /* CEO decision S88 (88d Task 1): Grid card "since <date>" qualifier =
+     MIN(created_at) of v3 trades, so the win/loss counter reads as the
+     current testnet era. Set directly (not via the numeric tweener). */
+  const sinceEl = document.getElementById("bot-grid-since");
+  if (sinceEl) {
+    sinceEl.textContent = `since ${first.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+    })}`;
+  }
 }).catch(() => setText("stat-days", "N.A."));
 
-/* ---------- 4. bot wins/losses ----------
-   Live wins/losses from trades, grouped by managed_by.
-   Grid trades use managed_by='grid', TF uses 'tf' (S70 rename:
-   'manual'→'grid', 'trend_follower'→'tf'). A win = sell with realized_pnl > 0. */
+/* ---------- 4. bot wins/losses (Grid only) ----------
+   Live wins/losses from trades where managed_by='grid' (S70 rename:
+   'manual'→'grid'). A win = sell with realized_pnl > 0, a loss < 0.
+   CEO decision S88 (88d Task 1): only Grid shows a win/loss record. TF
+   never trades directly — it hands coins to Grid — so its card shows a
+   "scanning" line instead of 0/0 (see BotCardOriginal). */
 type SellRow = { side: "buy" | "sell"; realized_pnl: number | null };
 
 const fetchBotStats = async (managedBy: string) => {
@@ -211,11 +224,8 @@ const updateBotCard = (variant: "grid" | "tf", wins: number, losses: number) => 
   if (fillLosses) fillLosses.style.width = `${Math.min(100, (losses / max) * 100)}%`;
 };
 
-Promise.all([fetchBotStats("grid"), fetchBotStats("tf")])
-  .then(([grid, tf]) => {
-    updateBotCard("grid", grid.wins, grid.losses);
-    updateBotCard("tf",   tf.wins,   tf.losses);
-  })
+fetchBotStats("grid")
+  .then(grid => updateBotCard("grid", grid.wins, grid.losses))
   .catch(() => {});
 
 /* ---------- 5. current session + recent diary entries ----------

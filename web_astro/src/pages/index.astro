@@ -34,12 +34,15 @@ const team = [
     desc: "Writes the code, no questions asked" },
 ];
 
-/* Bot stats — values mirror the live wins/losses snapshot from the old
-   site (placeholder; Supabase integration in next session). */
+/* Bot stats. Live from Supabase. Wins/losses metric may be revised
+   post-mainnet. See audit S88 finding 1.2.
+   These literals are the SSR fallback (current testnet era): live-stats.ts
+   §4 overrides Grid wins/losses and §3 fills the "since" date. TF shows no
+   win/loss record — it hands its coins to Grid (scanning line in the card). */
 const botData = [
-  { variant: "grid"     as const, mode: "live"     as const, patience: 95, speed: 30, capital: 500, wins: 179, losses: 0,
+  { variant: "grid"     as const, mode: "live"     as const, patience: 95, speed: 30, capital: 500, wins: 19, losses: 2, since: "May 8",
     description: "buys dips, sells rallies, in a fixed range" },
-  { variant: "tf"       as const, mode: "live"     as const, patience: 25, speed: 90, capital: 100, wins: 174, losses: 105,
+  { variant: "tf"       as const, mode: "live"     as const, patience: 25, speed: 90, capital: 100, wins: 0, losses: 0,
     description: "Scanning Tier 1-2 assets. Shitcoins excluded." },
   { variant: "sentinel" as const, mode: "testmode" as const, patience:  0, speed:  0, capital:   0, wins:   0, losses:  0,
     description: "monitors positions, observing in DRY_RUN" },

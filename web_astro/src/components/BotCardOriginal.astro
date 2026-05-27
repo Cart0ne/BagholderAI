@@ -23,6 +23,10 @@ interface Props {
   maxStat?: number;
   description: string;
   recoveryHref?: string;
+  /* Grid only — "since <date>" qualifier under the win/loss record, so a
+     visitor reads the counter as the current testnet era (live-filled by
+     live-stats.ts §3 via #bot-grid-since). */
+  since?: string;
 }
 
 const {
@@ -32,6 +36,7 @@ const {
   maxStat = 200,
   description,
   recoveryHref,
+  since,
 } = Astro.props;
 
 const meta = {
@@ -66,6 +71,17 @@ const stats = [
   { label: "WINS",     value: wins,     color: meta.color, max: maxStat },
   { label: "LOSSES",   value: losses,   color: RED,        max: maxStat },
 ];
+
+/* CEO decision S88 (88d Task 1, Option B modified):
+   - Grid shows the real win/loss record + a "since <date>" qualifier.
+   - TF shows NO win/loss (it never trades directly — it hands coins to
+     Grid), so we drop those two rows and print a scanning line instead.
+     No "0/0". */
+const isGridLive = mode === "live" && variant === "grid";
+const isTfLive   = mode === "live" && variant === "tf";
+const visibleStats = isTfLive
+  ? stats.filter(s => s.label !== "WINS" && s.label !== "LOSSES")
+  : stats;
 
 /* Class composition — brief 70c §7: pill + cornice colorate per-bot anche
    in testmode/paused (prima erano grey "LOCKED"). Mantengo `dim` per
@@ -156,7 +172,7 @@ const pillClass = [
     </div>
   ) : (
     <div>
-      {stats.map(s => {
+      {visibleStats.map(s => {
         const display = dim ? "0" : (s.format === "capital" ? `$${s.value}` : `${s.value}`);
         const fillW = pct(s.value, s.max);
         /* IDs only on live bots' wins/losses — those get hot-swapped from
@@ -185,6 +201,13 @@ const pillClass = [
           </div>
         );
       })}
+
+      {isGridLive && (
+        <div class="bot-stat-since" id="bot-grid-since">{since ? `since ${since}` : ""}</div>
+      )}
+      {isTfLive && (
+        <div class="bot-stat-scanning">Scanning · hands off to Grid</div>
+      )}
     </div>
   )}
 
@@ -225,5 +248,32 @@ const pillClass = [
   .bot-paused-link:hover {
     color: #fcd34d;
     border-color: #fcd34d;
+  }
+
+  /* Grid "since <date>" qualifier — sits under the WINS/LOSSES rows,
+     aligned to the value column on the right. */
+  .bot-stat-since {
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 9.5px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    text-align: right;
+    color: rgba(245, 245, 245, 0.4);
+    margin-top: 0.3rem;
+    min-height: 0.85rem;
+  }
+
+  /* TF scanning line — replaces the WINS/LOSSES rows (TF never trades
+     directly; it hands coins to Grid, so a win/loss record is meaningless). */
+  .bot-stat-scanning {
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #f59e0b;
+    margin-top: 0.5rem;
+    padding: 0.35rem 0;
+    text-align: center;
+    opacity: 0.85;
   }
 </style>
