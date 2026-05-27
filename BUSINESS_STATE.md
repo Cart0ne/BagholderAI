@@ -1,8 +1,8 @@
 # BUSINESS_STATE.md
 
-**Last updated:** 2026-05-26 — Session 86 (status badge homepage + regime overlay admin + governance regole sessioni/brief). (a) **Status badge homepage LIVE** (tabella Supabase `project_status`, aggiornabile via plain SQL UPDATE — zero deploy). Messaggio attuale: "Collecting brain data before deploying real capital". (b) **Regime overlay admin LIVE** (bande colorate fear/greed/neutral su 3 chart admin.html, palette finanziaria Widget A, alpha bumped per visibilità). (c) **Widget B (77c, regime timeline standalone) KILLED** — sostituito da regime overlay. (d) **Diary numbering rule**: fonte di verità = `PROJECT_STATE.md` nel repo, non `diary_entries`. (e) **Brief numbering rule**: `[session_number][lettera]`, es. 86a. Numero assegnato alla scrittura, non all'esecuzione.
-**Updated by:** CEO + CC
-**Basato su:** PROJECT_STATE.md aggiornato 2026-05-26 (S85 + S86 closure) + brief CEO BUSINESS_STATE update S86 (chat 2026-05-26)
+**Last updated:** 2026-05-27 — Session 87 (Volume 3 launched on Payhip + brief 87a shipped: BlogCTA V3, library V3 card, /buy redirect to store, Umami pixel RSS + 22 tracked events, favicon SVG rebrand). Status badge aggiornato a "Collecting brain data before going live · Volume 3 just dropped". X launch post pinned. Audit Area 2 request consegnato a CC fresh.
+**Updated by:** CEO
+**Basato su:** PROJECT_STATE.md aggiornato 2026-05-27 (S87 closure, commits `d91e071` + `66f929e` + `eed66f0`)
 
 ---
 
@@ -25,7 +25,7 @@ BagHolderAI è un progetto sperimentale dove un'AI (Claude) gestisce un micro-bu
 ## 2. Marketing In-Flight
 
 ### Frontend internals (S86, NUOVO)
-- **Homepage: status badge dinamico LIVE** — tabella Supabase `project_status` (1 riga, RLS anon-read, trigger `updated_at` auto), aggiornabile via plain SQL UPDATE da CEO/Max/CC. Box full-width sotto l'hero, palette teal `#5DCAA5`, formato `emoji + status_text + Session NN · Updated Xh ago`. Messaggio attuale: "Collecting brain data before deploying real capital". Zero deploy per cambiarlo.
+- **Homepage: status badge dinamico LIVE** — tabella Supabase `project_status` (1 riga, RLS anon-read, trigger `updated_at` auto), aggiornabile via plain SQL UPDATE da CEO/Max/CC. Box full-width sotto l'hero, palette teal `#5DCAA5`, formato `emoji + status_text + Session NN · Updated Xh ago`. Messaggio attuale: 📖 "Collecting brain data before going live · Volume 3 just dropped" (aggiornato CEO S87). Zero deploy per cambiarlo.
 - **Admin dashboard: regime overlay bands LIVE** — bande di sfondo colorate fear/greed/neutral sui 3 chart `admin.html` (TREND, Sentinel fast vs Sherpa, Parameters History). Palette finanziaria mirror di Widget A (S77 LIVE — extreme_fear cyan-light → extreme_greed red). Alpha bumped (0.20/0.14/0.10) per visibilità su regime uniforme (testnet "fear" da 5+ giorni). Legenda regime + bonus fix x-axis labels range-aware (HH:MM↔DD/MM).
 - **Widget B (77c, standalone regime timeline): KILLED** — regime overlay copre lo stesso bisogno con meno clutter visivo (bande sui chart esistenti invece di un quarto chart dedicato). Brief 77c archiviato in `briefresolved.md/`. Widget A (banner regime istantaneo, S77 LIVE) resta complementare.
 - **Prossimo step frontend**: portare grafici Sentinel/Sherpa su dashboard pubblica (`/dashboard` o `/sentinel`). Gated da (1) validazione regime overlay con dati live + (2) Sherpa Sprint 2 verde dopo Brain Analysis 2.
@@ -64,6 +64,7 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 - **Prossimi passi:** Post 3 cross-post settimana prossima, continuare engagement nei commenti, monitorare se le conversazioni portano click (UTM campaign `comment_deneth` e `comment_lenard`)
 
 ### X (@BagHolderAI)
+- **Post pinnato S87**: lancio V3, link a bagholderai.lol/library. Sostituisce il post blog S78
 - Post promozionale Post 3 pubblicato 2026-05-19 (gancio provocatorio "your ai assistant would rather fabricate a number...")
 - Post Dev.to launch da pubblicare stasera contemporaneamente al cross-post
 - Reply strategy attiva (doc: `reply_strategy_target_accounts.md`)
@@ -77,6 +78,7 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 - **Account:** `Cart0neM`
 - **Canale di distribuzione primario** (decisione S85): r/ClaudeAI identificato come community più aderente al pubblico-target (architetti/founder che usano AI per progetti tecnici).
 - **Primo commento postato in thread da 643 upvote** (2026-05-25). Inizio engagement-first analogo a Dev.to.
+- **Strategia Reddit parcheggiata** (S87): primo post NON sarà sales pitch ma presentazione progetto con valore per la community. Sequenza: introduce → engage → earn credibility → mention book. 1 reply finora.
 
 ### UTM (NUOVO)
 - **Sistema UTM operativo** (Apple Note "BagHolderAI — UTM Reference")
@@ -114,7 +116,10 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 - Baseline attuale (~25/giorno) implica ×2 a 3 mesi, ×4-6 a 6 mesi, ×8-16 a 12 mesi. Distribuzione attiva (Dev.to + Reddit + RSS) è la leva primaria.
 
 ### Payhip
-- Volume 1 + Volume 2 live, 39 views totali maggio, 0 vendite
+- Volume 1 + Volume 2 + **Volume 3 LIVE**: https://payhip.com/b/hCWNX (€4.99, "From Brain to Eyes", Sessions 53–82)
+- Payhip store: https://payhip.com/BagHolderAI
+- Redirect `/buy` ora punta allo store (non più a V1 singolo) — vercel.json aggiornato S87
+- 39 views maggio (pre-V3 launch), 0 vendite, 0 ordini
 
 ### Ads & monetizzazione
 - A-Ads live (revenue trascurabile). Buy Me a Coffee attivo. Nessuna sponsorship.
@@ -126,6 +131,13 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 
 ### Analytics
 - Umami Cloud + Vercel Web Analytics
+- **22 data-umami-event su tutti i link Payhip** (S87): homepage Story (6), library shelf (12), library card, blog CTA (4), blog body inline. Source property per breakdown: `home-story-vN`, `library-shelf-vN`, `library-card-vN`, `blog-cta-vN`, `blog-cta-fallback-vN`, `blog-body-<slug>`
+- **Pixel Dev.to nel feed RSS** (S87): `<img src="https://cloud.umami.is/p/0nHeF7vMT" .../>` appeso a `content:encoded` di ogni item. Traccia aperture articoli importati su Dev.to
+- **5 funnel Umami configurati** (S86 handoff): Homepage→Blog→Articolo, Homepage→Dashboard→Diary, Homepage→Blog→Diary, Homepage→HowWeWork→Blueprint, Homepage→Library
+- Documento di reference: `config/umami-session-26-05-2026.md`
+
+### Favicon
+- **Favicon SVG brand** (S87, commit `eed66f0`): sostituito emoji 🎒 con SVG zaino blu sleepy (mascot brand). Apple-touch-icon 180×180 (bg dark `#0a0e17` + padding 15px) + favicon-32.png fallback per browser legacy.
 
 ---
 
@@ -135,18 +147,18 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 
 **Volume 2** — "From Grid to Brain" (Sessions 24–52, €4.99). LIVE su Payhip: https://payhip.com/b/NHw53
 
-**Volume 3** — "From Brain to Eyes" (Sessions 53–82, €4.99 planned). **CHIUSO a S82**. In rilettura finale, lancio Payhip previsto settimana 26-31 maggio. Arco narrativo: Clean Slate → Testnet → Brain Analysis → NewsKeeper decision (cliffhanger).
+**Volume 3** — "From Brain to Eyes" (Sessions 53–82, €4.99). **LIVE su Payhip: https://payhip.com/b/hCWNX** (lanciato 27 maggio 2026).
 
-**Volume 4** — titolo TBD (Sessions 83+, €4.99 planned). **APERTO a S83**. Arco narrativo: NewsKeeper build → go-live → primi risultati reali.
+**Volume 4** — "From Eyes to Live" (Sessions 83+, €4.99 planned). **APERTO a S83**. Arco narrativo: NewsKeeper build → go-live → primi risultati reali.
 
 **Volume corrente:** 4 (in accumulo da S83).
 
-**Stato sessioni V4 (aggiornato S86):**
+**Stato sessioni V4 (aggiornato S87):**
 - S83 — COMPLETE (NewsKeeper Brain #5 scaffold)
 - S84 — COMPLETE (SEO audit fix)
 - S85 — COMPLETE (RSS feed Dev.to + governance BUSINESS_STATE)
 - S86 — COMPLETE (status badge homepage + regime overlay admin)
-- Diary entry S84 + S85 scritti retroattivamente in S86 (gap di numerazione chiuso)
+- S87 — BUILDING (V3 launch Payhip + brief 87a site updates + Umami tracking + Audit Area 2 request)
 
 **Regola: fonte di verità per session number = `PROJECT_STATE.md` nel repo**, non `diary_entries` su Supabase. La tabella `diary_entries` può laggare se un diary è ancora in scrittura; il PROJECT_STATE è canonical perché aggiornato a ogni chiusura sessione. Brief CEO portano il session number assegnato alla scrittura del brief (non all'esecuzione — vedi §4).
 
@@ -154,8 +166,7 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 
 **Check di congruenza diary↔DB:** nessun check automatico attivo.
 
-**Draft in coda:**
-- `drafts/2026-05-07_diary_vol3_state_files.md` — seed draft Volume 3
+**Draft in coda:** nessuno (seed V3 rimosso a S87 post-lancio).
 
 ---
 
@@ -163,6 +174,12 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 
 | Data | Decisione | Perché |
 |---|---|---|
+| 2026-05-27 (S87) | **Volume 3 LIVE su Payhip** (€4.99, hCWNX). Tre volumi disponibili, prodotto line completa fino a pre-mainnet | V3 chiude l'arco "From Brain to Eyes" (S53-S82). Landing page, BlogCTA, library aggiornati nello stesso deploy |
+| 2026-05-27 (S87) | **Volume 4 titolo confermato: "From Eyes to Live"**. Coming soon su /library e homepage | Progressione narrativa Zero→Grid→Brain→Eyes→Live. Ogni titolo riprende dove il precedente finisce. Terminal point chiaro: go-live con soldi veri |
+| 2026-05-27 (S87) | **Redirect /buy → store** (payhip.com/BagHolderAI) invece di V1 singolo | Con 3 prodotti, forzare su V1 è un funnel rotto. Store mostra il catalogo completo |
+| 2026-05-27 (S87) | **Full Umami event coverage** (22 link tracciati + pixel RSS Dev.to) | Ogni click Payhip ora ha source property per funnel analysis. Prima si misurava solo "qualcuno ha cliccato", ora si misura "da dove" |
+| 2026-05-27 (S87) | **Reddit deferred**: primo post sarà introduzione progetto, non sales pitch | 1 reply su r/ClaudeAI ≠ community presence. Stranieri con link prodotto = spam. Sequenza: introduce → engage → sell |
+| 2026-05-27 (S87) | **Audit Area 2 request consegnato** (primo mai eseguito, overdue da aprile) | Trigger: fine Volume 3 (regola WORKFLOW.md §F). 9 sessioni di "next time". Scope: 6 domande guida su coerenza narrazione↔codice↔state files |
 | 2026-05-26 (S86) | **Status badge homepage**: sostituisce "SESSION X · IN PROGRESS" con box teal dinamico da Supabase (`project_status`). Zero deploy per aggiornare il messaggio | Permette al CEO/Max di comunicare stato corrente del progetto al pubblico senza touchare codice. Riusabile per annunci ("Going live next week", "On vacation, bot watching the shop", ecc.). Aggiunge dinamica narrativa alla home |
 | 2026-05-26 (S86) | **Regime overlay admin**: bande colorate fear/greed/neutral sui 3 chart `admin.html` da `sentinel_scores` slow loop. Palette finanziaria (Widget A), non semaforica | Contesto regime visibile a colpo d'occhio sui chart Sentinel/Sherpa senza dover guardare un widget separato. Palette finanziaria coerente con Widget A LIVE: due interpretazioni opposte sulla stessa pagina sarebbero confuse |
 | 2026-05-26 (S86) | **Widget B (77c) killed**: regime overlay copre lo stesso bisogno, meno clutter | Brief 77c proponeva un quarto chart standalone (regime timeline 7gg). 86b è più elegante: vedi regime nello stesso grafico dei segnali. Widget A LIVE resta (banner "regime ora") |
@@ -239,6 +256,7 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 | **NewsKeeper osservazione 7gg + S2 build** | 31 maggio target | Classifier rumoroso noto, raccolta dataset 7gg, poi calibration / Haiku-classify in S2 |
 | **Blog primo post** | DONE 2026-05-15 | "An AI That Can't Trade" live su bagholderai.lol/blog |
 | **Volume 4** | Nessuna deadline | In accumulo da S83, arco narrativo NewsKeeper build → go-live |
+| **PROJECT_STATE.md compaction** | Prossima sessione CC | File a ~52KB, sopra cap 40KB CLAUDE.md §[2]. Compaction autonoma CC (archive in `audits/PROJECT_STATE_archive.md` prima di cancellare) |
 
 **Multi-macchina:** MBP (sviluppo) ↔ Mac Mini (runtime). Repo locale MBP sincronizzato origin/main post-push S84 (commit `33d23b1`). Mac Mini orchestrator su `51204cf` (PID parent **28217**, restart 2026-05-22 20:31 CET post brief 81a+81b), 7 processi + NewsKeeper standalone PID 78098 (caffeinate parent 78100, launch 2026-05-24 10:56 CET). Niente restart necessario per S84 (solo modifiche sito Astro, deploy Vercel auto).
 
