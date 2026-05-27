@@ -39,7 +39,7 @@ vecchio della cadenza suggerita, segnalalo a Max nel report finale
 della sessione come riga separata:
 
 - Area 1 (tecnica): cadenza 30 giorni
-- Area 2 (coerenza progetto): cadenza 90 giorni o fine-volume Diary
+- Area 2 (coerenza progetto): trigger event-based — vedi AUDIT_PROTOCOL.md §2 per la lista completa (pre-mainnet / pre-Volume / pre-nuovo-brain). Backstop 120gg.
 - Area 3 (strategy & marketing): cadenza 90 giorni
 
 Formato del segnale: "⚠️ Audit Area X dovuto: ultimo era YYYY-MM-DD 
@@ -64,7 +64,7 @@ Operativamente:
 E NON scrivere mai una riga in §9 per la sessione che stai chiudendo 
 se hai shippato codice (commit + restart bot + migration). Quella riga 
 va in §10 "Sessioni shipped". Solo un Auditor (CC fresh con brief 
-`audits/audit_request_*.md`, vedi `AUDIT_PROTOCOL.md` e `WORKFLOW.md §G`) 
+`audits/audit_request_*.md`, vedi `AUDIT_PROTOCOL.md` per il protocollo completo + `WORKFLOW.md §G`) 
 ha titolo per aggiungere riga §9, e solo dopo aver depositato il file 
 `audits/audit_report_*.md` corrispondente.
 

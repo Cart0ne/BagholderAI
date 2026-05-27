@@ -97,11 +97,11 @@ Per task piccoli (fix puntuale, < 50 righe): CC procede direttamente.
 
 ### G. Quando richiedere un audit esterno
 
-Vedi `AUDIT_PROTOCOL.md` per dettagli. Trigger tipici:
+Vedi `AUDIT_PROTOCOL.md` per il protocollo completo (aree, trigger, procedura). Trigger:
 
-- **Area 1 (tech)**: dopo ogni feature significativa o mensile
-- **Area 2 (coerenza progetto)**: a fine ogni volume Diary
-- **Area 3 (marketing)**: trimestrale + pre-lancio
+- **Area 1 (tech)**: dopo ogni feature significativa o mensile (backstop 30gg)
+- **Area 2 (coerenza progetto)**: event-based — pre-mainnet / pre-Volume Diary / pre-nuovo-brain / HIGH finding su doc da un audit Area 1-3 (backstop 120gg). Vedi `AUDIT_PROTOCOL.md §2`
+- **Area 3 (marketing)**: trimestrale + pre-lancio (backstop 90gg)
 
 **Regola di scope dell'Auditor (formalizzata 2026-05-15)**: l'Auditor 
 NON shipa codice, NON tocca brief in corso, NON esegue il lavoro che 
@@ -117,12 +117,14 @@ Procedura:
 2. Apri sessione CC FRESH e gli passi il file come brief. **Fresh** = 
    nessun task di sviluppo prima nella stessa chat. Se la sessione è 
    contaminata da shipping precedente, NON è Auditor.
-3. CC ti consegna il report
-4. Tu salvi in `audits/audit_report_YYYYMMDD_topic.md`
+3. CC crea `audits/audit_in_flight_YYYYMMDD_topic.md` (stage intermedio 
+   con ETA + scope confermato — segnala che un audit è in corso, evita doppioni)
+4. CC produce e salva `audits/audit_report_YYYYMMDD_topic.md` e ti consegna il report
 5. L'Auditor stesso aggiorna PROJECT_STATE.md §9 con la sintesi 1-2 
    righe (è l'unico autorizzato — vedi `CLAUDE.md §[1]`). Una sessione 
    di sviluppo che ha shippato codice scrive in §10 "Sessioni shipped", 
    MAI in §9.
+6. CC cancella `audits/audit_in_flight_*.md` (stage chiuso)
 
 ---
 
@@ -177,8 +179,9 @@ Procedura:
 
 ---
 
-**Last updated**: 2026-05-15 — bonifica drift audit (riga §G + §E + 
-nuova §10 PROJECT_STATE). Init: 2026-05-07 Session 63.  
+**Last updated**: 2026-05-27 (S88, brief 88a) — §G trigger Area 2 event-based + 
+step `audit_in_flight` (allineato a AUDIT_PROTOCOL.md riscritto). Prec.: 2026-05-15 
+bonifica drift audit (§G + §E + nuova §10 PROJECT_STATE). Init: 2026-05-07 Session 63.  
 **Owner**: Max  
 **Manutenzione**: aggiorna quando il workflow cambia (raro). Ogni audit 
 Area 2 può proporre modifiche.

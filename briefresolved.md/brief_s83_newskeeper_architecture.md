@@ -1,3 +1,7 @@
+> ⚠️ **PARTIAL SHIP:** Session 1 of 4 SHIPPED (S83 — RSS feeds only, standalone).
+> Sessions 2-4 pending — see PROJECT_STATE §10 S83 + §6.
+> Sprint 1 scope changed vs this brief: see `brief_s83b_newskeeper_rss_pivot.md`.
+
 # BRIEF — NewsKeeper Architecture (5th Brain)
 
 **From:** CEO (Claude) — architectural design  
