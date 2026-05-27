@@ -50,24 +50,30 @@ const botData = [
 const maxStat = Math.max(50, ...botData.map(b => Math.max(b.wins, b.losses))) * 1.2;
 
 const volumes = [
-  { tag: "Volume 1", title: "From Zero to Grid",
+  { vol: "v1", tag: "Volume 1", title: "From Zero to Grid",
     desc: "23 sessions. From \"what's an API\" to live automated trading. Every mistake, every breakthrough.",
     cover: "/cover_vol1_square.jpg",
     buy: "https://payhip.com/b/a4yMc",
     preview: "https://payhip.com/preview/a4yMc",
     meta: "95 pages · PDF · €4.99" },
-  { tag: "Volume 2", title: "From Grid to Brain",
+  { vol: "v2", tag: "Volume 2", title: "From Grid to Brain",
     desc: "29 sessions. From a working bot to an autonomous brain that picks its own coins. Every loss, every lesson.",
     cover: "/cover_vol2_square.jpg",
     buy: "https://payhip.com/b/NHw53",
     preview: "https://payhip.com/preview/NHw53",
     meta: "108 pages · PDF · €4.99" },
-  { tag: "Volume 3", title: "From Brain to Eyes",
+  { vol: "v3", tag: "Volume 3", title: "From Brain to Eyes",
     desc: "30 sessions. The bots trade. The numbers don't match. And the Board has had enough.",
     cover: "/Vol-3_cover_01_square.png",
     buy: "https://payhip.com/b/hCWNX",
     preview: "https://payhip.com/preview/hCWNX",
     meta: "105 pages · PDF · €4.99" },
+  { vol: "v4", tag: "Volume 4", title: "From Eyes to Live",
+    desc: "The brain works. The Board approves. Now the question: can any of it survive real money?",
+    cover: null,
+    buy: null,
+    preview: null,
+    meta: "Coming soon" },
 ];
 
 ---
@@ -425,7 +431,7 @@ const volumes = [
       </a>
     </div>
 
-    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 reveal-stagger">
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 reveal-stagger">
       {volumes.map(v => (
         <article class="overflow-hidden rounded-xl border border-border-soft
                         bg-surface/40 transition-colors hover:border-border">
@@ -456,6 +462,8 @@ const volumes = [
             {v.buy && (
               <div class="mt-3 flex flex-wrap items-center gap-3">
                 <a href={v.buy} target="_blank" rel="noopener noreferrer"
+                   data-umami-event="buy-click"
+                   data-umami-event-source={`home-story-${v.vol}`}
                    class="inline-flex items-center gap-1.5 rounded-lg
                           bg-primary/10 border border-primary/30
                           px-2.5 py-1 text-[11.5px] font-medium text-primary
@@ -463,6 +471,8 @@ const volumes = [
                   Get on Payhip →
                 </a>
                 <a href={v.preview} target="_blank" rel="noopener noreferrer"
+                   data-umami-event="preview-click"
+                   data-umami-event-source={`home-story-${v.vol}`}
                    class="text-[11.5px] text-text-dim hover:text-text">
                   ↓ Free preview
                 </a>

@@ -46,6 +46,8 @@ const v = volume === 1 || volume === 2 || volume === 3 ? VOLUMES[volume] : null;
       The full diary with all {v.sessions} is available on Payhip for €4.99.
     </p>
     <a href={v.url}
+       data-umami-event="buy-click"
+       data-umami-event-source={`blog-cta-v${volume}`}
        class="mt-3 inline-flex items-center gap-2 rounded-md border border-pos/40
               bg-pos/10 px-3 py-1.5 font-mono text-[12px] text-pos
               hover:bg-pos/20 hover:border-pos/60 transition-colors">
@@ -62,18 +64,24 @@ const v = volume === 1 || volume === 2 || volume === 3 ? VOLUMES[volume] : null;
     </div>
     <div class="mt-3 flex flex-col gap-2 sm:flex-row sm:gap-3 sm:flex-wrap">
       <a href="https://payhip.com/b/a4yMc"
+         data-umami-event="buy-click"
+         data-umami-event-source="blog-cta-fallback-v1"
          class="inline-flex items-center gap-2 rounded-md border border-border-soft
                 bg-bg/40 px-3 py-1.5 font-mono text-[12px] text-text-dim
                 hover:text-text hover:border-text-muted transition-colors">
         V1 · From Zero to Grid · €4.99
       </a>
       <a href="https://payhip.com/b/NHw53"
+         data-umami-event="buy-click"
+         data-umami-event-source="blog-cta-fallback-v2"
          class="inline-flex items-center gap-2 rounded-md border border-border-soft
                 bg-bg/40 px-3 py-1.5 font-mono text-[12px] text-text-dim
                 hover:text-text hover:border-text-muted transition-colors">
         V2 · From Grid to Brain · €4.99
       </a>
       <a href="https://payhip.com/b/hCWNX"
+         data-umami-event="buy-click"
+         data-umami-event-source="blog-cta-fallback-v3"
          class="inline-flex items-center gap-2 rounded-md border border-border-soft
                 bg-bg/40 px-3 py-1.5 font-mono text-[12px] text-text-dim
                 hover:text-text hover:border-text-muted transition-colors">
