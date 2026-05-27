@@ -79,6 +79,27 @@ const tfSubtitle   = "The breakout hunter";
           {fmtDate(mockSnapshot.asOfIso)}
         </span>
       </div>
+
+      {/* Brief 88d Task 2 — "why no trades" transparency banner. Server-
+          rendered hidden; regime-banner.ts unhides it only when there are
+          0 trades today AND the slow-loop regime is fear/extreme_fear, then
+          fills in last-trade date + days observing. Disappears on its own
+          once the bot trades again or the regime shifts. No sensitive
+          figures — only last trade, regime, days watching. */}
+      <div id="regime-watch-banner"
+           class="hidden mb-3 flex flex-wrap items-center gap-x-2 gap-y-1
+                  rounded-lg border border-border-soft bg-surface/60
+                  px-3.5 py-2 font-mono text-[11.5px] text-text-dim">
+        <span aria-hidden="true">🔍</span>
+        <span class="text-text">Watching market</span>
+        <span class="text-border">·</span>
+        <span>Last trade <span id="regime-watch-lasttrade">—</span></span>
+        <span class="text-border">·</span>
+        <span id="regime-watch-regime" class="text-neu">Fear regime active</span>
+        <span class="text-border">·</span>
+        <span id="regime-watch-days">— observing</span>
+      </div>
+
       {/* Same font hierarchy as the home live-snapshot panel:
           label 10px uppercase + value 20px semibold. */}
       <dl class="rounded-lg border border-border bg-surface
@@ -680,6 +701,7 @@ const tfSubtitle   = "The breakout hunter";
   <script>
     import "../scripts/dashboard-live.ts";
     import "../scripts/dashboard-reconciliation.ts";
+    import "../scripts/regime-banner.ts";
   </script>
 
   {/* § 3 charts: Chart.js loaded via CDN, rendering done in dashboard-live.ts

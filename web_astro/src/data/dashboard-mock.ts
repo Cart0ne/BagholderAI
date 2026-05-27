@@ -5,31 +5,36 @@
    approvato, sostituiremo con fetch Supabase reali (vedi
    web/dashboard.html per le query originali). */
 
+// AUDIT NOTE (S88): Refresh this mock baseline at every minor site release.
+// Last snapshot: 2026-05-27 (S88). Headline totals from Supabase at commit
+// time. Per-coin `assets`, the cumulative curve, and mockTrades/mockCEOLog
+// below stay illustrative scaffolding — they are overwritten by
+// dashboard-live.ts and only ever render if that fetch fails entirely.
 export const mockSnapshot = {
-  asOfIso:        "2026-05-02T18:00:00Z",
-  asOfLabel:      "May 2, 2026 · 20:00 Rome",
-  dayNumber:      34,                     // giorni dall'inizio v3 (2026-03-30)
+  asOfIso:        "2026-05-27T12:00:00Z",
+  asOfLabel:      "May 27, 2026 · 14:00 Rome",
+  dayNumber:      59,                     // giorni dall'inizio v3 (2026-03-30)
   initialCapital: 600,                    // 500 Grid + 100 TF
 };
 
 export const mockGrid = {
   initial:        500,
-  netWorth:       527.84,
-  pnlAbs:         27.84,
-  pnlPct:         5.57,
-  realized:       19.42,
-  unrealized:     8.42,
-  fees:           4.31,
-  cashAvail:      287.55,
-  cashPct:        54.5,
-  trades:         147,
-  buys:           82,
-  sells:          65,
-  todayPnl:       1.34,
-  todayTrades:    6,
-  todayBuys:      3,
-  todaySells:     3,
-  todayAllocated: 28.55,   // capitale messo a lavoro oggi (somma cost dei buy)
+  netWorth:       457.42,
+  pnlAbs:         -42.58,
+  pnlPct:         -8.52,
+  realized:       12.52,
+  unrealized:     -53.34,
+  fees:           1.76,
+  cashAvail:      0.00,    // cassa tutta dispiegata (SWEEP "no cash morto")
+  cashPct:        0.0,
+  trades:         58,
+  buys:           37,
+  sells:          21,
+  todayPnl:       0.00,
+  todayTrades:    0,
+  todayBuys:      0,
+  todaySells:     0,
+  todayAllocated: 0.00,    // capitale messo a lavoro oggi (somma cost dei buy)
   /* 5 slot in totale: 3 fissi (manual) + 2 dinamici (tf_grid).
      I 2 slot tf_grid sono placeholder finché TF non passa coin in
      Tier 1-2. Il numero finale sarà dinamico (3-5) quando colleghiamo
@@ -110,22 +115,22 @@ export const mockGrid = {
 
 export const mockTF = {
   initial:        100,
-  netWorth:       104.92,
-  pnlAbs:         4.92,
-  pnlPct:         4.92,
-  realized:       3.18,
-  unrealized:     1.74,
-  fees:           0.62,
-  cashAvail:      72.10,
-  cashPct:        72.1,
-  trades:         18,
-  buys:           11,
-  sells:          7,
-  todayPnl:       0.42,
-  todayTrades:    2,
-  todayBuys:      1,
-  todaySells:     1,
-  todayAllocated: 9.64,
+  netWorth:       100.00,
+  pnlAbs:         0.00,
+  pnlPct:         0.00,
+  realized:       0.00,
+  unrealized:     0.00,
+  fees:           0.00,
+  cashAvail:      100.00,
+  cashPct:        100.0,
+  trades:         0,       // TF scanning Tier 1-2 — no trade eseguito in v3
+  buys:           0,
+  sells:          0,
+  todayPnl:       0.00,
+  todayTrades:    0,
+  todayBuys:      0,
+  todaySells:     0,
+  todayAllocated: 0.00,
   /* TF post-handoff: 1 coin nativa Tier 3 (gestione TF pura) +
      fino a 2 promosse a tf_grid (visibili come "trofeo" della selezione,
      ma gestite e contabilizzate da Grid). */
@@ -146,9 +151,9 @@ export const mockTools = [
     status:   "live",
     color:    "#22c55e",
     capital:  500,
-    nw:       527.84,
-    pnlPct:   5.57,
-    days:     34,
+    nw:       457.42,
+    pnlPct:   -8.52,
+    days:     59,
     blurb:    "Buys low, sells high. Mechanical. The cash machine.",
   },
   {
@@ -158,9 +163,9 @@ export const mockTools = [
     status:   "live",
     color:    "#f59e0b",
     capital:  100,
-    nw:       104.92,
-    pnlPct:   4.92,
-    days:     17,
+    nw:       100.00,
+    pnlPct:   0.00,
+    days:     43,
     blurb:    "Hunts breakouts on multi-tier scans. Beta since Apr 15.",
   },
   {

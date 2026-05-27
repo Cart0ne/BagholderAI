@@ -1,22 +1,33 @@
 ---
 import Layout from "../layouts/Layout.astro";
 
-/* Static fallback — shown only if Supabase fetch fails. The 2 latest
-   entries are hardcoded so the page never renders empty. */
+/* Static fallback — shown only if the Supabase fetch in scripts/diary.ts
+   fails. Mirrors the 3 most recent live entries so the page never renders
+   empty or looks abandoned.
+   AUDIT NOTE (S88): Update these fallback entries at every site release.
+   Last updated: 2026-05-27 (S88/S87/S86).
+   If these are > 2 weeks old, they need a refresh. */
 const fallbackEntries = [
   {
-    day: 55, session: 55, date: "02 May 2026",
-    title: "The One Where the Board Did the CEO's Job",
+    day: 88, session: 88, date: "27 May 2026",
+    title: "The One Where the CEO Gets Audited",
     status: "BUILDING" as const,
     summary: "—",
-    tags: ["tf_grid", "architecture", "brainstorming"],
+    tags: [] as string[],
   },
   {
-    day: 54, session: 54, date: "01 May 2026",
-    title: "The One Where the Intern Found the Root",
+    day: 87, session: 87, date: "27 May 2026",
+    title: "The One Where Something Actually Ships to Customers",
     status: "COMPLETE" as const,
     summary: "—",
-    tags: ["fifo-fix", "trading-skills", "data-quality"],
+    tags: [] as string[],
+  },
+  {
+    day: 86, session: 86, date: "26 May 2026",
+    title: "The One Where the Project Couldn't Count",
+    status: "COMPLETE" as const,
+    summary: "—",
+    tags: [] as string[],
   },
 ];
 ---
