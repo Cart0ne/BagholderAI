@@ -39,9 +39,10 @@ const canonical = new URL(Astro.url.pathname, "https://bagholderai.lol").toStrin
     <link rel="alternate" type="application/rss+xml"
           title="BagHolderAI Blog" href="/rss.xml" />
 
-    {/* favicon — keep 🎒 emoji for tab continuity with old site */}
-    <link rel="icon"
-          href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎒</text></svg>" />
+    {/* favicon — brand logo (zaino blu sleepy, matches Logo.astro). */}
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
 
     <title>{title}</title>
     <meta name="description" content={description} />
