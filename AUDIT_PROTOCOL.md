@@ -101,7 +101,8 @@ resta a una sessione fresh separata, vedi §3).
 | 2026-05-07 | 1 | Phase 1 split `grid_bot.py` monolite → 6 moduli (brief 62a) | **APPROVED** (zero regressioni) | `audits/audit_report_20260507_phase1_grid_split_review.md` |
 | 2026-05-15 | 3 | Marketing + SEO/GSC + X performance pre-go-live (A3-S78) | **CON RISERVE** | `audits/audit_report_20260515_marketing_seo_x.md` |
 | 2026-05-27 | 2 | Coerenza narrazione pubblica ↔ codice LIVE ↔ state files (A2-S87, primo audit Area 2 mai eseguito) | **CON RISERVE** (0 CRITICAL, 6 HIGH, 12 MED) | `audits/audit_report_20260527_area2_coherence.md` |
+| 2026-05-27 | 1 | Monthly automated technical integrity (codebase + DB + bot health + code patterns) | **CON RISERVE** (0 CRITICAL, 2 HIGH, 3 MED) | `audits/audit_report_20260527_area1_automated.md` |
 
 ---
 
-*Last updated: 2026-05-27 (S88, brief 88a) — riscrittura completa post audit Area 2: da audit-request fossile a protocollo vero, trigger Area 2 event-based, stage `audit_in_flight`.*
+*Last updated: 2026-05-27 (automated Area 1 audit) — added automated monthly audit row.*
