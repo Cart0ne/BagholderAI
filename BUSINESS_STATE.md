@@ -1,8 +1,8 @@
 # BUSINESS_STATE.md
 
-**Last updated:** 2026-05-27 — Session 88 (applicato brief CEO `business_state_update_s88`, adattato a realtà: Audit Area 2 completato CON RISERVE + remediation 4/5 shippata stessa sessione — 88b/88c/88a/88e, resta 88d). Voci §2/§4/§5/§7 aggiornate. Prec.: S87 (Volume 3 launch Payhip + brief 87a + Audit Area 2 request consegnato).
-**Updated by:** CEO (brief) — applicato da CC (S88)
-**Basato su:** PROJECT_STATE.md aggiornato 2026-05-27 (S88, commits `c3570f3`…`77e9873`)
+**Last updated:** 2026-05-27 — Session 89 (applicato update CEO: §4 +2 decisioni [audit Area 1 automatizzato + brief 89a shipped], §7 +2 righe [scheduled task Area 2/3 + micro-brief parcheggiati]). Cadenze audit NON duplicate qui: restano canoniche in PROJECT_STATE §9 (decisione Max, evita drift §[1]). Prec.: S88 (brief CEO `business_state_update_s88`, Audit Area 2 + remediation 4/5).
+**Updated by:** CEO (istruzione in chat) — applicato da CC (S89)
+**Basato su:** PROJECT_STATE.md aggiornato 2026-05-27 (S89, commit `617001e`)
 
 ---
 
@@ -179,6 +179,8 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 
 | Data | Decisione | Perché |
 |---|---|---|
+| 2026-05-27 (S89) | **Audit Area 1 automatizzato via Cowork scheduled task** (monthly, sandbox Linux) | Notifica: bozza Gmail con marker `[AREA-XX]`, Apps Script `AutoSendDrafts` (account cartone@gmail.com) la invia automaticamente tra le 4-5am. Git push resta manuale (limite sandbox `.git/`). Primo run 2026-05-27, verdetto CON RISERVE, prossimo ~2026-06-26 |
+| 2026-05-27 (S89) | **Brief 89a shipped**: test hygiene (32 legacy → archived + pytest.ini), dead code deprecated (4 metodi, tabelle `portfolio`/`sentinel_logs`), `requirements-scripts.txt` per tweepy | Remediation findings Audit Area 1 (H1/H2/M1/M3/L2). Pytest 121/121 green. Solo housekeeping, zero touch `bot/`, no restart |
 | 2026-05-27 (S88) | **Audit Area 2 completato + 5 brief remediation** | Primo audit coerenza mai eseguito. Drift pubblico principale: sito 1-2 settimane indietro. 30 findings, 0 CRITICAL. 5 brief CC (88a→88e) prodotti per la remediation. Diary posticipato a post-remediation per scrivere report completo (candidato blog post) |
 | 2026-05-27 (S88) | **Regola Area 2 riformulata: event-based** (Board approved) | Trigger obbligatori: (a) pre go-live mainnet, (b) pre lancio Volume Payhip, (c) nuovo brain/macro-feature, (d) backstop 120gg. Sostituisce "90gg" mai applicata. Owner accountability: Max. Implementazione in Brief 88a |
 | 2026-05-27 (S88) | **NewsKeeper reso pubblico nel roadmap** (Board approved) | Phase dedicata in roadmap.ts. Tono onesto: Sprint 1 live (RSS + regex, ~60% FP), Sprint 2 planned (Haiku classifier). Non più nascosto come "Sentinel Sprint 3" |
@@ -277,6 +279,8 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 
 | Cosa | Perché |
 |---|---|
+| **Scheduled task Area 2 e Area 3 non automatizzati** | Solo l'audit Area 1 gira come Cowork scheduled task. Area 2/3 parcheggiati in Apple Notes todo, da configurare in sessione dedicata |
+| **Micro-brief `datetime.utcnow()` deprecation + cleanup PortfolioManager** | Low priority, scoperti in S89 (audit Area 1). Parcheggiati in Apple Notes todo. Toccano `bot/` runtime → fuori scope housekeeping. Tracciati in PROJECT_STATE §8 |
 | **Go-live mainnet €100** | Bloccato da 4 pre-requisiti in sequenza: NewsKeeper build (S2-S4, ~3 sessioni residue) + Sherpa testnet LIVE (post Brain Analysis 2) + dry_run observation periodo standard + Board approval finale. Niente data fissa, gated da condizioni di mercato osservate (bear+bull+laterale) |
 | **TF-Scout (Tier 3 shitcoins)** | Post-mainnet, esplicitamente parcheggiato. Richiede capitale extra e tolleranza rischio che oggi non abbiamo |
 | **Grok/X scanner module** | Post-mainnet. Richiede API X premium (~$200/mese), giustificabile solo con MRR positivo |
