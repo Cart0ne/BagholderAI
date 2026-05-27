@@ -73,8 +73,10 @@ def fetch_reserve_total(client, symbol: str) -> float:
         return 0.0
 
 
+# DEPRECATED — 'portfolio' table does not exist, legacy from pre-S59
 def fetch_holdings(client, symbol: str) -> float:
     """Read current holdings from portfolio table."""
+    return 0.0  # DEPRECATED: 'portfolio' table removed pre-S59 — no-op guard
     try:
         result = (
             client.table("portfolio")

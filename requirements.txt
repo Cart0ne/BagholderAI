@@ -1,4 +1,5 @@
 # BagHolderAI - Dependencies
+# Bot runtime dependencies. For script-only deps see requirements-scripts.txt
 # Exchange & Trading
 ccxt>=4.5.0
 pandas>=2.2.0

@@ -1,0 +1,2 @@
+# Dependencies for standalone scripts (not required by bot runtime)
+tweepy>=4.14.0

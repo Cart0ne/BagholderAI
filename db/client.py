@@ -181,11 +181,14 @@ class PortfolioManager:
     def __init__(self):
         self.client = get_client()
     
+    # DEPRECATED — 'portfolio' table does not exist, legacy from pre-S59
     def get_portfolio(self) -> list:
         """Get all current holdings."""
+        return None  # DEPRECATED: 'portfolio' table removed pre-S59 — no-op guard
         result = self.client.table("portfolio").select("*").gt("amount", 0).execute()
         return result.data or []
     
+    # DEPRECATED — 'portfolio' table does not exist, legacy from pre-S59
     def update_position(
         self,
         symbol: str,
@@ -195,6 +198,7 @@ class PortfolioManager:
         current_price: Optional[float] = None,
     ) -> dict:
         """Update or create a portfolio position."""
+        return None  # DEPRECATED: 'portfolio' table removed pre-S59 — no-op guard
         unrealized_pnl = None
         if current_price and avg_buy_price > 0:
             unrealized_pnl = round((current_price - avg_buy_price) * amount, 8)
@@ -216,8 +220,10 @@ class PortfolioManager:
         )
         return result.data[0] if result.data else {}
     
+    # DEPRECATED — 'portfolio' table does not exist, legacy from pre-S59
     def get_total_allocation(self) -> float:
         """Get total capital currently allocated (for limit checks)."""
+        return None  # DEPRECATED: 'portfolio' table removed pre-S59 — no-op guard
         portfolio = self.get_portfolio()
         return sum(p.get("amount", 0) * p.get("avg_buy_price", 0) for p in portfolio)
 
@@ -349,6 +355,7 @@ class SentinelLogger:
     def __init__(self):
         self.client = get_client()
     
+    # DEPRECATED — 'sentinel_logs' table does not exist, legacy from pre-S59
     def log_analysis(
         self,
         risk_score: int,
@@ -362,6 +369,7 @@ class SentinelLogger:
         cost_usd: float = 0,
     ) -> dict:
         """Log a Sentinel analysis."""
+        return None  # DEPRECATED: 'sentinel_logs' table removed pre-S59 — no-op guard
         data = {
             "risk_score": risk_score,
             "opportunity_score": opportunity_score,
