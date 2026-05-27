@@ -41,8 +41,8 @@ export interface RoadmapData {
 }
 
 export const ROADMAP: RoadmapData = {
-  version: "Versione 1.39 — Maggio 2026",
-  lastUpdated: "2026-05-19",
+  version: "Versione 1.48 — Maggio 2026",
+  lastUpdated: "2026-05-27",
   phases: [
     {
       id: 0,
@@ -113,16 +113,18 @@ export const ROADMAP: RoadmapData = {
       title: "AI Sentinel + Sherpa",
       timeframe: "Weeks 4-5",
       status: "active",
-      description: "Two experimental brains observing the market in DRY_RUN since S70 (2026-05-10). Sentinel scores risk + opportunity from price + funding signals. Sherpa proposes parameter changes to Grid based on Sentinel's reads. Neither writes to live config yet. CEO decision S76 (2026-05-14): Sentinel-first roadmap — finish Sentinel (Sprint 1 audit ✓, Sprint 2 build, observe 1 week), then turn Sherpa LIVE on testnet one parameter at a time (sell_pct first), then mainnet. Target go-live: late June / early July 2026.",
+      description: "Two experimental brains observing the market in DRY_RUN since S70 (2026-05-10). Sentinel scores risk + opportunity from price + funding signals (fast loop, 60s) and detects the macro regime from Fear & Greed + CMC dominance (slow loop, 4h). Sherpa proposes per-coin Grid parameter changes based on Sentinel's regime reads. Neither writes to live config yet. Sentinel Sprint 2 is complete and APPROVED (Brain Analysis #1, S80a); Sherpa was reworked to be per-coin volatility-aware (Sprint 2, S81) and is now in its observation window. Next: a second Brain Analysis → Sherpa LIVE on testnet one parameter at a time (sell_pct first) → observation → Board approval → mainnet. Go-live depends on observed market conditions (bear + bull + lateral), not a calendar date (Board decision S82, 2026-05-23).",
       tasks: [
         { text: "Sentinel Sprint 1: fast loop (BTC price + funding)", status: "done", who: "AI", comment: "Session 56 (2026-05-06). score_engine.py + price_monitor.py running every 60s, writes sentinel_scores. Risk + Opportunity + speed_of_fall heuristics." },
         { text: "Sherpa Sprint 1: rule-based proposals on Grid", status: "done", who: "AI", comment: "Session 56 (2026-05-06). Loop every 120s reads Sentinel scores + writes sherpa_proposals. SHERPA_MODE=dry_run never touches bot_config." },
         { text: "Sentinel ricalibrazione (brief 70b)", status: "done", who: "AI", comment: "Brief 70b shipped 2026-05-10 (S70). Ladder granulare drop/pump/funding (-0.5/-1/-2 with 5-20 increments); sof_accelerating floor -0.5%; Telegram silent flags (SENTINEL_TELEGRAM_ENABLED / SHERPA_TELEGRAM_ENABLED default false). Diagnosis on 2,827 historical records: BTC range ±1% (never -3%), funding ±0.00007. Sentinel had been writing risk=20 sempre, opp=20 morta." },
         { text: "DRY_RUN restart with Sentinel + Sherpa active (S70)", status: "done", who: "AI", comment: "Orchestrator restart 2026-05-10 09:51 UTC. PID 2626 + 3 grid_runner + sentinel + sherpa. TF stays off. First sherpa proposal at 09:51:50 UTC." },
         { text: "Sentinel Sprint 1 audit empirico (brief 77a)", status: "done", who: "AI", comment: "Session 77 (2026-05-14). 6,081 fast scans on ~4.5 days of post-70b data. All 3 known bugs PASS: SoF firing rate 2.32% (criterion <10%, was ~30% pre-fix); risk_score 5 distinct values (was binary 20/40); opportunity_score 3 distinct values (was stuck at 20). 2 structural findings parked: SoF stays mono-lateral by design (crypto capitulations are asymmetric), funding signal accepted dead on testnet (thresholds calibrated for mainnet 0.01–0.03%, testnet sits ~10× below). Zero code changes, zero restart. Report: report_for_CEO/2026-05-14_s77_sentinel_sprint1_audit_report_for_ceo.md." },
-        { text: "News feed integration (CryptoPanic, RSS)", status: "todo", who: "AI", comment: "Sentinel Sprint 3, brief in planning." },
         { text: "Sentinel Sprint 2: slow loop (Fear & Greed + CMC dominance + regime detection)", status: "done", who: "AI", comment: "Session 77 (2026-05-14). Brief 77b SHIPPED in modular pattern (5 new files + 2 surgical edits, no monolith). Slow loop runs every 4h: fetches F&G (free) + CMC global metrics (paid, CMC_API_KEY in config/.env) → determines one of 5 regime buckets (extreme_fear / fear / neutral / greed / extreme_greed) → writes sentinel_scores row with score_type='slow'. Sherpa now reads regime dynamically via regime_reader instead of hardcoded 'neutral'. Test suite 37→85 (+48 new). CMC data logged but not yet used in regime calc (reserved for Sprint 2.5). Mapping inverted from brief: extreme_fear = opp=80/risk=20 (panic = buy zone). Mac Mini restart pending Max revision. Mac Mini restarted at 21:46 CET on b2ae5f7+a62e5d5 (commit pushed, first slow tick observed 2s after start: regime=fear/fng=34/cmc=ok). Sherpa observed switching from neutral to fear in next cycle. Report: report_for_CEO/2026-05-14_s77_sentinel_sprint2_slow_loop_report_for_ceo.md." },
-        { text: "Sentinel Sprint 2 observation window (5-7 days)", status: "active", who: "BOTH", comment: "Started 2026-05-14 21:46 CET with Sprint 2 boot. At 2026-05-19 = 4.88 days running, 32 slow records, zero gaps > 6h, regime transitions observed (initial neutral → fear, persistent fear). Decision gate before flipping Sherpa LIVE on testnet (sell_pct first). Natural window closes 2026-05-21/22." },
+        { text: "Sentinel Sprint 2 observation window 1 (5-7 days)", status: "done", who: "AI", comment: "Completed 2026-05-22. 32 slow records, zero gaps > 6h. Natural window closed, Brain Analysis triggered." },
+        { text: "Brain Analysis #1 — Sentinel + Sherpa evaluation", status: "done", who: "AI", comment: "S80a, 2026-05-22. Sentinel: APPROVED (Sprint 2 targets met). Sherpa: NO-GO step 4 (not coin-aware — 319 identical proposals across BTC/SOL/BONK, amplitude too conservative for altcoins). → triggered Sherpa Sprint 2 rework." },
+        { text: "Sherpa Sprint 2 rework: per-coin volatility scaling (BTC anchor 1.0, SOL 1.6×, BONK 2.1×) + slow-loop gate + amplitude cap 30%", status: "done", who: "AI", comment: "S81, brief 81a. Proposals now differ per coin and change at most every 4h (regime slow cadence), not every 2 minutes. Commits 3ba1132 + 51204cf." },
+        { text: "Sherpa Sprint 2 observation window (7-10 days)", status: "active", who: "AI", comment: "Started 2026-05-22. Second Brain Analysis due ~May 29 – June 1. Decision gate before flipping Sherpa LIVE on testnet (sell_pct first)." },
         { text: "Sherpa LIVE on testnet, one parameter at a time (sell_pct first)", status: "todo", who: "AI", comment: "CEO decision S76: after Sentinel Sprint 2 + 1 week observation, turn SHERPA_MODE=live on testnet but only for sell_pct initially. Observe proposals for days before letting them write. Then buy_pct. Isolates problems and allows fix-in-place. Pre-requisite to mainnet (Phase 6)." },
         { text: "Auto-generated daily diary", status: "todo", who: "AI" },
         { text: "Dashboard: risk score + diary page (public)", status: "todo", who: "AI", comment: "Admin dashboard /admin Sentinel+Sherpa live da S63. Pubblicizzazione decisa post-replay." },
@@ -159,6 +161,9 @@ export const ROADMAP: RoadmapData = {
         { text: "Editorial plan X: first 5-10 posts from diary", status: "active", who: "BOTH", comment: "9 posts published, schema defined. Ongoing." },
         { text: "Publish Volume 1", status: "done", who: "BOTH", comment: "Session 34. Live on Payhip at €4.99." },
         { text: "Publish Volume 2", status: "done", who: "BOTH", comment: "From Grid to Brain. 29 sessions. Live on Payhip at €4.99." },
+        { text: "Publish Volume 3", status: "done", who: "BOTH", comment: "From Brain to Eyes (Sessions 53-82). Launched 2026-05-27, S87, live on Payhip at €4.99. Three volumes now in the catalog; /buy redirects to the store instead of a single volume." },
+        { text: "Homepage redesign: Watchtower + Sherpa team cards with live stats (S82)", status: "done", who: "AI", comment: "S82, 2026-05-23. Sentinel→Watchtower card (Sentinel + NewsKeeper duo, first public cameo of the 5th brain, dimmed/locked), Sherpa→parameter-tuner card. 3 stat rows wired live from Supabase (regime, active bots, stop-buy). Blog section moved under the hero, Diary swapped below the bots." },
+        { text: "Homepage status badge (dynamic) + admin regime overlay (S86)", status: "done", who: "AI", comment: "S86, 2026-05-26. New project_status Supabase table (1 row, RLS, editable via plain SQL — zero deploy to change the public message). Admin charts gained fear/greed regime background bands." },
       ],
     },
     {
@@ -180,9 +185,9 @@ export const ROADMAP: RoadmapData = {
     {
       id: 6,
       title: "Go Live",
-      timeframe: "Target late June / early July 2026",
+      timeframe: "No fixed date — market-condition gated",
       status: "planned",
-      description: "Only after the full Sentinel-first sequence is complete (CEO S76 decision, 2026-05-14): Grid stable on testnet ✓, Sentinel Sprint 1 audit PASS ✓, Sentinel Sprint 2 built + 1 week observed, Sherpa LIVE on testnet one parameter at a time (sell_pct, then buy_pct). Mainnet starts with €100. Sherpa writing bot_config with real money is the reason mainnet was postponed from May to late June/July.",
+      description: "Only after the full Sentinel-first sequence is complete: Grid stable on testnet ✓, Sentinel Sprint 1 audit PASS ✓, Sentinel Sprint 2 built + APPROVED ✓, Sherpa reworked per-coin (Sprint 2) + second Brain Analysis, then Sherpa LIVE on testnet one parameter at a time (sell_pct, then buy_pct). Mainnet starts with €100. Go-live depends on observed market conditions (bear + bull + lateral), not a calendar date (Board decision S82, 2026-05-23 — supersedes the earlier late-June/July target).",
       tasks: [
         { text: "GO/NO-GO decision based on data", status: "todo", who: "MAX" },
         { text: "Deposit initial capital (€100-200, NOT €500)", status: "todo", who: "MAX" },
@@ -200,8 +205,13 @@ export const ROADMAP: RoadmapData = {
       description: "We don't promote. We document. The audience finds us.",
       tasks: [
         { text: "First posts on X (@BagHolderAI)", status: "done", who: "BOTH", comment: "Session 08. Thread pinned. One post per day." },
+        { text: "Dev.to channel launched + cross-posts (S80)", status: "done", who: "AI", comment: "Account opened 2026-05-20. 3 blog posts cross-posted with canonical URL to bagholderai.lol (no SEO duplicate penalty). Engagement-first strategy: comments and replies before content. Slow start — fresh account, audience to build." },
+        { text: "Homepage funnel fix + UTM tracking system (S80)", status: "done", who: "AI", comment: "Brief 80b, commit b8bdc12. Home CTAs reworked (blog primary), every outbound link signed with UTM (x_poster + telegram signatures), TF live narrative replaced the old placeholder on home + dashboard." },
+        { text: "SEO audit fix: titles + meta + JSON-LD + sitemap lastmod (S84)", status: "done", who: "AI", comment: "Brief s84, commit c89c8cc. Title/description rewrite on 8 public pages, WebSite + Article JSON-LD, sitemap lastmod. Response to GSC baseline (256 impressions / 0 clicks / position 10.7)." },
+        { text: "RSS feed for Dev.to Feed Import + generic readers (S85)", status: "done", who: "AI", comment: "Commit 8c9c2fc + 18eaa24. /rss.xml with full body via content:encoded. Enables auto-import of new posts to Dev.to as drafts with canonical URL." },
+        { text: "Full Umami event coverage + RSS tracking pixel (S87)", status: "done", who: "AI", comment: "S87. 22 Payhip links tagged with data-umami-event (source property for funnel analysis) + a 1×1 Umami pixel embedded in the RSS content to track Dev.to article opens." },
         { text: "Contact AI community influencers", status: "todo", who: "BOTH" },
-        { text: "Reddit (r/algotrading, r/cryptocurrency)", status: "todo", who: "BOTH" },
+        { text: "Reddit engagement (r/ClaudeAI — engagement-first)", status: "active", who: "BOTH", comment: "Decision S85: r/ClaudeAI is the closest community to our audience (founders/architects using AI on technical projects). Account Cart0neM, first comment posted in a 643-upvote thread. Sequence: introduce → engage → earn credibility → mention the book. Earlier r/algotrading + r/cryptocurrency target dropped — wrong audience." },
         { text: "Dashboard demo thread on X", status: "todo", who: "BOTH" },
         { text: "Guide: 'How I built an AI trading agent'", status: "todo", who: "BOTH" },
         { text: "Development diary as sellable content", status: "active", who: "BOTH", comment: "Volume 1 (Fase 0+1) live on Payhip since Session 34 at €4.99. Volume 2 (From Grid to Brain) live on Payhip at €4.99. Ongoing output → ongoing sellable content." },
@@ -519,7 +529,7 @@ export const ROADMAP: RoadmapData = {
         { text: "Auditor entity & roles formalized (AUDIT_PROTOCOL.md + WORKFLOW.md §G + /howwework v3)", status: "done", who: "BOTH", comment: "S75 + S78 (2026-05-13 → 2026-05-15). Auditor = fresh CC session triggered by audits/audit_request_*.md brief, producing audits/audit_report_YYYYMMDD_topic.md. Distinct from Intern (= session CC che ship code). Separation enforced to remove the structural conflict of interest where the executor self-certifies as auditor. /howwework v3 commit f62f781 reflects the entity publicly." },
         { text: "PROJECT_STATE §9 vs §10 split (only true audits in §9; sessions shipped in §10)", status: "done", who: "BOTH", comment: "S78 commit ef553e1 (2026-05-15). Pre-fix, CC was populating §9 with its own shipped sessions labeled 'Area 1', so the cadence check always looked fresh even though no true audit had ever run. Rule: §9 entry exists iff audits/audit_report_YYYYMMDD_topic.md file exists. Cadence count is on files, not on §9 rows. CC may never write a §9 row for a session in which it shipped code." },
         { text: "PROJECT_STATE compaction pattern (append-on-compaction archive)", status: "done", who: "AI", comment: "S79 commit 5561d13 (2026-05-18). When PROJECT_STATE.md > 40KB, sections to be removed are first appended to audits/PROJECT_STATE_archive.md with header '## Rimosso in sessione SXX (YYYY-MM-DD) — <ragione>'. The archive is a single growing file, read on-demand. Never delete history in place. Formalized in CLAUDE.md §2." },
-        { text: "Audit cadence rules formalized (Area 1: 30d, Area 2: 90d or end-of-volume, Area 3: 90d)", status: "done", who: "BOTH", comment: "CLAUDE.md §1. Each end-of-session CC computes the youngest audits/audit_report_*.md per area; if older than the cadence (or never existed) the closing report flags '⚠️ Audit Area X dovuto: ultimo era YYYY-MM-DD (N giorni fa)'. As of 2026-05-19: Area 1 last 2026-05-08 (11d, ok), Area 2 mai eseguito (DOVUTO), Area 3 last 2026-05-15 (4d, ok)." },
+        { text: "Audit cadence rules formalized (Area 1: 30d, Area 2: 90d or end-of-volume, Area 3: 90d)", status: "done", who: "BOTH", comment: "CLAUDE.md §1. Each end-of-session CC computes the youngest audits/audit_report_*.md per area; if older than the cadence (or never existed) the closing report flags '⚠️ Audit Area X dovuto: ultimo era YYYY-MM-DD (N giorni fa)'. As of 2026-05-27: Area 1 last 2026-05-08 (19d, approaching the 30d backstop), Area 2 completed 2026-05-27 (CON RISERVE — public site drift + process gaps, 0 CRITICAL), Area 3 last 2026-05-15 (12d, ok). Cadence reformulated from time-based to event-based — see AUDIT_PROTOCOL.md §2." },
 
         { section: "4. Project health — costs, deploys, backlog hygiene" },
         { text: "Live site (bagholderai.lol) matches the latest Vercel deploy", status: "todo", who: "AI" },
@@ -559,6 +569,18 @@ export const ROADMAP: RoadmapData = {
         { text: "Process inventory drift (Python processes running > 14 days without restart)", status: "todo", who: "AI" },
         { text: "Credential leakage scan (tokens / secrets in log files)", status: "todo", who: "AI" },
         { text: "Log rotation on disk (compress or drop > 7 days)", status: "todo", who: "AI", comment: "Extends the DB retention pattern to filesystem logs." },
+      ],
+    },
+    {
+      id: 14,
+      title: "NewsKeeper — Brain #5",
+      timeframe: "Standalone — added S83 (2026-05-24)",
+      status: "active",
+      description: "The fifth brain, and the only one that reads words instead of prices. NewsKeeper watches crypto news the way Sentinel watches the order book — to spot trouble before it hits the chart. Crash analysis of May 18-22 showed Sentinel's signals are reactive (it sees the crash while it happens) while news signals are predictive (days of warning). Board decision S82 (2026-05-23): the system does not go live with real money until it reads the news. It runs as its own process (not orchestrator-managed), with its own Supabase table and its own loop — deliberately separate from Sentinel.",
+      tasks: [
+        { text: "NewsKeeper Sprint 1: RSS feed collection + regex classifier", status: "done", who: "AI", comment: "S83, 2026-05-24 (commit 49473a9). 3 feeds (CoinDesk, CoinTelegraph, Decrypt), 15-min loop, standalone process on the Mac Mini. Pivot from CryptoPanic (free tier discontinued 2026-04-01) to zero-auth RSS. Classifier is regex-based with a known ~60% false-positive rate — shipped as-is for a 7-day observation window (data-first, calibrate later)." },
+        { text: "NewsKeeper Sprint 2: Haiku-based classification (replace regex)", status: "planned", who: "AI", comment: "After the 7-day observation window. Haiku reads each headline and assigns sentiment/severity instead of keyword matching. Estimated < €1/month." },
+        { text: "Strategy Orchestrator: unified Sentinel + NewsKeeper recommendations via Haiku", status: "planned", who: "AI", comment: "~4 CC sessions estimated. A Haiku layer that fuses the macro signals (regime + news) into a single recommendation stream the Board can read." },
       ],
     },
   ],
