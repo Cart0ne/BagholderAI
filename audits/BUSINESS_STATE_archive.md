@@ -263,3 +263,14 @@ Nota CEO: "Decisioni S76 CC e precedenti spostate fuori dalla tabella per restar
 | **Dashboard /admin regime section** | CC la implementa autonomamente (brief non necessario) |
 
 *Footer pre-S79: Prossimo aggiornamento: post osservazione Sentinel Sprint 2 (5-7gg, ~21-22 maggio), o pubblicazione blog post 3 — whichever comes first.*
+
+
+## Rimosso in sessione S88 (2026-05-27) — applicato brief CEO business_state_update_s88 (adattato a realtà: remediation 4/5 shippata)
+
+### §5 Domande aperte per CC — riga sostituita (verbatim)
+
+| **[S83 NEW] Audit Area 2 (coerenza progetto)** | Proposto CC con data specifica | Mai eseguito, cadenza 90gg superata da sempre. **Proposta CC: lunedì 27 maggio con CC fresh** (durante osservazione NewsKeeper 7gg). Brief `audit_request_YYYYMMDD_*.md` + fresh CC. ~30-45min |
+
+### §7 Cosa NON sta succedendo — riga sostituita (verbatim)
+
+| **Audit Area 2 non eseguito** | Dovuto (cadenza 90gg). CC ha flaggato in S78fp2/S79/S80/S80a/S81/S83. **Finestra utile: 27 maggio - 1 giugno** durante osservazione NewsKeeper 7gg (sovrapposta a osservazione Sherpa Sprint 2). Proposta CC: lunedì 27 maggio con fresh CC + audit brief |
