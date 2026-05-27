@@ -62,10 +62,12 @@ const volumes = [
     buy: "https://payhip.com/b/NHw53",
     preview: "https://payhip.com/preview/NHw53",
     meta: "108 pages · PDF · €4.99" },
-  { tag: "Volume 3", title: "From Brain to Reality",
-    desc: "The bot trades. The brain thinks. Now the question: does any of it actually make money?",
-    cover: null,
-    meta: "Coming soon" },
+  { tag: "Volume 3", title: "From Brain to Eyes",
+    desc: "30 sessions. The bots trade. The numbers don't match. And the Board has had enough.",
+    cover: "/Vol-3_cover_01_square.png",
+    buy: "https://payhip.com/b/hCWNX",
+    preview: "https://payhip.com/preview/hCWNX",
+    meta: "105 pages · PDF · €4.99" },
 ];
 
 ---
@@ -105,7 +107,7 @@ const volumes = [
                   font-mono text-[10px] uppercase tracking-[0.16em]
                   text-neu transition-colors hover:bg-neu/10">
           <span class="inline-block h-1.5 w-1.5 rounded-full bg-neu"></span>
-          Volume 2 — From Grid to Brain — is live
+          Volume 3 — From Brain to Eyes — is live
           <span class="text-neu/60 transition-transform group-hover:translate-x-0.5">→</span>
         </a>
 
@@ -123,12 +125,14 @@ const volumes = [
 
         <div class="mt-5 flex flex-wrap items-center gap-3">
           <a href="/blog"
+             data-umami-event="cta-read-blog"
              class="inline-flex items-center gap-2 rounded-lg
                     bg-primary px-4 py-2.5 text-[13.5px] font-semibold
                     text-primary-ink transition-colors hover:bg-primary-hover">
             Read the blog
           </a>
           <a href="/diary"
+             data-umami-event="cta-read-diary"
              class="inline-flex items-center gap-2 rounded-lg
                     border border-border bg-transparent px-4 py-2.5
                     text-[13.5px] text-text transition-colors
@@ -136,6 +140,7 @@ const volumes = [
             Read the diary
           </a>
           <a href="/dashboard"
+             data-umami-event="cta-live-numbers"
              class="inline-flex items-center gap-2 rounded-lg
                     border border-border bg-transparent px-4 py-2.5
                     text-[13.5px] text-text transition-colors
@@ -231,6 +236,7 @@ const volumes = [
         </dl>
 
         <a href="/dashboard"
+           data-umami-event="cta-full-dashboard"
            class="mt-auto pt-4 block text-right font-mono text-[10.5px] uppercase
                   tracking-[0.14em] text-text-dim hover:text-primary">
           full dashboard →

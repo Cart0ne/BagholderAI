@@ -36,12 +36,12 @@ import Layout from "../layouts/Layout.astro";
       <span class="inline-flex items-center gap-1.5">
         <span class="inline-block h-1.5 w-1.5 rounded-full bg-pos
                      shadow-[0_0_8px_rgba(134,239,172,0.7)]"></span>
-        2 volumes out
+        3 volumes out
       </span>
       <span class="text-border">·</span>
-      <span>volume 3 · in progress</span>
+      <span>volume 4 · in progress</span>
       <span class="text-border">·</span>
-      <span>203 pages · 52 sessions</span>
+      <span>308 pages · 82 sessions</span>
     </div>
   </section>
 
@@ -170,31 +170,75 @@ import Layout from "../layouts/Layout.astro";
           </div>
         </div>
 
-        {/* Volume 3 */}
+        {/* Volume 3 — live */}
         <div class="shelf-book b3" data-vol="b3">
           <div class="spine">
             <div class="spine-content">
               <div class="spine-num">III</div>
-              <div class="spine-title">From Brain to Reality</div>
+              <div class="spine-title">From Brain to Eyes</div>
+              <div class="spine-mark">B·H·AI</div>
+            </div>
+          </div>
+          <div class="book-open-content">
+            <div class="open-cover" style="background-image: url('/Vol-3_cover_01.png');"></div>
+            <div class="open-details">
+              <div class="open-numeral">III</div>
+              <div class="open-meta">
+                <span class="accent">Volume III</span>
+                <span>2026</span>
+                <span>30 sessions</span>
+                <span>105 pages</span>
+                <span>PDF</span>
+              </div>
+              <h2 class="open-title">From Brain to Eyes</h2>
+              <p class="open-subtitle">The bots trade. The numbers don't match. And the Board has had enough.</p>
+              <p class="open-pull">"30 sessions where oversight stopped trusting the brain on faith."</p>
+              <p class="open-desc">Volume III is the chapter where the Board started questioning everything the brain decided — reconciling numbers across systems, catching drift before it compounded, learning that an AI CEO without supervision is just an expensive bug factory.</p>
+              <div class="open-ctas">
+                <a class="book-btn book-btn-primary"
+                   href="https://payhip.com/b/hCWNX"
+                   target="_blank" rel="noopener"
+                   data-umami-event="buy-click"
+                   data-umami-event-source="library-shelf-v3">
+                  €4.99 · Payhip ↗
+                </a>
+                <a class="book-btn book-btn-secondary"
+                   href="https://payhip.com/preview/hCWNX"
+                   target="_blank" rel="noopener"
+                   data-umami-event="preview-click"
+                   data-umami-event-source="library-shelf-v3">
+                  ↓ Free preview
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Volume 4 — coming */}
+        <div class="shelf-book b4" data-vol="b4">
+          <div class="spine">
+            <div class="spine-content">
+              <div class="spine-num">IV</div>
+              <div class="spine-title">From Eyes to Live</div>
               <div class="spine-mark">SOON</div>
             </div>
           </div>
           <div class="book-open-content">
             <div class="open-cover placeholder">
-              <div class="ph-num">III</div>
+              <div class="ph-num">IV</div>
               <div class="ph-text">Cover · Coming</div>
             </div>
             <div class="open-details">
-              <div class="open-numeral">III</div>
+              <div class="open-numeral">IV</div>
               <div class="open-meta">
-                <span>Volume III</span>
+                <span>Volume IV</span>
                 <span>In progress</span>
                 <span>ETA TBD</span>
               </div>
-              <h2 class="open-title">From Brain to Reality</h2>
-              <p class="open-subtitle">The bot trades. The brain thinks. Now the question.</p>
-              <p class="open-pull">"Does any of it actually make money?"</p>
-              <p class="open-desc">Volume III will document the next chapter — taking the autonomous brain to live capital, measuring what's real, killing what isn't.</p>
+              <h2 class="open-title">From Eyes to Live</h2>
+              <p class="open-subtitle">The brain works. The Board approves. Now the question.</p>
+              <p class="open-pull">"Can any of it survive real money?"</p>
+              <p class="open-desc">Volume IV will document the next chapter — taking the supervised brain to live capital, measuring what's real, killing what isn't.</p>
               <div class="v3-state">⌛ Cover &amp; release date pending</div>
               <div class="open-ctas">
                 <a class="book-btn book-btn-secondary"
@@ -334,13 +378,74 @@ import Layout from "../layouts/Layout.astro";
         </div>
       </article>
 
-      {/* Volume 3 */}
+      {/* Volume 3 — live */}
+      <article class="overflow-hidden rounded-lg border border-pos/30
+                      bg-surface ring-1 ring-pos/10
+                      sm:grid sm:grid-cols-[200px_1fr]">
+        <div class="aspect-[3/4] w-full bg-cover bg-center sm:aspect-auto sm:h-full"
+             style="background-image: url('/Vol-3_cover_01.png');"></div>
+        <div class="p-5 sm:p-6">
+          <div class="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[10px]
+                      uppercase tracking-[0.16em] text-text-muted">
+            <span class="text-pos">Volume III · live</span>
+            <span class="text-border">·</span>
+            <span>2026</span>
+            <span class="text-border">·</span>
+            <span>30 sessions</span>
+            <span class="text-border">·</span>
+            <span>105 pages</span>
+            <span class="text-border">·</span>
+            <span>PDF</span>
+          </div>
+          <h3 class="mt-2 text-[22px] font-semibold leading-tight text-text">
+            From Brain to Eyes
+          </h3>
+          <p class="mt-1 text-[14px] italic text-text-dim">
+            The bots trade. The numbers don't match. And the Board has
+            had enough.
+          </p>
+          <p class="mt-4 border-l-2 border-pos pl-3 text-[14px] leading-[1.55] text-text">
+            "30 sessions where oversight stopped trusting the brain on
+            faith."
+          </p>
+          <p class="mt-4 text-[14px] leading-[1.6] text-text-dim">
+            Volume III is the chapter where the Board started
+            questioning everything the brain decided — reconciling
+            numbers across systems, catching drift before it
+            compounded, learning that an AI CEO without supervision
+            is just an expensive bug factory.
+          </p>
+          <div class="mt-5 flex flex-wrap gap-3">
+            <a href="https://payhip.com/b/hCWNX"
+               target="_blank" rel="noopener"
+               data-umami-event="buy-click"
+               data-umami-event-source="library-card-v3"
+               class="rounded-md bg-pos px-4 py-2 font-mono text-[11px] font-semibold
+                      uppercase tracking-[0.14em] text-bg
+                      transition-colors hover:bg-pos/90">
+              €4.99 · Payhip ↗
+            </a>
+            <a href="https://payhip.com/preview/hCWNX"
+               target="_blank" rel="noopener"
+               data-umami-event="preview-click"
+               data-umami-event-source="library-card-v3"
+               class="rounded-md border border-border-soft px-4 py-2
+                      font-mono text-[11px] font-semibold uppercase tracking-[0.14em]
+                      text-text-dim transition-colors
+                      hover:border-text-muted hover:text-text">
+              ↓ Free preview
+            </a>
+          </div>
+        </div>
+      </article>
+
+      {/* Volume 4 — coming */}
       <article class="overflow-hidden rounded-lg border border-border-soft bg-surface/60
                       sm:grid sm:grid-cols-[200px_1fr]">
         <div class="flex aspect-[3/4] w-full flex-col items-center justify-center
                     gap-3 border-b border-dashed border-border-soft bg-bg/40 p-5
                     sm:aspect-auto sm:h-full sm:border-b-0 sm:border-r">
-          <div class="font-serif text-[64px] italic leading-none text-text-muted/60">III</div>
+          <div class="font-serif text-[64px] italic leading-none text-text-muted/60">IV</div>
           <div class="font-mono text-[10px] uppercase tracking-[0.18em] text-text-muted">
             cover · coming
           </div>
@@ -348,24 +453,24 @@ import Layout from "../layouts/Layout.astro";
         <div class="p-5 sm:p-6">
           <div class="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[10px]
                       uppercase tracking-[0.16em] text-text-muted">
-            <span>Volume III</span>
+            <span>Volume IV</span>
             <span class="text-border">·</span>
             <span>in progress</span>
             <span class="text-border">·</span>
             <span>ETA TBD</span>
           </div>
           <h3 class="mt-2 text-[22px] font-semibold leading-tight text-text">
-            From Brain to Reality
+            From Eyes to Live
           </h3>
           <p class="mt-1 text-[14px] italic text-text-dim">
-            The bot trades. The brain thinks. Now the question.
+            The brain works. The Board approves. Now the question.
           </p>
           <p class="mt-4 border-l-2 border-border pl-3 text-[14px] leading-[1.55] text-text">
-            "Does any of it actually make money?"
+            "Can any of it survive real money?"
           </p>
           <p class="mt-4 text-[14px] leading-[1.6] text-text-dim">
-            Volume III will document the next chapter — taking the
-            autonomous brain to live capital, measuring what's real,
+            Volume IV will document the next chapter — taking the
+            supervised brain to live capital, measuring what's real,
             killing what isn't.
           </p>
           <div class="mt-4 inline-block rounded border border-border-soft px-3 py-1.5
@@ -401,19 +506,19 @@ import Layout from "../layouts/Layout.astro";
       <div class="grid grid-cols-2 gap-px overflow-hidden rounded-lg
                   border border-border bg-border sm:grid-cols-4">
         <div class="bg-surface px-4 py-5 text-center">
-          <div class="font-mono text-[24px] font-semibold text-pos tabular-nums">203</div>
+          <div class="font-mono text-[24px] font-semibold text-pos tabular-nums">308</div>
           <div class="mt-1 font-mono text-[10px] uppercase tracking-[0.16em] text-text-muted">
             pages
           </div>
         </div>
         <div class="bg-surface px-4 py-5 text-center">
-          <div class="font-mono text-[24px] font-semibold text-pos tabular-nums">52</div>
+          <div class="font-mono text-[24px] font-semibold text-pos tabular-nums">82</div>
           <div class="mt-1 font-mono text-[10px] uppercase tracking-[0.16em] text-text-muted">
             sessions
           </div>
         </div>
         <div class="bg-surface px-4 py-5 text-center">
-          <div class="font-mono text-[24px] font-semibold text-pos tabular-nums">2</div>
+          <div class="font-mono text-[24px] font-semibold text-pos tabular-nums">3</div>
           <div class="mt-1 font-mono text-[10px] uppercase tracking-[0.16em] text-text-muted">
             volumes out
           </div>
@@ -534,7 +639,8 @@ import Layout from "../layouts/Layout.astro";
       0 30px 50px -20px rgba(0,0,0,0.6);
     transition: opacity 0.4s ease;
   }
-  .library-shelf .shelf-book.b1 .spine {
+  .library-shelf .shelf-book.b1 .spine,
+  .library-shelf .shelf-book.b3 .spine {
     background:
       linear-gradient(180deg, rgba(134,239,172,0.18), rgba(0,0,0,0)),
       linear-gradient(90deg, #0e1d12 0%, #182a1d 50%, #0a160e 100%);
@@ -544,7 +650,7 @@ import Layout from "../layouts/Layout.astro";
       linear-gradient(180deg, rgba(103,232,249,0.22), rgba(0,0,0,0)),
       linear-gradient(90deg, #0a1c20 0%, #0f2c33 50%, #061418 100%);
   }
-  .library-shelf .shelf-book.b3 .spine {
+  .library-shelf .shelf-book.b4 .spine {
     background:
       linear-gradient(180deg, rgba(255,255,255,0.06), rgba(0,0,0,0)),
       linear-gradient(90deg, #161616 0%, #1f1f1f 50%, #0d0d0d 100%);
@@ -574,7 +680,8 @@ import Layout from "../layouts/Layout.astro";
     color: rgba(255,255,255,0.5);
     letter-spacing: 0.1em;
   }
-  .library-shelf .shelf-book.b1 .spine-num { color: var(--book-green); }
+  .library-shelf .shelf-book.b1 .spine-num,
+  .library-shelf .shelf-book.b3 .spine-num { color: var(--book-green); }
   .library-shelf .shelf-book.b2 .spine-num { color: var(--book-cyan); }
   .library-shelf .spine-title {
     writing-mode: vertical-rl;
@@ -586,9 +693,10 @@ import Layout from "../layouts/Layout.astro";
     color: #f4f0e8;
     text-shadow: 0 1px 0 rgba(0,0,0,0.6);
   }
-  .library-shelf .shelf-book.b1 .spine-title { color: #d6f5d6; }
+  .library-shelf .shelf-book.b1 .spine-title,
+  .library-shelf .shelf-book.b3 .spine-title { color: #d6f5d6; }
   .library-shelf .shelf-book.b2 .spine-title { color: #d3f4f8; }
-  .library-shelf .shelf-book.b3 .spine-title { color: rgba(255,255,255,0.4); }
+  .library-shelf .shelf-book.b4 .spine-title { color: rgba(255,255,255,0.4); }
   .library-shelf .spine-mark {
     font-family: var(--book-mono);
     font-size: 9px;
@@ -596,7 +704,8 @@ import Layout from "../layouts/Layout.astro";
     color: rgba(255,255,255,0.55);
     text-transform: uppercase;
   }
-  .library-shelf .shelf-book.b1 .spine-mark { color: rgba(134,239,172,0.7); }
+  .library-shelf .shelf-book.b1 .spine-mark,
+  .library-shelf .shelf-book.b3 .spine-mark { color: rgba(134,239,172,0.7); }
   .library-shelf .shelf-book.b2 .spine-mark { color: rgba(103,232,249,0.75); }
 
   .library-shelf .shelf-book:not(.open):hover { transform: translateY(-10px) translateZ(20px); }
@@ -678,7 +787,8 @@ import Layout from "../layouts/Layout.astro";
     pointer-events: none;
     z-index: 0;
   }
-  .library-shelf .b1 .open-numeral { color: rgba(134,239,172,0.10); }
+  .library-shelf .b1 .open-numeral,
+  .library-shelf .b3 .open-numeral { color: rgba(134,239,172,0.10); }
   .library-shelf .b2 .open-numeral { color: rgba(103,232,249,0.11); }
   .library-shelf .open-meta {
     font-family: var(--book-mono); font-size: 10px;
@@ -689,7 +799,8 @@ import Layout from "../layouts/Layout.astro";
     position: relative; z-index: 1;
   }
   .library-shelf .open-meta span { color: rgba(255,255,255,0.85); }
-  .library-shelf .b1 .open-meta .accent { color: var(--book-green); }
+  .library-shelf .b1 .open-meta .accent,
+  .library-shelf .b3 .open-meta .accent { color: var(--book-green); }
   .library-shelf .b2 .open-meta .accent { color: var(--book-cyan); }
   .library-shelf .open-title {
     font-family: var(--display);
@@ -720,7 +831,8 @@ import Layout from "../layouts/Layout.astro";
     margin-bottom: 18px;
     position: relative; z-index: 1;
   }
-  .library-shelf .b1 .open-pull { border-color: var(--book-green); }
+  .library-shelf .b1 .open-pull,
+  .library-shelf .b3 .open-pull { border-color: var(--book-green); }
   .library-shelf .b2 .open-pull { border-color: var(--book-cyan); }
   .library-shelf .open-desc {
     font-family: var(--display);
@@ -748,7 +860,8 @@ import Layout from "../layouts/Layout.astro";
     color: #061418;
     border: 1px solid var(--book-cyan);
   }
-  .library-shelf .b1 .book-btn-primary {
+  .library-shelf .b1 .book-btn-primary,
+  .library-shelf .b3 .book-btn-primary {
     background: var(--book-green);
     color: #061410;
     border-color: var(--book-green);

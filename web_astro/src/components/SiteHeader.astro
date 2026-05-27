@@ -7,14 +7,16 @@ interface Props {
 
 const { current = "" } = Astro.props;
 
-const links = [
+type NavLink = { href: string; label: string; key: string; umami?: string };
+
+const links: NavLink[] = [
   { href: "/dashboard", label: "Dashboard", key: "dashboard" },
   { href: "/diary",     label: "Diary",     key: "diary"     },
   { href: "/blog",      label: "Blog",      key: "blog"      },
   { href: "/blueprint", label: "Blueprint", key: "blueprint" },
   { href: "/howwework", label: "How we work", key: "howwework" },
   { href: "/roadmap",   label: "Roadmap",   key: "roadmap"   },
-  { href: "/library",   label: "Library",   key: "library"   },
+  { href: "/library",   label: "Library",   key: "library", umami: "nav-library" },
 ];
 ---
 
@@ -47,6 +49,7 @@ const links = [
     <nav class="hidden items-center gap-7 md:flex" aria-label="Primary">
       {links.map(l => (
         <a href={l.href}
+           data-umami-event={l.umami}
            class={`text-[13.5px] transition-colors
                    ${l.key === current
                      ? "text-primary"
@@ -69,6 +72,7 @@ const links = [
                   py-2">
         {links.map(l => (
           <a href={l.href}
+             data-umami-event={l.umami}
              class={`block px-4 py-2 text-[14px]
                      ${l.key === current
                        ? "text-primary"
