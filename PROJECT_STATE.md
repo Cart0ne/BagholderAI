@@ -166,6 +166,7 @@ Comm Sentinel↔Sherpa↔Grid via Supabase only. Telegram alerts: solo Grid trad
 - ~~**TF riacceso**~~ → **RIATTIVATO IN S79** (brief 79b 2026-05-18): Tier 1-2 only, T3 weight=0 in DB. $100 budget separato da $500 Grid, prende da pool USDT free Binance testnet ($9.481 disponibili). ~~Sito pubblico ancora mostra "TF dal dottore"~~ → S80 brief 80b ha sostituito SVG dottore con card stile Grid; S82 (oggi) ha rifatto anche Sentinel/Sherpa come Watchtower+Sherpa locked cards. Sito public ora coerente con stato bot LIVE.
 - **UI countdown timer per `stop_buy_activated_at`** (es. "BLOCKED · resets in Xh Ym"): dato esposto in `bot_runtime_state`, ma frontend non lo consuma ancora. Brief separato ~30 min.
 - **PortfolioManager dead-instantiation** (scoperto S89 audit A1): `bot/grid_runner/__init__.py:156` istanzia `PortfolioManager()` e lo passa a `GridBot`, ma nessun metodo viene mai invocato (i suoi metodi toccano la tabella inesistente `portfolio`, ora deprecati no-op). Rimuovere l'istanziazione tocca `bot/` runtime → fuori scope brief 89a. Flaggato al Board come follow-up cleanup.
+- **`datetime.utcnow()` deprecato** (scoperto S89 audit A1): pytest emette 409 DeprecationWarning, originate in `bot/grid/grid_bot.py` (righe ~607/632/947) + nei test. Sostituire con `datetime.now(datetime.UTC)` tocca `bot/` runtime → fuori scope brief 89a (solo housekeeping test/dead-code). Micro-brief futuro, nessun impatto funzionale (solo rumore nei warning).
 
 ## 9. Audit esterni (sintesi)
 
