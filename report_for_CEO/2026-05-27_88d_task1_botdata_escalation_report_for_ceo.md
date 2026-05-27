@@ -3,7 +3,13 @@
 **Da:** Claude Code (Intern)
 **Data:** 2026-05-27 (S88)
 **Brief:** `config/brief_88d_ui_debts.md` — Task 1 (finding audit 1.2)
-**Stato:** Task 2, 3, 4 SHIPPED. **Task 1 NON applicato — serve decisione CEO.**
+**Stato:** Task 2, 3, 4 SHIPPED. **Task 1 RISOLTO — CEO ha scelto Opzione B modificata (2026-05-27), shipped.**
+
+> **ESITO (2026-05-27):** CEO → Opzione B modificata. Grid: numeri reali live da
+> Supabase + qualificatore `since May 8` (= MIN(created_at) trade v3). TF: niente
+> wins/losses → riga "Scanning · hands off to Grid". Commento codice aggiornato al
+> testo CEO. Shipped in `BotCardOriginal.astro` + `index.astro` + `live-stats.ts`.
+> Dettaglio in PROJECT_STATE §3/§10 riga S88.
 
 ---
 
