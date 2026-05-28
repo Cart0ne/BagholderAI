@@ -1,19 +1,23 @@
-/* Regime watch banner (brief 88d Task 2).
+/* Regime watch banner (brief 88d Task 2; S90 2026-05-28 trimmed).
 
    Explains to a visitor WHY the dashboard shows zero trades: when the
    slow-loop regime is fear / extreme_fear AND the bot has not traded
    today, the operation is "watching, not trading". The banner is
    server-rendered hidden; this script unhides it only when both
-   conditions hold, and fills in last-trade date + days observing.
+   conditions hold, and fills in last-trade date + regime label.
 
    It disappears on its own: the moment a trade lands today, or the
    regime shifts out of fear, the conditions fail and the banner stays
    hidden on the next page load (the day's trade rows take its place).
 
    Best-effort: any fetch error leaves the banner hidden. No sensitive
-   figures are exposed — only last-trade date, current regime, and the
-   number of days since the last trade. Same anon-key pattern as
-   watchtower-live.ts (anon is public, RLS enforces read-only). */
+   figures are exposed — only last-trade date + current regime. Same
+   anon-key pattern as watchtower-live.ts (anon is public, RLS enforces
+   read-only).
+
+   S90 (Board instruction): "X days observing" counter removed — the
+   regime label already conveys the watching posture, and an accidental
+   trade reset the counter to "0 days observing" which read as misleading. */
 
 const SB_URL = "https://pxdhtmqfwjwjhtcoacsn.supabase.co";
 const SB_KEY =
@@ -77,10 +81,6 @@ const sbGet = async <T>(table: string, params: string): Promise<T[]> => {
       month: "short",
       day: "numeric",
     });
-    const daysObserving = Math.max(
-      0,
-      Math.floor((now.getTime() - lastTrade.getTime()) / 86_400_000),
-    );
 
     const setText = (id: string, value: string) => {
       const el = document.getElementById(id);
@@ -88,10 +88,6 @@ const sbGet = async <T>(table: string, params: string): Promise<T[]> => {
     };
     setText("regime-watch-lasttrade", lastTradeLabel);
     setText("regime-watch-regime", REGIME_LABEL[regime] ?? "Fear regime active");
-    setText(
-      "regime-watch-days",
-      `${daysObserving} day${daysObserving === 1 ? "" : "s"} observing`,
-    );
 
     banner.classList.remove("hidden");
   } catch {

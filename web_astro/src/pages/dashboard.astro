@@ -83,9 +83,9 @@ const tfSubtitle   = "The breakout hunter";
       {/* Brief 88d Task 2 — "why no trades" transparency banner. Server-
           rendered hidden; regime-banner.ts unhides it only when there are
           0 trades today AND the slow-loop regime is fear/extreme_fear, then
-          fills in last-trade date + days observing. Disappears on its own
+          fills in last-trade date + regime label. Disappears on its own
           once the bot trades again or the regime shifts. No sensitive
-          figures — only last trade, regime, days watching. */}
+          figures — only last trade and current regime. */}
       <div id="regime-watch-banner"
            class="hidden mb-3 flex flex-wrap items-center gap-x-2 gap-y-1
                   rounded-lg border border-border-soft bg-surface/60
@@ -96,8 +96,6 @@ const tfSubtitle   = "The breakout hunter";
         <span>Last trade <span id="regime-watch-lasttrade">—</span></span>
         <span class="text-border">·</span>
         <span id="regime-watch-regime" class="text-neu">Fear regime active</span>
-        <span class="text-border">·</span>
-        <span id="regime-watch-days">— observing</span>
       </div>
 
       {/* Same font hierarchy as the home live-snapshot panel:
