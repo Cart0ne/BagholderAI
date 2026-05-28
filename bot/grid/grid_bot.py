@@ -176,6 +176,13 @@ class GridBot:
         # sell del nuovo ciclo. Restored from DB by state_manager.
         # Reset to 0 quando holdings → 0 (sell_pipeline).
         self._last_sell_price: float = 0.0
+        # Brief fix_slippage_AB (S90, 2026-05-28): cooldown 1-tick post
+        # dead_zone_recalibrate. Quando il recalibrate scatta, il prossimo
+        # check_price_and_execute esce subito senza valutare sell/buy, per
+        # evitare che lo stesso current_price che ha appena ridefinito
+        # _pct_last_buy_price triggeri una decisione nello stesso ciclo.
+        # Vedi investigations/slippage_btc_20260527.md.
+        self._skip_next_decision: bool = False
         # Brief s70 FASE 2: _pct_open_positions e _self_heal_attempted
         # rimossi insieme al FIFO queue. Avg-cost trading consulta solo
         # state.avg_buy_price + state.holdings nel hot path.
@@ -344,6 +351,33 @@ class GridBot:
 
         if self._daily_trade_count >= 50:
             logger.warning("Daily operation limit reached (50). Stopping.")
+            return trades
+
+        # Brief fix_slippage_AB (S90, 2026-05-28): se il tick precedente ha
+        # scatenato un dead_zone_recalibrate, salta tutto questo tick. Il prossimo
+        # ciclo ri-fetcherà un prezzo fresco e valuterà sell/buy con baseline
+        # aggiornata. Evita il caso 27/05 dove recalibrate + sell trigger sono
+        # avvenuti nello stesso `check_price_and_execute`, cristallizzando uno
+        # spike testnet come "vero" current_price. Vedi
+        # investigations/slippage_btc_20260527.md.
+        if self._skip_next_decision:
+            self._skip_next_decision = False
+            logger.info(
+                f"[{self.symbol}] Post-recalibrate cooldown: skipping sell/buy "
+                f"decision for this tick (current_price={fmt_price(current_price)})."
+            )
+            log_event(
+                severity="info",
+                category="trade_audit",
+                event="post_recalibrate_cooldown",
+                symbol=self.symbol,
+                message="Skipping decision tick after dead_zone_recalibrate",
+                details={
+                    "current_price": float(current_price),
+                    "pct_last_buy_price": float(self._pct_last_buy_price),
+                    "avg_buy_price": float(self.state.avg_buy_price),
+                },
+            )
             return trades
 
         # --- 51b: trailing stop — peak tracking ---
@@ -703,6 +737,12 @@ class GridBot:
                 self._pct_last_buy_price = current_price
                 self._last_trade_time = datetime.utcnow()
                 self._idle_logged_hour = -1
+                # Brief fix_slippage_AB (S90, 2026-05-28): arm cooldown so the
+                # very next tick re-fetches a fresh price before deciding on
+                # sell/buy. Without this, the same `current_price` that just
+                # redefined _pct_last_buy_price would also trigger the sell
+                # check below — exactly the failure mode of 2026-05-27 21:44 UTC.
+                self._skip_next_decision = True
                 self.idle_reentry_alerts.append({
                     "symbol": self.symbol,
                     "elapsed_hours": elapsed_dz,
@@ -730,6 +770,16 @@ class GridBot:
                         "dead_zone_hours_threshold": DEAD_ZONE_HOURS,
                     },
                 )
+
+        # Brief fix_slippage_AB (S90, 2026-05-28): if dead_zone_recalibrate just
+        # fired in *this same tick*, exit before the SELL CHECK below — otherwise
+        # the same `current_price` that just redefined the buy reference would
+        # trigger the percentage-sell trigger immediately, with no chance to
+        # validate that the price is representative. This is the within-tick
+        # leg of Opzione B; the in-cima check at the start of the function
+        # covers the next-tick leg (defense in depth).
+        if self._skip_next_decision:
+            return trades
 
         # --- SELL CHECK (avg-cost trading, brief s70 FASE 1) ---
         # Single decision on state.avg_buy_price: if current_price >=

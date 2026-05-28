@@ -8,7 +8,7 @@ require exposing ~10 locals across modules without reducing complexity.
 
 import logging
 import time
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from utils.formatting import fmt_price
 
@@ -34,6 +34,75 @@ def fetch_price(exchange, symbol: str, max_retries: int = 3) -> float:
                 time.sleep(wait)
             else:
                 raise
+
+
+def fetch_price_with_spike_guard(
+    exchange,
+    symbol: str,
+    last_known_price: float,
+    threshold_pct: float = 4.0,
+    confirm_pct: float = 50.0,
+    pause_seconds: float = 5.0,
+) -> Optional[float]:
+    """Brief fix_slippage_AB (S90, 2026-05-28): doppio-fetch con conferma.
+
+    Protegge dal caso in cui `ticker["last"]` di Binance restituisca un valore
+    di spike single-tick (orderbook sottile testnet, flash crash mainnet) che
+    `check_price_and_execute` userebbe come prezzo "vero" e su cui spara un
+    market order, prendendo slippage enorme tra check e fill.
+
+    Logica:
+      1. tick_1 = fetch_price(...)
+      2. Se last_known_price <= 0 (primissimo tick post-restart) → return tick_1
+         senza guard (niente baseline contro cui confrontare).
+      3. delta_pct = |tick_1 − last_known_price| / last_known_price × 100.
+      4. delta_pct < threshold_pct (default 4%) → return tick_1 immediato.
+      5. Altrimenti il movimento è "sospetto": pausa pause_seconds, ri-fetch
+         tick_2, verifica che il movimento si conferma almeno per confirm_pct
+         (default 50%) nello stesso verso. Se sì → rally/crash reale, return
+         tick_2. Se no → spike → return None (caller skippa il ciclo).
+
+    Riferimento: investigations/slippage_btc_20260527.md
+    """
+    tick_1 = fetch_price(exchange, symbol)
+
+    # Primissimo tick post-restart: state.last_price ancora 0, niente baseline.
+    if last_known_price <= 0:
+        return tick_1
+
+    movement_1 = tick_1 - last_known_price
+    delta_pct = abs(movement_1) / last_known_price * 100
+
+    if delta_pct < threshold_pct:
+        return tick_1
+
+    logger.warning(
+        f"[{symbol}] Spike guard armed: tick_1 {fmt_price(tick_1)} vs "
+        f"last_known {fmt_price(last_known_price)} = {delta_pct:+.2f}% "
+        f"(threshold {threshold_pct}%). Pausing {pause_seconds}s for confirmation..."
+    )
+    time.sleep(pause_seconds)
+    tick_2 = fetch_price(exchange, symbol)
+
+    movement_2 = tick_2 - last_known_price
+    # Conferma: stesso verso (sign match) E ampiezza >= confirm_pct% del movimento iniziale.
+    same_sign = (movement_1 >= 0) == (movement_2 >= 0)
+    confirmed_ratio = (abs(movement_2) / abs(movement_1) * 100) if movement_1 != 0 else 0.0
+
+    if same_sign and confirmed_ratio >= confirm_pct:
+        logger.warning(
+            f"[{symbol}] Spike guard CONFIRMED: tick_2 {fmt_price(tick_2)} "
+            f"confirms {confirmed_ratio:.0f}% of move (≥ {confirm_pct}%). "
+            f"Real rally/crash, proceeding with tick_2."
+        )
+        return tick_2
+
+    logger.warning(
+        f"[{symbol}] Spike guard REJECTED: tick_2 {fmt_price(tick_2)} only "
+        f"confirms {confirmed_ratio:.0f}% of move (< {confirm_pct}%, "
+        f"same_sign={same_sign}). Skipping cycle."
+    )
+    return None
 
 
 def _build_portfolio_summary(trade_logger, exchange, current_bot, current_symbol: str) -> dict:

@@ -61,7 +61,7 @@ STRATEGY = "A"
 from bot.grid_runner.runtime_state import _upsert_runtime_state
 from bot.grid_runner.config_sync import _sync_config_to_bot
 from bot.grid_runner.idle_alerts import send_idle_alerts
-from bot.grid_runner.lifecycle import fetch_price, _build_portfolio_summary, _print_status
+from bot.grid_runner.lifecycle import fetch_price, fetch_price_with_spike_guard, _build_portfolio_summary, _print_status
 from bot.grid_runner.liquidation import (
     _deactivate_if_fully_liquidated,
     _consume_initial_lots,
@@ -424,8 +424,11 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
                 from bot.trend_follower.gain_saturation import should_run_proactive_check
                 if should_run_proactive_check(cfg.symbol):
                     try:
-                        live_price = fetch_price(exchange, cfg.symbol)
-                        bot.evaluate_gain_saturation(live_price, trigger_source="proactive_tick")
+                        live_price = fetch_price_with_spike_guard(
+                            exchange, cfg.symbol, bot.state.last_price
+                        )
+                        if live_price is not None:
+                            bot.evaluate_gain_saturation(live_price, trigger_source="proactive_tick")
                     except Exception as e:
                         logger.warning(
                             f"[{cfg.symbol}] proactive 45g check failed: {e}"
@@ -495,7 +498,28 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
                     stop_reason = "liquidation"
                 break
 
-            price = fetch_price(exchange, cfg.symbol)
+            # Brief fix_slippage_AB (S90, 2026-05-28): doppio-fetch con conferma.
+            # Se tick_1 si discosta dal `state.last_price` precedente di >4%, ri-fetch
+            # dopo 5s. Solo se >=50% del movimento si conferma, procediamo. Altrimenti
+            # è uno spike testnet (orderbook sottile) o flash crash → skip ciclo.
+            # Vedi investigations/slippage_btc_20260527.md per il caso d'uso.
+            price = fetch_price_with_spike_guard(exchange, cfg.symbol, bot.state.last_price)
+            if price is None:
+                log_event(
+                    severity="warn",
+                    category="trade_audit",
+                    event="spike_skipped",
+                    symbol=cfg.symbol,
+                    message=f"Spike guard rejected tick (delta > 4% not confirmed within 5s); cycle skipped",
+                    details={
+                        "last_known_price": float(bot.state.last_price),
+                        "threshold_pct": 4.0,
+                        "confirm_pct": 50.0,
+                        "pause_seconds": 5,
+                    },
+                )
+                time.sleep(check_interval)
+                continue
 
             # Check if grid needs reset (price moved too far)
             if bot.should_reset_grid(price):
