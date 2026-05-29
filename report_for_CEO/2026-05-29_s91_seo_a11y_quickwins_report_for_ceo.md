@@ -58,3 +58,15 @@ Coerente con l'audit Area 3 (A3-S78): stesso pattern già osservato ad aprile.
 
 - File sorgente convertiti in markdown pulito e archiviati in `briefresolved.md/SEO_*`.
 - ⚠️ **Drift aperto (non bloccante)**: `PROJECT_STATE.md` è a ~47KB, sopra il cap di 40KB (debito ereditato da S89/S90). Ridotto da 49,8KB pur aggiungendo S91, ma per scendere sotto serve una compaction più profonda delle voci storiche §4/§5/§9. Max ha deciso di lasciarlo così per ora → da pianificare come mini-sessione dedicata.
+
+---
+
+## Addendum — Fix RSS re-import dev.to (stessa sessione)
+
+**Problema**: dev.to continuava a re-importare il post *"When Your AI CEO Lies About the Numbers"* come contenuto nuovo. Causa: quel post è **nato su dev.to** e poi ripubblicato sul blog; il suo guid nel nostro feed (`bagholderai.lol/...`) non è nello storico di import di dev.to → trattato come articolo nuovo a ogni fetch.
+
+**Perché non bastava "far corrispondere il guid"**: dev.to riconosce un articolo già importato solo se il guid è nel suo storico RSS. Un articolo creato nativamente su dev.to non ha mai avuto un guid in quello storico → nessun guid che mettiamo lo farebbe dedurre come "già visto".
+
+**Soluzione (shippata, commit `d091728`)**: nuovo flag opzionale `noRss` nello schema blog + filtro nel generatore RSS. Applicato al post incriminato → escluso da `/rss.xml` (feed 4→3 item) ma **resta vivo su `/blog`**. Riutilizzabile per ogni futuro post "nato su dev.to". Build verde.
+
+**Azione Max**: cancellare a mano gli eventuali draft duplicati già creati su dev.to dai re-import passati (CC non può toccare dev.to). Da qui in avanti il re-import si ferma da solo.
