@@ -16,6 +16,11 @@
       "source": "/guide.html",
       "destination": "/library",
       "permanent": true
+    },
+    {
+      "source": "/sitemap.xml",
+      "destination": "/sitemap-index.xml",
+      "permanent": false
     }
   ]
 }

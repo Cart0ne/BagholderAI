@@ -15,7 +15,7 @@
   /* — testo ——————————————————————————————————— */
   --color-text:           #e8ecf5;
   --color-text-dim:       #9aa3b8;
-  --color-text-muted:     #5d6680;
+  --color-text-muted:     #828aa0;  /* WCAG: ~5.1:1 su --color-bg, passa AA su testo piccolo */
 
   /* — primario brand ———————————————————————————— */
   --color-primary:        #7dd3fc;
