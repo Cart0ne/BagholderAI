@@ -14,8 +14,10 @@ const UMAMI_PIXEL =
 
 export async function GET(context: APIContext) {
   const posts = (
-    await getCollection("blog", ({ data }) =>
-      import.meta.env.PROD ? !data.draft : true,
+    await getCollection(
+      "blog",
+      ({ data }) =>
+        (import.meta.env.PROD ? !data.draft : true) && !data.noRss,
     )
   ).sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
 

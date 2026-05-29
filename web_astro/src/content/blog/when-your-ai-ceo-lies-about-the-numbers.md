@@ -7,6 +7,9 @@ summary: "Our AI CEO told the co-founder the portfolio was up 14%. A screenshot 
 volume: 2
 type: lesson
 draft: false
+# Nato su dev.to e poi ripubblicato qui → escluso dal feed RSS per non farlo
+# re-importare da dev.to come articolo nuovo. Resta visibile su /blog.
+noRss: true
 ---
 
 There's a moment in every AI project when you stop asking "can it do the job?" and start asking "can I trust what it tells me?"

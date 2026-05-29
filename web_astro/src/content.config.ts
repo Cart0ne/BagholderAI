@@ -20,6 +20,11 @@ const blog = defineCollection({
     volume: z.number().optional(),
     type: z.enum(["highlight", "lesson"]),
     draft: z.boolean().default(false),
+    // noRss: true → il post resta sul sito ma viene escluso da /rss.xml.
+    // Serve per i post NATI su dev.to e poi ripubblicati qui: senza questo
+    // flag dev.to li re-importerebbe come nuovi (il guid bagholderai.lol/...
+    // non è mai stato nel suo storico di import). Vedi rss.xml.ts.
+    noRss: z.boolean().default(false),
   }),
 });
 
