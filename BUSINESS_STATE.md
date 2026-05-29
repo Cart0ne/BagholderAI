@@ -1,8 +1,8 @@
 # BUSINESS_STATE.md
 
-**Last updated:** 2026-05-27 — Session 89 (applicato update CEO: §4 +2 decisioni [audit Area 1 automatizzato + brief 89a shipped], §7 +2 righe [scheduled task Area 2/3 + micro-brief parcheggiati]). Cadenze audit NON duplicate qui: restano canoniche in PROJECT_STATE §9 (decisione Max, evita drift §[1]). Prec.: S88 (brief CEO `business_state_update_s88`, Audit Area 2 + remediation 4/5).
-**Updated by:** CEO (istruzione in chat) — applicato da CC (S89)
-**Basato su:** PROJECT_STATE.md aggiornato 2026-05-27 (S89, commit `617001e`)
+**Last updated:** 2026-05-29 — Session 91 (applicato update CEO: §4 +3 decisioni [Brain Analysis 2 + fix stop_buy extreme_fear + reset testnet parcheggiato], §5 +1 domanda [integrità dati bot_state_snapshots], §6 aggiornati Sherpa DRY_RUN/Brain Analysis FATTA + NewsKeeper prima analisi 1 giugno, §3 diary sessioni V4 → S91, §7 +2 voci [reset testnet + timing Sentinel parcheggiati]). Cadenze audit NON duplicate qui: restano canoniche in PROJECT_STATE §9 (decisione Max, evita drift §[1]). Prec.: S89 (audit Area 1 automatizzato + brief 89a shipped).
+**Updated by:** CEO (istruzione in chat via Max) — applicato da CC (S91)
+**Basato su:** PROJECT_STATE.md aggiornato 2026-05-29 (S91)
 
 ---
 
@@ -160,12 +160,16 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 
 **Volume corrente:** 4 (in accumulo da S83).
 
-**Stato sessioni V4 (aggiornato S87):**
+**Stato sessioni V4 (aggiornato S91):**
 - S83 — COMPLETE (NewsKeeper Brain #5 scaffold)
 - S84 — COMPLETE (SEO audit fix)
 - S85 — COMPLETE (RSS feed Dev.to + governance BUSINESS_STATE)
 - S86 — COMPLETE (status badge homepage + regime overlay admin)
-- S87 — BUILDING (V3 launch Payhip + brief 87a site updates + Umami tracking + Audit Area 2 request)
+- S87 — COMPLETE (V3 launch Payhip + brief 87a site updates + Umami tracking + Audit Area 2 request)
+- S88 — COMPLETE (remediation Audit Area 2: catch-up sito + AUDIT_PROTOCOL + UI debts)
+- S89 — COMPLETE (Audit Area 1 remediation: test hygiene + dead code + dep split)
+- S90 — COMPLETE (fix spike guard A+B + deliverables UI/blog)
+- S91 — BUILDING (mattina: SEO/A11y quick wins · pomeriggio: Brain Analysis 2 + fix stop_buy extreme_fear)
 
 **Regola: fonte di verità per session number = `PROJECT_STATE.md` nel repo**, non `diary_entries` su Supabase. La tabella `diary_entries` può laggare se un diary è ancora in scrittura; il PROJECT_STATE è canonical perché aggiornato a ogni chiusura sessione. Brief CEO portano il session number assegnato alla scrittura del brief (non all'esecuzione — vedi §4).
 
@@ -181,6 +185,9 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 
 | Data | Decisione | Perché |
 |---|---|---|
+| 2026-05-29 (S91) | **Brain Analysis 2 completata: 3 fix Sprint 2 validati** (coin-aware, oscillazione domata, amplitude cap). Sherpa tuning-side **pronto** ma **NON mainnet-bound** | L'analisi ha trovato due problemi a monte del tuning: **stop_buy morto** (gap regime extreme_fear — risolto stessa sessione) + **timing Sentinel lento** (slow loop 4h). Il tuning dei parametri è ok, ma il sistema non va a soldi veri finché questi due non sono chiusi |
+| 2026-05-29 (S91) | **Fix stop_buy extreme_fear shippato + verificato live** (commit `ea4c7a8`), mapping F&G label-aware. Backfill storico: **NO** | Sentinel non emetteva mai `extreme_fear` (soglia `<=20` vs banda "Extreme Fear" alternative.me ~25) → freno Sherpa morto su tutta la finestra crash (0 righe). Fix label-primary. Verifica live: F&G=23 → `extreme_fear` + `proposed_stop_buy_active=true` su 3 coin. Solo fix-forward, storico non toccato (operativamente conta il futuro) |
+| 2026-05-29 (S91) | **Reset testnet parcheggiato** (dopo stop_buy + Sentinel/NewsKeeper; possibile sblocco da rimbalzo di mercato). "Mai capitolare" resta solo per mainnet | Priorità ai fix architetturali prima di azzerare il testnet. Il principio "mai capitolare / no cash morto" si applica solo a mainnet; sul testnet un reset è accettabile dopo i fix |
 | 2026-05-28 (S90) | **Spike guard fix A+B shipped** (commit `06a6c7c`). Option A variante Board: double fetch con conferma 50% dopo 5s pausa. Option B: cooldown 1 ciclo post dead-zone recalibrate | Root cause trade BTC 27/05 21:44 UTC: testnet spike $82,143 (mainnet $74,500) + dead_zone_recalibrate + sell trigger nello stesso tick → realized -$1.31. Variante Board doppio fetch è auto-adattiva cross-coin (vs soglia fissa proposta da CC). 129 test verdi, 8 nuovi. Restart Mac Mini 09:15 CET, runtime `673c941` |
 | 2026-05-28 (S90) | **Dashboard "days observing" rimosso** (commit `751b18c`) | Contatore legato a ultimo trade, non a inizio regime → fuorviante dopo trade accidentali ("0 days observing" leggeva come informazione spuria). Regime label già comunica posture di watching, basta da sola |
 | 2026-05-28 (S90) | **Cover V3 ottimizzate** (commit `b8ed22d`): PNG 4.6MB → JPG 231KB (−95%) | Cover V3 erano in PNG 2.2+2.4 MB (~30× rispetto a vol1/vol2 JPG 54-182KB). Convertite con sips a 424×600 / 600×600 q=85 allineate al formato dei volumi precedenti. Performance + bandwidth/Vercel |
@@ -245,6 +252,7 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 
 | Tema | Stato | Note |
 |---|---|---|
+| **[S91 NEW] Integrità dati — `bot_state_snapshots` saldo grezzo** | 🆕 Da verificare | `bot_state_snapshots` fotografa il **saldo grezzo testnet (pre-funded)**, non la posizione €500 → verificare che **nessuna superficie pubblica** lo peschi. Minori: fallback `1,0×` non cappato in Sentinel; dead-band scritture Sherpa |
 | **[S90 NEW] Option C — slippage buffer su percentage sell path** | TODO pre-mainnet, brief separato | Brief separato pre-mainnet. Estendere il pattern `SLIPPAGE_BUFFER_PCT=0.03` (già attivo su SWEEP/LAST_SHOT path da brief 78b) anche al path `_execute_percentage_sell` per chiudere completamente la finestra di rischio post-fix A+B |
 | **[S90 NEW] Calibrazione parametri spike guard** (threshold 4% / confirm 50% / pause 5s) | Osservazione 7-14gg, poi decidere | Oggi i 3 parametri sono default argument della funzione `fetch_price_with_spike_guard`. Post osservazione: valutare se servono tunable per-coin via `bot_config` (BTC vs SOL vs BONK volatilità diverse). Voto CC: tenerli fissi finché dati live non suggeriscono altrimenti |
 | **[S83 NEW] NewsKeeper S2** | Board-approved, timeline post-osservazione | Sessioni 2-4 brief NewsKeeper Architecture: (a) Haiku classifier (promosso da S3-4 → S2 perché RSS non ha sentiment nativo); (b) Modulo 2 ETF flows + Modulo 3 macro_calendar; (c) integrazione orchestrator (`ENABLE_NEWSKEEPER` env + `_spawn_newskeeper()`). **Timeline: post 7gg osservazione (~31 maggio).** Priorità ALTA |
@@ -271,8 +279,8 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 | **GSC: re-submit `sitemap-0.xml` + Request Indexing top 5 (Max)** | Post-deploy S84 (oggi 2026-05-24 in poi) | Action manuali documentate nel report CEO S84 §"Action richieste a Max". Ri-sottomettere `sitemap-0.xml` in Search Console → Sitemaps (bypass index file). Request Indexing tramite URL Inspection su top 5: home, roadmap, blueprint, diary, blog/ |
 | **Go-live mainnet** | Nessuna data fissa | Dipende da condizioni di mercato (bear+bull+laterale osservati). Sequenza: Brain Analysis → NewsKeeper build (4 sessioni) → Sherpa testnet → dry_run → Board approval |
 | **Sherpa LIVE su testnet** | Post seconda Brain Analysis (S85+ candidato) | Un parametro alla volta (sell_pct primo) |
-| **DRY_RUN Sherpa Sprint 2 osservazione** | 7-10 giorni da 2026-05-22 (~29 maggio - 1 giugno) | Restart PID 28217. Seconda Brain Analysis dopo. Board decide step 4 dopo analisi |
-| **NewsKeeper osservazione 7gg + S2 build** | 31 maggio target | Classifier rumoroso noto, raccolta dataset 7gg, poi calibration / Haiku-classify in S2 |
+| **DRY_RUN Sherpa Sprint 2 osservazione** | ✅ Seconda Brain Analysis **FATTA (S91)** | 3 fix Sprint 2 validati (coin-aware / oscillazione / cap). **Sherpa resta DRY_RUN**: non mainnet-bound finché stop_buy (risolto) + timing Sentinel lento non sono chiusi |
+| **NewsKeeper — prima analisi** | **lun 1 giugno** | Job 1 anti-rumore Haiku → Job 2 lead/lag vs Sentinel. Decide anche il timing Sentinel (Phase B vs accelerare NewsKeeper) |
 | **Blog primo post** | DONE 2026-05-15 | "An AI That Can't Trade" live su bagholderai.lol/blog |
 | **Volume 4** | Nessuna deadline | In accumulo da S83, arco narrativo NewsKeeper build → go-live |
 | **PROJECT_STATE.md compaction** | Prossima sessione CC | File a ~52KB, sopra cap 40KB CLAUDE.md §[2]. Compaction autonoma CC (archive in `audits/PROJECT_STATE_archive.md` prima di cancellare) |
@@ -287,6 +295,8 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 
 | Cosa | Perché |
 |---|---|
+| **Reset testnet** | Rimandato: prima i fix (stop_buy ✅ + Sentinel/NewsKeeper). Possibile sblocco da un rimbalzo di mercato. "Mai capitolare / no cash morto" vale solo per mainnet, non per il testnet |
+| **Decisione timing Sentinel (Phase B vs accelerare NewsKeeper)** | Parcheggiata fino a post prima analisi NewsKeeper (lun 1 giugno) |
 | **Scheduled task Area 2 e Area 3 non automatizzati** | Solo l'audit Area 1 gira come Cowork scheduled task. Area 2/3 parcheggiati in Apple Notes todo, da configurare in sessione dedicata |
 | **Micro-brief `datetime.utcnow()` deprecation + cleanup PortfolioManager** | Low priority, scoperti in S89 (audit Area 1). Parcheggiati in Apple Notes todo. Toccano `bot/` runtime → fuori scope housekeeping. Tracciati in PROJECT_STATE §8 |
 | **Go-live mainnet €100** | Bloccato da 4 pre-requisiti in sequenza: NewsKeeper build (S2-S4, ~3 sessioni residue) + Sherpa testnet LIVE (post Brain Analysis 2) + dry_run observation periodo standard + Board approval finale. Niente data fissa, gated da condizioni di mercato osservate (bear+bull+laterale) |
