@@ -31,7 +31,7 @@
       /* Brief 77c widget A — Sentinel slow loop regime palette.
          Default "sentiment heatmap": blue (panic) → grey (neutral) → red (top).
          If CEO picks a different palette, swap only these 5 lines. */
-      --regime-extreme-fear:  #7dd3fc;
+      --regime-extreme-fear:  #3b82f6;
       --regime-fear:          #67e8f9;
       --regime-neutral:       #9aa3b8;
       --regime-greed:         #f59e0b;
@@ -1031,7 +1031,7 @@
     function drawRegimeBands(ctx, t0, t1, span, tx, pad, plotH) {
       if (!__slowRegimeRows || !__slowRegimeRows.length) return;
       var COLORS = {
-        extreme_fear:  '#7dd3fc',
+        extreme_fear:  '#3b82f6',
         fear:          '#67e8f9',
         neutral:       '#9aa3b8',
         greed:         '#f59e0b',
