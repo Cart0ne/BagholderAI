@@ -9,14 +9,20 @@ Output: one of 5 regime strings expected by Sherpa parameter_rules.py
 BASE_TABLE: extreme_fear | fear | neutral | greed | extreme_greed.
 
 Boundaries (inclusive low, exclusive high of the next bucket):
-    F&G 0–20   → extreme_fear
-    F&G 21–40  → fear
+    F&G "Extreme Fear" label  → extreme_fear   (authoritative)
+    F&G 0–25   → extreme_fear   (numeric safety net)
+    F&G 26–40  → fear
     F&G 41–60  → neutral
     F&G 61–80  → greed
     F&G 81–100 → extreme_greed
 
-So F&G=20 is extreme_fear, F&G=21 is fear. Documented here so future
-edits don't drift.
+The extreme_fear bucket is driven by alternative.me's own
+``value_classification`` label first, falling back to a numeric F&G<=25
+cut. The previous hardcoded <=20 cut was tighter than alternative.me's
+"Extreme Fear" band (~0-25): F&G readings of 21-25 — labelled "Extreme
+Fear" by the source — were mislabelled "fear", so the stop_buy safety
+brake (armed only on extreme_fear) never fired during the May 2026
+crash window. The other buckets keep their original numeric thresholds.
 
 Trading-sense mapping for the slow score (consumed by slow_loop.py):
     extreme_fear  → risk 20 / opp 80  (capitulation = buy zone)
@@ -55,9 +61,14 @@ REGIME_SCORE_MAP = {
 }
 
 
-def _fng_to_regime(fng_value: int) -> str:
-    """Map a 0-100 F&G integer to one of the 5 regime buckets."""
-    if fng_value <= 20:
+def _fng_to_regime(fng_value: int, fng_label: Optional[str] = None) -> str:
+    """Map a 0-100 F&G integer to one of the 5 regime buckets.
+
+    ``fng_label`` is alternative.me's authoritative ``value_classification``
+    string. When it reads "Extreme Fear" we trust it directly; the numeric
+    ``fng_value <= 25`` cut is the fallback for a missing/unrecognised label.
+    """
+    if (fng_label or "").strip().lower() == "extreme fear" or fng_value <= 25:
         return "extreme_fear"
     if fng_value <= 40:
         return "fear"
@@ -121,7 +132,7 @@ def determine_regime(
         )
         return "neutral", log
 
-    regime = _fng_to_regime(int(fng_value))
+    regime = _fng_to_regime(int(fng_value), fng_data.get("fng_label"))
     log["fng_used"] = True
     log["regime_source"] = "fng"
     return regime, log

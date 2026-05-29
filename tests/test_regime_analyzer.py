@@ -1,7 +1,8 @@
 """Unit tests for bot.sentinel.regime_analyzer.
 
-Covers all 5 regime buckets, both boundaries (20/21, 40/41, 60/61, 80/81),
-every fallback path (None / malformed / stale), and the slow-score map.
+Covers all 5 regime buckets, both boundaries (25/26, 40/41, 60/61, 80/81),
+the label-authoritative extreme_fear path, every fallback path
+(None / malformed / stale), and the slow-score map.
 
 Run:
     python -m pytest tests/test_regime_analyzer.py -v
@@ -61,15 +62,32 @@ def test_extreme_greed_at_value_90():
     assert regime == "extreme_greed"
 
 
-# ----- Boundary tests: 20/21, 40/41, 60/61, 80/81 -----
+# ----- Boundary tests: 25/26, 40/41, 60/61, 80/81 -----
 
-def test_boundary_20_is_extreme_fear():
-    regime, _ = determine_regime(_fng(20), None, now_unix=_NOW)
+def test_boundary_25_is_extreme_fear():
+    # New numeric cut (was <=20). F&G 25 is "Extreme Fear" per alternative.me.
+    regime, _ = determine_regime(_fng(25), None, now_unix=_NOW)
     assert regime == "extreme_fear"
 
 
-def test_boundary_21_is_fear():
-    regime, _ = determine_regime(_fng(21), None, now_unix=_NOW)
+def test_boundary_26_is_fear():
+    regime, _ = determine_regime(_fng(26), None, now_unix=_NOW)
+    assert regime == "fear"
+
+
+# ----- Label is authoritative for extreme_fear -----
+
+def test_label_extreme_fear_overrides_numeric():
+    # F&G value above the 25 cut but labelled "Extreme Fear" by the source:
+    # the label wins. Guards against alternative.me shifting its bands.
+    data = {"fng_value": 30, "fng_label": "Extreme Fear", "fng_timestamp": _NOW}
+    regime, _ = determine_regime(data, None, now_unix=_NOW)
+    assert regime == "extreme_fear"
+
+
+def test_label_fear_with_value_above_cut_is_fear():
+    data = {"fng_value": 28, "fng_label": "Fear", "fng_timestamp": _NOW}
+    regime, _ = determine_regime(data, None, now_unix=_NOW)
     assert regime == "fear"
 
 
