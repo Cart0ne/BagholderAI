@@ -1,7 +1,7 @@
-# Report CEO — S92: fix stop_buy irraggiungibile (gap regime "extreme_fear")
+# Report CEO — S91 (pomeriggio): fix stop_buy irraggiungibile (gap regime "extreme_fear")
 
 **Data:** 2026-05-29
-**Sessione:** S92 (S91 SEO/A11y chiusa stamattina; conferma il numero se diverso)
+**Sessione:** S91 (parte pomeriggio; la parte mattina era SEO/A11y. Numerazione confermata da Max: oggi è tutta S91)
 **Brief:** `config/brief_cc_stop_buy_extreme_fear_2026-05-29.md` (origine: seconda Brain Analysis Sherpa 2026-05-29)
 **Esito:** ✅ SHIPPED + RESTART Mac Mini eseguito + **fix verificato LIVE in produzione**
 **Commit:** `ea4c7a8` (fix+test) · `51895f8`/`<docs>` (PROJECT_STATE)
