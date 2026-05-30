@@ -1,6 +1,6 @@
 # PROJECT_STATE.md
 
-**Ultimo aggiornamento:** 2026-05-30 — **sessione 92 (S92) — pulizia, riorganizzazione, programmazione (no bot, no restart)** — Sessione estremporanea: (1) `config/` cleanup → 10 file spostati in `briefresolved.md/` (brief risolti + archivi obsoleti); (2) `audits/` ristrutturata → sottocartelle `reports/`, `requests/`, `snapshots/`; naming retrofit `YYYYMMDD_audit[AX].md`; AUDIT_PROTOCOL.md aggiornato (§4/§5/§7/§8, rimosso audit_in_flight); (3) BUSINESS_STATE.md compaction 45KB→34KB (§4 S81-S87 → archive); (4) PROJECT_STATE.md compaction + aggiornamento coerenza. Commit unico a fine sessione. Dettaglio §10.
+**Ultimo aggiornamento:** 2026-05-30 — **sessione 92 (S92) — pulizia, riorganizzazione, programmazione (no bot, no restart)** — Sessione estremporanea: (1) `config/` cleanup → 10 file spostati in `briefresolved.md/` (brief risolti + archivi obsoleti); (2) `audits/` ristrutturata → sottocartelle `reports/`, `requests/`, `snapshots/`; naming retrofit `YYYYMMDD_audit[AX].md`; AUDIT_PROTOCOL.md aggiornato (§4/§5/§7/§8, rimosso audit_in_flight); (3) BUSINESS_STATE.md compaction 45KB→34KB (§4 S81-S87 → archive); (4) PROJECT_STATE.md compaction + aggiornamento coerenza; (5) **layer dati audit Area 3 (marketing)**: 5 connettori API (X/Dev.to/Umami/Bing/GSC) + orchestratore, **GSC via OAuth** (non service account), **Reddit chiuso→manuale**, deploy Mac Mini (venv+segreti), `audit_request_A3` venv-fix + `audit_request_A1` ricostruito, cartelle `audits/` MBP↔MacMini riallineate. Più commit pushati (`origin/main` `d209588`). Dettaglio §10.
 
 **Ultimo aggiornamento precedente:** 2026-05-29 — **S91 (pomeriggio) SHIPPED — fix stop_buy extreme_fear** — `regime_analyzer.py` soglia `fng_value<=20` → `fng_label=="Extreme Fear" OR fng_value<=25`. Test 131✅. Restart Mac Mini 15:53 CET (PID **33218**, runtime `51895f8`). Verificato LIVE: F&G=23 → `extreme_fear` + `proposed_stop_buy_active=true`. Dettaglio §10. **S91 (mattina)**: SEO/A11y quick wins sito (no bot). Dettaglio → archive S92.
 
@@ -71,6 +71,7 @@ Comm Sentinel↔Sherpa↔Grid via Supabase only. Telegram alerts: solo Grid trad
 - `audits/` ristrutturata: sottocartelle `reports/`, `requests/`, `snapshots/`; 4 report e 2 request rinominati `YYYYMMDD_audit[AX].md`; AUDIT_PROTOCOL §4/§5/§7/§8 aggiornati; rimosso concetto `audit_in_flight`.
 - BUSINESS_STATE.md: 5 righe S92 aggiunte §4, compaction S81-S87 (45KB→34KB).
 - PROJECT_STATE.md: compaction header + §3 S91 mattina + aggiornamento §4/§9/§10.
+- **Layer dati audit Area 3 (marketing)**: 5 connettori in `scripts/` (X + `devto_stats` + `umami_stats` con 5 funnel+UTM + `bing_seo_stats` + `gsc_stats`) + orchestratore `marketing_data_refresh`; chiavi in `config/.env.marketing` (gitignored, separato da `.env`); output `marketing_data/` (gitignored). **GSC via OAuth** (login owner, token cache headless — il service account non si autorizzava su proprietà Dominio). **Reddit dormiente**: API self-service chiusa da Reddit → fonte manuale come Payhip; connettore ibrido pronto. Deploy Mac Mini: `git pull` + deps in venv + 3 segreti scp; orchestratore live **5/5 OK headless**. `audit_request_A3` corretto (Mac Mini usa `./venv/bin/python`, non `python3.13`); `audit_request_A1` ricostruito (gemello leggibile del prompt Cowork). Cartelle `audits/` MBP↔MacMini riallineate (dump 25MB fuori repo). Report CEO + memorie aggiornate.
 
 ### S91 — SEO/A11y quick wins + fix stop_buy extreme_fear SHIPPED → §3 verbatim archiviato in compaction S92. Sintesi §10 righe S91. In breve: (mattina) WP1+WP2 sito, diagnosi sitemap GSC, fix noRss feed; (pomeriggio) regime_analyzer.py fix label-aware F&G, test 131✅, restart Mac Mini PID 33218 runtime `51895f8`, verificato LIVE.
 
@@ -98,6 +99,13 @@ Comm Sentinel↔Sherpa↔Grid via Supabase only. Telegram alerts: solo Grid trad
 - **🟡 [S67 residuo]** Brief 67a Step 5 superato da reconciliation S70 Step A.
 
 ## 4. Decisioni recenti
+
+- **2026-05-30 (S92) — layer marketing Area 3: GSC OAuth + Reddit chiuso + env separato SHIPPED (no bot)**.
+  DECISIONE 1 (GSC): auth via **OAuth** (login owner cartone@gmail.com), non service account.
+  RAZIONALE: il service account dà "email not found" in Search Console su proprietà Dominio; OAuth come owner bypassa l'autorizzazione (sei già proprietario). Token cache → headless sul Mac Mini. Auto-detect SA vs OAuth → reversibile senza modifiche.
+  DECISIONE 2 (Reddit): connettore **dormiente**, fonte manuale come Payhip.
+  RAZIONALE: Reddit ha chiuso l'API self-service; tutte le strade esterne (app, JSON pubblico, Devvit, contratto) bloccate. Ibrido praw+JSON pronto se riapre. Vedi memoria `project_reddit_api_closed`.
+  DECISIONE 3 (env): chiavi marketing in `config/.env.marketing` **isolato** da `.env` → un leak marketing non tocca i fondi trading.
 
 - **2026-05-30 (S92) — pulizia/riorganizzazione estremporanea SHIPPED (no bot)**.
   DECISIONE: sessione dedicata a cleanup config/, audits/, compaction state files.
@@ -199,7 +207,7 @@ Comm Sentinel↔Sherpa↔Grid via Supabase only. Telegram alerts: solo Grid trad
 > **Stato cadenze al 2026-05-30** (conteggio sui FILE `audits/reports/YYYYMMDD_audit[AX].md`, non sulle righe §9):
 > - **Area 1**: ultimo audit 2026-05-27 (3 gg fa) — entro cadenza 30gg ✅ (prossimo scade ~2026-06-26). Findings H1/H2/M1/M3/L2 chiusi in S89.
 > - **Area 2**: ultimo audit 2026-05-27 (3 gg fa) — trigger event-based (pre-mainnet / pre-Volume / pre-nuovo-brain / backstop 120gg). Nuovo audit request in `audits/requests/20260530_audit[A2]_followup_pre_sherpa_live.md` (sessione fresh in Cowork).
-> - **Area 3**: ultimo audit 2026-05-15 (15 gg fa) — backstop 90gg ✅ (prossimo scade ~2026-08-13).
+> - **Area 3**: ultimo audit 2026-05-15 (15 gg fa) — **cadenza bisettimanale 14gg → DOVUTO** (scaduto di ~1gg). Layer dati pronto (5 connettori, S92) + **Cowork scheduled bisettimanale impostato sul Mac Mini** → genererà il prossimo audit. Template `audits/requests/audit_request_A3.md`.
 >
 > Pre-S70 e nota S77 fase 1 in [audits/PROJECT_STATE_archive.md](audits/PROJECT_STATE_archive.md).
 
@@ -208,7 +216,7 @@ Comm Sentinel↔Sherpa↔Grid via Supabase only. Telegram alerts: solo Grid trad
 
 | Data | Area | Topic | Esito | Sintesi + Report |
 |------|------|-------|-------|------------------|
-| 2026-05-30 | docs | **S92** pulizia/riorganizzazione estremporanea (no bot, no restart) | SHIPPED commit unico | `config/` cleanup (10 file → `briefresolved.md/`); `audits/` ristrutturata (reports/requests/snapshots + naming `YYYYMMDD_audit[AX]`); AUDIT_PROTOCOL §4/§5/§7/§8 aggiornati; BUSINESS_STATE compaction 45KB→34KB; PROJECT_STATE compaction + coerenza. |
+| 2026-05-30 | docs+3 | **S92** pulizia/riorganizzazione + layer dati marketing Area 3 (no bot, no restart) | SHIPPED più commit (`origin/main` `d209588`) | `config/` cleanup (10 file → `briefresolved.md/`); `audits/` ristrutturata (reports/requests/snapshots + naming `YYYYMMDD_audit[AX]`); AUDIT_PROTOCOL §4/§5/§7/§8; BUSINESS_STATE compaction 45→34KB; PROJECT_STATE compaction. **Layer marketing**: 5 connettori API (X/Dev.to/Umami+5funnel/Bing/GSC) + orchestratore `marketing_data_refresh`; **GSC via OAuth** (token headless), **Reddit chiuso→manuale**, env separato `.env.marketing`; deploy Mac Mini venv+segreti (5/5 headless OK); `audit_request_A3` venv-fix + `audit_request_A1` ricostruito; `audits/` MBP↔MacMini riallineate (dump 25MB fuori repo). Report CEO `2026-05-30_area3_marketing_audit_data_layer`. Commit `13d5dd4`/`6568ca9`/`f643a7b`/`dc866ef`/`d209588`. |
 | 2026-05-29 | 1 | **S91 (pomeriggio)** fix stop_buy irraggiungibile — gap regime "extreme_fear" in Sentinel slow loop | SHIPPED 1 commit `ea4c7a8` + TEST 131/131 + **RESTART Mac Mini 15:53 CET (PID 33218, `51895f8`) + VERIFICATO LIVE** | `regime_analyzer.py` soglia `fng_value<=20` → `fng_label=="Extreme Fear" OR fng_value<=25`. F&G 21-25 finiva "fear" → stop_buy morto. Fix-forward. Verifica: F&G=23 → `extreme_fear` + `proposed_stop_buy_active=true` su 3 coin al primo ciclo Sherpa. |
 | 2026-05-29 | 3 | **S91 (mattina)** SEO/A11y quick wins sito (web-only, no bot/no restart) | SHIPPED + BUILD 15 pagine | Brief da 2 file `config/` (Lighthouse 29/05 + guida canonical/Bing). WP1: file verifica Bing/IndexNow in `public/`, iframe a-ads `title`, fix `<dl>` malformato (index.astro), aria-label distinti 3 link Payhip (index+library), redirect `/sitemap.xml`→`/sitemap-index.xml`. WP2: `--color-text-muted` #5d6680→#828aa0 (~5,1:1 AA). Canonical già presente (brief stale). **Sitemap "Couldn't fetch" diagnosi**: non rotta (200/XML valido anche Googlebot, SSL ok) → stato stale GSC dominio nuovo, fix operativo Max (invio solo sitemap-index + Domain property). WP3 perf SALTATO (Vercel RUM ~96), WP4 proxy Binance/header RIMANDATO pre-mainnet → `config/SEO_deferred.md`. Sorgenti → `briefresolved.md/SEO_*`. |
 | 2026-05-28 | 1+3 | **S90** fix spike guard A+B + UI/blog pomeriggio | SHIPPED 8 commit + TEST 129/129 + RESTART PID 93187 runtime `673c941` + BUILD 15 pagine | Parte 1: `fetch_price_with_spike_guard` (lifecycle.py, threshold 4%/confirm 50%/pause 5s) + `_skip_next_decision` doppio gate (grid_bot.py). Root cause: testnet spike $82K + dead_zone_recalibrate + SELL stesso tick. Parte 2: dashboard banner rimosso, cover Vol-3 JPG, 4° blog post. Verbatim → archive S92. |
