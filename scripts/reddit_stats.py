@@ -5,19 +5,23 @@ Fetches our Reddit account (Cart0neM) activity and writes a dated markdown
 report: karma, recent submissions (score, upvote ratio, comments) and recent
 comments (the "engagement first" strategy lives in others' threads).
 
-Auth — IBRIDO, prova due strade nell'ordine:
-  1. praw (app OAuth "script") se ci sono le credenziali complete in
-     .env.marketing. È la strada vera, ma richiede una app APPROVATA da Reddit
-     (Responsible Builder Policy, 2024+). Appena l'app è approvata e compili le
-     chiavi, il connettore si "accende" da solo.
-  2. Endpoint JSON pubblici (about/submitted/comments), no auth. Fallback senza
-     credenziali. NOTA: verificato 2026-05-30 → Reddit risponde 403 (block page)
-     all'accesso programmatico non autenticato anche con UA browser/old.reddit;
-     quindi oggi questa strada NON funziona. Resta nel codice nel caso Reddit
-     riallenti, e per documentare il tentativo.
+STATO (verificato 2026-05-30): connettore DORMIENTE per scelta strutturale.
+Reddit ha CHIUSO l'accesso API self-service → un piccolo uso non-commerciale
+esterno non è più ottenibile. Strade provate e tutte chiuse:
+  1. App self-service (prefs/apps "script") → r/redditdev automod: "Reddit has
+     ended self-service API access".
+  2. JSON pubblico (about/submitted/comments, no auth) → 403 block page anche
+     con UA browser / old.reddit.
+  3. Devvit (Developer Platform) → app on-platform TS/JS, non esporta verso il
+     nostro audit: strumento sbagliato.
+  4. Contratto commerciale → N/A (siamo non-commerciali, volume minimo).
+Nell'audit Area 3 Reddit è quindi una **osservazione manuale** (come Payhip):
+l'Auditor guarda u/Cart0neM nel browser. Vedi audit_request_A3.md §1.
 
-Conclusione operativa: Reddit resta l'unico connettore non attivo finché l'app
-non è approvata. Le altre 4 fonti (X, Dev.to, Umami, Bing, GSC) coprono l'audit.
+Auth — IBRIDO (resta nel codice nel caso Reddit riapra un domani):
+  1. praw (app OAuth "script") se le credenziali REDDIT_* sono complete.
+  2. Endpoint JSON pubblici, no auth, fallback (oggi 403).
+Le altre fonti (X, Dev.to, Umami, Bing, GSC) coprono l'audit senza Reddit.
 
 Mirrors scripts/x_stats_refresh.py: read-only, one dated file under
 marketing_data/ (gitignored), returns a summary dict.

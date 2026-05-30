@@ -17,10 +17,13 @@ Connectors:
     Umami     scripts.umami_stats
     Bing SEO  scripts.bing_seo_stats
     GSC       scripts.gsc_stats
-    Reddit    scripts.reddit_stats
 
-Payhip is NOT a connector (its API doesn't expose sales): export the sales CSV
-by hand into marketing_data/payhip_YYYY-MM-DD.csv before an audit.
+Fonti MANUALI (no connettore, recupero a mano prima dell'audit):
+    Payhip    export CSV vendite → marketing_data/payhip_YYYY-MM-DD.csv
+    Reddit    Reddit ha CHIUSO la API self-service (verif. 2026-05-30) → l'Auditor
+              guarda u/Cart0neM nel browser. scripts/reddit_stats.py resta
+              dormiente/pronto se riaprono. NON è nel run automatico (fallirebbe
+              sempre con un falso ❌). Vedi audit_request_A3.md §1.
 """
 
 import subprocess
@@ -30,13 +33,14 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).parent.parent
 
+# Reddit NON è qui: API self-service chiusa da Reddit (2026-05-30) → fonte
+# manuale (vedi docstring). Inserirlo darebbe un ❌ fisso fuorviante.
 CONNECTORS = [
     ("X", "scripts.x_stats_refresh"),
     ("Dev.to", "scripts.devto_stats"),
     ("Umami", "scripts.umami_stats"),
     ("Bing SEO", "scripts.bing_seo_stats"),
     ("GSC", "scripts.gsc_stats"),
-    ("Reddit", "scripts.reddit_stats"),
 ]
 TIMEOUT_S = 180
 
@@ -84,7 +88,9 @@ def main():
         icon = "✅" if r["ok"] else "❌"
         print(f"  {icon} {r['name']:<10} {r['note']}")
     print(f"\n  {ok_count}/{len(results)} connettori OK")
-    print("\n  ℹ️  Payhip: export manuale → marketing_data/payhip_<oggi>.csv")
+    print("\n  ℹ️  Fonti manuali (a mano prima dell'audit):")
+    print("       • Payhip → marketing_data/payhip_<oggi>.csv")
+    print("       • Reddit → guarda u/Cart0neM nel browser (API self-service chiusa)")
     print(f"  📁 Output in: marketing_data/ (gitignored)")
 
     # Non-zero exit only if everything failed (nothing collected)

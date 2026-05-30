@@ -40,9 +40,9 @@ Questo popola `marketing_data/` con un file datato per piattaforma:
 | `marketing_data/umami_*.md` | Umami | traffico sito + eventi custom (CTA) + **5 funnel di conversione** |
 | `marketing_data/seo_bing_*.md` | Bing Webmaster | impressions/click/posizione + query + pagine |
 | `marketing_data/seo_gsc_*.md` | Google Search Console | impressions/click/CTR/posizione + query + pagine |
-| `marketing_data/reddit_*.md` | Reddit (praw) | karma + post + commenti (engagement) |
 
 **Fonti che NON hanno connettore automatico** — recuperale così:
+- **Reddit (u/Cart0neM)**: osservazione **manuale**. Reddit ha **chiuso l'accesso API self-service** (verificato 2026-05-30: app self-service terminata; JSON pubblico → 403; Devvit = solo app on-platform; resta solo il contratto commerciale, N/A per noi). Quindi l'Auditor apre il profilo nel browser e annota a mano karma + andamento ultimi post/commenti. Il connettore `scripts/reddit_stats.py` resta **dormiente ma pronto** (ibrido praw + JSON) se un domani Reddit riapre. È un *finding strutturale*, non un dato mancante per pigrizia.
 - **Payhip (vendite libri)**: Max esporta il CSV vendite → `marketing_data/payhip_YYYY-MM-DD.csv`. Se assente, segnalalo e marca le vendite "non verificate".
 - **Blog (contenuti)**: leggi `web_astro/src/content/blog/*.md` (frontmatter: date, volume, type, tags) per inventario e cadenza di pubblicazione.
 - **Vercel Web Analytics**: opzionale via MCP Vercel (traffico totale, utile per stimare il blocco-adblocker di Umami). Se non accessibile, nota il limite.
