@@ -1,4 +1,4 @@
-# Brief S91 — crosscheck-naming — 2026-05-30
+# Brief S92 — crosscheck-naming — 2026-05-30
 
 **Scritto da:** CEO (Claude) · **Per:** Max (distribuzione) + CC (applicazione edit CLAUDE.md / AUDIT_PROTOCOL)
 **Sostituisce:** la proposta "Decision Panel" di CC (`2026-05-30_claudemd_decision-panel-protocol.md`) — stesso obiettivo (uccidere l'assenso cieco), implementazione più leggera: niente sessioni-corriere, si appoggia al flusso esistente.

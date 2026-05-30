@@ -274,3 +274,82 @@ Nota CEO: "Decisioni S76 CC e precedenti spostate fuori dalla tabella per restar
 ### §7 Cosa NON sta succedendo — riga sostituita (verbatim)
 
 | **Audit Area 2 non eseguito** | Dovuto (cadenza 90gg). CC ha flaggato in S78fp2/S79/S80/S80a/S81/S83. **Finestra utile: 27 maggio - 1 giugno** durante osservazione NewsKeeper 7gg (sovrapposta a osservazione Sherpa Sprint 2). Proposta CC: lunedì 27 maggio con fresh CC + audit brief |
+
+## Rimosso in sessione S92 (2026-05-30) — compaction §4 oltre 40KB
+
+| Data | Decisione | Perché |
+|---|---|---|
+| 2026-05-27 (S87) | **Volume 3 LIVE su Payhip** (€4.99, hCWNX). Tre volumi disponibili, prodotto line completa fino a pre-mainnet | V3 chiude l'arco "From Brain to Eyes" (S53-S82). Landing page, BlogCTA, library aggiornati nello stesso deploy |
+| 2026-05-27 (S87) | **Volume 4 titolo confermato: "From Eyes to Live"**. Coming soon su /library e homepage | Progressione narrativa Zero→Grid→Brain→Eyes→Live. Ogni titolo riprende dove il precedente finisce. Terminal point chiaro: go-live con soldi veri |
+| 2026-05-27 (S87) | **Redirect /buy → store** (payhip.com/BagHolderAI) invece di V1 singolo | Con 3 prodotti, forzare su V1 è un funnel rotto. Store mostra il catalogo completo |
+| 2026-05-27 (S87) | **Full Umami event coverage** (22 link tracciati + pixel RSS Dev.to) | Ogni click Payhip ora ha source property per funnel analysis. Prima si misurava solo "qualcuno ha cliccato", ora si misura "da dove" |
+| 2026-05-27 (S87) | **Reddit deferred**: primo post sarà introduzione progetto, non sales pitch | 1 reply su r/ClaudeAI ≠ community presence. Stranieri con link prodotto = spam. Sequenza: introduce → engage → sell |
+| 2026-05-27 (S87) | **Audit Area 2 request consegnato** (primo mai eseguito, overdue da aprile) | Trigger: fine Volume 3 (regola WORKFLOW.md §F). 9 sessioni di "next time". Scope: 6 domande guida su coerenza narrazione↔codice↔state files |
+| 2026-05-26 (S86) | **Status badge homepage**: sostituisce "SESSION X · IN PROGRESS" con box teal dinamico da Supabase (`project_status`). Zero deploy per aggiornare il messaggio | Permette al CEO/Max di comunicare stato corrente del progetto al pubblico senza touchare codice. Riusabile per annunci ("Going live next week", "On vacation, bot watching the shop", ecc.). Aggiunge dinamica narrativa alla home |
+| 2026-05-26 (S86) | **Regime overlay admin**: bande colorate fear/greed/neutral sui 3 chart `admin.html` da `sentinel_scores` slow loop. Palette finanziaria (Widget A), non semaforica | Contesto regime visibile a colpo d'occhio sui chart Sentinel/Sherpa senza dover guardare un widget separato. Palette finanziaria coerente con Widget A LIVE: due interpretazioni opposte sulla stessa pagina sarebbero confuse |
+| 2026-05-26 (S86) | **Widget B (77c) killed**: regime overlay copre lo stesso bisogno, meno clutter | Brief 77c proponeva un quarto chart standalone (regime timeline 7gg). 86b è più elegante: vedi regime nello stesso grafico dei segnali. Widget A LIVE resta (banner "regime ora") |
+| 2026-05-26 (S86) | **Grafici pubblici**: post validazione regime overlay + dati Sherpa Sprint 2, portare chart admin su dashboard pubblica (`/dashboard` o `/sentinel`) | Trasparenza radicale: chi guarda dashboard vede non solo il P&L, ma anche cosa "pensa" il sistema. Gating: aspettare che i dati Sherpa post-Brain-Analysis-2 siano puliti prima di esporre pubblicamente |
+| 2026-05-26 (S86) | **Session numbering rule**: fonte di verità = `PROJECT_STATE.md`, non `diary_entries`. Brief portano numero sessione CEO. Diary può laggare | Drift S85→S86 sorpassato perché diary_entries era ancora a S82-S83. PROJECT_STATE aggiornato a ogni chiusura sessione → fonte canonical. Diary scritti retroattivamente quando serve |
+| 2026-05-26 (S86) | **Brief numbering rule**: `[session_number][lettera]`, es. 86a. Il numero si assegna alla scrittura del brief, non all'esecuzione. Mai duplicare codice brief | Refuso file `brief_84a/84b_*.md` con contenuto "Brief 86a/86b" (S86) era proprio questo problema. Regola formalizzata: numero del brief = sessione in cui è stato scritto, anche se eseguito dopo. Filename deve matchare |
+| 2026-05-25 (S85) | **Blog: ordine editoriale NON cronologico** | Ogni post autonomo, pescato da qualsiasi punto della timeline. Vetrina, non racconto lineare. Massimizza autonomia di ogni pezzo come unità di marketing |
+| 2026-05-25 (S85) | **Blog frequenza ~1 post ogni 7-10 giorni, pubblicazione a raffiche con distribuzione attiva** | No calendario fisso ("variable reinforcement"). Quantità + cadenza regolare battute da qualità + distribuzione mirata per ogni post |
+| 2026-05-25 (S85) | **UTM link bio X abbandonato** | Non mascherabile (X mostra l'URL espanso), referrer X sufficiente per tracking. Manutenzione manuale > valore informativo |
+| 2026-05-25 (S85) | **RSS feed blog aggiunto** (commit `8c9c2fc` + `18eaa24` per body completo) | Dev.to Feed Import ora configurabile (auto-import nuovi post come bozze con canonical URL). Esteso a feed reader generici per audience tecnica |
+| 2026-05-25 (S85) | **r/ClaudeAI canale di distribuzione primario** (account `Cart0neM`) | Community più aderente al pubblico-target (architetti/founder con AI). Primo commento postato in thread da 643 upvote come test engagement |
+| 2026-05-25 (S85) | **Newsletter/mailing list: valutare post-lancio V3** (Buttondown o Substack gratuito) | Pre-V3 prematuro: nessuna baseline traffico, nessuna lista naturale da costruire. Post-V3 c'è una storia chiusa da promuovere ai nuovi iscritti |
+| 2026-05-25 (S85) | **Target traffico definiti** (3 mesi 50-80/giorno, 6 mesi 100-150/giorno, 12 mesi 200-400/giorno) | Baseline attuale ~25/giorno. Numeri ancorano le scelte di canale: target richiede ×2-16 sulla baseline, ottenibile solo con distribuzione attiva multi-canale |
+| 2026-05-24 (S83/S84) | **CoinDesk Data API scartata**: free tier chiuso il 21/05/2026, paid tier da $999+/mese, fuori budget | RSS gratis + Haiku classifier in Sprint 2 è la soluzione corretta per NewsKeeper al nostro stadio. Nessun budget per news API paid pre-mainnet |
+| 2026-05-24 (S83/S84) | **Product Hunt aggiunto a Distribution Channels backlog** (Apple Notes aggiornato) con timing post-mainnet + risultati reali | Lancio one-shot, serve storia completa e numeri veri — non si fa launch su PH senza traction da mostrare |
+| 2026-05-24 (S83/S84) | **Indie Hackers confermato post-mainnet**, dopo prima settimana di risultati reali | Community IH vuole numeri veri anche se piccoli, testnet non funziona come prova credibile |
+| 2026-05-24 (S83/S84) | **CryptoPanic morto, pivot a RSS feeds** (CoinDesk + CoinTelegraph + Decrypt). Zero costo | CryptoPanic free Developer tier discontinued 1 aprile 2026 (verificato live: endpoint 404). Alternative paid sforavano budget brief <€1. RSS zero-auth, zero paywall risk |
+| 2026-05-24 (S83/S84) | **Haiku classifier promosso da S3-4 a S2** | RSS non ha sentiment nativo (CryptoPanic invece sì). Classifier keyword MVP rumoroso ~60% falsi positivi (visibili a campione). Calibration o Haiku-classify anticipato in S2 |
+| 2026-05-24 (S83/S84) | **Ship classifier rumoroso as-is per osservazione 7gg** | Data-first principle (feedback memory `feedback_data_first_then_review`). Raccolta dataset reale prima di tuning |
+| 2026-05-24 (S83/S84) | **SEO fix S84 shipped same-day: title/description rewrite + JSON-LD + sitemap lastmod** | Audit GSC CEO: 256 imp / 0 clicks / position 10.7 / sitemap "Couldn't fetch". Brief MEDIUM priority chiuso in ~35min, non bloccante per mainnet ma critico per marketing. Drift S47 WebSite schema chiuso in extra |
+| 2026-05-24 (S83/S84) | **Apple Notes pulizia: 4 attive, 8 obsolete da cancellare manualmente** | Note operative cumulate nel tempo. Quelle obsolete creavano confusione (es. HN strategy pre-shadowban). Cancellazione manuale a carico Max |
+| 2026-05-24 (S83/S84) | **Todo riscritta per era V4/NewsKeeper** | Vecchia todo Apple Note era organizzata per fase V3 (Sentinel/Sherpa). Refresh per refleter focus NewsKeeper + go-live |
+| 2026-05-24 (S83/S84) | **Distribution Channels: integrata strategia Reddit + post killer da nota HN obsoleta** | Nota HN era inutile post-shadowban Cart0ne (S81). Il "post killer" come concept (gancio narrativo strong) trasferito a strategia Reddit, da preparare con account dedicato |
+| 2026-05-23 (S82 CEO) | **NewsKeeper promosso da post-mainnet a PRE-mainnet** | Crash analysis May 18-22: Sentinel Sprint 2 è reattivo (vede il crash durante), news signals sono predittivi (4 giorni di anticipo). Board decision: il sistema non va live con soldi finché non legge le notizie |
+| 2026-05-23 (S82 CEO) | **Brief architetturale NewsKeeper scritto** | 5° cervello indipendente, 4 sessioni CC (~2 settimane). Moduli: CryptoPanic (free), ETF flows (free), macro calendar (statico). Strategist con Haiku (<€1/mese). Costo totale: <€1/mese |
+| 2026-05-23 (S82 CEO) | **Nessuna data fissa per mainnet** | Go-live dipende da condizioni di mercato osservate (bear+bull+laterale), non da calendario. Sequenza: Brain Analysis → NewsKeeper build → Sherpa testnet → dry_run → Board approval |
+| 2026-05-23 (S82 CEO) | **Volume 3 titolo confermato: "From Brain to Eyes"** | Trilogia: From Zero to Grid → From Grid to Brain → From Brain to Eyes |
+| 2026-05-23 (S82 CEO) | **Futures/hedging parcheggiato S90+** | Richiede capitale >€100 e stack futures separato. Idea: cervello hedging che apre small short quando Sentinel dice regime=fear |
+| 2026-05-23 (S82 CEO) | **Blog pipeline espansa a 20 post** | +5 backlog V3 da VOLUME_03_PLAN.md analysis. ~5 mesi di autonomia editoriale |
+| 2026-05-23 (S82 CC) | **Homepage Blog section + Diary swap SHIPPED LOCAL** | Blog ora subito sotto hero (alta visibilità per i 3 post live, niente click extra), Diary spostato sotto Bots dove fa da "dietro le quinte" delle card. Reduce funnel friction senza occupare il prime real estate hero-adjacent |
+| 2026-05-23 (S82 CC) | **Watchtower + Sherpa cards rifatte LOCAL** | Sentinel/Sherpa erano placeholder "?" silhouette con 5 zeri. Ora hanno identità grafica forte (mascot custom, palette dim ma riconoscibile), 3 dati LIVE veri (REGIME, BOTS, STOP BUY) e narrazione: Watchtower = duo che vede arrivare. NewsKeeper introdotto come cameo dim (locked) sulla card Watchtower |
+| 2026-05-22 (S81 closure) | **Brief 81a Sherpa Sprint 2 SHIPPED**: per-coin volatility + slow-loop gate + amplitude cap 30% | Chiude i 3 pre-requisiti minimi del Brain Analysis. BONK ora riceve sell_pct ~2× di BTC (live: BTC 1.20 / SOL 1.30 / BONK 2.52). Proposte cambiano max ogni 4h (regime slow), non più ogni 2 minuti |
+| 2026-05-22 (S81 closure) | **Brief 81b Haiku commentary SHIPPED**: `vs_yesterday.direction` pre-calcolato in Python + prompt stretto (80 parole, max 100) | Audit 60 entry trovò 1 errore (Day 15: -5.03% misclassificato "better" di -4.12%). Fix strutturale: Python calcola direction, Haiku la legge. Prompt sostituisce "3-4 lines ~250 chars" con "80 words / max 100" + 2 nuove regole NUMBERS/DIRECTION |
+| 2026-05-22 (S81) | **Fast ladder (DROP/PUMP/FUNDING/SPEED_OF_FALL) cancellate da Sherpa** | Phase B le sposterà in Sentinel coin-aware. Codice morto rimosso, git history preserva. Decisione 2a delegata da Board |
+| 2026-05-22 (S81) | **`proposed_stop_buy_active` legato a `regime == "extreme_fear"`** | De-coupling completo dal fast loop. Lampada ON solo nei regimi più gravi (slow cadence 4h). Decisione 1a delegata da Board |
+| 2026-05-22 (S81) | **NO-GO Sherpa step 4** | Brain Analysis: -$3.94 vs Board, non coin-aware, 449 fast-loop flips, flicker 6min. Tre fix architetturali richiesti prima di riconsiderare |
+| 2026-05-22 (S81) | **Three-phase brain architecture (A/B/C)** | A: Sherpa per-coin + slow gate + cap (brief 81a). B: Sentinel coin-aware (EMA/RSI per-coin). C: sentiment online. Ogni fase testata indipendentemente |
+| 2026-05-22 (S81) | **Grid-only mainnet è opzione legittima** | Grid +$12.52 in mercato -0.47%. Funziona senza cervello. Possibile andare live Grid-only mentre Sherpa matura |
+| 2026-05-22 (S81) | **Volume 3 climax = seconda Brain Analysis** | Atto 1 (questo report): brain è daltonico. Atto 2 (post-rework): brain rieducato. Cutoff stimato S83-S85 |
+
+## Rimosso in sessione S92 (2026-05-30) — semplificazione §3 diary, §6 vincoli chiusi, §7 stale, Multi-macchina PID
+
+### §3 per-session status list (rimossa — source of truth è Supabase diary_entries)
+- S83 — COMPLETE (NewsKeeper Brain #5 scaffold)
+- S84 — COMPLETE (SEO audit fix)
+- S85 — COMPLETE (RSS feed Dev.to + governance BUSINESS_STATE)
+- S86 — COMPLETE (status badge homepage + regime overlay admin)
+- S87 — COMPLETE (V3 launch Payhip + brief 87a site updates + Umami tracking + Audit Area 2 request)
+- S88 — COMPLETE (remediation Audit Area 2: catch-up sito + AUDIT_PROTOCOL + UI debts)
+- S89 — COMPLETE (Audit Area 1 remediation: test hygiene + dead code + dep split)
+- S90 — COMPLETE (fix spike guard A+B + deliverables UI/blog)
+- S91 — BUILDING (mattina: SEO/A11y quick wins · pomeriggio: Brain Analysis 2 + fix stop_buy extreme_fear)
+
+### §6 vincoli chiusi/obsoleti
+- Volume 3 "From Brain to Eyes" pubblicazione Payhip → DONE 2026-05-27 (payhip.com/b/hCWNX)
+- Blog primo post → DONE 2026-05-15
+- PROJECT_STATE.md compaction → DONE S92
+- DRY_RUN Sherpa Sprint 2 osservazione → DONE, Brain Analysis 2 fatta S91
+- Multi-macchina PID/runtime info (rimossa da BUSINESS_STATE, resta in PROJECT_STATE): "Mac Mini orchestrator su `51204cf` (PID parent **28217**, restart 2026-05-22 20:31 CET post brief 81a+81b), 7 processi + NewsKeeper standalone PID 78098 (caffeinate parent 78100, launch 2026-05-24 10:56 CET)"
+
+### §7 righe stale
+- "Audit Area 2 eseguito + remediation 4/5 completata in S88" → in realtà 5/5 (88d confermato shipped S88), ora archivio
+- "Homepage S82 pushata in S83" → avvenuto 2026-05-24, storia antica
+- "Volume 3 lancio Payhip" → lanciato 2026-05-27
+- "Cover V3 non generata" → cover generata e live
+- "NewsKeeper Sessions 2-4 non ancora in build" (con ref stale "~31 maggio") → ancora vero ma ref temporale stale
+- "Sherpa LIVE su testnet" (con ref stale "Target ~29 maggio - 1 giugno") → ancora pending ma ref stale
+- "Sitemap Google indicizzazione" → risolto S84

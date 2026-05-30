@@ -57,14 +57,12 @@ auto-certifica come Auditor.
 
 ## 4. Procedura
 
-1. Il **CEO** crea `audits/audit_request_YYYYMMDD_topic.md` (cartella gitignored, resta locale).
+1. Il **CEO** crea `audits/requests/YYYYMMDD_audit[AX].md` (oppure usa il template evergreen `audits/requests/audit_request[AX].md`). Cartella gitignored, resta locale.
 2. **Max** apre una sessione CC FRESH e le passa il file come brief.
-3. **CC** crea `audits/audit_in_flight_YYYYMMDD_topic.md` — stage intermedio con ETA e scope confermato (segnala che un audit è in corso, evita doppioni).
-4. **CC** esegue e produce `audits/audit_report_YYYYMMDD_topic.md`.
-5. **L'Auditor** aggiorna `PROJECT_STATE.md §9` con la sintesi (è l'unico autorizzato — vedi §5).
-6. **CC** cancella `audits/audit_in_flight_*.md` (stage chiuso).
+3. **CC** esegue e produce `audits/reports/YYYYMMDD_audit[AX].md` (topic opzionale per audit one-off: `YYYYMMDD_audit[AX]_topic.md`).
+4. **L'Auditor** aggiorna `PROJECT_STATE.md §9` con la sintesi (è l'unico autorizzato — vedi §5).
 
-> La conta della cadenza/trigger si fa sui FILE `audits/audit_report_*.md`, NON
+> La conta della cadenza/trigger si fa sui FILE `audits/reports/YYYYMMDD_audit[AX].md`, NON
 > sulle righe §9 di PROJECT_STATE. Una riga §9 esiste se e solo se esiste il
 > report corrispondente prodotto da un Auditor.
 
@@ -74,7 +72,7 @@ auto-certifica come Auditor.
 
 - **Findings** con severity (CRITICAL > HIGH > MED > LOW) e `file:linea`.
 - **Verdetto**: APPROVED / CON RISERVE / REJECTED.
-- File `audits/audit_report_YYYYMMDD_topic.md`.
+- File in `audits/reports/` con naming `YYYYMMDD_audit[AX].md` (X = 1, 2 o 3). Per audit one-off su scope specifico: `YYYYMMDD_audit[AX]_topic.md`.
 - **Riga §9** in PROJECT_STATE.md (unico caso in cui CC scrive in §9). Una
   sessione di sviluppo che ha shippato codice scrive in §10 "Sessioni shipped",
   MAI in §9.
@@ -88,7 +86,7 @@ Quando un trigger di §2 è scattato, CC lo propone in chiusura sessione:
 > "⚠️ Audit Area X dovuto (motivo: trigger Y). Brief draft disponibile.
 > Vuoi che lo generi ora? [yes / no / later]"
 
-Se Max dice **yes** → CC genera `audits/audit_request_YYYYMMDD_topic.md` nella
+Se Max dice **yes** → CC genera `audits/requests/YYYYMMDD_audit[AX].md` nella
 stessa sessione (è un artefatto-richiesta, non l'esecuzione dell'audit: quella
 resta a una sessione fresh separata, vedi §3).
 
@@ -98,10 +96,10 @@ resta a una sessione fresh separata, vedi §3).
 
 | Data | Area | Topic | Verdetto | Report |
 |---|---|---|---|---|
-| 2026-05-07 | 1 | Phase 1 split `grid_bot.py` monolite → 6 moduli (brief 62a) | **APPROVED** (zero regressioni) | `audits/audit_report_20260507_phase1_grid_split_review.md` |
-| 2026-05-15 | 3 | Marketing + SEO/GSC + X performance pre-go-live (A3-S78) | **CON RISERVE** | `audits/audit_report_20260515_marketing_seo_x.md` |
-| 2026-05-27 | 2 | Coerenza narrazione pubblica ↔ codice LIVE ↔ state files (A2-S87, primo audit Area 2 mai eseguito) | **CON RISERVE** (0 CRITICAL, 6 HIGH, 12 MED) | `audits/audit_report_20260527_area2_coherence.md` |
-| 2026-05-27 | 1 | Monthly automated technical integrity (codebase + DB + bot health + code patterns) | **CON RISERVE** (0 CRITICAL, 2 HIGH, 3 MED) | `audits/audit_report_20260527_area1_automated.md` |
+| 2026-05-07 | 1 | Phase 1 split `grid_bot.py` monolite → 6 moduli (brief 62a) | **APPROVED** (zero regressioni) | `audits/reports/20260507_audit[A1]_phase1_grid_split_review.md` |
+| 2026-05-15 | 3 | Marketing + SEO/GSC + X performance pre-go-live (A3-S78) | **CON RISERVE** | `audits/reports/20260515_audit[A3].md` |
+| 2026-05-27 | 2 | Coerenza narrazione pubblica ↔ codice LIVE ↔ state files (A2-S87, primo audit Area 2 mai eseguito) | **CON RISERVE** (0 CRITICAL, 6 HIGH, 12 MED) | `audits/reports/20260527_audit[A2].md` |
+| 2026-05-27 | 1 | Monthly automated technical integrity (codebase + DB + bot health + code patterns) | **CON RISERVE** (0 CRITICAL, 2 HIGH, 3 MED) | `audits/reports/20260527_audit[A1].md` |
 
 ---
 
@@ -132,10 +130,10 @@ naming storico disordinato: accoppiamento best-effort, e il disordine di
 naming pre-S88 NON e' un finding (accettato consapevolmente, non rilevarlo
 di nuovo — chiude il finding 2.4 dell'audit del 27/05).
 
-NOTA FORMATO DATA: i file audit usano la data SENZA trattini
-(audit_report_YYYYMMDD_topic.md, per AUDIT_PROTOCOL esistente); brief e report
-usano la data CON trattini (YYYY-MM-DD). L'Auditor gestisce entrambi i formati.
+NOTA FORMATO DATA: i file audit (reports/ e requests/) usano la data SENZA trattini
+(`YYYYMMDD_audit[AX].md`); brief e report CEO usano la data CON trattini (`YYYY-MM-DD`).
+L'Auditor gestisce entrambi i formati.
 
 ---
 
-*Last updated: 2026-05-30 (S91) — aggiunta §8 Accoppiamento artefatti (brief crosscheck-naming).*
+*Last updated: 2026-05-30 (S92) — nuovo naming `YYYYMMDD_audit[AX].md` + struttura `audits/reports/` e `audits/requests/`; rimosso audit_in_flight (mai usato in pratica); §8 Accoppiamento artefatti (brief crosscheck-naming S91).*

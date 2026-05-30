@@ -395,3 +395,51 @@ Le due righe §10 più recenti erano diari implementativi completi (selettori CS
 - **Task 2 (M1/L2)**: 4 metodi dead-table deprecati no-op guard (NON eliminati) — db/client.py PortfolioManager.{get_portfolio,update_position,get_total_allocation} + SentinelLogger.log_analysis + scripts/cash_audit.py fetch_holdings. Tutti confermati non chiamati da bot LIVE.
 - **Task 3 (M3)**: tweepy → nuovo requirements-scripts.txt + commento pointer in requirements.txt.
 - Commit `08c0239`. Zero touch bot/, no restart.
+
+## Rimosso in sessione S92 (2026-05-30) — compaction header + §3 S91 mattina
+
+### Header "Ultimo aggiornamento precedente" S91 mattina / S90 / S89
+
+**Ultimo aggiornamento precedente:** 2026-05-29 — **sessione 91 (mattina) SHIPPED — SEO/A11y quick wins sito (web-only, no bot, no restart)** — Brief sorgente da 2 file in `config/` (Lighthouse 29/05 + guida canonical/Bing). Shippato WP1+WP2: file verifica Bing/IndexNow in `public/`; iframe a-ads `title="Advertisement"`; fix markup `<dl>` (index.astro); aria-label distinti sui 3 link Payhip (index+library); contrasto `--color-text-muted` #5d6680→#828aa0 (~5,1:1, passa AA testo piccolo); redirect `/sitemap.xml`→`/sitemap-index.xml` (vercel.json). Build verde 15 pagine. **Diagnosi sitemap "Couldn't fetch" GSC**: NON è rotta — `sitemap-index.xml`/`sitemap-0.xml` rispondono 200/XML valido anche a Googlebot, SSL ok; è stato stale/transitorio tipico domini nuovi → azioni operative Max in GSC (inviare solo `sitemap-index.xml`, verificare Domain property, no re-invio loop). WP3 (performance mobile) SALTATO (Vercel RUM ~96) + WP4 (proxy Binance/header) RIMANDATO pre-mainnet → documentati in `config/SEO_deferred.md`. Brief sorgente convertiti+archiviati in `briefresolved.md/SEO_*`. Dettaglio §3 + §10.
+
+**Ultimo aggiornamento precedente:** 2026-05-28 — **sessione 90 SHIPPED — Parte 1 (brief fix_slippage_AB) + Parte 2 (UI/blog del pomeriggio)** — 8 commit pushati totali. **PARTE 1 (mattina)**: fix spike testnet + post-recalibrate cooldown. Trigger: trade `a45b08b2` BTC SELL 27/05 21:44 UTC con realized -$1.31, root cause in `investigations/slippage_btc_20260527.md`. Opzione A (variante Board): nuova `fetch_price_with_spike_guard` in `bot/grid_runner/lifecycle.py` — se delta tick > 4% vs `state.last_price`, pausa 5s + ri-fetch; procede solo se ≥50% del movimento si conferma con lo stesso verso, altrimenti `spike_skipped` + skip ciclo. Opzione B: flag `_skip_next_decision` armato dal `dead_zone_recalibrate`; doppio gate (within-tick + next-tick). Test 121→**129 passed**. Restart Mac Mini 09:15 CET (PID 93187, runtime `673c941`). **PARTE 2**: (a) banner `/dashboard` rimosso "X days observing"; (b) cover Vol-3 PNG→JPG; (c) 4° blog post LIVE; (d) 5 report CEO → resolved/. Dettaglio §10.
+
+**Ultimo aggiornamento precedente:** 2026-05-27 — **sessione 89 (brief 89a) SHIPPED** — Audit Area 1 remediation (housekeeping, zero touch `bot/`, no restart). Test hygiene: `tests/legacy/` (32 test rotti) + `tests/test_trend_36e_v2.py` (sys.exit) → `tests/archived/` + README, nuovo `pytest.ini`; suite **121/121 pulita**. Dead code: 4 metodi dead-table no-op. Dep: `tweepy` → `requirements-scripts.txt`. Atterrato sintetico audit automatico Area 1 (CC corriere scp). Findings H1/H2/M1/M3/L2 chiusi. Dettaglio §10.
+
+### §3 S91 mattina — SEO/A11y quick wins sito SHIPPED
+
+- **Origine**: 2 file droppati da Max in `config/` (`SEO_bing.html` export Cocoa + `SEO_verifica.md` RTF) = guida canonical/Bing + brief Lighthouse 29/05 (Mobile Perf 81, A11y 87). Canonical era GIÀ presente (brief stale).
+- **WP1**: file verifica Bing/IndexNow; `title="Advertisement"` iframe a-ads; fix `<dl>` malformato (index.astro:214); aria-label distinti 3 link Payhip; redirect `/sitemap.xml`→`/sitemap-index.xml`.
+- **WP2**: `--color-text-muted` #5d6680→#828aa0 (global.css:18, ~5.1:1 AA).
+- **Diagnosi sitemap**: non rotta — stale GSC su dominio nuovo. Azioni Max: inviare solo sitemap-index, no re-invio loop.
+- **WP3 SALTATO + WP4 RIMANDATO** → `config/SEO_deferred.md`.
+- **Fix RSS re-import dev.to**: flag `noRss` su `when-your-ai-ceo-lies-about-the-numbers.md`. Feed 4→3 item.
+
+## Rimosso in sessione S92 (2026-05-30) — condensazione §6/§7/§8/§10
+
+### §6 voci stale rimosse
+- 🆕 [S81 NEW] Seconda Brain Analysis post-Sprint 2 → CHIUSA in S91
+- 🟡 [S70c] Ripristino sito pubblico → sito pubblico live da S70c, voce obsoleta
+
+### §7 riga stale rimossa
+- "Sequenza S81+ → S82+: osservazione 7-10gg Sherpa Sprint 2 DRY_RUN (scadenza ~29 maggio - 1 giugno) → seconda Brain Analysis → step 4 Sherpa LIVE testnet 1 parametro alla volta." → sequenza completata S91
+
+### §8 riga stale rimossa
+- "~~TF riacceso~~ → RIATTIVATO IN S79 (brief 79b 2026-05-18): Tier 1-2 only, T3 weight=0 in DB. $100 budget separato da $500 Grid, prende da pool USDT free Binance testnet ($9.481 disponibili). ~~Sito pubblico ancora mostra "TF dal dottore"~~ → S80 brief 80b ha sostituito SVG dottore con card stile Grid; S82 (oggi) ha rifatto anche Sentinel/Sherpa come Watchtower+Sherpa locked cards. Sito public ora coerente con stato bot LIVE."
+
+### §10 righe verbose condensate (S86-S90)
+
+**S90 verbatim:**
+Parte 1 (mattino, brief fix_slippage_AB): trigger trade BTC a45b08b2 27/05 21:44 UTC realized −$1.31 con slippage check→fill −5.83%. Investigazione investigations/slippage_btc_20260527.md: spike testnet $82,143 (mainnet stabile $74,500) + dead_zone_recalibrate + SELL CHECK stesso tick. Fix A fetch_price_with_spike_guard in lifecycle.py (threshold 4% + confirm 50% + pause 5s). Fix B flag _skip_next_decision in GridBot con doppio gate. Test: tests/test_spike_guard.py 5 A + 3 B. Restart Mac Mini 09:15 CET PID 93187 runtime 673c941. Parte 2 (pomeriggio, no bot): banner /dashboard rimosso "X days observing" (751b18c); cover Vol-3 PNG→JPG (b8ed22d); 4° blog post LIVE (1b28e2a); 5 report CEO → resolved/. Brief → briefresolved.md/; report report_for_CEO/2026-05-28_s90_*.
+
+**S89 verbatim:**
+Atterrato sintetico audit automatico Area 1 dal CC scheduled Mac Mini (report locale gitignore, CC corriere via scp). Remediation: legacy (32 rotti) + test_trend_36e_v2 (sys.exit) → tests/archived/ + pytest.ini; 4 metodi dead-table deprecati no-op (db/client.py PortfolioManager.* + SentinelLogger.log_analysis + cash_audit.fetch_holdings), confermati non live-called; tweepy → requirements-scripts.txt. Findings H1/H2/M1/M3/L2 chiusi. Follow-up Board: PortfolioManager dead-instantiation in grid_runner (vedi §8). Brief → briefresolved.md/; report report_for_CEO/2026-05-27_89a_*.
+
+**S88 verbatim:**
+88b roadmap.ts catch-up S80→S87 + nuova Phase 14 NewsKeeper + go-live date rimossa + dashboard Sentinel/Sherpa "not yet deployed"→LIVE/DRY_RUN. 88c PROJECT_STATE 61KB→<40KB + 6 drift fix. 88a AUDIT_PROTOCOL.md riscritto a protocollo vero + trigger Area 2 event-based (CLAUDE.md §[1]/WORKFLOW.md §G). 88e config/parked/ + 2 brief con trigger. 88d UI debts: banner fear-regime (dashboard) + fallback diario + mock refresh + botData homepage live (Opzione B: Grid 19w·2l·since May 8 da Supabase, TF "Scanning · hands off to Grid"). Findings chiusi: 1.1/1.2/1.3/1.4/1.5/2.2/2.3/3.1/3.2/3.3/4.2/4.4/5.1/5.2/5.3/5.5/5.7/6.1/6.2. Report report_for_CEO/2026-05-27_88d_*.
+
+**S87 verbatim:**
+Volume 3 "From Brain to Eyes" (S53-82, €4.99, Payhip /b/hCWNX) live su tutti i touchpoint: BlogCTA + library shelf 3D (b3 live, nuovo b4 placeholder) + hero /library 2→3 vol/82 sessions/308 pages + vercel.json /buy→store. Umami: pixel in RSS content:encoded + data-umami-event su 5 CTA. index.astro Story V3 live, V4 NON in home. Brief briefresolved.md/brief_87a_*.md.
+
+**S86 verbatim:**
+86a: Nuova tabella Supabase project_status 1-row (CHECK id=1 singleton + BEFORE UPDATE trigger + RLS anon-read). Seed CEO. Hero "Session NN · in progress" rimosso; nuovo box full-width teal #5DCAA5 + meta "Updated Xh ago". live-stats.ts Promise.all con race-condition fix. Tempo relativo client-side. 86b: bande regime su 3 chart admin.html TREND+Reaction+Params. Drift istruzioni: brief assumeva Chart.js, admin.html è Canvas 2D → helper drawRegimeBands(). Palette Widget A (extreme_fear #7dd3fc → extreme_greed #ef4444), alpha 0.20/0.14/0.10. Fetch 2 query (in-range + 1 prior). Legenda regime. Bonus: formatTimeLabel range-aware + showXLabels su mini-chart. Widget B (77c) killed. Brief briefresolved.md/brief_86a+86b_*.
