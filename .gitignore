@@ -1,6 +1,7 @@
 # Secrets
 config/.env
 config/.env.marketing
+config/gsc_service_account.json
 
 # Python
 __pycache__/

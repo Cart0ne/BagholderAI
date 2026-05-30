@@ -74,6 +74,7 @@ def main():
         traffic = _call("GetRankAndTrafficStats")
         queries = _call("GetQueryStats")
         pages = _call("GetPageStats")
+        crawl = _call("GetCrawlStats")
     except PermissionError as e:
         print(f"[ERROR] {e}")
         sys.exit(1)
@@ -104,6 +105,27 @@ def main():
     md += f"- **Impressions totali:** {total_impr:,}\n"
     md += f"- **Click totali:** {total_clicks:,}\n"
     md += f"- **CTR medio:** {ctr:.2f}%\n\n---\n\n"
+
+    # --- Indicizzazione & crawl (utile anche quando le performance sono a zero) ---
+    crawl_sorted = sorted(crawl, key=lambda c: _parse_date(c.get("Date", "")))
+    in_index = in_links = 0
+    crawled = crawl_errors = code_4xx = code_5xx = blocked = 0
+    if crawl_sorted:
+        # InIndex/InLinks sono snapshot: prendo il max sulla finestra (più stabile
+        # del singolo ultimo giorno, che può essere parziale).
+        in_index = max(int(c.get("InIndex", 0) or 0) for c in crawl_sorted)
+        in_links = max(int(c.get("InLinks", 0) or 0) for c in crawl_sorted)
+        crawled = sum(int(c.get("CrawledPages", 0) or 0) for c in crawl_sorted)
+        crawl_errors = sum(int(c.get("CrawlErrors", 0) or 0) for c in crawl_sorted)
+        code_4xx = sum(int(c.get("Code4xx", 0) or 0) for c in crawl_sorted)
+        code_5xx = sum(int(c.get("Code5xx", 0) or 0) for c in crawl_sorted)
+        blocked = sum(int(c.get("BlockedByRobotsTxt", 0) or 0) for c in crawl_sorted)
+    md += "## Indicizzazione & crawl\n\n"
+    md += f"- **Pagine nell'indice di ricerca (InIndex):** {in_index:,}\n"
+    md += f"- **Link in entrata (InLinks):** {in_links:,}\n"
+    md += f"- **Pagine crawlate (finestra):** {crawled:,}\n"
+    md += f"- **Errori crawl:** {crawl_errors:,} · 4xx: {code_4xx:,} · 5xx: {code_5xx:,} · bloccate da robots: {blocked:,}\n\n"
+    md += "> Nota: `InIndex` (pagine effettivamente nell'indice di ricerca) può differire dal contatore \"pagine indicizzate\" della dashboard Bing, che spesso mostra URL note/crawlate o quelle in sitemap.\n\n---\n\n"
 
     md += "## Trend recente (ultimi punti giornalieri)\n\n"
     md += "| Data | Impressions | Click |\n|---|---|---|\n"
@@ -143,6 +165,7 @@ def main():
         "total_clicks": total_clicks,
         "ctr_pct": round(ctr, 2),
         "queries": len(queries),
+        "pages_in_index": in_index,
         "report_path": str(out_path),
     }
 

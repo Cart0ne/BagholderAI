@@ -1,14 +1,26 @@
 """
 BagHolderAI — Reddit Stats
 ==========================
-Fetches our Reddit account (Cart0neM) activity via the official API (praw) and
-writes a dated markdown report: karma, recent submissions (score, upvote ratio,
-comments) and recent comments (the "engagement first" strategy lives in others'
-threads).
+Fetches our Reddit account (Cart0neM) activity and writes a dated markdown
+report: karma, recent submissions (score, upvote ratio, comments) and recent
+comments (the "engagement first" strategy lives in others' threads).
+
+Auth — IBRIDO, prova due strade nell'ordine:
+  1. praw (app OAuth "script") se ci sono le credenziali complete in
+     .env.marketing. È la strada vera, ma richiede una app APPROVATA da Reddit
+     (Responsible Builder Policy, 2024+). Appena l'app è approvata e compili le
+     chiavi, il connettore si "accende" da solo.
+  2. Endpoint JSON pubblici (about/submitted/comments), no auth. Fallback senza
+     credenziali. NOTA: verificato 2026-05-30 → Reddit risponde 403 (block page)
+     all'accesso programmatico non autenticato anche con UA browser/old.reddit;
+     quindi oggi questa strada NON funziona. Resta nel codice nel caso Reddit
+     riallenti, e per documentare il tentativo.
+
+Conclusione operativa: Reddit resta l'unico connettore non attivo finché l'app
+non è approvata. Le altre 4 fonti (X, Dev.to, Umami, Bing, GSC) coprono l'audit.
 
 Mirrors scripts/x_stats_refresh.py: read-only, one dated file under
-marketing_data/ (gitignored), returns a summary dict. Fails clearly if creds
-are missing.
+marketing_data/ (gitignored), returns a summary dict.
 
 Usage:
     python3.13 -m scripts.reddit_stats
@@ -16,9 +28,9 @@ Usage:
 Output:
     marketing_data/reddit_YYYY-MM-DD.md
 
-Keys (config/.env.marketing): REDDIT_CLIENT_ID, REDDIT_CLIENT_SECRET,
-REDDIT_USERNAME, REDDIT_PASSWORD, REDDIT_USER_AGENT.
-App: reddit.com/prefs/apps → create app type "script".
+Keys (config/.env.marketing): per praw → REDDIT_CLIENT_ID, REDDIT_CLIENT_SECRET,
+REDDIT_USERNAME, REDDIT_PASSWORD, REDDIT_USER_AGENT (app approvata). Per il
+fallback pubblico basta REDDIT_USERNAME.
 """
 
 import os
@@ -28,10 +40,14 @@ from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import requests
+
 from config.settings import RedditConfig
 
 REPORT_DIR = Path(__file__).parent.parent / "marketing_data"
 LIMIT = 25
+BASE = "https://www.reddit.com"
+DEFAULT_UA = "bagholderai-marketing-audit/1.0 (read-only public stats)"
 
 
 def truncate(text: str, n: int = 60) -> str:
@@ -41,67 +57,128 @@ def truncate(text: str, n: int = 60) -> str:
     return clean.replace("|", "\\|")
 
 
-def main():
-    if not all([RedditConfig.CLIENT_ID, RedditConfig.CLIENT_SECRET,
-                RedditConfig.USERNAME, RedditConfig.PASSWORD]):
-        print("[ERROR] Credenziali Reddit incomplete in config/.env.marketing.")
-        print("        Servono REDDIT_CLIENT_ID, REDDIT_CLIENT_SECRET, REDDIT_USERNAME, REDDIT_PASSWORD.")
-        print("        Crea una app 'script' su reddit.com/prefs/apps.")
-        sys.exit(1)
+def _get_json(path: str, ua: str, params: dict | None = None) -> dict:
+    """GET su un endpoint .json pubblico di Reddit. Solleva su errore."""
+    resp = requests.get(
+        f"{BASE}{path}",
+        headers={"User-Agent": ua},
+        params=params or {},
+        timeout=30,
+    )
+    if resp.status_code == 429:
+        raise RuntimeError("Reddit rate-limit (429) — riprova più tardi o riduci la frequenza.")
+    if resp.status_code in (403, 404):
+        raise RuntimeError(f"Reddit {resp.status_code} su {path} — utente inesistente o accesso pubblico bloccato.")
+    resp.raise_for_status()
+    return resp.json()
 
-    try:
-        import praw
-    except ImportError:
-        print("[ERROR] Modulo 'praw' non installato. Esegui: pip install praw")
-        sys.exit(1)
 
-    print(f"[INFO] Authenticating to Reddit as u/{RedditConfig.USERNAME}...")
-    try:
-        reddit = praw.Reddit(
-            client_id=RedditConfig.CLIENT_ID,
-            client_secret=RedditConfig.CLIENT_SECRET,
-            username=RedditConfig.USERNAME,
-            password=RedditConfig.PASSWORD,
-            user_agent=RedditConfig.USER_AGENT,
-        )
-        me = reddit.user.me()
-        if me is None:
-            raise RuntimeError("autenticazione fallita (credenziali errate?)")
-    except Exception as e:
-        print(f"[ERROR] Reddit auth error: {e}")
-        sys.exit(1)
+def _fetch_public(username, ua):
+    """Strada 2: endpoint JSON pubblici, no auth."""
+    about = _get_json(f"/user/{username}/about.json", ua)
+    subs_raw = _get_json(f"/user/{username}/submitted.json", ua, {"limit": LIMIT})
+    coms_raw = _get_json(f"/user/{username}/comments.json", ua, {"limit": LIMIT})
+
+    a = about.get("data", {})
+    link_karma = a.get("link_karma", 0)
+    comment_karma = a.get("comment_karma", 0)
+    total_karma = a.get("total_karma", link_karma + comment_karma)
+
+    submissions = []
+    for child in subs_raw.get("data", {}).get("children", []):
+        s = child.get("data", {})
+        submissions.append({
+            "title": s.get("title", ""),
+            "subreddit": s.get("subreddit", ""),
+            "score": s.get("score", 0),
+            "upvote_ratio": s.get("upvote_ratio"),
+            "comments": s.get("num_comments", 0),
+            "date": datetime.fromtimestamp(s.get("created_utc", 0)).strftime("%Y-%m-%d"),
+            "url": f"{BASE}{s.get('permalink', '')}",
+        })
+
+    comments = []
+    for child in coms_raw.get("data", {}).get("children", []):
+        c = child.get("data", {})
+        comments.append({
+            "subreddit": c.get("subreddit", ""),
+            "score": c.get("score", 0),
+            "body": truncate(c.get("body", ""), 70),
+            "date": datetime.fromtimestamp(c.get("created_utc", 0)).strftime("%Y-%m-%d"),
+            "url": f"{BASE}{c.get('permalink', '')}",
+        })
+    return link_karma, comment_karma, total_karma, submissions, comments
+
+
+def _fetch_praw():
+    """Strada 1: praw (app OAuth approvata). Solleva se praw manca o auth fallisce."""
+    import praw
+    reddit = praw.Reddit(
+        client_id=RedditConfig.CLIENT_ID,
+        client_secret=RedditConfig.CLIENT_SECRET,
+        username=RedditConfig.USERNAME,
+        password=RedditConfig.PASSWORD,
+        user_agent=RedditConfig.USER_AGENT or DEFAULT_UA,
+    )
+    me = reddit.user.me()
+    if me is None:
+        raise RuntimeError("autenticazione praw fallita (credenziali errate?)")
 
     link_karma = getattr(me, "link_karma", 0)
     comment_karma = getattr(me, "comment_karma", 0)
     total_karma = getattr(me, "total_karma", link_karma + comment_karma)
 
-    submissions = []
-    for s in me.submissions.new(limit=LIMIT):
-        submissions.append({
-            "title": s.title,
-            "subreddit": str(s.subreddit),
-            "score": s.score,
-            "upvote_ratio": getattr(s, "upvote_ratio", None),
-            "comments": s.num_comments,
-            "date": datetime.fromtimestamp(s.created_utc).strftime("%Y-%m-%d"),
-            "url": f"https://reddit.com{s.permalink}",
-        })
+    submissions = [{
+        "title": s.title, "subreddit": str(s.subreddit), "score": s.score,
+        "upvote_ratio": getattr(s, "upvote_ratio", None), "comments": s.num_comments,
+        "date": datetime.fromtimestamp(s.created_utc).strftime("%Y-%m-%d"),
+        "url": f"https://reddit.com{s.permalink}",
+    } for s in me.submissions.new(limit=LIMIT)]
 
-    comments = []
-    for c in me.comments.new(limit=LIMIT):
-        comments.append({
-            "subreddit": str(c.subreddit),
-            "score": c.score,
-            "body": truncate(c.body, 70),
-            "date": datetime.fromtimestamp(c.created_utc).strftime("%Y-%m-%d"),
-            "url": f"https://reddit.com{c.permalink}",
-        })
+    comments = [{
+        "subreddit": str(c.subreddit), "score": c.score, "body": truncate(c.body, 70),
+        "date": datetime.fromtimestamp(c.created_utc).strftime("%Y-%m-%d"),
+        "url": f"https://reddit.com{c.permalink}",
+    } for c in me.comments.new(limit=LIMIT)]
+    return link_karma, comment_karma, total_karma, submissions, comments
+
+
+def main():
+    username = RedditConfig.USERNAME
+    if not username:
+        print("[ERROR] Manca REDDIT_USERNAME in config/.env.marketing.")
+        sys.exit(1)
+
+    ua = RedditConfig.USER_AGENT or DEFAULT_UA
+    has_praw_creds = all([RedditConfig.CLIENT_ID, RedditConfig.CLIENT_SECRET,
+                          RedditConfig.USERNAME, RedditConfig.PASSWORD])
+
+    try:
+        if has_praw_creds:
+            print(f"[INFO] Reddit via praw (app OAuth) per u/{username}...")
+            link_karma, comment_karma, total_karma, submissions, comments = _fetch_praw()
+        else:
+            print(f"[INFO] Reddit via JSON pubblico (no app) per u/{username}...")
+            link_karma, comment_karma, total_karma, submissions, comments = _fetch_public(username, ua)
+    except ImportError:
+        print("[ERROR] Modulo 'praw' non installato. Esegui: pip install praw")
+        sys.exit(1)
+    except requests.RequestException as e:
+        print(f"[ERROR] Reddit API error: {e}")
+        sys.exit(1)
+    except RuntimeError as e:
+        print(f"[ERROR] {e}")
+        if not has_praw_creds:
+            print("        Il JSON pubblico è bloccato da Reddit (403): serve un'app approvata.")
+            print("        Compila le chiavi REDDIT_* quando Reddit approva l'app (Responsible Builder Policy).")
+        sys.exit(1)
 
     today = datetime.now().strftime("%Y-%m-%d")
     now = datetime.now().strftime("%Y-%m-%d %H:%M")
 
-    md = f"# Reddit — u/{RedditConfig.USERNAME} — {today}\n\n"
-    md += f"**Generato:** {now}\n\n---\n\n"
+    md = f"# Reddit — u/{username} — {today}\n\n"
+    src = "praw (app OAuth)" if has_praw_creds else "endpoint JSON pubblici (no auth)"
+    md += f"**Generato:** {now}  ·  _fonte: {src}_\n\n---\n\n"
     md += "## Karma\n\n"
     md += f"- **Totale:** {total_karma:,}\n"
     md += f"- **Post (link):** {link_karma:,}\n"

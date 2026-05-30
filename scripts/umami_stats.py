@@ -91,6 +91,7 @@ def fetch_funnel(steps: list, start_iso: str, end_iso: str) -> list | None:
     body = {
         "websiteId": UmamiConfig.WEBSITE_ID,
         "type": "funnel",
+        "filters": {},  # required by the API even when empty
         "parameters": {
             "startDate": start_iso,
             "endDate": end_iso,
@@ -115,6 +116,29 @@ def fetch_funnel(steps: list, start_iso: str, end_iso: str) -> list | None:
                 if isinstance(data.get(key), list):
                     return data[key]
         return None
+    except (requests.RequestException, ValueError):
+        return None
+
+
+def fetch_utm(start_iso: str, end_iso: str) -> dict | None:
+    """POST /reports/utm. Returns {utm_source:[...], utm_medium:[...],
+    utm_campaign:[...]} where each item is {'utm': name, 'views': n}."""
+    body = {
+        "websiteId": UmamiConfig.WEBSITE_ID,
+        "type": "utm",
+        "filters": {},
+        "parameters": {"startDate": start_iso, "endDate": end_iso},
+    }
+    try:
+        resp = requests.post(
+            f"{UmamiConfig.BASE_URL}/reports/utm",
+            headers={**_headers(), "Content-Type": "application/json"},
+            json=body,
+            timeout=30,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        return data if isinstance(data, dict) else None
     except (requests.RequestException, ValueError):
         return None
 
@@ -152,6 +176,9 @@ def main():
     funnel_results = []
     for name, steps in FUNNELS:
         funnel_results.append((name, steps, fetch_funnel(steps, start_iso, end_iso)))
+
+    print("[INFO] Fetching UTM breakdown...")
+    utm = fetch_utm(start_iso, end_iso)
 
     pv = _metric_value(stats.get("pageviews"))
     pv_prev = _metric_prev(stats.get("pageviews"))
@@ -225,12 +252,30 @@ def main():
         md += "\n"
     md += "\n---\n\n"
 
+    # --- UTM (sorgenti di traffico taggato) ---
+    md += "## UTM — sorgenti di traffico taggato\n\n"
+    md += "_Solo il traffico con link UTM (X, Telegram, Dev.to, blog…). Misura quali canali portano click reali._\n\n"
+    if not utm:
+        md += "_Dati UTM non disponibili._\n\n"
+    else:
+        for dim, label in [("utm_source", "Source"), ("utm_medium", "Medium"), ("utm_campaign", "Campaign")]:
+            rows = utm.get(dim) or []
+            md += f"**{label}**\n\n| {label} | Views |\n|---|---|\n"
+            if not rows:
+                md += "| _nessuno_ | — |\n"
+            for it in sorted(rows, key=lambda x: x.get("views", 0), reverse=True):
+                nm = str(it.get("utm", "?")).replace("|", "\\|")[:50]
+                md += f"| {nm} | {it.get('views', 0):,} |\n"
+            md += "\n"
+    md += "---\n\n"
+
     REPORT_DIR.mkdir(parents=True, exist_ok=True)
     out_path = REPORT_DIR / f"umami_{today}.md"
     out_path.write_text(md, encoding="utf-8")
     print(f"[INFO] Report saved: {out_path.relative_to(Path(__file__).parent.parent)}")
+    utm_sources = len(utm.get("utm_source", [])) if utm else 0
     print(f"[INFO] {pv:,} pageviews · {vis:,} visitatori · {len(events)} eventi custom · "
-          f"{funnels_ok}/{len(FUNNELS)} funnel")
+          f"{funnels_ok}/{len(FUNNELS)} funnel · {utm_sources} utm_source")
 
     return {
         "pageviews": pv,
@@ -239,6 +284,7 @@ def main():
         "visitors_prev": vis_prev,
         "events_tracked": len(events),
         "funnels_ok": funnels_ok,
+        "utm_sources": utm_sources,
         "report_path": str(out_path),
     }
 
