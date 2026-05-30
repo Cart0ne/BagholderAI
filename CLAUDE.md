@@ -227,3 +227,28 @@ quindi il repo remoto potrebbe avere commit più recenti.
 - 3 grid instances: BTC/USDT, SOL/USDT, BONK/USDT
 - Stack: Python, Supabase (DB), Telegram (notifications), Vercel (dashboard)
 - Lingua preferita per la comunicazione: italiano
+
+═══════════════════════════════════════════
+ [7] CROSS-CHECK & NAMING (CC)
+═══════════════════════════════════════════
+
+ANTI-ASSENSO (prima di implementare)
+Prima di scrivere codice su un brief del CEO, produci >=1 obiezione tecnica
+reale (fattibilita', rischio, effetto collaterale, assunzione fragile)
+OPPURE dichiara in una riga perche' non ce ne sono (es. "fix meccanico,
+nessuna obiezione"). Non partire a codare su un brief non smontato.
+
+Se la tua obiezione e la posizione del CEO non convergono -> NON decidere tu.
+Segnala a Max. Avere l'ultima parola sul codice non e' avere l'ultima parola
+sulla DECISIONE. Max e' il nodo di sintesi.
+
+NAMING DEI REPORT (li scrivi tu)
+  YYYY-MM-DD_SXX[z]_RforCEO_SCOPE.md
+- Lo SCOPE e' EREDITATO IDENTICO dal brief che stai implementando. Non
+  reinventarlo, non abbreviarlo, non cambiare separatore.
+  brief ..._brief_decision-panel  ->  report ..._RforCEO_decision-panel
+  Se lo SCOPE non combacia carattere per carattere, l'Auditor non accoppia
+  brief e report. E' il perno di tutto il sistema.
+- DENTRO il report cita sempre: nome del brief sorgente + commit hash.
+  Cosi' la catena regge anche se un file viene rinominato (l'Auditor segue
+  i riferimenti interni, non solo le stringhe del filesystem).

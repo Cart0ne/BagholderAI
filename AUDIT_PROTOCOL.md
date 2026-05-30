@@ -105,4 +105,37 @@ resta a una sessione fresh separata, vedi §3).
 
 ---
 
-*Last updated: 2026-05-27 (automated Area 1 audit) — added automated monthly audit row.*
+---
+
+## 8. Accoppiamento artefatti (cross-analisi)
+
+L'Auditor NON vede le conversazioni: lavora SOLO sugli artefatti (brief,
+report, diary, state file). La sua cross-analisi vale quanto e' accoppiabile
+la catena.
+
+CHIAVE DI ACCOPPIAMENTO: sessione (SXX) + SCOPE.
+  brief:  YYYY-MM-DD_SXX[z]_brief_SCOPE.md     (scritto dal CEO)
+  report: YYYY-MM-DD_SXX[z]_RforCEO_SCOPE.md   (scritto da CC, SCOPE ereditato)
+Stesso SXX + stesso SCOPE = brief e report sono la stessa unita' di lavoro.
+
+MANDATO: trova le incoerenze tra
+  (a) cio' che il brief ha DECISO,
+  (b) cio' che il report dice sia stato IMPLEMENTATO,
+  (c) cio' che lo stato reale (codice / DB / sito live) mostra DAVVERO.
+Un report senza brief accoppiabile, o un brief senza report, e' esso stesso
+un finding.
+
+GRANDFATHER — pre-S88
+Gli audit Area 1 e Area 2 del 2026-05-27 (S87) hanno certificato la coerenza
+fino a S87. La convenzione di naming vale da S88 in poi. I file pre-S88 hanno
+naming storico disordinato: accoppiamento best-effort, e il disordine di
+naming pre-S88 NON e' un finding (accettato consapevolmente, non rilevarlo
+di nuovo — chiude il finding 2.4 dell'audit del 27/05).
+
+NOTA FORMATO DATA: i file audit usano la data SENZA trattini
+(audit_report_YYYYMMDD_topic.md, per AUDIT_PROTOCOL esistente); brief e report
+usano la data CON trattini (YYYY-MM-DD). L'Auditor gestisce entrambi i formati.
+
+---
+
+*Last updated: 2026-05-30 (S91) — aggiunta §8 Accoppiamento artefatti (brief crosscheck-naming).*
