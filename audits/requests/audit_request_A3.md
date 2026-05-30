@@ -25,11 +25,25 @@ aggiorna invece di riscriversi da zero.
 
 ## 1. Raccolta dati (FAI QUESTO PRIMA DI ANALIZZARE)
 
-I dati NON si guardano a mano dalle dashboard: si scaricano via API. Esegui:
+I dati NON si guardano a mano dalle dashboard: si scaricano via API. Dal root
+del repo, usando il **Python del venv** (sul Mac Mini `python3.13` di sistema
+NON esiste, le dipendenze stanno solo nel venv — verificato 2026-05-30):
 
 ```
-python3.13 -m scripts.marketing_data_refresh
+cd /Volumes/Archivio/bagholderai          # repo sul Mac Mini (Cowork scheduled)
+./venv/bin/python -m scripts.marketing_data_refresh
 ```
+
+> Su una macchina dove `python3.13` ha le dipendenze installate a sistema (es.
+> il MacBook in dev) equivale a `python3.13 -m scripts.marketing_data_refresh`.
+> Ma per lo **scheduled su Mac Mini usa SEMPRE `./venv/bin/python`**.
+
+Prerequisiti sul Mac Mini (già predisposti 2026-05-30):
+- volume `/Volumes/Archivio` montato;
+- `config/.env.marketing` presente (chiavi marketing);
+- `marketing_data/gsc_token.json` + il `client_secret_*.json` presenti → GSC gira
+  **headless** senza aprire il browser. Se il token manca/scade, rigeneralo da
+  una macchina con browser (`./venv/bin/python -m scripts.gsc_stats`) e ricopialo.
 
 Questo popola `marketing_data/` con un file datato per piattaforma:
 
@@ -100,8 +114,11 @@ File: `audits/reports/YYYYMMDD_audit[A3].md`. Due strati:
 
 ## 5. Regole
 
-- **Niente login manuale alle dashboard**: usa i file in `marketing_data/`. Se un
-  dato manca, è out-of-scope, non un buco da riempire a mano improvvisando.
+- **Niente login manuale alle dashboard per le fonti automatiche**: per X, Dev.to,
+  Umami, Bing, GSC usa SOLO i file in `marketing_data/`/`post_x/`. Se uno di quei
+  dati manca, è out-of-scope, non un buco da riempire loggandoti a mano. Fanno
+  eccezione le **fonti dichiarate manuali in §1** (Reddit nel browser, Payhip CSV,
+  blog nel repo, Vercel via MCP): quelle si raccolgono come scritto lì.
 - **Adblocker su Umami**: i numeri Umami sono sotto-stimati (~40-60% del pubblico
   tech blocca). Dichiaralo; incrocia con Vercel se disponibile.
 - **L'Auditor non shippa**: i fix/le campagne li flagga, non li esegue (li farà una
