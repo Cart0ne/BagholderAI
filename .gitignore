@@ -61,6 +61,8 @@ audits/*
 # compaction passes (git log alone works but is harder to grep/skim).
 !audits/PROJECT_STATE_archive*.md
 !audits/BUSINESS_STATE_archive*.md
+# Reddit stats tracker (fonte manuale — Reddit API chiusa): tracked come gli archivi
+!audits/reddit_stats_tracker.xlsx
 # Evergreen audit-request TEMPLATES are tracked (versioned rules, multi-machine).
 # Dated request/report files (YYYYMMDD_audit[AX].md) stay local/gitignored.
 !audits/requests/
