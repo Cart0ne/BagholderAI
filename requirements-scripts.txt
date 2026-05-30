@@ -1,2 +1,8 @@
 # Dependencies for standalone scripts (not required by bot runtime)
 tweepy>=4.14.0
+
+# Marketing data connectors (Area 3 audit): Dev.to, Umami, Bing, GSC, Reddit
+requests>=2.31.0
+praw>=7.7.0
+google-api-python-client>=2.100.0
+google-auth>=2.23.0

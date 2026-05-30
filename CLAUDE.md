@@ -40,7 +40,7 @@ della sessione come riga separata:
 
 - Area 1 (tecnica): cadenza 30 giorni
 - Area 2 (coerenza progetto): trigger event-based — vedi AUDIT_PROTOCOL.md §2 per la lista completa (pre-mainnet / pre-Volume / pre-nuovo-brain). Backstop 120gg.
-- Area 3 (strategy & marketing): cadenza 90 giorni
+- Area 3 (strategy & marketing): cadenza 14 giorni (bisettimanale) — dati via `scripts/marketing_data_refresh`, template `audits/requests/audit_request_A3.md`
 
 Formato del segnale: "⚠️ Audit Area X dovuto: ultimo era YYYY-MM-DD 
 (N giorni fa). Proponi a Max di pianificarlo."

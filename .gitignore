@@ -1,5 +1,6 @@
 # Secrets
 config/.env
+config/.env.marketing
 
 # Python
 __pycache__/
@@ -29,6 +30,9 @@ scripts/office/
 # X stats scan reports (local-only, synced manually on demand)
 post_x/
 
+# Marketing data connectors output (Dev.to/Umami/Bing/GSC/Reddit), local-only
+marketing_data/
+
 # 47d backtest: OHLCV cache (~13 MB, rigenerabile) e raw trades (~4 MB)
 # I 3 file di summary (CSV piccoli) restano nel repo per leggibilità.
 scripts/output/.ohlcv_cache/
@@ -56,3 +60,10 @@ audits/*
 # compaction passes (git log alone works but is harder to grep/skim).
 !audits/PROJECT_STATE_archive*.md
 !audits/BUSINESS_STATE_archive*.md
+# Evergreen audit-request TEMPLATES are tracked (versioned rules, multi-machine).
+# Dated request/report files (YYYYMMDD_audit[AX].md) stay local/gitignored.
+!audits/requests/
+audits/requests/*
+!audits/requests/audit_request_A1.md
+!audits/requests/audit_request_A2.md
+!audits/requests/audit_request_A3.md

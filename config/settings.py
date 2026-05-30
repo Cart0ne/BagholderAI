@@ -13,6 +13,13 @@ from dotenv import load_dotenv
 env_path = Path(__file__).parent / ".env"
 load_dotenv(env_path)
 
+# Load marketing keys from a separate file (Dev.to, Umami, Bing, GSC, Reddit).
+# Kept apart from .env so social/analytics keys stay isolated from the critical
+# trading credentials (Binance/Supabase). Optional: absent on machines that
+# don't run the marketing connectors.
+marketing_env_path = Path(__file__).parent / ".env.marketing"
+load_dotenv(marketing_env_path)
+
 
 # === Exchange Configuration ===
 class ExchangeConfig:
@@ -46,6 +53,53 @@ class XConfig:
     API_SECRET = os.getenv("X_API_SECRET", "")
     ACCESS_TOKEN = os.getenv("X_ACCESS_TOKEN", "")
     ACCESS_SECRET = os.getenv("X_ACCESS_SECRET", "")
+
+
+# ============================================================
+# Marketing data connectors (Area 3 audit). Keys live in
+# config/.env.marketing, loaded above. Each connector script reads its own
+# config class and fails with a clear message if its key is missing.
+# ============================================================
+
+# === Dev.to (Forem) Configuration ===
+class DevtoConfig:
+    # Settings → Extensions → "DEV Community API Keys" → Generate
+    API_KEY = os.getenv("DEVTO_API_KEY", "")
+    BASE_URL = "https://dev.to/api"
+
+
+# === Umami Cloud Configuration ===
+class UmamiConfig:
+    # Umami Cloud → Settings → API keys. Free (Hobby) tier includes API access.
+    API_KEY = os.getenv("UMAMI_API_KEY", "")
+    BASE_URL = "https://api.umami.is/v1"
+    WEBSITE_ID = os.getenv("UMAMI_WEBSITE_ID", "63807366-641f-4c72-8e61-3bec7b725697")
+
+
+# === Bing Webmaster Tools Configuration ===
+class BingConfig:
+    # Bing Webmaster Tools → Settings → API access → API Key
+    API_KEY = os.getenv("BING_WEBMASTER_API_KEY", "")
+    SITE_URL = os.getenv("BING_SITE_URL", "https://bagholderai.lol")
+    BASE_URL = "https://ssl.bing.com/webmaster/api.svc/json"
+
+
+# === Google Search Console Configuration ===
+class GSCConfig:
+    # Google Cloud → service account JSON → enable Search Console API → grant
+    # the service-account email read access in Search Console.
+    SERVICE_ACCOUNT_JSON = os.getenv("GSC_SERVICE_ACCOUNT_JSON", "")  # path to .json
+    SITE_URL = os.getenv("GSC_SITE_URL", "https://bagholderai.lol/")
+
+
+# === Reddit Configuration ===
+class RedditConfig:
+    # reddit.com/prefs/apps → create app type "script"
+    CLIENT_ID = os.getenv("REDDIT_CLIENT_ID", "")
+    CLIENT_SECRET = os.getenv("REDDIT_CLIENT_SECRET", "")
+    USERNAME = os.getenv("REDDIT_USERNAME", "")
+    PASSWORD = os.getenv("REDDIT_PASSWORD", "")
+    USER_AGENT = os.getenv("REDDIT_USER_AGENT", "bagholderai-marketing-audit/1.0 by Cart0neM")
 
 
 # === AI Sentinel Configuration ===

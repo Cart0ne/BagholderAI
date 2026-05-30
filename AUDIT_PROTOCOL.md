@@ -16,7 +16,7 @@ rimandano.
 
 - **Area 1 — Integrità tecnica**: bot, agenti (Grid/TF/Sentinel/Sherpa/NewsKeeper), DB. I numeri tornano, le interazioni tra cervelli sono coerenti, lo schema regge.
 - **Area 2 — Coerenza progetto**: narrazione pubblica (sito, roadmap, blog) ↔ codice LIVE ↔ state files (PROJECT_STATE/BUSINESS_STATE/brief). Il sito racconta la verità di cosa gira.
-- **Area 3 — Strategia e marketing**: posizionamento, SEO/GSC, performance social (X, Dev.to, Reddit), funnel, distribuzione.
+- **Area 3 — Strategia e marketing**: posizionamento, SEO (Google + Bing), performance social (X, Dev.to, Reddit), traffico sito + funnel di conversione (Umami), vendite (Payhip), coerenza cross-piattaforma, distribuzione. I dati si raccolgono via API con `python3.13 -m scripts.marketing_data_refresh` → `marketing_data/` (NON login manuale). Output = diagnosi **+ strategia** (target breve/medio/lungo). Template fisso: `audits/requests/audit_request_A3.md`.
 
 ---
 
@@ -30,7 +30,7 @@ L'audit **Area 2** è obbligatorio PRIMA di:
 **Backstop temporale:** 120 giorni se nessun trigger sopra è scattato.
 
 - **Area 1**: dopo ogni feature significativa, oppure mensile. Backstop 30gg.
-- **Area 3**: trimestrale + pre-lancio prodotto. Backstop 90gg.
+- **Area 3**: **ogni 2 settimane** (cadenza fissa) + pre-lancio prodotto. Backstop 14gg. La cadenza è frequente perché il marketing è ad alta varianza e l'audit a 2 strati (cruscotto + strategia) resta leggero da ripetere; vedi `audits/requests/audit_request_A3.md`.
 
 Razionale del passaggio da temporale a event-based (Area 2): la regola "ogni
 90gg o fine-volume" non è mai stata applicata in pratica (6 settimane di inerzia
@@ -136,4 +136,4 @@ L'Auditor gestisce entrambi i formati.
 
 ---
 
-*Last updated: 2026-05-30 (S92) — nuovo naming `YYYYMMDD_audit[AX].md` + struttura `audits/reports/` e `audits/requests/`; rimosso audit_in_flight (mai usato in pratica); §8 Accoppiamento artefatti (brief crosscheck-naming S91).*
+*Last updated: 2026-05-30 (S92) — Area 3 ridefinita (connettori dati via API + output diagnosi+strategia + cadenza bisettimanale + template `audit_request_A3.md`); nuovo naming `YYYYMMDD_audit[AX].md` + struttura `audits/reports/` e `audits/requests/`; rimosso audit_in_flight; §8 Accoppiamento artefatti.*
