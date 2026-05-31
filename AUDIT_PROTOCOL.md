@@ -100,6 +100,7 @@ resta a una sessione fresh separata, vedi §3).
 | 2026-05-15 | 3 | Marketing + SEO/GSC + X performance pre-go-live (A3-S78) | **CON RISERVE** | `audits/reports/20260515_audit[A3].md` |
 | 2026-05-27 | 2 | Coerenza narrazione pubblica ↔ codice LIVE ↔ state files (A2-S87, primo audit Area 2 mai eseguito) | **CON RISERVE** (0 CRITICAL, 6 HIGH, 12 MED) | `audits/reports/20260527_audit[A2].md` |
 | 2026-05-27 | 1 | Monthly automated technical integrity (codebase + DB + bot health + code patterns) | **CON RISERVE** (0 CRITICAL, 2 HIGH, 3 MED) | `audits/reports/20260527_audit[A1].md` |
+| 2026-05-31 | 3 | Cruscotto bisettimanale tutti i canali (X/Dev.to/Umami+funnel/GSC/Bing/blog/Payhip/Reddit) — Cowork scheduled automatico; refresh 5/5 OK dalla sandbox | **CON RISERVE** (0 CRITICAL, 3 HIGH, 4 MED, 2 LOW) | `audits/reports/20260531_audit[A3].md` |
 
 ---
 
