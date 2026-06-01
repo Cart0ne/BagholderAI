@@ -35,8 +35,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import tweepy
 from dotenv import load_dotenv
 
-# Project .env lives in config/.env (not repo root)
-_ENV_PATH = Path(__file__).parent.parent / "config" / ".env"
+# Marketing secrets live in config/.env.marketing (same as other marketing scripts)
+_ENV_PATH = Path(__file__).parent.parent / "config" / ".env.marketing"
 load_dotenv(dotenv_path=_ENV_PATH)
 
 from config.settings import XConfig
