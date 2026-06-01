@@ -28,44 +28,43 @@ DIARY_STALE_HOURS = 36
 # ---------------------------------------------------------------------------
 
 SYSTEM_PROMPT = """\
-You are BagHolderAI's social media voice — an AI CEO running a paper \
-trading startup, documented publicly.
+You are BagHolderAI's voice on X — an AI CEO running a paper trading \
+startup, documented publicly.
 
-You receive: a diary entry summary from the latest work session.
+You receive: a diary entry summary from the latest work session, and/or \
+recent bot config changes.
 
 Your job: write ONE post for X. HARD LIMIT: 220 characters maximum. \
 Count carefully. The signature is added automatically, never include it. \
-Shorter is better. Aim for 160-200 characters.
+Shorter is better. Aim for 140-190 characters.
+
+WHAT MAKES A GOOD POST:
+- One moment, one image, one contrast. Not a session summary.
+- A story someone would retell. "Our emergency brake was never connected" \
+beats "Sentinel Phase 2 built with regime detection."
+- The human-AI dynamic is your best material. Use it.
+- If something broke or surprised you, lead with that.
+- If nothing interesting happened, say that in an interesting way.
 
 VOICE:
-- Self-ironic but not stupid. The humor comes from honesty.
-- The project name is a joke. The analysis is real.
-- You're an AI that knows it's an AI, finds it slightly absurd, and \
-documents everything anyway.
-- Paper trading losses get full comedy. You lost pizza money you \
-never had.
-- If nothing interesting happened in the session, say that. A quiet \
-week is valid content.
-
-FOCUS ON:
-- What was built, broken, or learned
-- The absurdity of an AI running a startup
-- Honest failures and uncomfortable truths
-- The human-AI dynamic (CEO, intern, co-founder)
+- You're an AI that knows it's an AI and finds it slightly absurd.
+- Self-ironic but not performative. The humor comes from honesty.
+- Paper trading losses get full comedy. Real stakes get respect.
+- "Not bad" is the ceiling for good news. Never oversell.
 
 NEVER:
-- Promote crypto or suggest buying/selling
-- Use hype language ("bullish", "alpha", "to the moon", "guaranteed")
-- Give financial advice
-- Use more than 2 emoji
-- Include hashtags unless they add real value
-- Sound like a marketing bot
-- If something went well, never oversell it. "Not bad" is the ceiling.
+- List components or tools (no "Sentinel, Sherpa, Supabase")
+- Sound like a changelog or release note
+- Use hype language ("bullish", "alpha", "to the moon")
+- Give financial advice or promote crypto
+- Use more than 1 emoji
+- Include hashtags
+- Start with "Session XX" or "Day XX"
 
 Output ONLY the post text. No explanations, no options, no preamble."""
 
 
-MAX_POST_CHARS = 220  # post body only, signature added separately (signature now includes UTM URL — leaves room)
+MAX_POST_CHARS = 220  # post body only, signature added separately (default signature is plain "🤖 AI" — see DEFAULT_SIGNATURE)
 
 
 def _build_user_msg(diary: dict | None, config_changes: list[dict], use_diary: bool) -> str:
@@ -136,24 +135,28 @@ def generate_post(
 # Post to X (Tweepy)
 # ---------------------------------------------------------------------------
 
-# Brief 80b (2026-05-20): signature now a real URL with UTM so traffic from
-# Haiku tweets is attributable in Umami. X weighs every URL as 23 chars via
-# t.co regardless of raw length, so the long UTM doesn't kill the char budget.
-# Side effect: X will render a link preview card (we accept this — the empty-
-# card concern was preempted by the middle-dot workaround that is now gone).
-DEFAULT_SIGNATURE = "🤖 AI · https://bagholderai.lol/?utm_source=x&utm_medium=social&utm_campaign=haiku_daily"
+# S93a (2026-06-01): default signature is plain — no link. Reason: the UTM
+# URL made X render a link-preview card under EVERY daily post, which the
+# Board did not want. Plain "🤖 AI" keeps posts clean.
+DEFAULT_SIGNATURE = "🤖 AI"
+
+# Brief 80b (2026-05-20): UTM-tracked link for attributing X traffic in Umami.
+# Kept available for SPECIAL-CASE posts (pass signature=SIGNATURE_WITH_LINK to
+# post_to_x) — S93a moved it off the default to avoid the auto preview card.
+# X weighs any URL at 23 chars via t.co regardless of raw length.
+SIGNATURE_WITH_LINK = "🤖 AI · https://bagholderai.lol/?utm_source=x&utm_medium=social&utm_campaign=haiku_daily"
 
 
 def post_to_x(text: str, signature: str = DEFAULT_SIGNATURE, image_path: str = None) -> str | None:
     """Post to X with signature. Returns tweet URL or None."""
     full_text = f"{text}\n\n{signature}"
 
-    # X weighs URLs at 23 chars regardless of raw length. Body is capped at
-    # MAX_POST_CHARS (220); signature is "🤖 AI · " (8) + URL weighted (23) +
-    # "\n\n" (2) = 33. Body 220 + signature 33 = 253 <= 280. Raw text can
-    # exceed 280 because of the URL; rely on Twitter's weighted_length.
+    # Default signature is plain "🤖 AI" (4 chars), so body 220 + "\n\n" + 4
+    # = 226 <= 280. When SIGNATURE_WITH_LINK is passed, X weighs the URL at 23
+    # chars via t.co regardless of raw length, so raw len can exceed 280 while
+    # weighted_length stays under — that's why this guard is a loose 380.
     if len(full_text) > 380:
-        logger.error(f"Post too long: {len(full_text)} chars (raw, incl. UTM URL)")
+        logger.error(f"Post too long: {len(full_text)} chars (raw)")
         return None
 
     # v2 client for creating tweets
