@@ -1,21 +1,22 @@
-"""NewsKeeper entry point (5th brain, S83 Session 1 — RSS feeds only).
+"""NewsKeeper entry point (5th brain, S83 Session 1 → S94a Session 2).
 
 Loop:
     every NEWSKEEPER_INTERVAL_S (15 min):
-        1. rss_feeds.fetch_signals() -> list of candidates
-        2. signal_writer.write_if_changed for each
-        (future S2: etf_flows.fetch_signals + macro_calendar.fetch_signals)
+        1. rss_feeds.fetch_candidates()   -> raw items (filtered, deduped)
+        2. preprocessor.preprocess(item)  -> structured envelope
+        3. haiku_classifier.classify()    -> theme/impact/severity + guardrails
+        4. signal_writer.write_if_changed  for each signal-worthy item
 
 Comm with Sherpa/Sentinel is via Supabase only — NewsKeeper never imports
-the other brains and vice versa. If NewsKeeper crashes the orchestrator
-will own restart (wired in S2); for S1 the process is launched manually
-for stand-alone tests, no orchestrator wiring yet.
+the other brains and vice versa. NewsKeeper runs STANDALONE (not orchestrator-
+managed): launched manually on the Mac Mini (memoria
+reference_newskeeper_standalone_launch).
 
-Source choice S83 pivot 2026-05-24: brief originally specified CryptoPanic
-free Developer API, but that tier was discontinued 2026-04-01. RSS feeds
-(CoinDesk + CoinTelegraph + Decrypt) are the Board-approved substitute —
-zero auth, zero paywall risk, keyword-classified for now (Haiku
-classification arrives in S3-4 with the Strategist).
+S94a (Session 2): the keyword regex no longer classifies — it only gates
+crypto/macro relevance. Haiku (claude-haiku-4-5) classifies, with Python
+pre-computing the authoritative `direction` and running post-call guardrails.
+Macro feeds (BBC Business + MarketWatch) added. Requires ANTHROPIC_API_KEY in
+the environment; without it every item degrades LOUDLY to the regex fallback.
 
 Telegram: silenced by default (memoria feedback_no_telegram_alerts) — set
 NEWSKEEPER_TELEGRAM_ENABLED=true to enable.
@@ -32,7 +33,7 @@ import time
 from db.client import get_client
 from db.event_logger import log_event
 
-from bot.newskeeper import signal_writer
+from bot.newskeeper import haiku_classifier, preprocessor, signal_writer
 from bot.newskeeper.readers import rss_feeds
 
 logger = logging.getLogger("bagholderai.newskeeper")
@@ -79,30 +80,60 @@ def run_newskeeper() -> None:
     signal.signal(signal.SIGINT, shutdown)
     signal.signal(signal.SIGTERM, shutdown)
 
+    haiku_ready = bool(os.getenv("ANTHROPIC_API_KEY"))
     logger.info(
-        "NewsKeeper starting (S1 — RSS feeds only, interval=%ds)",
-        NEWSKEEPER_INTERVAL_S,
+        "NewsKeeper starting (S2 — Haiku classifier, interval=%ds, haiku=%s)",
+        NEWSKEEPER_INTERVAL_S, "ready" if haiku_ready else "MISSING-KEY(regex fallback)",
     )
     log_event(
         severity="info",
         category="lifecycle",
         event="NEWSKEEPER_START",
         message="NewsKeeper started",
-        details={"version": "s1", "interval_s": NEWSKEEPER_INTERVAL_S},
+        details={
+            "version": "s2",
+            "interval_s": NEWSKEEPER_INTERVAL_S,
+            "haiku_key_present": haiku_ready,
+        },
     )
 
     while not shutting_down["v"]:
         try:
-            candidates = rss_feeds.fetch_signals()
-            for c in candidates:
-                signal_writer.write_if_changed(
+            candidates = rss_feeds.fetch_candidates()
+            written = 0
+            for item in candidates:
+                envelope = preprocessor.preprocess(item)
+                cls = haiku_classifier.classify(envelope)
+                # None = not signal-worthy (regex fallback path); irrelevant =
+                # Haiku says no crypto-market impact. Both are dropped — that
+                # filtering IS the S2 noise reduction.
+                if cls is None or cls.get("theme") == "irrelevant":
+                    continue
+                raw_data = dict(item)
+                raw_data.update({
+                    "feed_source": envelope.get("feed_source"),
+                    "entities": envelope.get("entities"),
+                    "numbers": envelope.get("numbers"),
+                    "direction": cls.get("direction"),
+                    "market_impact": cls.get("market_impact"),
+                    "confidence": cls.get("confidence"),
+                    "reasoning": cls.get("reasoning"),
+                    "classifier_version": cls.get("classifier_version"),
+                })
+                if signal_writer.write_if_changed(
                     supabase,
-                    source=c["source"],
-                    signal_type=c["signal_type"],
-                    severity=c["severity"],
-                    summary=c["summary"],
-                    raw_data=c.get("raw_data"),
-                    expires_at_minutes=c.get("expires_at_minutes"),
+                    source="rss_feeds",
+                    signal_type=cls["theme"],
+                    severity=cls["severity"],
+                    summary=item["title"][:280],
+                    raw_data=raw_data,
+                    expires_at_minutes=24 * 60,
+                ):
+                    written += 1
+            if candidates:
+                logger.info(
+                    "NewsKeeper: %d candidate(s) -> %d signal(s) written",
+                    len(candidates), written,
                 )
         except Exception as e:
             logger.error(f"NewsKeeper loop error: {e}", exc_info=True)

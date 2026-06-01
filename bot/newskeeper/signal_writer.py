@@ -7,6 +7,15 @@ Heartbeat semantics: a "still bearish" state is re-confirmed periodically
 so that a missing recent row means either the brain is silent (likely
 crashed) or the signal genuinely cleared. Both are distinguishable from
 lifecycle events in bot_events_log.
+
+S94a (Session 2): the writer is unchanged structurally — the new Haiku
+fields ride inside the `raw_data` JSONB (market_impact, confidence,
+reasoning, direction, classifier_version, entities, numbers, feed_source).
+The caller now passes signal_type = Haiku `theme` (market_crash | regulatory
+| adoption | exploit | macro) instead of bearish_news/bullish_news, and
+keeps source="rss_feeds" (the `source` CHECK constraint forbids new values).
+`signal_type` has no CHECK constraint, so the new vocabulary needs no
+migration.
 """
 
 from __future__ import annotations
