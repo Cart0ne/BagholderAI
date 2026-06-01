@@ -25,9 +25,11 @@ e la prima finestra di segnali è **100% Haiku** (0 fallback).
   severity; se Haiku non risponde → fallback regex **rumoroso** (evento
   `NEWSKEEPER_HAIKU_FALLBACK` + tag `classifier_version`).
 - **Feed macro**: i candidati del brief (Reuters, AP) erano **morti**
-  (HTTP 000/403). Sostituiti con **BBC Business + MarketWatch** (testati, 200)
-  — decisione tua/Board. Gate dedicato `_MACRO_KEYWORDS` (Fed/rates/inflazione/
-  tariffe/…).
+  (HTTP 000/403). Prima cablati BBC Business + MarketWatch, poi **BBC swappato
+  per CNBC Economy** su tua correzione (commit `8515378`): CNBC targetizza molto
+  meglio il macro — 22/30 item passano il gate vs il rumore business generico
+  di BBC. MarketWatch resta, rivalutato a T+7. Gate `_MACRO_KEYWORDS`
+  (Fed/rates/inflazione/tariffe/…).
 - **Pulizia**: scartati i video Decrypt a monte; cap 25 candidati/tick con
   **round-robin** tra i feed (così CoinDesk in giornata di news non affama i
   macro).
@@ -69,7 +71,7 @@ kill -TERM <pid_python_newskeeper>   # SIGTERM = shutdown pulito (logga NEWSKEEP
 # start (SEMPRE venv/bin/python3.13):
 nohup caffeinate -i -s -- venv/bin/python3.13 -m bot.newskeeper.main >> logs/newskeeper.log 2>&1 < /dev/null & disown
 ```
-PID attuali: python `26448`, caffeinate `26450` (restart 2026-06-01 21:20 CET).
+PID attuali: python `27626`, caffeinate `27628` (ultimo restart 2026-06-01 22:04 CET, post-swap CNBC).
 
 ## 6. Prossimo (T+7, ~8 giugno)
 
