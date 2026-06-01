@@ -1,7 +1,7 @@
 """RSS feeds news input (NewsKeeper Module 1, S83 — pivot from CryptoPanic).
 
 Aggregates crypto feeds (CoinDesk + CoinTelegraph + Decrypt) plus macro feeds
-(BBC Business + MarketWatch, added S94a). Standard RSS 2.0, zero auth, zero
+(CNBC Economy + MarketWatch, added S94a). Standard RSS 2.0, zero auth, zero
 paywall risk. Brief originally specified CryptoPanic but its free Developer
 tier was discontinued 2026-04-01; RSS is the Board-approved substitute (S83
 addendum 2026-05-24, CEO note).
@@ -34,8 +34,10 @@ _USER_AGENT = "BagHolderAI-NewsKeeper/1.0"
 # Feeds active. Tuple is (source_name, url, feed_type). feed_type routes the
 # relevance gate: "crypto" -> _CRYPTO_KEYWORDS, "macro" -> _MACRO_KEYWORDS.
 # Crypto URLs verified live 2026-05-24; macro URLs verified live 2026-06-01
-# (Reuters/AP from the brief were dead — HTTP 000/403 — replaced with
-# BBC Business + MarketWatch, both HTTP 200, per Max/Board decision S94a).
+# (Reuters/AP from the brief were dead — HTTP 000/403. First wired
+# BBC Business + MarketWatch, then BBC swapped for CNBC Economy — far better
+# macro targeting: 22/30 items pass the macro gate vs BBC's general business
+# noise, Max/CEO decision S94a correction. MarketWatch kept, re-evaluated T+7.)
 # NOTE: every feed writes DB source="rss_feeds" (CHECK constraint on the
 # `source` column only allows cryptopanic/rss_feeds/etf_flows/macro_calendar);
 # the per-feed identity lives in raw_data.feed_source, never in `source`.
@@ -45,7 +47,7 @@ _FEEDS = [
     ("cointelegraph", "https://cointelegraph.com/rss", "crypto"),
     ("decrypt", "https://decrypt.co/feed", "crypto"),
     # Macro (S94a)
-    ("bbc", "https://feeds.bbci.co.uk/news/business/rss.xml", "macro"),
+    ("cnbc_economy", "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=20910258", "macro"),
     ("marketwatch", "https://feeds.content.dowjones.io/public/rss/mw_topstories", "macro"),
 ]
 
