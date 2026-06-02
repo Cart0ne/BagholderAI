@@ -213,19 +213,15 @@ sbq<Commentary[]>(
   const archiveEl = document.getElementById("ceo-archive");
   if (archiveEl && archive.length) {
     archiveEl.innerHTML = archive.map(e => `
-      <article class="grid grid-cols-[auto_1fr] items-start gap-4 px-4 py-3.5">
-        <div class="w-[46px] shrink-0 pt-0.5 text-center">
-          <span class="block font-mono text-[8.5px] font-bold uppercase tracking-[0.16em] text-text-muted">day</span>
-          <span class="block font-display text-[26px] font-extrabold leading-none text-pos">${dayNumber(e.date)}</span>
+      <article class="grid grid-cols-[auto_1fr] items-center gap-5 px-4 py-4">
+        <div class="w-[52px] shrink-0 text-center leading-none">
+          <span class="block font-mono text-[8.5px] font-bold uppercase tracking-[0.18em] text-text-muted">day</span>
+          <span class="mt-1 block font-display text-[32px] font-extrabold leading-none text-pos">${dayNumber(e.date)}</span>
+          <span class="mt-1 block font-mono text-[8px] uppercase tracking-[0.1em] text-text-muted">${escapeHTML(fmtCeoDate(e.date))}</span>
         </div>
-        <div>
-          <div class="mb-1 font-mono text-[9px] uppercase tracking-[0.16em] text-text-muted">
-            ${fmtCeoDate(e.date)}
-          </div>
-          <p class="text-text-dim text-[13px] leading-[1.6] italic">
-            "${escapeHTML(e.commentary)}"
-          </p>
-        </div>
+        <p class="text-text-dim text-[13px] leading-[1.6] italic">
+          "${escapeHTML(e.commentary)}"
+        </p>
       </article>
     `).join("");
   }
@@ -326,7 +322,13 @@ const fetchLivePrices = async (symbols: string[]): Promise<Record<string, number
     if (pnlEl) {
       pnlEl.classList.remove("text-pos", "text-neg");
       pnlEl.classList.add(totalPnl >= 0 ? "text-pos" : "text-neg");
-      pnlEl.textContent = `(${fmtSigned(totalPnl)}, ${fmtPct(totalPct)})`;
+      pnlEl.textContent = `${fmtSigned(totalPnl)} · ${fmtPct(totalPct)}`;
+    }
+    /* Keep the NET WORTH card's top border in sync with the live P&L sign. */
+    const nwCard = document.getElementById("hero-nw-card");
+    if (nwCard) {
+      nwCard.classList.remove("border-t-pos", "border-t-neg");
+      nwCard.classList.add(totalPnl >= 0 ? "border-t-pos" : "border-t-neg");
     }
   } catch (err) {
     console.warn("[dashboard-live] hero net worth failed:", err);

@@ -11,6 +11,14 @@ const totalInit  = mockGrid.initial + mockTF.initial;
 const totalPnl   = totalNW - totalInit;
 const totalPct   = (totalPnl / totalInit) * 100;
 
+/* Hero NET WORTH card mirrors the LIVE hero: Grid-ONLY, $500 basis
+   (Brief 72a / S72 — TF/Sentinel/Sherpa excluded from public P&L, so the
+   numbers stay self-consistent: netWorth − P&L = started). */
+const heroInit = mockGrid.initial;
+const heroNW   = mockGrid.netWorth;
+const heroPnl  = heroNW - heroInit;
+const heroPct  = (heroPnl / heroInit) * 100;
+
 /* ====== "Today" snapshot — fotografia del giorno ====== */
 const todayPnl       = mockGrid.todayPnl + mockTF.todayPnl;
 const todayTrades    = mockGrid.todayTrades + mockTF.todayTrades;
@@ -35,32 +43,54 @@ const tfSubtitle   = "The breakout hunter";
   {/* ============================================================ HERO (pattern /diary) */}
   <section class="mx-auto max-w-4xl px-4 pt-10 pb-6 sm:px-6 sm:pt-14 sm:pb-8">
 
-    <h1 class="font-display text-[34px] font-extrabold leading-[1.04] tracking-[-0.02em]
-               text-text sm:text-[42px]">
-      Lab <span class="text-primary">notebook</span>.
-    </h1>
+    <div class="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
 
-    <p class="mt-3 max-w-2xl text-[14.5px] leading-[1.55] text-text-dim sm:text-[15px]">
-      Two live, two shadowed. Capital at risk:
-      <span class="font-mono text-text">$500 Grid + $100 TF (Tier 1-2)</span>
-      <span class="font-mono text-text-muted">(Sentinel/Sherpa shadow-only)</span>.
-      Snapshot recorded {mockSnapshot.asOfLabel}.
-    </p>
+      {/* left — title + lede + meta */}
+      <div class="min-w-0">
+        <h1 class="font-display text-[34px] font-extrabold leading-[1.04] tracking-[-0.02em]
+                   text-text sm:text-[42px]">
+          Lab <span class="text-primary">notebook</span>.
+        </h1>
 
-    <div class="mt-5 flex flex-wrap items-center gap-3 font-mono text-[10.5px]
-                uppercase tracking-[0.16em] text-text-muted">
-      <span class="inline-flex items-center gap-1.5">
-        <span class="inline-block h-1.5 w-1.5 rounded-full bg-primary"></span>
-        day <span id="hero-day">{mockSnapshot.dayNumber}</span>
-      </span>
-      <span class="text-border">·</span>
-      <span>v3 · launched 2026-03-30</span>
-      <span class="text-border">·</span>
-      <span>net worth <span id="hero-nw" class="normal-case font-semibold text-text">{fmtUsd(totalNW)}</span></span>
-      <span id="hero-pnl"
-            class={totalPnl >= 0 ? "text-pos normal-case" : "text-neg normal-case"}>
-        ({fmtSigned(totalPnl)}, {fmtPct(totalPct)})
-      </span>
+        <p class="mt-3 max-w-2xl text-[14.5px] leading-[1.55] text-text-dim sm:text-[15px]">
+          Two live, two shadowed. Capital at risk:
+          <span class="font-mono text-text">$500 Grid + $100 TF (Tier 1-2)</span>
+          <span class="font-mono text-text-muted">(Sentinel/Sherpa shadow-only)</span>.
+          Snapshot recorded {mockSnapshot.asOfLabel}.
+        </p>
+
+        <div class="mt-5 flex flex-wrap items-center gap-3 font-mono text-[10.5px]
+                    uppercase tracking-[0.16em] text-text-muted">
+          <span class="inline-flex items-center gap-1.5">
+            <span class="inline-block h-1.5 w-1.5 rounded-full bg-primary"></span>
+            live
+          </span>
+          <span class="text-border">·</span>
+          <span>v3 · launched 2026-03-30</span>
+        </div>
+      </div>
+
+      {/* right — NET WORTH card (Grid-only $500 basis; top border = P&L sign) */}
+      <div id="hero-nw-card"
+           class={`shrink-0 self-start rounded-2xl border border-border border-t-4 bg-surface
+                   px-5 py-4 shadow-sticker sm:min-w-[208px] sm:text-right
+                   ${heroPnl >= 0 ? "border-t-pos" : "border-t-neg"}`}>
+        <div class="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-text-muted">
+          Net worth
+        </div>
+        <div id="hero-nw"
+             class="mt-1 font-display text-[36px] font-extrabold leading-none tabular-nums text-text">
+          {fmtUsd(heroNW)}
+        </div>
+        <div id="hero-pnl"
+             class={`mt-1.5 font-mono text-[12px] font-semibold tabular-nums
+                     ${heroPnl >= 0 ? "text-pos" : "text-neg"}`}>
+          {fmtSigned(heroPnl)} · {fmtPct(heroPct)}
+        </div>
+        <div class="mt-2.5 font-mono text-[9px] uppercase tracking-[0.14em] text-text-muted">
+          started {fmtUsd(heroInit)} · day <span id="hero-day">{mockSnapshot.dayNumber}</span>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -156,13 +186,13 @@ const tfSubtitle   = "The breakout hunter";
       <h2 class="font-display text-[20px] font-extrabold tracking-[-0.01em] text-text mb-5">
         1 · CEO observation log
       </h2>
-      <article id="ceo-today" class="grid grid-cols-[auto_1fr] items-start gap-5
+      <article id="ceo-today" class="grid grid-cols-[auto_1fr] items-center gap-6
                rounded-2xl border border-border border-l-4 border-l-pos
                bg-surface shadow-sticker-sm p-6">
-        <div class="w-[52px] shrink-0 text-center">
-          <span class="block font-mono text-[8.5px] font-bold uppercase tracking-[0.16em] text-text-muted">day</span>
-          <span id="ceo-today-day" class="block font-display text-[30px] font-extrabold leading-none text-pos">{mockCEOLog.today.dayNumber}</span>
-          <span id="ceo-today-date" class="block font-mono text-[8.5px] uppercase tracking-[0.1em] text-text-muted">{fmtDate(mockCEOLog.today.date + "T00:00:00Z")}</span>
+        <div class="w-[60px] shrink-0 text-center leading-none">
+          <span class="block font-mono text-[9px] font-bold uppercase tracking-[0.18em] text-text-muted">day</span>
+          <span id="ceo-today-day" class="mt-1 block font-display text-[40px] font-extrabold leading-none text-pos">{mockCEOLog.today.dayNumber}</span>
+          <span id="ceo-today-date" class="mt-1.5 block font-mono text-[9px] uppercase tracking-[0.12em] text-text-muted">{fmtDate(mockCEOLog.today.date + "T00:00:00Z")}</span>
         </div>
         <div>
           <div class="mb-2 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.16em] text-text-muted">
@@ -402,11 +432,13 @@ const tfSubtitle   = "The breakout hunter";
       </script>
 
       {/* ============ SENTINEL + SHERPA — live observational brains ============ */}
-      <div class="reveal mt-14 grid grid-cols-2 gap-5">
+      <div class="reveal mt-14 grid grid-cols-1 gap-5 sm:grid-cols-3">
         {mockTools.filter((t) => t.status === "active" || t.status === "testing").map((tool) => {
           const live = tool.status === "active";
           const statusLine = tool.key === "sentinel"
             ? "Scoring risk + regime every 60s (fast) and 4h (slow)."
+            : tool.key === "newskeeper"
+            ? "Classifying crypto headlines by severity + signal, hourly."
             : "Proposing per-coin Grid parameters — logged, not applied.";
           return (
             <div>
@@ -635,17 +667,13 @@ const tfSubtitle   = "The breakout hunter";
                   max-h-[320px] overflow-y-auto
                   divide-y divide-border-soft">
         {mockCEOLog.archive.map((e) => (
-          <article class="grid grid-cols-[auto_1fr] items-start gap-4 px-4 py-3.5">
-            <div class="w-[46px] shrink-0 pt-0.5 text-center">
-              <span class="block font-mono text-[8.5px] font-bold uppercase tracking-[0.16em] text-text-muted">day</span>
-              <span class="block font-display text-[26px] font-extrabold leading-none text-pos">{e.dayNumber}</span>
+          <article class="grid grid-cols-[auto_1fr] items-center gap-5 px-4 py-4">
+            <div class="w-[52px] shrink-0 text-center leading-none">
+              <span class="block font-mono text-[8.5px] font-bold uppercase tracking-[0.18em] text-text-muted">day</span>
+              <span class="mt-1 block font-display text-[32px] font-extrabold leading-none text-pos">{e.dayNumber}</span>
+              <span class="mt-1 block font-mono text-[8px] uppercase tracking-[0.1em] text-text-muted">{fmtDate(e.date + "T00:00:00Z")}</span>
             </div>
-            <div>
-              <div class="mb-1 font-mono text-[9px] uppercase tracking-[0.16em] text-text-muted">
-                {fmtDate(e.date + "T00:00:00Z")}
-              </div>
-              <p class="text-text-dim text-[13px] leading-[1.6] italic">"{e.text}"</p>
-            </div>
+            <p class="text-text-dim text-[13px] leading-[1.6] italic">"{e.text}"</p>
           </article>
         ))}
       </div>
