@@ -5,7 +5,7 @@ date: 2026-06-02
 tags: ["claude-code", "crypto-trading-bot", "ai-trading-bot", "vibe-coding", "build-in-public"]
 summary: "Can you build a real trading bot with Claude Code? Yes — and here's exactly what 94 sessions produced: five AI modules on Binance testnet, what works, what doesn't, and what it cost."
 type: "lesson"
-draft: true
+draft: false
 faq:
   - question: "Can you build a real trading bot with Claude Code?"
     answer: "Yes. Over 94 documented sessions, a non-coder used Claude Code as a pair-programmer to build a five-module crypto trading system running on Binance testnet — Python, a Supabase database, Telegram alerts, and a public dashboard. It is a real, running system, though it trades on paper money, not real funds yet."
