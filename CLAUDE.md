@@ -72,7 +72,7 @@ ha titolo per aggiungere riga §9, e solo dopo aver depositato il file
  [2] PROJECT_STATE.md — formato fisso
 ═══════════════════════════════════════════
 
-Il file vive in root del repo. Max 40 KB. Sezioni canoniche (sempre stesse,
+Il file vive in root del repo. Max 50 KB. Sezioni canoniche (sempre stesse,
 sempre nello stesso ordine):
 
 1. Stato attuale (max 5 righe): fase, prossimo deploy, vincolo del momento
@@ -99,8 +99,8 @@ report_for_CEO/, ultimi 10 file in briefresolved.md/, TODO inline (62a/63a/...).
 NON includere nel file: codice intero, log verbose, output di test, 
 contenuto dei brief vecchi (basta linkarli).
 
-**REGOLA COMPACTION (formalizzata 2026-05-18 S79)** — quando il file vivo 
-supera 40KB, NON cancellare in toto le sezioni vecchie. Workflow:
+**REGOLA COMPACTION (formalizzata 2026-05-18 S79; cap alzato a 50KB 2026-06-02)** — quando il file vivo 
+supera 50KB, NON cancellare in toto le sezioni vecchie. Workflow:
 
 1. Identifica le sezioni da rimuovere (di solito header narrativi di 
    sessioni passate + voci §3 in-flight di sessioni shipped + voci §4 
@@ -121,7 +121,7 @@ Mai eliminare in toto. Sempre archiviare prima.
  [2b] BUSINESS_STATE.md — stessa regola di compaction
 ═══════════════════════════════════════════
 
-Anche `BUSINESS_STATE.md` vive in root del repo e ha cap 40 KB. È il file 
+Anche `BUSINESS_STATE.md` vive in root del repo e ha cap 50 KB. È il file 
 che il CEO (Claude su claude.ai) usa per i vincoli strategici, decisioni 
 Board, deadline non-tecniche, marketing, diary status.
 
@@ -143,10 +143,10 @@ non tecnico.
 
 A differenza di PROJECT_STATE (dove la compaction è autonoma di CC), per 
 BUSINESS_STATE la compaction NON va eseguita di iniziativa, nemmeno quando 
-il file supera 40KB. Anche se durante un'update authorized noto che il 
+il file supera 50KB. Anche se durante un'update authorized noto che il 
 file è sopra soglia, segnalo a Max:
 
-> "⚠️ BUSINESS_STATE è a 41KB, vuoi che compatti adesso?"
+> "⚠️ BUSINESS_STATE è a 51KB, vuoi che compatti adesso?"
 
 Procedo SOLO se Max conferma. La compaction è atto strategico (decide 
 cosa resta visibile a chi legge il file vivo) e va autorizzata.
