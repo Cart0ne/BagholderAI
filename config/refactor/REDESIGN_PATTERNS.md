@@ -113,6 +113,23 @@ contenitore. Applicato finora:
 Checklist per OGNI pagina nuova: c'è un fetch/`hidden` che cambia il layout sopra il footer?
 Se sì → riserva `min-h`. Se la pagina è 100% statica → non serve nulla.
 
+## 15. Testo mai libero sul salvia (regola Max, S95b)
+Il **corpo del testo** (paragrafi, descrizioni, prosa, citazioni lunghe) **non galleggia mai**
+direttamente sullo sfondo salvia della pagina: va sempre **incassato in un badge/card** —
+bianco `surface` o salvia-chiaro `panel` (#E9EEDF), `rounded-2xl`, eventualmente `shadow-sticker-sm`.
+Lo sfondo salvia uniforme con testo libero sopra = "troppa salvia", da evitare.
+
+**Possono** stare liberi sul salvia SOLO:
+- **titoli / heading** di sezione (Bricolage, vedi §5);
+- **link / nav** (pill, vedi §6);
+- **disclaimer / meta** = piccole righe mono (conteggi, legal nel footer, eyebrow);
+- il **lede dell'hero** (1-2 righe sotto l'H1) perché è parte del blocco-titolo.
+
+Tutto il resto → dentro un badge. Riferimento: "Why read these" su /library è in un badge `panel`
+salvia-chiaro; le card numerone (blog/diary) e le card volume sono `surface` bianco. Applicare
+questa regola alle pagine ancora da fare (/roadmap /blueprint /howwework): ogni blocco di prosa
+trova la sua card, non resta nudo sul fondo.
+
 ## 14. Da fare a fine redesign (Fase 4)
 - Aggiornare `web_astro/STYLEGUIDE.md` §5 alla palette pastello + nota override bot.
 - Catturare gli screenshot **after/** (stesso metodo di before/) per l'archivio + diario.
