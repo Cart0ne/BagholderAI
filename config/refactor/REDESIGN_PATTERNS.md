@@ -130,6 +130,17 @@ salvia-chiaro; le card numerone (blog/diary) e le card volume sono `surface` bia
 questa regola alle pagine ancora da fare (/roadmap /blueprint /howwework): ogni blocco di prosa
 trova la sua card, non resta nudo sul fondo.
 
+## 16. Icone-stato "pastiglia sticker" (roadmap, riusabile)
+Gli stati (done/active/todo/killed) NON sono glifi nudi colorati ma **chip circolari**:
+`inline-flex h-[18px] w-[18px] items-center justify-center rounded-full border text-[10px] font-bold`.
+Regola "pieno = pop": gli stati vivi sono **riempiti** (non outline, che sbiadisce su salvia):
+- **done**: `border-transparent bg-pos text-white` + ✓ (salvia pieno)
+- **active**: `border-transparent bg-neu text-white animate-pulse` + ◐ (teal pieno che pulsa)
+- **todo**: `border-dashed border-sand bg-sand-soft text-sand` (riempimento sabbia chiaro, anello tratteggiato)
+- **killed**: `border-border-soft bg-bg text-text-muted` + ✕ (muto, di proposito)
+Lezione (Max S95b): outline + bg a bassa alpha = "sbiadito". Per far "pop" su sfondo chiaro,
+riempi il chip. Da riusare per gli stati su /dashboard e /blueprint.
+
 ## 14. Da fare a fine redesign (Fase 4)
 - Aggiornare `web_astro/STYLEGUIDE.md` §5 alla palette pastello + nota override bot.
 - Catturare gli screenshot **after/** (stesso metodo di before/) per l'archivio + diario.
