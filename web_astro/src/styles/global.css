@@ -419,8 +419,16 @@ body {
    Same approach as web/diary.html: no animation, just display toggle.
    Works identically in Safari, Chrome, Firefox. */
 .log-body            { display: none; }
-.log-entry.expanded  { background: rgba(255, 255, 255, 0.04); }
+/* Expanded = keep the card opaque (light theme). A faint sand wash signals
+   the open state without letting the page's sage show through. */
+.log-entry.expanded  { background: var(--color-surface-hover); }
 .log-entry.expanded .log-body { display: block; }
+
+/* First entry (most recent) = "featured": warm sand-soft base that turns
+   white on hover. Id-scoped so it beats the bg-surface utility and the
+   .expanded rule; works for both fallback and live-rendered lists. */
+#log-container .log-entry:first-child        { background: var(--color-sand-soft); }
+#log-container .log-entry:first-child:hover  { background: var(--color-surface); }
 
 /* — scroll reveal — fade + slide-up when entering viewport —————————
    Toggled by an IntersectionObserver in Layout.astro.

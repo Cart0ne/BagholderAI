@@ -99,9 +99,19 @@ script: `stat-trades/pnl/days/today-pnl/today-trades/session`, `project-status-b
 `home-diary-list` + `data-slot`/`data-field`, watchtower/sherpa. (In S95b live-stats è stato
 toccato SOLO per presentazione: numero sessione da solo + data "Jun 1".)
 
-## 13. CLS / performance
-Elementi rivelati in ritardo da JS (es. badge stato `hidden`→visibile) **riservano lo spazio**
-(`min-h-[...]` sul contenitore) per non far scattare la pagina. Pattern già applicato al badge stato.
+## 13. CLS / performance — REGOLA SU TUTTE LE PAGINE
+Ogni elemento che **compare/cambia altezza in ritardo** (fetch async Supabase, `hidden`→
+visibile, lista fallback→live) **deve riservare lo spazio** a monte, altrimenti il footer
+"scatta" quando il dato arriva mentre l'utente è già sceso. Tecnica: `min-h-[...]` sul
+contenitore. Applicato finora:
+- home: badge di stato (`min-h-[72px]`, [index.astro:241]) — NON era il banner a-ads (Max: "è
+  già caricato quando succede"), era il badge che il fetch rivela tardi.
+- diary: lista entry (`min-h-[70vh]` sulla section) — il swap 3→~88 entry non alza più il footer.
+- blog: **niente** — è tutto statico build-time, nessun fetch, nessuno scattino.
+- **dashboard (DA FARE quando si ridisegna)**: `#regime-watch-banner` (hidden→block via
+  `regime-banner.ts`) + eventuali stat che cambiano altezza → riservare.
+Checklist per OGNI pagina nuova: c'è un fetch/`hidden` che cambia il layout sopra il footer?
+Se sì → riserva `min-h`. Se la pagina è 100% statica → non serve nulla.
 
 ## 14. Da fare a fine redesign (Fase 4)
 - Aggiornare `web_astro/STYLEGUIDE.md` §5 alla palette pastello + nota override bot.

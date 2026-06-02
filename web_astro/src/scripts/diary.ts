@@ -25,57 +25,72 @@ const escapeHTML = (s: string) =>
     '"': "&quot;", "'": "&#39;",
   }[c]!));
 
-/* "May 2, 2026" → "02 May 2026". The DB stores English narrative format
-   (legacy from old site); we reformat client-side for the compact mono
-   layout. Returns the input unchanged if parsing fails. */
+/* The DB stores English narrative dates (legacy from old site), including
+   multi-day ranges that Date() can't parse:
+     "May 27, 2026"             → "27 May"
+     "May 25-26, 2026"          → "25–26 May"
+     "March 31 - April 1, 2026" → "31 Mar–1 Apr"
+   We reformat client-side for the compact numerone column (year dropped —
+   redundant under the big session number). Falls back to the raw string. */
+const abbr = (m: string) => m.slice(0, 3);
 const formatDate = (raw: string): string => {
-  const d = new Date(raw);
-  if (Number.isNaN(d.getTime())) return raw;
-  const day = String(d.getDate()).padStart(2, "0");
-  const month = d.toLocaleString("en-US", { month: "short" });
-  const year = d.getFullYear();
-  return `${day} ${month} ${year}`;
+  const s = String(raw ?? "").replace(/,?\s*\d{4}\s*$/, "").trim();
+  let m;
+  /* cross-month range: "March 31 - April 1" */
+  if ((m = s.match(/^([A-Za-z]+)\s+(\d+)\s*[-–]\s*([A-Za-z]+)\s+(\d+)$/)))
+    return `${m[2]} ${abbr(m[1])}–${m[4]} ${abbr(m[3])}`;
+  /* same-month range: "May 25-26" */
+  if ((m = s.match(/^([A-Za-z]+)\s+(\d+)\s*[-–]\s*(\d+)$/)))
+    return `${m[2]}–${m[3]} ${abbr(m[1])}`;
+  /* single day: "May 27" */
+  if ((m = s.match(/^([A-Za-z]+)\s+(\d+)$/)))
+    return `${m[2]} ${abbr(m[1])}`;
+  return s;
 };
 
 const renderEntry = (entry: Entry, expanded: boolean): string => {
   const isBuilding = entry.status === "BUILDING";
   const badgeClasses = isBuilding
-    ? "border-neu/40 text-neu bg-neu/5"
-    : "border-pos/30 text-pos bg-pos/5";
+    ? "border-neu/40 text-neu bg-neu/10"
+    : "border-pos/30 text-pos bg-pos/10";
   const badgeText = isBuilding ? "● building" : "complete";
 
   const tagsHTML = (entry.tags ?? []).map(t =>
-    `<span class="rounded-md border border-border-soft bg-surface/50
+    `<span class="rounded-md border border-border-soft bg-bg
                   px-2 py-0.5 font-mono text-[10px] text-text-muted">
        #${escapeHTML(t)}
      </span>`
   ).join("");
 
   return `
-    <div class="log-entry cursor-pointer border-b border-border-soft py-2.5
-                px-3 transition-colors hover:bg-surface/40 first:border-t
+    <div class="log-entry group cursor-pointer grid grid-cols-[auto_1fr] items-start gap-5
+                rounded-2xl border border-border border-l-4 border-l-pos
+                bg-surface px-5 py-4 shadow-sticker-sm
+                transition hover:-translate-y-0.5 hover:bg-surface-hover hover:shadow-sticker
                 ${expanded ? "expanded" : ""}">
-      <div class="log-header">
-        <div class="flex items-center justify-between gap-3">
-          <span class="font-mono text-[10.5px] uppercase tracking-[0.14em]
-                       text-text-muted whitespace-nowrap">
-            Session ${entry.session}
-            <span class="mx-1 text-border">·</span>
-            ${escapeHTML(formatDate(entry.date))}
-          </span>
-          <span class="shrink-0 rounded-full border px-2 py-0.5
-                       font-mono text-[9px] uppercase tracking-[0.16em]
-                       ${badgeClasses}">
-            ${badgeText}
-          </span>
-        </div>
-        <div class="mt-1 text-[14.5px] text-text font-medium">
-          ${escapeHTML(entry.title)}
-        </div>
+      <div class="w-[60px] shrink-0 pt-0.5 text-center leading-tight">
+        <span class="block font-mono text-[9px] font-bold uppercase tracking-[0.16em] text-text-muted">session</span>
+        <span class="block font-display text-[34px] font-extrabold leading-none text-pos">${entry.session}</span>
+        <span class="mt-0.5 block font-mono text-[9.5px] uppercase tracking-[0.06em] text-text-muted">${escapeHTML(formatDate(entry.date))}</span>
       </div>
-      <div class="log-body pt-2.5 text-[13.5px] leading-[1.6] text-text-dim">
-        <p>${escapeHTML(entry.summary || "—")}</p>
-        ${tagsHTML ? `<div class="mt-2.5 flex flex-wrap gap-2">${tagsHTML}</div>` : ""}
+      <div>
+        <div class="log-header">
+          <div class="flex items-start justify-between gap-3">
+            <h2 class="font-display text-[17px] font-extrabold leading-[1.2]
+                       tracking-[-0.01em] text-text transition-colors group-hover:text-pos">
+              ${escapeHTML(entry.title)}
+            </h2>
+            <span class="mt-0.5 shrink-0 rounded-full border px-2 py-0.5
+                         font-mono text-[9px] uppercase tracking-[0.16em]
+                         ${badgeClasses}">
+              ${badgeText}
+            </span>
+          </div>
+        </div>
+        <div class="log-body pt-2.5 text-[13.5px] leading-[1.6] text-text-dim">
+          <p>${escapeHTML(entry.summary || "—")}</p>
+          ${tagsHTML ? `<div class="mt-2.5 flex flex-wrap gap-2">${tagsHTML}</div>` : ""}
+        </div>
       </div>
     </div>
   `;

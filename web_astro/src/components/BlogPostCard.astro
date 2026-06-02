@@ -2,10 +2,11 @@
 /* ============================================================
    BlogPostCard — listing card for /blog.
 
-   Compact horizontal layout mirroring the /diary entries:
-   date + type pill on top row, title + summary below, tags
-   as #pills at the bottom. The whole card is one clickable
-   anchor — no separate "Read more" button.
+   "Numerone" sticker card (Pastel Sticker v2): left = big day
+   number in sand + month/year, right = title + subtitle +
+   summary + type pill + tags. Colored left border (sand =
+   blog section accent). Whole card is one clickable anchor.
+   Mirrors the home /blog rows and the /diary entries.
    ============================================================ */
 
 interface Props {
@@ -21,11 +22,9 @@ interface Props {
 
 const { href, title, subtitle, date, type, volume, summary, tags } = Astro.props;
 
-const formattedDate = date.toLocaleDateString("en-GB", {
-  day: "2-digit",
-  month: "short",
-  year: "numeric",
-});
+const mon = date.toLocaleDateString("en-US", { month: "short" });
+const day = date.getDate();
+const yr = date.getFullYear();
 
 const pillLabel =
   type === "highlight"
@@ -37,50 +36,58 @@ const pillLabel =
 
 <a
   href={href}
-  class="group block border-b border-border-soft py-4 px-3
-         first:border-t transition-colors hover:bg-surface/40"
+  class="group grid grid-cols-[auto_1fr] items-start gap-5
+         rounded-2xl border border-border border-l-4 border-l-sand
+         bg-surface px-5 py-4 shadow-sticker-sm
+         transition hover:-translate-y-0.5 hover:bg-surface-hover
+         hover:shadow-sticker"
 >
-  <div class="flex items-center justify-between gap-3">
-    <span class="font-mono text-[10.5px] uppercase tracking-[0.14em]
-                 text-text-muted whitespace-nowrap">
-      {formattedDate}
-    </span>
-    <span
-      class:list={[
-        "shrink-0 rounded-full border px-2 py-0.5",
-        "font-mono text-[9px] uppercase tracking-[0.16em]",
-        type === "highlight"
-          ? "border-pos/30 text-pos bg-pos/5"
-          : "border-amber-400/30 text-amber-400 bg-amber-400/5",
-      ]}
-    >
-      {pillLabel}
-    </span>
+  {/* left — numerone */}
+  <div class="min-w-[56px] pt-0.5 text-center">
+    <span class="block font-mono text-[9px] font-bold uppercase tracking-[0.16em] text-text-muted">{mon}</span>
+    <span class="block font-display text-[34px] font-extrabold leading-none text-sand">{day}</span>
+    <span class="block font-mono text-[9.5px] uppercase tracking-[0.06em] text-text-muted">{yr}</span>
   </div>
 
-  <div class="mt-1.5 text-[15.5px] text-text font-medium
-              group-hover:text-primary transition-colors">
-    {title}
+  {/* right — content */}
+  <div>
+    <div class="flex items-start justify-between gap-3">
+      <h2 class="font-display text-[17px] font-extrabold leading-[1.2] tracking-[-0.01em]
+                 text-text transition-colors group-hover:text-sand">
+        {title}
+      </h2>
+      <span
+        class:list={[
+          "mt-0.5 shrink-0 rounded-full border px-2 py-0.5",
+          "font-mono text-[9px] uppercase tracking-[0.16em]",
+          type === "highlight"
+            ? "border-pos/30 text-pos bg-pos/10"
+            : "border-sand/30 text-sand bg-sand-soft",
+        ]}
+      >
+        {pillLabel}
+      </span>
+    </div>
+
+    {subtitle && (
+      <div class="mt-0.5 font-sans text-[13px] italic text-text-dim">
+        {subtitle}
+      </div>
+    )}
+
+    <p class="mt-2 font-sans text-[13.5px] leading-[1.6] text-text-dim">
+      {summary}
+    </p>
+
+    {tags.length > 0 && (
+      <div class="mt-2.5 flex flex-wrap gap-2">
+        {tags.map((t) => (
+          <span class="rounded-md border border-border-soft bg-bg
+                       px-2 py-0.5 font-mono text-[10px] text-text-muted">
+            #{t}
+          </span>
+        ))}
+      </div>
+    )}
   </div>
-
-  {subtitle && (
-    <div class="mt-0.5 text-[13.5px] text-text-dim italic">
-      {subtitle}
-    </div>
-  )}
-
-  <p class="mt-2 text-[13.5px] leading-[1.6] text-text-dim">
-    {summary}
-  </p>
-
-  {tags.length > 0 && (
-    <div class="mt-2.5 flex flex-wrap gap-2">
-      {tags.map((t) => (
-        <span class="rounded-md border border-border-soft bg-surface/50
-                     px-2 py-0.5 font-mono text-[10px] text-text-muted">
-          #{t}
-        </span>
-      ))}
-    </div>
-  )}
 </a>
