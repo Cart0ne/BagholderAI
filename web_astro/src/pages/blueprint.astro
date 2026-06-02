@@ -5,7 +5,7 @@ import Layout from "../layouts/Layout.astro";
    document). Same copy verbatim; layout follows the new design system
    already established by /diary and /dashboard:
      - Hero: max-w-4xl, h1 28→40px responsive, mono meta-strip below
-     - Main: max-w-4xl, sections separated by <hr> + § N · title
+     - Main: max-w-4xl, sections separated by <hr> + N · title
      - Tables: bg-surface card with mono rows
      - Callouts: yellow border-l-2, green framing block
    No JS, no fetches — pure static markup. */
@@ -19,8 +19,8 @@ import Layout from "../layouts/Layout.astro";
 
   {/* ============================================================ HERO */}
   <section class="mx-auto max-w-4xl px-4 pt-10 pb-6 sm:px-6 sm:pt-14 sm:pb-8">
-    <h1 class="text-[28px] font-semibold leading-[1.12] tracking-tight
-               text-text sm:text-[34px] md:text-[40px] md:leading-[1.08]">
+    <h1 class="font-display text-[34px] font-extrabold leading-[1.04] tracking-[-0.02em]
+               text-text sm:text-[42px]">
       The original <span class="text-primary">blueprint</span>.
     </h1>
 
@@ -33,8 +33,7 @@ import Layout from "../layouts/Layout.astro";
     <div class="mt-5 flex flex-wrap items-center gap-3 font-mono text-[10.5px]
                 uppercase tracking-[0.16em] text-text-muted">
       <span class="inline-flex items-center gap-1.5">
-        <span class="inline-block h-1.5 w-1.5 rounded-full bg-pos
-                     shadow-[0_0_8px_rgba(134,239,172,0.7)]"></span>
+        <span class="inline-block h-1.5 w-1.5 rounded-full bg-primary"></span>
         v1.0 · march 2026
       </span>
       <span class="text-border">·</span>
@@ -47,8 +46,13 @@ import Layout from "../layouts/Layout.astro";
   {/* ============================================================ MAIN */}
   <main class="mx-auto max-w-4xl px-4 pb-24 sm:px-6">
 
+    {/* The whole blueprint is presented as one white "paper sheet" so the
+        prose never floats on the page sage (REDESIGN_PATTERNS §15). */}
+    <div class="blueprint-sheet rounded-2xl border border-border bg-surface
+                px-5 py-7 shadow-sticker sm:px-8 sm:py-9">
+
     {/* ============ FRAMING — context box ============ */}
-    <section class="reveal rounded-lg border border-pos/30 bg-pos/[0.04] p-5 sm:p-6">
+    <section class="reveal rounded-2xl border border-pos/30 bg-pos/10 p-5 sm:p-6">
       <p class="text-[14.5px] leading-[1.7] text-text-dim">
         <strong class="text-pos">BagHolderAI is an experiment in AI
         autonomy.</strong> Can an AI act as CEO of a real project —
@@ -61,11 +65,11 @@ import Layout from "../layouts/Layout.astro";
       </p>
     </section>
 
-    {/* ============ § 1 — PROJECT VISION ============ */}
+    {/* ============ 1 — PROJECT VISION ============ */}
     <hr class="mt-12 border-t border-border-soft" />
     <section class="mt-8 reveal">
-      <h2 class="font-mono text-[12px] uppercase tracking-[0.18em] text-pos mb-5">
-        § 1 · Project vision
+      <h2 class="font-display text-[20px] font-extrabold tracking-[-0.01em] text-text mb-5">
+        1 · Project vision
       </h2>
 
       <p class="text-[14.5px] leading-[1.7] text-text-dim mb-4">
@@ -76,7 +80,7 @@ import Layout from "../layouts/Layout.astro";
         growing an audience interested in the AI + crypto space.
       </p>
 
-      <aside class="my-5 border-l-2 border-yellow-500/60 bg-yellow-500/[0.04]
+      <aside class="my-5 border-l-4 border-sand bg-sand-soft/50 rounded-r-xl
                     py-2.5 pl-4 text-[13px] italic leading-[1.6] text-text-dim">
         This is an experimental project for educational and
         entertainment purposes. The invested capital (€500) is
@@ -98,7 +102,7 @@ import Layout from "../layouts/Layout.astro";
       <h3 class="font-sans text-[16px] sm:text-[17px] font-semibold text-text mb-3 mt-6">
         1.2 Three revenue streams
       </h3>
-      <div class="overflow-x-auto rounded-lg border border-border bg-surface">
+      <div class="overflow-x-auto rounded-xl border border-border-soft bg-bg/40">
         <table class="w-full font-mono text-[12.5px]">
           <thead class="border-b border-border-soft">
             <tr class="text-text-muted uppercase tracking-[0.1em] text-[10px]">
@@ -117,11 +121,11 @@ import Layout from "../layouts/Layout.astro";
       </div>
     </section>
 
-    {/* ============ § 2 — ARCHITECTURE ============ */}
+    {/* ============ 2 — ARCHITECTURE ============ */}
     <hr class="mt-12 border-t border-border-soft" />
     <section class="mt-8 reveal">
-      <h2 class="font-mono text-[12px] uppercase tracking-[0.18em] text-pos mb-5">
-        § 2 · Architecture — the three brains
+      <h2 class="font-display text-[20px] font-extrabold tracking-[-0.01em] text-text mb-5">
+        2 · Architecture — the three brains
       </h2>
 
       <p class="text-[14.5px] leading-[1.7] text-text-dim mb-4">
@@ -176,18 +180,18 @@ import Layout from "../layouts/Layout.astro";
         <li class="relative pl-4 before:absolute before:left-0 before:text-pos before:content-['›']">Risk 4-6 → no action</li>
       </ul>
 
-      <aside class="my-5 border-l-2 border-yellow-500/60 bg-yellow-500/[0.04]
+      <aside class="my-5 border-l-4 border-sand bg-sand-soft/50 rounded-r-xl
                     py-2.5 pl-4 text-[13px] italic leading-[1.6] text-text-dim">
         The Sentinel CANNOT sell at a loss on Strategy A. It freezes and
         sends an alert. Selling at a loss is always a human decision.
       </aside>
     </section>
 
-    {/* ============ § 3 — TRADING STRATEGIES ============ */}
+    {/* ============ 3 — TRADING STRATEGIES ============ */}
     <hr class="mt-12 border-t border-border-soft" />
     <section class="mt-8 reveal">
-      <h2 class="font-mono text-[12px] uppercase tracking-[0.18em] text-pos mb-5">
-        § 3 · Trading strategies
+      <h2 class="font-display text-[20px] font-extrabold tracking-[-0.01em] text-text mb-5">
+        3 · Trading strategies
       </h2>
 
       <h3 class="font-sans text-[16px] sm:text-[17px] font-semibold text-text mb-3">
@@ -206,7 +210,7 @@ import Layout from "../layouts/Layout.astro";
         <li class="relative pl-4 before:absolute before:left-0 before:text-pos before:content-['›']">Real daily volume, listed on 2+ major exchanges</li>
       </ul>
 
-      <div class="overflow-x-auto rounded-lg border border-border bg-surface">
+      <div class="overflow-x-auto rounded-xl border border-border-soft bg-bg/40">
         <table class="w-full font-mono text-[12.5px]">
           <thead class="border-b border-border-soft">
             <tr class="text-text-muted uppercase tracking-[0.1em] text-[10px]">
@@ -229,7 +233,7 @@ import Layout from "../layouts/Layout.astro";
       <p class="text-[14.5px] leading-[1.7] text-text-dim mb-3">
         Risk allocation for speculative trades. Losses accepted.
       </p>
-      <div class="overflow-x-auto rounded-lg border border-border bg-surface">
+      <div class="overflow-x-auto rounded-xl border border-border-soft bg-bg/40">
         <table class="w-full font-mono text-[12.5px]">
           <thead class="border-b border-border-soft">
             <tr class="text-text-muted uppercase tracking-[0.1em] text-[10px]">
@@ -254,17 +258,17 @@ import Layout from "../layouts/Layout.astro";
       </p>
     </section>
 
-    {/* ============ § 4 — P&L MANAGEMENT ============ */}
+    {/* ============ 4 — P&L MANAGEMENT ============ */}
     <hr class="mt-12 border-t border-border-soft" />
     <section class="mt-8 reveal">
-      <h2 class="font-mono text-[12px] uppercase tracking-[0.18em] text-pos mb-5">
-        § 4 · Profit &amp; loss management
+      <h2 class="font-display text-[20px] font-extrabold tracking-[-0.01em] text-text mb-5">
+        4 · Profit &amp; loss management
       </h2>
 
       <h3 class="font-sans text-[16px] sm:text-[17px] font-semibold text-text mb-3">
         4.1 Tiered take profit
       </h3>
-      <div class="overflow-x-auto rounded-lg border border-border bg-surface">
+      <div class="overflow-x-auto rounded-xl border border-border-soft bg-bg/40">
         <table class="w-full font-mono text-[12.5px]">
           <thead class="border-b border-border-soft">
             <tr class="text-text-muted uppercase tracking-[0.1em] text-[10px]">
@@ -309,16 +313,16 @@ import Layout from "../layouts/Layout.astro";
       </p>
     </section>
 
-    {/* ============ § 5 — HARDCODED RULES ============ */}
+    {/* ============ 5 — HARDCODED RULES ============ */}
     <hr class="mt-12 border-t border-border-soft" />
     <section class="mt-8 reveal">
-      <h2 class="font-mono text-[12px] uppercase tracking-[0.18em] text-pos mb-5">
-        § 5 · Hardcoded rules
+      <h2 class="font-display text-[20px] font-extrabold tracking-[-0.01em] text-text mb-5">
+        5 · Hardcoded rules
       </h2>
       <p class="text-[14.5px] leading-[1.7] text-text-dim mb-4">
         Implemented in code, not modifiable by the AI.
       </p>
-      <div class="overflow-x-auto rounded-lg border border-border bg-surface">
+      <div class="overflow-x-auto rounded-xl border border-border-soft bg-bg/40">
         <table class="w-full font-mono text-[12.5px]">
           <thead class="border-b border-border-soft">
             <tr class="text-text-muted uppercase tracking-[0.1em] text-[10px]">
@@ -341,11 +345,11 @@ import Layout from "../layouts/Layout.astro";
       </div>
     </section>
 
-    {/* ============ § 6 — PUBLIC DASHBOARD ============ */}
+    {/* ============ 6 — PUBLIC DASHBOARD ============ */}
     <hr class="mt-12 border-t border-border-soft" />
     <section class="mt-8 reveal">
-      <h2 class="font-mono text-[12px] uppercase tracking-[0.18em] text-pos mb-5">
-        § 6 · Public dashboard
+      <h2 class="font-display text-[20px] font-extrabold tracking-[-0.01em] text-text mb-5">
+        6 · Public dashboard
       </h2>
       <p class="text-[14.5px] leading-[1.7] text-text-dim mb-4">
         The dashboard is the real product. It must be published from
@@ -384,7 +388,7 @@ import Layout from "../layouts/Layout.astro";
       <h3 class="font-sans text-[16px] sm:text-[17px] font-semibold text-text mb-3 mt-8">
         6.2 Tech stack
       </h3>
-      <div class="overflow-x-auto rounded-lg border border-border bg-surface">
+      <div class="overflow-x-auto rounded-xl border border-border-soft bg-bg/40">
         <table class="w-full font-mono text-[12.5px]">
           <thead class="border-b border-border-soft">
             <tr class="text-text-muted uppercase tracking-[0.1em] text-[10px]">
@@ -405,11 +409,11 @@ import Layout from "../layouts/Layout.astro";
       </div>
     </section>
 
-    {/* ============ § 7 — LEARNING SYSTEM ============ */}
+    {/* ============ 7 — LEARNING SYSTEM ============ */}
     <hr class="mt-12 border-t border-border-soft" />
     <section class="mt-8 reveal">
-      <h2 class="font-mono text-[12px] uppercase tracking-[0.18em] text-pos mb-5">
-        § 7 · Learning system
+      <h2 class="font-display text-[20px] font-extrabold tracking-[-0.01em] text-text mb-5">
+        7 · Learning system
       </h2>
       <p class="text-[14.5px] leading-[1.7] text-text-dim mb-4">
         The LLM doesn't learn in the classical sense. Intelligence
@@ -461,17 +465,17 @@ import Layout from "../layouts/Layout.astro";
       </p>
     </section>
 
-    {/* ============ § 8 — MEMORY MANAGEMENT ============ */}
+    {/* ============ 8 — MEMORY MANAGEMENT ============ */}
     <hr class="mt-12 border-t border-border-soft" />
     <section class="mt-8 reveal">
-      <h2 class="font-mono text-[12px] uppercase tracking-[0.18em] text-pos mb-5">
-        § 8 · Agent memory management
+      <h2 class="font-display text-[20px] font-extrabold tracking-[-0.01em] text-text mb-5">
+        8 · Agent memory management
       </h2>
       <p class="text-[14.5px] leading-[1.7] text-text-dim mb-4">
         All memory lives in the database. Full control: reset, restore,
         compare versions.
       </p>
-      <div class="overflow-x-auto rounded-lg border border-border bg-surface">
+      <div class="overflow-x-auto rounded-xl border border-border-soft bg-bg/40">
         <table class="w-full font-mono text-[12.5px]">
           <thead class="border-b border-border-soft">
             <tr class="text-text-muted uppercase tracking-[0.1em] text-[10px]">
@@ -493,20 +497,20 @@ import Layout from "../layouts/Layout.astro";
         Reset = clear rules table in DB. Click on admin dashboard (not
         public). Agent restarts with only hardcoded base rules.
       </p>
-      <aside class="my-5 border-l-2 border-yellow-500/60 bg-yellow-500/[0.04]
+      <aside class="my-5 border-l-4 border-sand bg-sand-soft/50 rounded-r-xl
                     py-2.5 pl-4 text-[13px] italic leading-[1.6] text-text-dim">
         The public dashboard could show: "Day 1 after reset — the agent
         is rebuilding its rules." Interesting content for the audience.
       </aside>
     </section>
 
-    {/* ============ § 9 — NOTIFICATIONS ============ */}
+    {/* ============ 9 — NOTIFICATIONS ============ */}
     <hr class="mt-12 border-t border-border-soft" />
     <section class="mt-8 reveal">
-      <h2 class="font-mono text-[12px] uppercase tracking-[0.18em] text-pos mb-5">
-        § 9 · Notifications (Telegram bot)
+      <h2 class="font-display text-[20px] font-extrabold tracking-[-0.01em] text-text mb-5">
+        9 · Notifications (Telegram bot)
       </h2>
-      <div class="overflow-x-auto rounded-lg border border-border bg-surface">
+      <div class="overflow-x-auto rounded-xl border border-border-soft bg-bg/40">
         <table class="w-full font-mono text-[12.5px]">
           <thead class="border-b border-border-soft">
             <tr class="text-text-muted uppercase tracking-[0.1em] text-[10px]">
@@ -525,17 +529,17 @@ import Layout from "../layouts/Layout.astro";
       </div>
     </section>
 
-    {/* ============ § 10 — COST ANALYSIS ============ */}
+    {/* ============ 10 — COST ANALYSIS ============ */}
     <hr class="mt-12 border-t border-border-soft" />
     <section class="mt-8 reveal">
-      <h2 class="font-mono text-[12px] uppercase tracking-[0.18em] text-pos mb-5">
-        § 10 · Cost analysis
+      <h2 class="font-display text-[20px] font-extrabold tracking-[-0.01em] text-text mb-5">
+        10 · Cost analysis
       </h2>
 
       <h3 class="font-sans text-[16px] sm:text-[17px] font-semibold text-text mb-3">
         10.1 Infrastructure
       </h3>
-      <div class="overflow-x-auto rounded-lg border border-border bg-surface">
+      <div class="overflow-x-auto rounded-xl border border-border-soft bg-bg/40">
         <table class="w-full font-mono text-[12.5px]">
           <thead class="border-b border-border-soft">
             <tr class="text-text-muted uppercase tracking-[0.1em] text-[10px]">
@@ -576,17 +580,17 @@ import Layout from "../layouts/Layout.astro";
       </ul>
     </section>
 
-    {/* ============ § 11 — 12-MONTH SIMULATION ============ */}
+    {/* ============ 11 — 12-MONTH SIMULATION ============ */}
     <hr class="mt-12 border-t border-border-soft" />
     <section class="mt-8 reveal">
-      <h2 class="font-mono text-[12px] uppercase tracking-[0.18em] text-pos mb-5">
-        § 11 · 12-month simulation (conservative)
+      <h2 class="font-display text-[20px] font-extrabold tracking-[-0.01em] text-text mb-5">
+        11 · 12-month simulation (conservative)
       </h2>
       <p class="text-[14.5px] leading-[1.7] text-text-dim mb-4">
         Assumptions: Str. A +2%/month net, Str. B volatile, profits
         50/50 reinvest/reserve.
       </p>
-      <div class="overflow-x-auto rounded-lg border border-border bg-surface">
+      <div class="overflow-x-auto rounded-xl border border-border-soft bg-bg/40">
         <table class="w-full font-mono text-[12.5px]">
           <thead class="border-b border-border-soft">
             <tr class="text-text-muted uppercase tracking-[0.1em] text-[10px]">
@@ -606,7 +610,7 @@ import Layout from "../layouts/Layout.astro";
           </tbody>
         </table>
       </div>
-      <div class="mt-4 overflow-x-auto rounded-lg border border-border bg-surface">
+      <div class="mt-4 overflow-x-auto rounded-xl border border-border-soft bg-bg/40">
         <table class="w-full font-mono text-[12.5px]">
           <thead class="border-b border-border-soft">
             <tr class="text-text-muted uppercase tracking-[0.1em] text-[10px]">
@@ -624,11 +628,11 @@ import Layout from "../layouts/Layout.astro";
       </div>
     </section>
 
-    {/* ============ § 12 — DEVELOPMENT PLAN ============ */}
+    {/* ============ 12 — DEVELOPMENT PLAN ============ */}
     <hr class="mt-12 border-t border-border-soft" />
     <section class="mt-8 reveal">
-      <h2 class="font-mono text-[12px] uppercase tracking-[0.18em] text-pos mb-5">
-        § 12 · Development plan
+      <h2 class="font-display text-[20px] font-extrabold tracking-[-0.01em] text-text mb-5">
+        12 · Development plan
       </h2>
       <p class="text-[14.5px] leading-[1.7] text-text-dim mb-3">
         <strong class="text-text">Phase 0 — Setup (Week 1):</strong>
@@ -672,11 +676,11 @@ import Layout from "../layouts/Layout.astro";
       </p>
     </section>
 
-    {/* ============ § 13 — REFERENCES ============ */}
+    {/* ============ 13 — REFERENCES ============ */}
     <hr class="mt-12 border-t border-border-soft" />
     <section class="mt-8 reveal">
-      <h2 class="font-mono text-[12px] uppercase tracking-[0.18em] text-pos mb-5">
-        § 13 · References &amp; resources
+      <h2 class="font-display text-[20px] font-extrabold tracking-[-0.01em] text-text mb-5">
+        13 · References &amp; resources
       </h2>
 
       <h3 class="font-sans text-[16px] sm:text-[17px] font-semibold text-text mb-3">
@@ -724,7 +728,7 @@ import Layout from "../layouts/Layout.astro";
       <h3 class="font-sans text-[16px] sm:text-[17px] font-semibold text-text mb-3 mt-8">
         13.3 Tech stack
       </h3>
-      <div class="overflow-x-auto rounded-lg border border-border bg-surface">
+      <div class="overflow-x-auto rounded-xl border border-border-soft bg-bg/40">
         <table class="w-full font-mono text-[12.5px]">
           <thead class="border-b border-border-soft">
             <tr class="text-text-muted uppercase tracking-[0.1em] text-[10px]">
@@ -756,13 +760,13 @@ import Layout from "../layouts/Layout.astro";
       </ul>
     </section>
 
-    {/* ============ § 14 — OPEN DECISIONS ============ */}
+    {/* ============ 14 — OPEN DECISIONS ============ */}
     <hr class="mt-12 border-t border-border-soft" />
     <section class="mt-8 reveal">
-      <h2 class="font-mono text-[12px] uppercase tracking-[0.18em] text-pos mb-5">
-        § 14 · Open decisions
+      <h2 class="font-display text-[20px] font-extrabold tracking-[-0.01em] text-text mb-5">
+        14 · Open decisions
       </h2>
-      <div class="overflow-x-auto rounded-lg border border-border bg-surface">
+      <div class="overflow-x-auto rounded-xl border border-border-soft bg-bg/40">
         <table class="w-full font-mono text-[12.5px]">
           <thead class="border-b border-border-soft">
             <tr class="text-text-muted uppercase tracking-[0.1em] text-[10px]">
@@ -775,22 +779,22 @@ import Layout from "../layouts/Layout.astro";
             <tr class="border-t border-border-soft">
               <td class="px-3 py-2.5 text-text">Agent name</td>
               <td class="px-3 py-2.5 text-text-dim">TBD</td>
-              <td class="px-3 py-2.5"><span class="rounded-full border border-yellow-500/40 bg-yellow-500/10 px-2 py-0.5 font-mono text-[9px] uppercase tracking-[0.16em] text-yellow-300">open</span></td>
+              <td class="px-3 py-2.5"><span class="rounded-full border border-warn/40 bg-warn/10 px-2 py-0.5 font-mono text-[9px] uppercase tracking-[0.16em] text-warn">open</span></td>
             </tr>
             <tr class="border-t border-border-soft">
               <td class="px-3 py-2.5 text-text">Main exchange</td>
               <td class="px-3 py-2.5 text-text-dim">Binance vs Bybit</td>
-              <td class="px-3 py-2.5"><span class="rounded-full border border-yellow-500/40 bg-yellow-500/10 px-2 py-0.5 font-mono text-[9px] uppercase tracking-[0.16em] text-yellow-300">open</span></td>
+              <td class="px-3 py-2.5"><span class="rounded-full border border-warn/40 bg-warn/10 px-2 py-0.5 font-mono text-[9px] uppercase tracking-[0.16em] text-warn">open</span></td>
             </tr>
             <tr class="border-t border-border-soft">
               <td class="px-3 py-2.5 text-text">LLM for Sentinel</td>
               <td class="px-3 py-2.5 text-text-dim">Haiku vs Groq vs Mistral vs DeepSeek</td>
-              <td class="px-3 py-2.5"><span class="rounded-full border border-yellow-500/40 bg-yellow-500/10 px-2 py-0.5 font-mono text-[9px] uppercase tracking-[0.16em] text-yellow-300">open</span></td>
+              <td class="px-3 py-2.5"><span class="rounded-full border border-warn/40 bg-warn/10 px-2 py-0.5 font-mono text-[9px] uppercase tracking-[0.16em] text-warn">open</span></td>
             </tr>
             <tr class="border-t border-border-soft">
               <td class="px-3 py-2.5 text-text">Strategy B active at launch?</td>
               <td class="px-3 py-2.5 text-text-dim">Depends on paper trading</td>
-              <td class="px-3 py-2.5"><span class="rounded-full border border-yellow-500/40 bg-yellow-500/10 px-2 py-0.5 font-mono text-[9px] uppercase tracking-[0.16em] text-yellow-300">open</span></td>
+              <td class="px-3 py-2.5"><span class="rounded-full border border-warn/40 bg-warn/10 px-2 py-0.5 font-mono text-[9px] uppercase tracking-[0.16em] text-warn">open</span></td>
             </tr>
             <tr class="border-t border-border-soft">
               <td class="px-3 py-2.5 text-text">Solana DEX for Str. B</td>
@@ -810,21 +814,22 @@ import Layout from "../layouts/Layout.astro";
             <tr class="border-t border-border-soft">
               <td class="px-3 py-2.5 text-text">Live hosting</td>
               <td class="px-3 py-2.5 text-text-dim">Mac Mini (paper) / VPS (live)</td>
-              <td class="px-3 py-2.5"><span class="rounded-full border border-yellow-500/40 bg-yellow-500/10 px-2 py-0.5 font-mono text-[9px] uppercase tracking-[0.16em] text-yellow-300">open</span></td>
+              <td class="px-3 py-2.5"><span class="rounded-full border border-warn/40 bg-warn/10 px-2 py-0.5 font-mono text-[9px] uppercase tracking-[0.16em] text-warn">open</span></td>
             </tr>
             <tr class="border-t border-border-soft">
               <td class="px-3 py-2.5 text-text">Absolute values or %</td>
               <td class="px-3 py-2.5 text-text-dim">Privacy vs transparency</td>
-              <td class="px-3 py-2.5"><span class="rounded-full border border-yellow-500/40 bg-yellow-500/10 px-2 py-0.5 font-mono text-[9px] uppercase tracking-[0.16em] text-yellow-300">open</span></td>
+              <td class="px-3 py-2.5"><span class="rounded-full border border-warn/40 bg-warn/10 px-2 py-0.5 font-mono text-[9px] uppercase tracking-[0.16em] text-warn">open</span></td>
             </tr>
           </tbody>
         </table>
       </div>
     </section>
 
+    </div>{/* /blueprint-sheet */}
+
     {/* ============ VERSION TAG ============ */}
-    <div class="mt-16 border-t border-border-soft pt-4
-                font-mono text-[11px] text-text-muted">
+    <div class="mt-6 pt-4 font-mono text-[11px] text-text-muted">
       Blueprint v1.0 — March 2026 · Published as historical document
     </div>
 
