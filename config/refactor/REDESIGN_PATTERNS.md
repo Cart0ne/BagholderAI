@@ -99,19 +99,23 @@ script: `stat-trades/pnl/days/today-pnl/today-trades/session`, `project-status-b
 `home-diary-list` + `data-slot`/`data-field`, watchtower/sherpa. (In S95b live-stats è stato
 toccato SOLO per presentazione: numero sessione da solo + data "Jun 1".)
 
-## 13. CLS / performance — REGOLA SU TUTTE LE PAGINE
-Ogni elemento che **compare/cambia altezza in ritardo** (fetch async Supabase, `hidden`→
-visibile, lista fallback→live) **deve riservare lo spazio** a monte, altrimenti il footer
-"scatta" quando il dato arriva mentre l'utente è già sceso. Tecnica: `min-h-[...]` sul
-contenitore. Applicato finora:
-- home: badge di stato (`min-h-[72px]`, [index.astro:241]) — NON era il banner a-ads (Max: "è
-  già caricato quando succede"), era il badge che il fetch rivela tardi.
-- diary: lista entry (`min-h-[70vh]` sulla section) — il swap 3→~88 entry non alza più il footer.
-- blog: **niente** — è tutto statico build-time, nessun fetch, nessuno scattino.
-- **dashboard (DA FARE quando si ridisegna)**: `#regime-watch-banner` (hidden→block via
-  `regime-banner.ts`) + eventuali stat che cambiano altezza → riservare.
-Checklist per OGNI pagina nuova: c'è un fetch/`hidden` che cambia il layout sopra il footer?
-Se sì → riserva `min-h`. Se la pagina è 100% statica → non serve nulla.
+## 13. Lo "scattino" al footer — CAUSA VERA: il reveal translateY (S95b)
+**Causa primaria, su TUTTE le pagine (anche statiche/noAds):** l'animazione reveal parte da
+`transform: translateY(50px)` (global.css). Il **footer** ha `.reveal` ed è l'elemento più in
+basso: quei 50px **gonfiano l'altezza scrollabile**. Quando il footer entra in vista e si assesta
+(50px→0, in 2s), l'altezza si accorcia di 50px → la pagina "scatta". Il banner a-ads NON c'entra
+(Max: "è già caricato quando succede"; lo scattino c'è anche sui legal noAds).
+- **FIX universale (fatto):** il footer fa **solo fade**, niente translateY →
+  `style="--reveal-y: translateY(0)"` sul `.reveal` del footer ([SiteFooter.astro]). Sfrutta la
+  var `--reveal-y` già nel CSS. Risolve lo scattino ovunque in un colpo.
+
+**Causa secondaria (separata):** elementi che **compaiono/cambiano altezza in ritardo** (fetch
+async, `hidden`→visibile, lista fallback→live) sopra il footer → riservare spazio `min-h-[...]`:
+- home: badge di stato (`min-h-[72px]`, [index.astro:241]).
+- diary: lista entry (`min-h-[70vh]`) — swap 3→~88 entry.
+- **dashboard (DA FARE):** `#regime-watch-banner` (hidden→block) + stat che cambiano altezza.
+Checklist nuova pagina: (1) il footer fade-only copre lo scattino base; (2) se c'è un
+fetch/`hidden` che cambia layout sopra il footer → aggiungi `min-h`.
 
 ## 15. Testo mai libero sul salvia (regola Max, S95b)
 Il **corpo del testo** (paragrafi, descrizioni, prosa, citazioni lunghe) **non galleggia mai**

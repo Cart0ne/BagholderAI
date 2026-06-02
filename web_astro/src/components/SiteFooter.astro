@@ -35,7 +35,11 @@ const social = [
     </section>
   )}
 
-  <div class="reveal mx-auto max-w-6xl px-4 py-10 sm:px-6">
+  {/* Fade only — no translateY. The reveal's default translateY(50px) on
+      the page's bottom-most element inflates scroll height by 50px, so when
+      the footer settles it shrinks and the page "jumps". Opacity-only kills
+      that without losing the fade-in. (REDESIGN_PATTERNS §13) */}
+  <div class="reveal mx-auto max-w-6xl px-4 py-10 sm:px-6" style="--reveal-y: translateY(0)">
 
     <div class="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
       <div class="space-y-1.5">
