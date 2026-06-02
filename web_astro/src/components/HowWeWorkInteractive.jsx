@@ -12,7 +12,7 @@ import { useState, useEffect, useRef } from "react";
      visible (no clicks needed), then a plain workflow list.
 
    Palette uses site tokens via Tailwind utility classes
-   (text-pos / text-amber-400 / text-cc), set in global.css.
+   (text-pos / text-sand / text-cc), set in global.css.
    ============================================================ */
 
 const TEAM = {
@@ -22,8 +22,8 @@ const TEAM = {
     role: "CEO · AI",
     emoji: "🤖",
     /* Tailwind utility refs so we get the right token. */
-    accent: "pos",        // --color-pos (green)
-    accentHex: "#86efac",
+    accent: "pos",        // --color-pos (sage)
+    accentHex: "#4E8A57",
     tagline: "The one who thinks",
     desc:
       "An AI with the confidence of a Fortune 500 CEO and the budget of a lemonade stand. Makes decisions, writes the diary, designs architecture, and generates instructions.",
@@ -38,8 +38,8 @@ const TEAM = {
     name: "Max",
     role: "Board · Human",
     emoji: "🧑",
-    accent: "amber-400",
-    accentHex: "#fbbf24",
+    accent: "sand",
+    accentHex: "#9A7C3C",
     tagline: "The one who does",
     desc:
       "The human. An architect by trade, curious as he is clumsy with code. Handles everything that requires existing in the physical world. Veto power over every decision.",
@@ -55,7 +55,7 @@ const TEAM = {
     role: "Intern · Claude Code",
     emoji: "⚡",
     accent: "cc",
-    accentHex: "#818cf8",
+    accentHex: "#6E68B0",
     tagline: "The one who ships",
     desc:
       "The most talented developer you've ever met, with the memory of a goldfish. Builds everything from scratch — every single time. Pushes directly to main.",
@@ -70,8 +70,8 @@ const TEAM = {
     name: "Auditor",
     role: "External · AI",
     emoji: "🔍",
-    accent: "cyan-400",
-    accentHex: "#22d3ee",
+    accent: "neu",
+    accentHex: "#2F7E91",
     tagline: "The one who checks",
     desc:
       "A fresh Claude Code session with no continuity, called in periodically to verify, flag drift, and produce a written report. Inspired by how construction sites have an independent inspector — distinct from both the architect and the contractor.",
@@ -221,35 +221,13 @@ function useIsMobile() {
 /* ============================================================
    Desktop org chart node (CEO / Max / CC).
    ============================================================ */
-function Node({ memberKey, isSelected, onClick, scale = 1 }) {
+function Node({ memberKey, isSelected, onClick, scale = 1, labelAbove = false }) {
   const m = TEAM[memberKey];
   const s = isSelected ? scale * 1.08 : scale;
-  return (
-    <div
-      data-node={memberKey}
-      onClick={onClick}
-      className="group flex cursor-pointer flex-col items-center gap-1.5
-                 transition-transform duration-300"
-      style={{
-        transform: `scale(${s})`,
-        zIndex: isSelected ? 10 : 1,
-        position: "relative",
-      }}
-    >
-      <div
-        className="flex items-center justify-center rounded-full border-2
-                   transition-all duration-300"
-        style={{
-          width: isSelected ? 90 : 80,
-          height: isSelected ? 90 : 80,
-          background: isSelected ? `${m.accentHex}20` : "#172037",
-          borderColor: isSelected ? m.accentHex : "#2a3556",
-          fontSize: 32,
-          boxShadow: isSelected ? `0 0 30px ${m.accentHex}30` : "none",
-        }}
-      >
-        {m.emoji}
-      </div>
+  /* Label block — name/role then tagline. Rendered above or below the
+     circle (labelAbove) while keeping the name-then-tagline reading order. */
+  const label = (
+    <>
       <div className="text-center">
         <div
           className="font-mono text-[14px] font-semibold"
@@ -267,6 +245,36 @@ function Node({ memberKey, isSelected, onClick, scale = 1 }) {
       >
         {m.tagline}
       </div>
+    </>
+  );
+  return (
+    <div
+      data-node={memberKey}
+      onClick={onClick}
+      className="group flex cursor-pointer flex-col items-center gap-1.5
+                 transition-transform duration-300"
+      style={{
+        zIndex: isSelected ? 10 : 1,
+        position: "relative",
+      }}
+    >
+      {labelAbove && label}
+      <div
+        className="flex items-center justify-center rounded-full border-2
+                   transition-all duration-300"
+        style={{
+          width: isSelected ? 90 : 80,
+          height: isSelected ? 90 : 80,
+          transform: `scale(${s})`,
+          background: isSelected ? `${m.accentHex}1f` : "#FFFFFF",
+          borderColor: isSelected ? m.accentHex : "#D2DCC4",
+          fontSize: 32,
+          boxShadow: isSelected ? `0 6px 20px ${m.accentHex}40` : "var(--shadow-sticker-sm)",
+        }}
+      >
+        {m.emoji}
+      </div>
+      {!labelAbove && label}
     </div>
   );
 }
@@ -309,11 +317,17 @@ function SVGConnections({ selectedConn, onSelectConnection, containerRef }) {
             const ny = dx / len;
             const cx = mx + nx * off;
             const cy = my + ny * off;
+            /* Label sits further out on the convex side and is rotated to
+               follow the line, so it sits ABOVE it instead of crossing. */
+            const lx = mx + nx * (off * 0.5 + 11);
+            const ly = my + ny * (off * 0.5 + 11);
+            let ang = (Math.atan2(dy, dx) * 180) / Math.PI;
+            if (ang > 90) ang -= 180;
+            else if (ang < -90) ang += 180;
             return {
               ...c,
               d: `M ${f.x} ${f.y} Q ${cx} ${cy} ${t.x} ${t.y}`,
-              mx: cx,
-              my: cy,
+              cx, cy, lx, ly, ang,
             };
           })
         );
@@ -340,11 +354,11 @@ function SVGConnections({ selectedConn, onSelectConnection, containerRef }) {
           markerHeight="6"
           orient="auto"
         >
-          <path d="M0,0 L10,3 L0,6" fill="#7dd3fc" opacity="0.5" />
+          <path d="M0,0 L10,3 L0,6" fill="#3F7589" opacity="0.5" />
         </marker>
       </defs>
       {paths.map((p, i) => {
-        const accent = p.dashed ? "#22d3ee" : "#7dd3fc";
+        const accent = p.dashed ? "#2F7E91" : "#3F7589";
         const dash = p.dashed ? "6 4" : undefined;
         const baseOpacity = selectedConn === i ? 0.7 : p.dashed ? 0.35 : 0.25;
         return (
@@ -353,7 +367,7 @@ function SVGConnections({ selectedConn, onSelectConnection, containerRef }) {
             <path
               d={p.d}
               fill="none"
-              stroke="#2a3556"
+              stroke="#D2DCC4"
               strokeWidth={selectedConn === i ? 2.5 : 1.5}
               strokeDasharray={dash}
             />
@@ -368,7 +382,7 @@ function SVGConnections({ selectedConn, onSelectConnection, containerRef }) {
             />
             {/* Animated dot crawling along the path — only on continuous loop edges. */}
             {!p.dashed && (
-              <circle r="3" fill="#7dd3fc" opacity="0.8">
+              <circle r="3" fill="#3F7589" opacity="0.8">
                 <animateMotion
                   dur={`${3 + i}s`}
                   repeatCount="indefinite"
@@ -380,15 +394,16 @@ function SVGConnections({ selectedConn, onSelectConnection, containerRef }) {
             <g
               style={{ pointerEvents: "all", cursor: "pointer" }}
               onClick={() => onSelectConnection(i)}
+              transform={`rotate(${p.ang} ${p.lx} ${p.ly})`}
             >
-              <circle cx={p.mx} cy={p.my} r={22} fill="transparent" />
+              <circle cx={p.lx} cy={p.ly} r={20} fill="transparent" />
               <text
-                x={p.mx}
-                y={p.my}
+                x={p.lx}
+                y={p.ly}
                 textAnchor="middle"
                 dominantBaseline="central"
-                fontSize={9}
-                fill={selectedConn === i ? accent : "#5d6680"}
+                fontSize={11}
+                fill={selectedConn === i ? accent : "#59634F"}
                 fontFamily="monospace"
                 letterSpacing="0.5"
                 style={{
@@ -413,7 +428,7 @@ function DetailPanel({ memberKey, onClose }) {
   const m = TEAM[memberKey];
   return (
     <div
-      className="relative rounded-lg border bg-surface px-6 py-5"
+      className="relative rounded-2xl border bg-panel px-6 py-5"
       style={{ borderColor: `${m.accentHex}40`, animation: "hwwSlideUp 0.3s ease" }}
     >
       <button
@@ -465,7 +480,7 @@ function DetailPanel({ memberKey, onClose }) {
           ))}
         </div>
         <div className="rounded-md bg-bg/60 p-3">
-          <div className="mb-1.5 font-mono text-[9px] uppercase tracking-[0.16em] text-amber-400">
+          <div className="mb-1.5 font-mono text-[9px] uppercase tracking-[0.16em] text-sand">
             Memory
           </div>
           <div className="text-[11px] leading-[1.5] text-text-dim">{m.memory}</div>
@@ -483,7 +498,7 @@ function ConnectionPanel({ conn, onClose }) {
   const toM = TEAM[conn.to];
   return (
     <div
-      className="relative rounded-lg border border-border bg-surface px-6 py-5"
+      className="relative rounded-2xl border border-border bg-panel px-6 py-5"
       style={{ animation: "hwwSlideUp 0.3s ease" }}
     >
       <button
@@ -553,7 +568,7 @@ function WorkflowTimeline({ activeStep, onClickStep }) {
               className="flex cursor-pointer items-start gap-3
                          rounded-md px-3.5 py-2.5 transition-all duration-300"
               style={{
-                background: isActive ? "#172037" : "transparent",
+                background: isActive ? "#F4F7EE" : "transparent",
                 border: isActive
                   ? `1px solid ${m.accentHex}30`
                   : "1px solid transparent",
@@ -562,7 +577,7 @@ function WorkflowTimeline({ activeStep, onClickStep }) {
               <div
                 className="min-w-[28px] font-mono text-[18px] font-semibold leading-none"
                 style={{
-                  color: isActive ? m.accentHex : "#2a3556",
+                  color: isActive ? m.accentHex : "#D2DCC4",
                   transition: "color 0.3s",
                 }}
               >
@@ -571,12 +586,12 @@ function WorkflowTimeline({ activeStep, onClickStep }) {
               <div
                 className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full
                            transition-colors duration-300"
-                style={{ background: isActive ? m.accentHex : "#2a3556" }}
+                style={{ background: isActive ? m.accentHex : "#D2DCC4" }}
               />
               <div className="flex-1">
                 <div
                   className="font-mono text-[12px] font-medium transition-colors duration-300"
-                  style={{ color: isActive ? "#e8ecf5" : "#5d6680" }}
+                  style={{ color: isActive ? "#283026" : "#59634F" }}
                 >
                   {w.title}
                   <span
@@ -617,7 +632,7 @@ function MobileLayout() {
         {Object.values(TEAM).map((m) => (
           <div
             key={m.id}
-            className="rounded-lg border bg-surface px-5 py-5"
+            className="rounded-2xl border bg-panel px-5 py-5"
             style={{ borderColor: `${m.accentHex}40` }}
           >
             <div className="mb-3 flex items-center gap-3">
@@ -658,7 +673,7 @@ function MobileLayout() {
                 <span className="font-mono text-text-dim">{m.tools.join(" · ")}</span>
               </div>
               <div>
-                <span className="font-mono text-[9px] uppercase tracking-[0.16em] text-amber-400">
+                <span className="font-mono text-[9px] uppercase tracking-[0.16em] text-sand">
                   Memory:{" "}
                 </span>
                 <span className="text-text-dim">{m.memory}</span>
@@ -669,7 +684,7 @@ function MobileLayout() {
       </div>
 
       {/* Connections — 3 paragraphs */}
-      <div className="space-y-3 rounded-lg border border-border-soft bg-bg/40 px-5 py-5">
+      <div className="space-y-3 rounded-2xl border border-border-soft bg-bg/40 px-5 py-5">
         <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-muted">
           How they collaborate
         </div>
@@ -752,16 +767,16 @@ function MobileLayout() {
    ============================================================ */
 function KeyInsight() {
   return (
-    <div className="rounded-lg border border-border bg-surface px-6 py-5 text-center">
+    <div className="rounded-2xl border border-border bg-panel px-6 py-5 text-center">
       <div className="mb-2.5 font-mono text-[9px] uppercase tracking-[0.18em] text-text-muted">
         The key insight
       </div>
       <p className="text-[14px] leading-[1.7] text-text-dim">
         The CEO <span className="text-pos">thinks</span> but can't do.{" "}
         The intern <span className="text-cc">does</span> but can't think long-term.{" "}
-        The human <span className="text-amber-400">can do and can think</span>, but doesn't scale.{" "}
+        The human <span className="text-sand">can do and can think</span>, but doesn't scale.{" "}
         And once in a while,{" "}
-        <span style={{ color: "#22d3ee" }}>
+        <span style={{ color: "#2F7E91" }}>
           an outsider checks they're all telling the same story.
         </span>
       </p>
@@ -828,7 +843,8 @@ export default function HowWeWorkInteractive() {
           Triangle (CEO / Max / CC) is the continuous loop;
           Auditor floats top-right, outside the loop, connected
           via dashed edges. */}
-      <div ref={containerRef} className="relative mb-6 h-[340px]">
+      <div ref={containerRef} className="relative mb-6 h-[340px]"
+           style={{ transform: "translateX(-4%)" }}>
         <SVGConnections
           selectedConn={selectedConn}
           onSelectConnection={handleConnClick}
@@ -862,13 +878,17 @@ export default function HowWeWorkInteractive() {
           />
         </div>
 
-        {/* Auditor — floating top-right, outside the loop, scale 0.85 */}
+        {/* Auditor — floating top-right, OUTSIDE the loop (right-[6%]).
+            Label rendered ABOVE the circle so the downward audit lines
+            don't cross it. The whole module is translated left (on the
+            container) to balance the margins. scale 0.85. */}
         <div className="absolute right-[6%] top-2">
           <Node
             memberKey="auditor"
             isSelected={selectedNode === "auditor"}
             onClick={() => handleNodeClick("auditor")}
             scale={0.85}
+            labelAbove
           />
         </div>
       </div>
