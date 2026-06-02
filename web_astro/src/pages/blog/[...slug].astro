@@ -37,8 +37,7 @@ const typePill =
    the content collection (z.coerce.date), .toISOString() gives the
    canonical "YYYY-MM-DDTHH:mm:ss.sssZ" form. */
 const articleUrl = new URL(`/blog/${post.id}/`, "https://bagholderai.lol").toString();
-const articleJsonLd = {
-  "@context": "https://schema.org",
+const articleEntity = {
   "@type": "Article",
   "headline": post.data.title,
   "description": post.data.summary,
@@ -65,13 +64,36 @@ const articleJsonLd = {
   "image": "https://bagholderai.lol/og-image.jpg",
   ...(post.data.tags.length > 0 && { "keywords": post.data.tags.join(", ") }),
 };
+
+/* FAQPage schema (GEO + rich result). Generato solo se il frontmatter
+   espone `faq`. Si affianca all'Article in un @graph: un solo
+   <script type="application/ld+json">, due entità. Senza FAQ l'output
+   resta identico al fix S84 (Article flat con @context). Aggiunto S95a. */
+const faqEntity =
+  post.data.faq && post.data.faq.length > 0
+    ? {
+        "@type": "FAQPage",
+        "mainEntity": post.data.faq.map((item) => ({
+          "@type": "Question",
+          "name": item.question,
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": item.answer,
+          },
+        })),
+      }
+    : null;
+
+const jsonLd = faqEntity
+  ? { "@context": "https://schema.org", "@graph": [articleEntity, faqEntity] }
+  : { "@context": "https://schema.org", ...articleEntity };
 ---
 
 <Layout
   title={`${post.data.title} — BagHolderAI`}
   description={post.data.summary}
   current="blog"
-  jsonLd={articleJsonLd}
+  jsonLd={jsonLd}
 >
 
   {/* ========================================================== HEADER */}

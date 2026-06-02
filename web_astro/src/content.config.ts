@@ -25,6 +25,13 @@ const blog = defineCollection({
     // flag dev.to li re-importerebbe come nuovi (il guid bagholderai.lol/...
     // non è mai stato nel suo storico di import). Vedi rss.xml.ts.
     noRss: z.boolean().default(false),
+    // faq: lista opzionale di {question, answer}. Se presente, il template
+    // blog genera un JSON-LD FAQPage (accanto all'Article) per i rich result
+    // di Google e per farsi citare dagli answer engine — GEO. Vedi
+    // [...slug].astro. Aggiunto S95a (content plan SEO+GEO).
+    faq: z
+      .array(z.object({ question: z.string(), answer: z.string() }))
+      .optional(),
   }),
 });
 
