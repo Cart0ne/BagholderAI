@@ -202,8 +202,9 @@ sbq<Commentary[]>(
   const today = entries[0];
   const archive = entries.slice(1);       /* show all earlier entries — scrollable window handles overflow */
 
-  /* === § 1 — today === */
-  setText("ceo-today-meta", `Day ${dayNumber(today.date)} · ${fmtCeoDate(today.date)}`);
+  /* === § 1 — today (numerone day + date, mirrors the mock) === */
+  setText("ceo-today-day", String(dayNumber(today.date)));
+  setText("ceo-today-date", fmtCeoDate(today.date));
   setText("ceo-today-model", `via ${modelShortName(today.model_used)}`);
   /* Wrap in straight quotes the same way the mock did. */
   setText("ceo-today-text", `"${today.commentary}"`);
@@ -212,14 +213,19 @@ sbq<Commentary[]>(
   const archiveEl = document.getElementById("ceo-archive");
   if (archiveEl && archive.length) {
     archiveEl.innerHTML = archive.map(e => `
-      <article class="px-4 py-3">
-        <div class="font-mono text-[10px] uppercase tracking-[0.16em]
-                    text-pos/60 mb-1">
-          Day ${dayNumber(e.date)} · ${fmtCeoDate(e.date)}
+      <article class="grid grid-cols-[auto_1fr] items-start gap-4 px-4 py-3.5">
+        <div class="w-[46px] shrink-0 pt-0.5 text-center">
+          <span class="block font-mono text-[8.5px] font-bold uppercase tracking-[0.16em] text-text-muted">day</span>
+          <span class="block font-display text-[26px] font-extrabold leading-none text-pos">${dayNumber(e.date)}</span>
         </div>
-        <p class="text-text-dim text-[13px] leading-[1.6] italic">
-          "${escapeHTML(e.commentary)}"
-        </p>
+        <div>
+          <div class="mb-1 font-mono text-[9px] uppercase tracking-[0.16em] text-text-muted">
+            ${fmtCeoDate(e.date)}
+          </div>
+          <p class="text-text-dim text-[13px] leading-[1.6] italic">
+            "${escapeHTML(e.commentary)}"
+          </p>
+        </div>
       </article>
     `).join("");
   }
@@ -768,7 +774,7 @@ const RECENT_TRADES_LIMIT = 6;
         const sideClass = isSell ? "text-text" : "text-text-dim";
         const coin = (t.symbol || "").replace("/USDT", "");
         const promotedBadge = showPromotedTag && t.managed_by === "tf_grid"
-          ? ` <span class="font-mono text-[8px] tracking-[0.1em] uppercase ml-1 px-1 py-0.5 rounded" style="background:#0f2a3a;color:#38bdf8">→g</span>`
+          ? ` <span class="font-mono text-[8px] tracking-[0.1em] uppercase ml-1 px-1 py-0.5 rounded" style="background:#E3EAEE;color:#3F7589">→g</span>`
           : "";
         const pnlCell = isSell
           ? `${fmtPnl(pnl)}${buyAt
@@ -873,12 +879,12 @@ function renderTfNatives(
   if (!el) return;
   /* TF native: tag "tf" amber, avg buy price (consistent with Grid). */
   const cards = coins.map(c => `
-    <div class="rounded-lg border border-border bg-surface p-3 h-full">
+    <div class="rounded-xl border border-border bg-surface shadow-sticker-sm p-3 h-full">
       <div class="flex items-baseline justify-between gap-1.5 mb-1">
         <span class="font-mono text-[11px] tracking-[0.05em]"
               style="color:${colorFor(c.symbol)}">${shortFor(c.symbol)}</span>
         <span class="font-mono text-[7px] uppercase tracking-[0.14em] px-1.5 py-0.5 rounded"
-              style="background:rgba(245,158,11,0.12);color:#f59e0b">tf</span>
+              style="background:rgba(181,134,46,0.12);color:#B5862E">tf</span>
       </div>
       <div class="text-[16px] font-semibold text-text my-1">${fmtUsd(c.mtmValue)}</div>
       <div class="font-mono text-[10px] text-text-muted">avg ${fmtPriceJs(c.avgBuy)}</div>
@@ -902,13 +908,13 @@ function renderSharedCards(
   const el = document.getElementById(id);
   if (!el) return;
   el.innerHTML = coins.map(c => `
-    <div class="rounded-lg border bg-[#0d1a2e] p-3 shadow-[0_8px_24px_rgba(0,0,0,0.35)]"
-         style="border-color:#38bdf8">
+    <div class="rounded-lg border bg-panel p-3 shadow-[0_8px_24px_rgba(40,48,38,0.14)]"
+         style="border-color:#3F7589">
       <div class="flex items-baseline justify-between gap-1.5 mb-1">
         <span class="font-mono text-[11px] tracking-[0.05em]"
               style="color:${colorFor(c.symbol)}">${shortFor(c.symbol)}</span>
         <span class="pulse-shared font-mono text-[7px] uppercase tracking-[0.14em] px-1.5 py-0.5 rounded"
-              style="background:#0f2a3a;color:#38bdf8">shared</span>
+              style="background:#E3EAEE;color:#3F7589">shared</span>
       </div>
       <div class="text-[15px] font-semibold text-text">${fmtUsd(c.mtmValue)}</div>
       <div class="font-mono text-[9px] text-text-muted">avg ${fmtPriceJs(c.avgBuy)}</div>
@@ -935,7 +941,7 @@ function renderGridNatives(
   /* Manual coins shown with their stats. Shared coins show as "from TF"
      but financially do NOT count under Grid totals (those are tf.* above). */
   const manualCards = coins.map(c => `
-    <div class="rounded-lg border border-border bg-surface p-3 h-full">
+    <div class="rounded-xl border border-border bg-surface shadow-sticker-sm p-3 h-full">
       <span class="font-mono text-[11px] tracking-[0.05em]"
             style="color:${colorFor(c.symbol)}">${shortFor(c.symbol)}</span>
       <div class="text-[16px] font-semibold text-text my-1">${fmtUsd(c.mtmValue)}</div>
@@ -981,7 +987,7 @@ type DailyPnlRow = {
     return;
   }
   Chart.defaults.font.family = "'JetBrains Mono', monospace";
-  Chart.defaults.color = "#9aa3b8";
+  Chart.defaults.color = "#59634F";
 
   /* ----- Fetch in parallel: Grid daily_pnl + ALL v3 trades ----- */
   let dailyPnlRows: DailyPnlRow[] = [];
@@ -1311,13 +1317,13 @@ type DailyPnlRow = {
 
     /* ----- Bar colors with in-progress treatment on last bar ----- */
     const gridColors = barRows.map((_r, i) => inProgressFlags[i]
-      ? "rgba(34,197,94,0.32)" : "rgba(34,197,94,0.7)");
+      ? "rgba(78,138,87,0.32)" : "rgba(78,138,87,0.7)");
     const gridBorders = barRows.map((_r, i) => inProgressFlags[i]
-      ? "rgba(34,197,94,0.55)" : "#22c55e");
+      ? "rgba(78,138,87,0.55)" : "#4E8A57");
     const tfColors = barRows.map((_r, i) => inProgressFlags[i]
-      ? "rgba(245,158,11,0.32)" : "rgba(245,158,11,0.7)");
+      ? "rgba(181,134,46,0.32)" : "rgba(181,134,46,0.7)");
     const tfBorders = barRows.map((_r, i) => inProgressFlags[i]
-      ? "rgba(245,158,11,0.55)" : "#f59e0b");
+      ? "rgba(181,134,46,0.55)" : "#B5862E");
 
     /* ----- Update labels ----- */
     const cumLabelEl = document.getElementById("cumul-label");
@@ -1345,12 +1351,12 @@ type DailyPnlRow = {
           labels: cumLabels,
           datasets: [
             { label: "Realized", data: realizedData,
-              borderColor: "#22c55e", backgroundColor: "rgba(34,197,94,0.06)",
+              borderColor: "#4E8A57", backgroundColor: "rgba(78,138,87,0.06)",
               borderWidth: 2, fill: "origin", tension: 0.3, pointRadius: 0,
-              pointHoverRadius: 4, pointBackgroundColor: "#22c55e",
-              pointBorderColor: "#0a0a0a", pointBorderWidth: 2 },
+              pointHoverRadius: 4, pointBackgroundColor: "#4E8A57",
+              pointBorderColor: "#FFFFFF", pointBorderWidth: 2 },
             { label: "MTM", data: mtmData,
-              borderColor: "rgba(134,239,172,0.6)", borderWidth: 1.5,
+              borderColor: "rgba(78,138,87,0.5)", borderWidth: 1.5,
               borderDash: [5, 5], fill: false, tension: 0.3, pointRadius: 0,
               pointHoverRadius: 4 },
           ],
@@ -1361,8 +1367,8 @@ type DailyPnlRow = {
           plugins: {
             legend: { display: false },
             tooltip: {
-              backgroundColor: "rgba(0,0,0,0.85)",
-              borderColor: "rgba(255,255,255,0.1)", borderWidth: 1,
+              backgroundColor: "rgba(40,48,38,0.92)",
+              borderColor: "rgba(255,255,255,0.15)", borderWidth: 1,
               titleFont: { size: 10 }, bodyFont: { size: 11 },
               displayColors: false,
               callbacks: {
@@ -1377,7 +1383,7 @@ type DailyPnlRow = {
           },
           scales: {
             x: { grid: { display: false }, ticks: { font: { size: 9 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 8 } },
-            y: { grid: { color: "rgba(255,255,255,0.04)" }, ticks: { font: { size: 9 },
+            y: { grid: { color: "rgba(40,48,38,0.08)" }, ticks: { font: { size: 9 },
                  callback: (v: any) => `${v >= 0 ? "+" : ""}$${v}` } },
           },
         },
@@ -1409,8 +1415,8 @@ type DailyPnlRow = {
           plugins: {
             legend: { display: false },
             tooltip: {
-              backgroundColor: "rgba(0,0,0,0.85)",
-              borderColor: "rgba(255,255,255,0.1)", borderWidth: 1,
+              backgroundColor: "rgba(40,48,38,0.92)",
+              borderColor: "rgba(255,255,255,0.15)", borderWidth: 1,
               titleFont: { size: 10 }, bodyFont: { size: 11 },
               displayColors: true,
               callbacks: {
@@ -1431,7 +1437,7 @@ type DailyPnlRow = {
           scales: {
             x: { stacked: true, grid: { display: false },
                  ticks: { font: { size: 9 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 8 } },
-            y: { stacked: true, grid: { color: "rgba(255,255,255,0.04)" },
+            y: { stacked: true, grid: { color: "rgba(40,48,38,0.08)" },
                  ticks: { font: { size: 9 },
                           callback: (v: any) => `${v >= 0 ? "+" : ""}$${v}` } },
           },
