@@ -443,3 +443,36 @@ Volume 3 "From Brain to Eyes" (S53-82, €4.99, Payhip /b/hCWNX) live su tutti i
 
 **S86 verbatim:**
 86a: Nuova tabella Supabase project_status 1-row (CHECK id=1 singleton + BEFORE UPDATE trigger + RLS anon-read). Seed CEO. Hero "Session NN · in progress" rimosso; nuovo box full-width teal #5DCAA5 + meta "Updated Xh ago". live-stats.ts Promise.all con race-condition fix. Tempo relativo client-side. 86b: bande regime su 3 chart admin.html TREND+Reaction+Params. Drift istruzioni: brief assumeva Chart.js, admin.html è Canvas 2D → helper drawRegimeBands(). Palette Widget A (extreme_fear #7dd3fc → extreme_greed #ef4444), alpha 0.20/0.14/0.10. Fetch 2 query (in-range + 1 prior). Legenda regime. Bonus: formatTimeLabel range-aware + showXLabels su mini-chart. Widget B (77c) killed. Brief briefresolved.md/brief_86a+86b_*.
+
+## Rimosso in sessione S95a (2026-06-02) — compaction per rientrare sotto 40KB (S92 già sintetizzata in §10)
+
+### §3 In-flight — blocco S92 (verbatim rimosso da PROJECT_STATE)
+
+### S92 — pulizia, riorganizzazione, programmazione SHIPPED (no bot, no restart)
+- `config/` cleanup: 10 file → `briefresolved.md/` (brief risolti: 88d, stop_buy, S92 crosscheck, umami, TF restore; archivi: Memo brainstorming, VISION v2, HTML sentinella, validation_and_control); `audit_remediation_cover_sheet.md` → `audits/`.
+- `audits/` ristrutturata: sottocartelle `reports/`, `requests/`, `snapshots/`; 4 report e 2 request rinominati `YYYYMMDD_audit[AX].md`; AUDIT_PROTOCOL §4/§5/§7/§8 aggiornati; rimosso concetto `audit_in_flight`.
+- BUSINESS_STATE.md: 5 righe S92 aggiunte §4, compaction S81-S87 (45KB→34KB).
+- PROJECT_STATE.md: compaction header + §3 S91 mattina + aggiornamento §4/§9/§10.
+- **Layer dati audit Area 3 (marketing)**: 5 connettori in `scripts/` (X + `devto_stats` + `umami_stats` con 5 funnel+UTM + `bing_seo_stats` + `gsc_stats`) + orchestratore `marketing_data_refresh`; chiavi in `config/.env.marketing` (gitignored, separato da `.env`); output `marketing_data/` (gitignored). **GSC via OAuth** (login owner, token cache headless — il service account non si autorizzava su proprietà Dominio). **Reddit dormiente**: API self-service chiusa da Reddit → fonte manuale come Payhip; connettore ibrido pronto. Deploy Mac Mini: `git pull` + deps in venv + 3 segreti scp; orchestratore live **5/5 OK headless**. `audit_request_A3` corretto (Mac Mini usa `./venv/bin/python`, non `python3.13`); `audit_request_A1` ricostruito (gemello leggibile del prompt Cowork). Cartelle `audits/` MBP↔MacMini riallineate (dump 25MB fuori repo). Report CEO + memorie aggiornate.
+
+### §4 Decisioni recenti — voci S92 (verbatim rimosse da PROJECT_STATE)
+
+- **2026-05-30 (S92) — layer marketing Area 3: GSC OAuth + Reddit chiuso + env separato SHIPPED (no bot)**.
+  DECISIONE 1 (GSC): auth via **OAuth** (login owner cartone@gmail.com), non service account.
+  RAZIONALE: il service account dà "email not found" in Search Console su proprietà Dominio; OAuth come owner bypassa l'autorizzazione (sei già proprietario). Token cache → headless sul Mac Mini. Auto-detect SA vs OAuth → reversibile senza modifiche.
+  DECISIONE 2 (Reddit): connettore **dormiente**, fonte manuale come Payhip.
+  RAZIONALE: Reddit ha chiuso l'API self-service; tutte le strade esterne (app, JSON pubblico, Devvit, contratto) bloccate. Ibrido praw+JSON pronto se riapre. Vedi memoria `project_reddit_api_closed`.
+  DECISIONE 3 (env): chiavi marketing in `config/.env.marketing` **isolato** da `.env` → un leak marketing non tocca i fondi trading.
+
+- **2026-05-30 (S92) — pulizia/riorganizzazione estremporanea SHIPPED (no bot)**.
+  DECISIONE: sessione dedicata a cleanup config/, audits/, compaction state files.
+  RAZIONALE: PROJECT_STATE a 50KB (+10KB sopra cap), audits/ piatta senza struttura, ~10 brief risolti ancora in config/.
+  ALTERNATIVE CONSIDERATE: fare tutto in fondo a una sessione tecnica — scartato (rischio di fare solo metà e lasciare inconsistenze).
+
+### §4 Decisioni recenti — voce S90 fix slippage A+B (verbatim rimossa da PROJECT_STATE in compaction S95a)
+
+- **2026-05-28 (S90) — fix slippage A+B SHIPPED**.
+  DECISIONE: Opzione A variante Board ("doppio fetch con conferma") al posto della soglia fissa proposta da CC + Opzione B con doppio gate (within-tick + next-tick).
+  RAZIONALE: soglia fissa è impossibile da calibrare su coin con volatilità diverse (BTC vs BONK); doppio fetch è auto-adattivo (50% confirmation ratio funziona uguale per uno spike $82K o per un pump BONK +12%). Doppio gate B è necessario perché `dead_zone_recalibrate` e SELL CHECK vivono nella stessa `check_price_and_execute` — un singolo flag letto in cima alla funzione protegge solo il tick successivo, lasciando scoperto il tick attuale (= esattamente lo scenario 27/05).
+  ALTERNATIVE CONSIDERATE: (B-only) lasciato perdere — non protegge altri path che potrebbero leggere uno spike ticker; (A-only) lasciato perdere — non protegge il caso dove lo spike è "lento" (presente per 5+ secondi); (C-pre-trade SLIPPAGE_BUFFER esteso) parcheggiato come follow-up pre-mainnet, vedi §6.
+  FALLBACK: in `bot_config` si possono cambiare via Supabase i 3 parametri (threshold_pct/confirm_pct/pause_seconds) — oggi sono default argument della funzione, se servono tunable per-coin facciamo passaggio esplicito da config in un brief separato. Soglia 4% scelta a posteriori sui dati osservati (BONK 2.46% slippage S70, BTC 5.83% questo episode); abbastanza largo da non scattare sul rumore mainnet (~0.5-1% tick-to-tick).
