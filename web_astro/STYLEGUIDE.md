@@ -178,78 +178,123 @@ esterni tra le card. Il pattern è preso da `/diary` (entries list).
 
 ## 5. Design tokens (palette + typography)
 
-Definite in `src/styles/global.css` come variabili Tailwind v4.
+Definite in `src/styles/global.css` come variabili Tailwind v4 (`@theme`).
+
+**⚠️ Palette "Pastel Sticker v2" (redesign 2026-06, branch
+`redesign/pastel-sticker-v2`).** Il sito è passato da **dark austero a
+chiaro/giocoso** (coerente con un `.lol`, non un `.com`). Sfondo salvia,
+superfici bianche, accenti pastello desaturati, un'ombra "sticker" morbida
+su ogni card. Lo storico dark di questa sezione è in
+`audits/PROJECT_STATE_archive.md` se serve il "perché" di una scelta vecchia.
 
 ### Background
 
 | token | hex | uso |
 |---|---|---|
-| `bg-bg` | `#0f1626` | sfondo della pagina |
-| `bg-surface` | `#172037` | card, table, dropdown |
-| `bg-surface-hover` | `#1f2a44` | hover su card cliccabili |
+| `bg-bg` | `#D7E0CA` | sfondo pagina — **salvia**, visibile solo nei gap tra le card |
+| `bg-surface` | `#FFFFFF` | **bianco** — contenuto primario: card, tabelle, charts |
+| `bg-panel` | `#E9EEDF` | **salvia pallido** — pannelli di lettura secondari (diary, log, lore) |
+| `bg-surface-hover` | `#F4F7EE` | hover su card cliccabili |
+
+> Regola §15: il testo non galleggia **mai** direttamente sul salvia (`bg`).
+> O sta su `surface`/`panel`, o è incassato in un badge. Pagine prosa-heavy
+> (blueprint, legal, post blog) = un unico "foglio bianco".
 
 ### Border
 
 | token | hex | uso |
 |---|---|---|
-| `border-border` | `#2a3556` | bordo standard di card |
-| `border-border-soft` | `#1c2540` | divisori interni, separatori list |
+| `border-border` | `#D2DCC4` | frame di card/panel — tiene le superfici definite sul salvia |
+| `border-border-soft` | `#DFE4D5` | divisori interni, separatori di lista |
+
+Ogni superficie bianca/panel porta un frame `1px border` per non
+"sciogliersi" nello sfondo salvia.
 
 ### Testo
 
 | token | hex | uso |
 |---|---|---|
-| `text-text` | `#e8ecf5` | testo principale |
-| `text-text-dim` | `#9aa3b8` | testo secondario, paragrafi body |
-| `text-text-muted` | `#5d6680` | etichette mono uppercase, meta |
+| `text-text` | `#283026` | inchiostro principale |
+| `text-text-dim` | `#455041` | corpo / paragrafi di narrazione |
+| `text-text-muted` | `#59634F` | etichette mono uppercase, meta (≥4.5:1 su surface & panel) |
 
 ### Accent (status colors)
 
 | token | hex | uso |
 |---|---|---|
-| `text-primary` | `#7dd3fc` | accenti h1, link primari |
-| `text-primary-hover` | `#38bdf8` | hover stato primary |
-| `text-pos` / `bg-pos` | `#86efac` | positivo, completed, gain |
-| `text-neu` / `bg-neu` | `#67e8f9` | neutro, "active", info |
-| `text-neg` / `bg-neg` | `#fca5a5` | negativo, loss, error |
-| `text-yellow-300` | `#fcd34d` | "todo", "open", warning |
-| `text-amber-400` | `#fbbf24` | "NEW" tag, sezione TF (vs Grid), Max identity |
-| `text-cc` / `bg-cc` | `#818cf8` | Claude Code (CC) identity, on /howwework |
+| `text-primary` / `bg-primary` | `#3F7589` | accenti h1, link, fill primari (powder) |
+| `text-primary-hover` | `#2F6377` | hover stato primary |
+| `text-primary-ink` | `#FFFFFF` | testo **sopra** un fill primary |
+| `text-pos` / `bg-pos` | `#4E8A57` | positivo, completed, gain, "bot health" (salvia) |
+| `text-neu` / `bg-neu` | `#2F7E91` | neutro, "active", info (teal) |
+| `text-neg` / `bg-neg` | `#BC4032` | negativo, loss, error (rosso leggibile) |
+| `text-warn` | `#B79029` | "todo", "open", warning (ocra) |
+| `text-tf` | `#B5862E` | sezione TF (vs Grid), burro/ambra |
+| `text-sand` | `#9A7C3C` | accento "sabbia" (blog, library) |
+| `text-cc` / `bg-cc` | `#6E68B0` | Claude Code (CC) identity, on /howwework (lilla) |
 
-**Regola palette**: mai colori arbitrari (`#22c55e`, `#ef4444`, ecc.).
-Sempre token. Se serve un colore nuovo, prima si aggiunge a
-`global.css` come variabile, poi si usa.
+**Fill soft** (pastiglie/inset tenui, stessa famiglia degli accenti):
+`primary-soft #D6E5EC` · `pos-soft #DCEAD3` · `neg-soft #F2DAD4` ·
+`neu-soft #D2E6EA` · `warn-soft #F2E9CC` · `tf-soft`/`sand-soft #F4ECD3` ·
+`cc-soft #E2E0F2`.
 
-**Role colors** (su `/howwework` e potenzialmente altri posti dove
-appaiono i 3 attori del progetto):
-- CEO (Claude) → `text-pos` `#86efac`
-- Max (board)  → `text-amber-400` `#fbbf24`
-- CC (intern)  → `text-cc` `#818cf8`
+**Regola palette**: mai colori arbitrari inline. Sempre token. Se serve un
+colore nuovo, prima si aggiunge a `global.css`, poi si usa.
+**Unica eccezione documentata = le mascotte dei bot** (vedi sotto).
 
-**Bot colors — eccezione documentata** (su `/dashboard` e `global.css`
-per le `.bot-card`):
-- Grid bot   → `#22c55e` (green saturato, NON `--color-pos`)
-- TF bot     → `#f59e0b` (amber saturato, NON `--color-amber-400`)
-- Sentinel   → `#3b82f6` (blu)
-- Sherpa     → `#ef4444` (rosso)
+**Role colors** (su `/howwework` e dove appaiono gli attori del progetto):
+- CEO (Claude)  → `text-pos`  `#4E8A57` (salvia)
+- Max (board)   → `text-sand` `#9A7C3C` (sabbia)
+- CC (intern)   → `text-cc`   `#6E68B0` (lilla)
+- Auditor (AI)  → `text-neu`  `#2F7E91` (teal)
 
-Sono **identità di prodotto** (i bot del fondo), non palette di
-design system. Sono saturati per leggere i numeri a colpo d'occhio
-sulla dashboard. Vivono in `.bot-card.*-active`, `.bot-pill.live-*`,
-e in alcuni inline `style="color:#..."` su `dashboard.astro`.
-Non sostituire con i token desaturati — perderebbero la loro
-funzione di "indicatore di salute bot".
+**Bot accent tokens — pastello** (barre di colore §2, pill stato,
+indicatori "salute bot" su `/dashboard`):
+- `--color-bot-grid` `#5E8A54` · `--color-bot-tf` `#B5862E` ·
+  `--color-bot-sentinel` `#4E8198` · `--color-bot-sherpa` `#BC4032`
+  (+ relative `-soft`).
+
+Sono desaturati per **vivere sul sistema chiaro** — usali per le barrette
+verticali a fianco dei nomi, le pill LIVE/DRY_RUN, gli inset.
+
+**Bot MASCOTS — override colore brand (NON pastello).** I 5 personaggi-zaino
+(`BotMascot` + `SentinelMascot`/`NewsKeeperMascot`/`SherpaMascotV2`) mantengono
+i **colori brand brillanti originali**, identici alle bot card della homepage,
+perché sono **identità di prodotto** (le "trading card" del fondo), non
+elementi di design system:
+- Grid `#22c55e` · TF `#f59e0b` (col binocolo) · Sentinel `#3b82f6`
+  (ciclope) · NewsKeeper `#a855f7` (giornale "THE TAPE") · Sherpa `#ef4444`
+  (bandierina + chart).
+
+Narrazione: bot **live/trading** = mascotte brillanti; **cervelli
+osservazionali/dry-run** = varianti "locked" scure-ma-dettagliate. Vale
+identica su `/` e `/dashboard §2`. **Non** desaturare le mascotte ai token
+pastello — perderebbero il match con la homepage e la riconoscibilità.
 
 ### Font
 
 ```css
---font-sans: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
---font-mono: "JetBrains Mono", "SF Mono", monospace;
+--font-display: "Bricolage Grotesque", "Inter", sans-serif;  /* NEW */
+--font-sans:    "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+--font-mono:    "JetBrains Mono", "SF Mono", monospace;
 ```
 
-**Sans**: corpo del testo, h1, h2 sezione (titolo principale).
-**Mono**: numeri, etichette uppercase, badge, meta-strip, tabelle.
+**Display** (`font-display`, Bricolage Grotesque): titoli/hero, numeroni delle
+card, header di sezione del redesign. È la voce "giocosa".
+**Sans** (Inter): corpo del testo, narrazione (sottotitoli, blurb, descrizioni).
+**Mono** (JetBrains): numeri, etichette uppercase, badge, meta-strip, tabelle.
 Convenzione: tutto ciò che è "dato strutturato" → mono.
+
+### Ombra "sticker"
+
+```css
+--shadow-sticker:    0 14px 34px rgba(74, 118, 140, 0.16);  /* shadow-sticker */
+--shadow-sticker-sm: 0 6px 16px  rgba(74, 118, 140, 0.12);  /* shadow-sticker-sm */
+```
+
+Card a riposo → `shadow-sticker-sm`; su hover di card cliccabili →
+`-translate-y-0.5` + `shadow-sticker` + `bg-surface-hover`. È l'effetto
+"adesivo staccato dal foglio" che dà il nome al redesign.
 
 ---
 
