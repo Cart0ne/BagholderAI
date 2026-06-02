@@ -88,6 +88,7 @@ Comm Sentinel↔Sherpa↔Grid via Supabase only. Telegram alerts: solo Grid trad
 - **S82→S86 dettaglio archiviato** in compaction S88 (`audits/PROJECT_STATE_archive.md`) + righe sintetiche §10. In breve: S86 status badge + regime overlay admin; S85 RSS feed Dev.to + governance BUSINESS_STATE; S84 SEO fix; S83 NewsKeeper scaffold; S82 homepage redesign Watchtower/Sherpa.
 
 ### Aperti / TODO
+- **🟡 [S95] Cancellare branch orfano `refactor/grid_runner_split`** (GitHub + anteprima Vercel residua): lavoro S76 (split `grid_runner` package + `stop_buy_unlock_hours`) **già in `main`**, branch fermo al 14-05 / 144 commit dietro. Sicuro da rimuovere: `git push origin --delete refactor/grid_runner_split`. Rimandato da Max (2026-06-02).
 - **🟡 [S81 NEW] Cap kicks BONK in mainnet**: con `MAX_DELTA_PCT=0.30` Board BONK sell_pct=2.5, Sherpa può proporre max 3.25 in un tick. Pre-mainnet vorremo forse 0.10-0.15 (slippage mainnet 10× più basso). Brief separato pre-step 5.
 - **🟡 [S70] Sherpa rule-aware sull'hotfix slippage**: ora coperto parzialmente dal per-coin scaling Sprint 2, ma il `sell_pct` Sherpa non conosce esplicitamente `SLIPPAGE_BUFFER_PCT`. Da chiudere prima di `SHERPA_MODE=live`.
 - **🟡 [S70/S78 fase 2] sell_pct + slippage_buffer parametrico per coin**: estensione post-mainnet, parametrizzare per-coin in `bot_config` con dati slippage reali.
