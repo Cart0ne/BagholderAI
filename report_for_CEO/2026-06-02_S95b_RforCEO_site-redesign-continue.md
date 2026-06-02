@@ -3,8 +3,14 @@
 **Data:** 2026-06-02
 **Brief sorgente:** `config/2026-06-02_S95b_brief_site-redesign-continue.md`
 **Tipo:** web-only (nessun bot, nessun restart, nessuna migration)
-**Branch:** `redesign/pastel-sticker-v2` · HEAD `4ea631a` (ultimo redesign `c25e6dc`) · rollback tag `pre-redesign-pastel-v2`
-**`main`:** INTOCCATO — la produzione mostra ancora il sito dark finché non si fa merge.
+**Branch:** `redesign/pastel-sticker-v2` · HEAD `4a6f047` · rollback tag `pre-redesign-pastel-v2` · **pushato su GitHub**
+**Anteprima Vercel (READY):** `https://bagholder-ai-git-redesign-pastel-sticker-v2-cart0nes-projects.vercel.app`
+**`main` (produzione):** look ancora **dark** (i visual del redesign sono solo sul branch finché non si fa merge). Unica eccezione: oggi è stato pubblicato **POST 1 SEO+GEO** su `main` (contenuto, non redesign — vedi §6).
+
+> **Aggiornato in coda di sessione (2026-06-02 sera):** continuazione redesign
+> (mascotte dashboard §2 + STYLEGUIDE §5 + screenshot `after/`), **push del branch
+> → anteprima Vercel pronta per la tua review**, e pubblicazione del primo post
+> SEO+GEO. Dettagli nei §1/§3/§6.
 
 ---
 
@@ -29,6 +35,7 @@ in sessione interattiva, una alla volta, con review nel browser.
 | **legal** (terms/privacy/refund) | foglio bianco, callout sabbia |
 | **howwework** | **isola React rimappata** dark→light (org-chart 4 nodi: CEO salvia/Max sabbia/CC lilla/Auditor teal, curve SVG powder, label inclinate, timeline chiara) |
 | **dashboard** | **la più grossa**: tutte le card/tabelle sticker, **Chart.js ritematizzato** (serie Grid salvia/TF burro, assi/griglie/tooltip chiari), **card NET WORTH** (top-right hero), **card NewsKeeper** tra Sentinel e Sherpa, §1/§5 log col numerone "DAY N" |
+| **dashboard §2 (rifinitura sera)** | **5 mascotte-zaino** nella sezione Instruments, identiche alle bot card della homepage (TF col binocolo, Grid liscio, Sentinel ciclope, NewsKeeper col giornale "THE TAPE", Sherpa con bandierina+chart); le 3 card "cervelli" (Sentinel/NewsKeeper/Sherpa) ora ad **altezza uguale** |
 
 Più un **fix trasversale**: lo "scattino" al footer (presente su TUTTE le pagine) era l'animazione
 reveal `translateY(50px)` sull'elemento più in basso (il footer) che gonfiava l'altezza scrollabile;
@@ -54,18 +61,27 @@ risolto rendendo il footer fade-only. Non era il banner a-ads (ipotesi iniziale 
 **DECISIONE:** Footer scattino risolto col footer fade-only (non riservando spazio min-h al banner).
 **RAZIONALE:** la causa vera è il reveld translateY, non un fetch; il banner regime dashboard è condizionale (riservargli spazio lascerebbe un buco permanente).
 
+**DECISIONE:** Le 5 mascotte sul dashboard tengono i **colori brand brillanti originali** (verde/ambra/blu/viola/rosso), NON i token pastello del redesign.
+**RAZIONALE:** sono **identità di prodotto** (le "trading card" del fondo) e devono combaciare 1:1 con le bot card della homepage. Riuso gli **stessi componenti SVG** della home (non PNG, non una copia) → match garantito e zero divergenza futura. Narrazione coerente: bot live = mascotte brillanti, cervelli dry-run = varianti scure-dettagliate.
+**ALTERNATIVE:** pastellizzarle (le avrei rese anonime e diverse dalla home) / ridisegnarle (inutile, esistono già).
+**FALLBACK:** un solo punto di colore per mascotte se mai si volesse cambiare; documentato in STYLEGUIDE §5.
+
 Tutte le regole as-built sono in `config/refactor/REDESIGN_PATTERNS.md` (token, card numerone, navbar
-pill bianca, §13 fix scattino, §15 prosa-mai-su-salvia, §16 status-chip).
+pill bianca, §13 fix scattino, §15 prosa-mai-su-salvia, §16 status-chip) e in `web_astro/STYLEGUIDE.md §5`
+(palette pastello completa + override mascotte, aggiornato oggi).
 
 ---
 
 ## 3. Cosa NON è stato fatto / pendente
 
-- **Fase 4 (chiusura redesign)**: aggiornare `web_astro/STYLEGUIDE.md §5` (palette pastello),
-  catturare screenshot `after/` per archivio/diario, **push branch → anteprima Vercel → review Max →
-  merge in `main` = go-live**. La decisione di andare live è di Max dopo review completa.
+- **Fase 4 — quasi chiusa.** FATTO oggi: STYLEGUIDE §5 aggiornato, 17 screenshot `after/`
+  catturati, build verde, **branch pushato → anteprima Vercel READY**. **Restano solo 2 passi,
+  entrambi tuoi:** (1) **review dell'anteprima** su desktop **e mobile** (link in testa al report),
+  (2) **merge `branch → main` = go-live**.
 - **Card NET WORTH**: fatta sulla dashboard. Max valuterà se replicarla anche altrove.
-- Nessun impatto su backend/trading: tutto isolato in `web_astro/` su branch.
+- **Pagine private** `admin.html` / `tf.html` / `grid.html`: ancora dark, **non urgenti**
+  (non pubbliche). Conversione al tema pastello rimandata a dopo il merge.
+- Nessun impatto su backend/trading: redesign isolato in `web_astro/` su branch.
 
 ---
 
@@ -83,3 +99,25 @@ cambiando **solo colori**, preservando tutti gli ID/attributi live (verificato i
 Nessuno sul filo trading/bot. Il go-live del nuovo look = merge `branch → main`, a discrezione di Max
 dopo l'anteprima Vercel. Storia per il diary: "il giorno che il sito ha smesso di sembrare un terminale
 e ha iniziato a sembrare un .lol".
+
+---
+
+## 6. Fuori scope redesign — POST 1 SEO+GEO pubblicato (cross-ref S95a)
+
+Su richiesta di Max, oggi è andato **live in produzione** il **primo dei 5 post SEO+GEO** draftati in
+S95a (brief `config/2026-06-02_S95a_brief_content-plan-seo-geo.md`), per **far partire subito il
+monitoraggio** SEO/GEO senza aspettare il merge del redesign.
+
+- **Post:** *"I Used Claude Code to Build a Crypto Trading Bot. 94 Sessions Later, Here's What Works."*
+  → `https://bagholderai.lol/blog/claude-code-crypto-trading-bot`
+- **Perché questo:** è il **POST 1** della sequenza del brief ("primo, massimo impatto", keyword #1 per
+  volume). Completo e già anti-collisione (cross-link ai post $82K-ghost e CEO-lies).
+- **Tecnicamente:** solo `draft:false`. Build verde (18 pagine), in RSS, schema **FAQPage** attivo
+  (6 FAQ). Commit `78483dc` su `main`, deploy produzione **READY**.
+- **Nota look:** esce sul sito **dark** attuale; erediterà il pastello al merge del redesign. Decoupling
+  voluto: la cadenza contenuti non dipende dal go-live del redesign.
+- **Restano in coda** (su OK tuo/CEO, non oggi): POST 2 → 3 → 5 → 4 (quest'ultimo quando i numeri
+  Supabase sono pronti), cadenza 1 ogni 1-2 settimane.
+
+> ⏳ **In attesa:** aggiornamento `BUSINESS_STATE.md` da te/CEO (es. §2 marketing con POST 1 pubblicato).
+> Non lo tocco di mia iniziativa — solo su tua istruzione esplicita.
