@@ -66,6 +66,11 @@ Comm Sentinel↔Sherpa↔Grid via Supabase only. Telegram alerts: solo Grid trad
 
 ## 3. In-flight (settimana 2026-05-18+)
 
+### S95b — redesign sito "Pastel Sticker v2" (dark→light) — WIP su branch, NON merged
+- **Homepage COMPLETA e approvata da Max** su branch **`redesign/pastel-sticker-v2`** (checkpoint commit `c681427`); `main` intoccato → produzione ancora dark; rollback tag `pre-redesign-pastel-v2`.
+- Regole as-built: `config/refactor/REDESIGN_PATTERNS.md`. Brief continuità: `config/2026-06-02_S95b_brief_site-redesign-continue.md`. Memoria `project_site_redesign_pastel_sticker`.
+- **Da fare**: /blog /diary → /library /howwework /roadmap /blueprint → /dashboard (Chart.js light) → legal. Poi: STYLEGUIDE §5, screenshot after/, push branch→Vercel preview→**merge main = go-live** (decisione Max).
+
 ### S95a — content plan SEO+GEO SHIPPED (web-only, no bot, no restart)
 - Enabler FAQ schema (campo `faq` + FAQPage JSON-LD `@graph`) **permanente** nel template: i post nuovi toccano **solo il frontmatter**, mai più backend per le FAQ. 5 post `draft:true` committati (`182f0b0`). Checklist `config/SEO_GEO_post_checklist.md`.
 - **🟡 PENDENTE [S95a]**: review dei 5 draft nei prossimi giorni + pubblicazione **scaglionata** (flip `draft:false` uno alla volta, non tutti insieme). Post 4 = scaffold, riempire numeri `[TODO]` da Supabase prima di pubblicare. **BUSINESS_STATE §2** (strategia SEO+GEO dual-channel) da aggiornare **su OK Max/CEO** (non toccato di iniziativa). Opzionale post-lancio: link reciproci vecchi→nuovi + retrofit FAQ sui 2 post di punta (entrambi toccano i vecchi post → solo con OK, il brief dice "non toccare").
