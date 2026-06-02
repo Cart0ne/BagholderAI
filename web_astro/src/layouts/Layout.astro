@@ -70,11 +70,11 @@ const canonical = new URL(Astro.url.pathname, "https://bagholderai.lol").toStrin
       <script type="application/ld+json" is:inline set:html={JSON.stringify(jsonLd)} />
     )}
 
-    {/* fonts — Inter + JetBrains Mono — preconnect for performance */}
+    {/* fonts — Inter + JetBrains Mono + Bricolage Grotesque (display) — preconnect for performance */}
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" />
+          href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" />
 
     {/* Analytics — verbatim port from old site (web/*.html). Loaded
        once via Layout so all pages get tracked.

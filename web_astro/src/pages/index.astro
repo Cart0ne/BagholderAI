@@ -27,12 +27,18 @@ const stats = {
 
 const team = [
   { emoji: "🤖", name: "Claude", role: "CEO · AI",
-    desc: "Strategy, briefs, documentation" },
+    desc: "Strategy, briefs, documentation", accent: "pos" },
   { emoji: "🧑", name: "Max",    role: "Board · Human",
-    desc: "Veto power, common sense" },
+    desc: "Veto power, common sense", accent: "sand" },
   { emoji: "⚡", name: "CC",     role: "Intern · Claude Code",
-    desc: "Writes the code, no questions asked" },
+    desc: "Writes the code, no questions asked", accent: "cc" },
 ];
+/* per-member accent → concrete classes (full strings so Tailwind detects them) */
+const teamAccent: Record<string, { top: string; role: string; av: string }> = {
+  pos:  { top: "border-t-pos",  role: "text-pos",  av: "bg-pos-soft"  },
+  sand: { top: "border-t-sand", role: "text-sand", av: "bg-sand-soft" },
+  cc:   { top: "border-t-cc",   role: "text-cc",   av: "bg-cc-soft"   },
+};
 
 /* Bot stats. Live from Supabase. Wins/losses metric may be revised
    post-mainnet. See audit S88 finding 1.2.
@@ -106,56 +112,55 @@ const volumes = [
 
   {/* ============================================================ HERO */}
   <section class="mx-auto max-w-6xl px-4 pt-3 pb-4 sm:px-6 sm:pt-4 sm:pb-5">
-    <div class="grid grid-cols-1 items-stretch gap-6 lg:grid-cols-[1.4fr_1fr] lg:gap-12">
+    <div class="grid grid-cols-1 items-stretch gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:gap-11">
 
       {/* left: copy */}
-      <div>
+      <div class="flex flex-col">
         <a href="/library"
-           class="group inline-flex items-center gap-2 rounded-full
-                  border border-neu/30 bg-neu/5 px-2.5 py-0.5
-                  font-mono text-[10px] uppercase tracking-[0.16em]
-                  text-neu transition-colors hover:bg-neu/10">
-          <span class="inline-block h-1.5 w-1.5 rounded-full bg-neu"></span>
+           class="group mb-1 inline-flex w-fit -rotate-[1.5deg] items-center gap-2
+                  rounded-full bg-sand-soft px-3.5 py-2
+                  font-mono text-[10px] font-bold uppercase tracking-[0.12em]
+                  text-sand shadow-sticker-sm transition-transform hover:-translate-y-0.5">
+          <span class="inline-block h-1.5 w-1.5 rounded-full bg-pos"></span>
           Volume 3 — From Brain to Eyes — is live
-          <span class="text-neu/60 transition-transform group-hover:translate-x-0.5">→</span>
+          <span class="transition-transform group-hover:translate-x-0.5">→</span>
         </a>
 
-        <h1 class="mt-4 text-[28px] font-semibold leading-[1.12] tracking-tight
-                   text-text sm:text-[34px] md:text-[38px] md:leading-[1.1]">
-          An AI is CEO of a real
-          crypto trading <span class="text-primary">operation</span>.
+        <h1 class="mt-5 font-display text-[34px] font-extrabold leading-[1.04] tracking-[-0.02em]
+                   text-text sm:text-[44px] md:text-[52px] md:leading-[1.02]">
+          An AI is CEO of a real crypto trading <span
+            class="rounded-xl bg-primary-soft px-2.5 text-primary
+                   [-webkit-box-decoration-break:clone] [box-decoration-break:clone]"
+          >operation.</span>
         </h1>
 
-        <p class="mt-3 max-w-xl text-[14.5px] leading-[1.55] text-text-dim
-                  sm:text-[15px]">
-          You can follow it in real time. No experience. No safety net.
+        <p class="mt-5 max-w-[450px] font-sans text-[16px] font-medium leading-[1.55]
+                  text-text-dim sm:text-[16.5px]">
+          You can follow it in real time. No experience.
+          <span class="whitespace-nowrap">No safety net.</span>
           Every trade, every mistake, every decision documented.
         </p>
 
-        <div class="mt-5 flex flex-wrap items-center gap-3">
+        <div class="mt-auto flex flex-wrap items-center gap-3 pt-8">
           <a href="/blog"
              data-umami-event="cta-read-blog"
-             class="inline-flex items-center gap-2 rounded-lg
-                    bg-primary px-4 py-2.5 text-[13.5px] font-semibold
-                    text-primary-ink transition-colors hover:bg-primary-hover">
+             class="rounded-full bg-primary px-6 py-3 font-display text-[15px]
+                    font-bold text-primary-ink shadow-sticker-sm
+                    transition-transform hover:-translate-y-0.5">
             Read the blog
           </a>
           <a href="/diary"
              data-umami-event="cta-read-diary"
-             class="inline-flex items-center gap-2 rounded-lg
-                    border border-border bg-transparent px-4 py-2.5
-                    text-[13.5px] text-text transition-colors
-                    hover:border-text-muted hover:bg-surface">
+             class="rounded-full bg-surface px-6 py-3 font-display text-[15px]
+                    font-bold text-text shadow-sticker-sm
+                    transition-transform hover:-translate-y-0.5">
             Read the diary
           </a>
           <a href="/dashboard"
              data-umami-event="cta-live-numbers"
-             class="inline-flex items-center gap-2 rounded-lg
-                    border border-border bg-transparent px-4 py-2.5
-                    text-[13.5px] text-text transition-colors
-                    hover:border-text-muted hover:bg-surface">
-            Live numbers
-            <span class="text-text-dim">→</span>
+             class="font-mono text-[10px] font-bold uppercase tracking-[0.12em]
+                    text-primary transition-transform hover:translate-x-0.5">
+            Live numbers →
           </a>
         </div>
 
@@ -164,93 +169,65 @@ const volumes = [
         <span id="stat-session" class="hidden">…</span>
       </div>
 
-      {/* right: live status panel — promotes data above the fold */}
-      <aside class="flex flex-col rounded-xl border border-border-soft
-                    bg-surface/60 p-4 sm:p-5">
-        <div class="mb-3 flex items-center justify-between">
-          <span class="font-mono text-[10px] uppercase tracking-[0.16em]
-                       text-text-muted">
-            <span class="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-pos
-                         shadow-[0_0_8px_rgba(134,239,172,0.7)]"></span>
-            live snapshot
-          </span>
-          <span class="font-mono text-[10px] uppercase tracking-[0.16em]
-                       text-neu">
-            binance testnet · live data
-          </span>
+      {/* right: live snapshot — playful white sticker card with colored tiles.
+          Live data IDs (stat-trades/pnl/days/today-*) preserved for live-stats.ts. */}
+      <div class="relative">
+        <div class="absolute -top-4 right-3 z-10 flex h-14 w-14 rotate-6 items-center
+                    justify-center overflow-hidden rounded-[18px] bg-pos-soft text-[28px]
+                    shadow-sticker">🤖</div>
+
+        <div class="flex h-full flex-col rounded-[24px] border border-border bg-surface
+                    p-5 shadow-sticker sm:p-[22px]">
+
+          <div class="mb-4 flex items-center justify-between">
+            <span class="flex items-center gap-2 font-mono text-[10px] font-bold
+                         uppercase tracking-[0.12em] text-text">
+              <span class="inline-block h-1.5 w-1.5 rounded-full bg-pos"></span>
+              live snapshot
+            </span>
+            <span class="font-mono text-[9px] font-bold uppercase tracking-[0.12em]
+                         text-text-muted">testnet · live</span>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2.5">
+            <div class="rounded-2xl bg-primary-soft px-4 py-3.5">
+              <div class="font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-primary/80">orders</div>
+              <div id="stat-trades" data-count="0"
+                   class="mt-0.5 font-mono text-[28px] font-bold tabular-nums text-text">0</div>
+            </div>
+            <div class="rounded-2xl bg-pos-soft px-4 py-3.5">
+              <div class="font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-pos/90">total P&amp;L</div>
+              <div id="stat-pnl" data-count="0"
+                   class="mt-0.5 font-mono text-[28px] font-bold tabular-nums text-neg">$0.00</div>
+            </div>
+            <div class="rounded-2xl bg-sand-soft px-4 py-3.5">
+              <div class="font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-sand">days running</div>
+              <div id="stat-days" data-count="0"
+                   class="mt-0.5 font-mono text-[28px] font-bold tabular-nums text-text">0</div>
+            </div>
+            <div class="rounded-2xl bg-primary-soft px-4 py-3.5">
+              <div class="font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-primary/80">budget</div>
+              <div class="mt-0.5 flex items-baseline gap-1.5 font-mono font-bold tabular-nums text-text">
+                <span class="text-[28px]">$600</span>
+                <span class="text-[11px] font-bold uppercase tracking-[0.1em] text-text-muted">testnet</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-auto flex gap-2.5 pt-3.5">
+            <div class="flex-1 rounded-[14px] bg-bg px-3.5 py-3">
+              <div class="font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-text-muted">today P&amp;L</div>
+              <div id="stat-today-pnl"
+                   class="mt-0.5 font-mono text-[16px] font-bold tabular-nums text-pos">$0.00</div>
+            </div>
+            <div class="flex-1 rounded-[14px] bg-bg px-3.5 py-3">
+              <div class="font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-text-muted">today trades</div>
+              <div id="stat-today-trades"
+                   class="mt-0.5 font-mono text-[16px] font-bold tabular-nums text-text">0</div>
+            </div>
+          </div>
         </div>
-        <dl class="grid grid-cols-2 gap-x-5 gap-y-3 sm:grid-cols-4 lg:grid-cols-2">
-          <div>
-            <dt class="font-mono text-[10px] uppercase tracking-[0.14em] text-text-muted">
-              orders
-            </dt>
-            <dd id="stat-trades" data-count="0"
-                class="font-mono text-[20px] font-semibold text-text tabular-nums">
-              0
-            </dd>
-          </div>
-          <div>
-            <dt class="font-mono text-[10px] uppercase tracking-[0.14em] text-text-muted">
-              total P&amp;L
-            </dt>
-            <dd id="stat-pnl" data-count="0"
-                class="font-mono text-[20px] font-semibold text-pos tabular-nums">
-              $0.00
-            </dd>
-          </div>
-          <div>
-            <dt class="font-mono text-[10px] uppercase tracking-[0.14em] text-text-muted">
-              days running
-            </dt>
-            <dd id="stat-days" data-count="0"
-                class="font-mono text-[20px] font-semibold text-text tabular-nums">
-              0
-            </dd>
-          </div>
-          <div>
-            <dt class="font-mono text-[10px] uppercase tracking-[0.14em] text-text-muted">
-              budget
-            </dt>
-            <dd class="font-mono text-[20px] font-semibold text-neu">
-              {stats.mode}
-              <span class="mt-1 block font-mono text-[10px] font-normal leading-[1.4] text-text-dim">
-                $500 Grid · $100 TF <span class="text-text-muted">(Tier 1-2)</span>
-              </span>
-            </dd>
-          </div>
-        </dl>
-
-        {/* Separator + today row (P&L + trades) — fills the extra height
-            gained by stretching the panel. Same 2-col layout as boxes above. */}
-        <div class="mt-4 border-t border-border-soft"></div>
-        <dl class="mt-4 grid grid-cols-2 gap-x-5">
-          <div>
-            <dt class="font-mono text-[10px] uppercase tracking-[0.14em] text-text-muted">
-              today P&amp;L
-            </dt>
-            <dd id="stat-today-pnl"
-                class="font-mono text-[20px] font-semibold text-pos tabular-nums">
-              $0.00
-            </dd>
-          </div>
-          <div>
-            <dt class="font-mono text-[10px] uppercase tracking-[0.14em] text-text-muted">
-              today trades
-            </dt>
-            <dd id="stat-today-trades"
-                class="font-mono text-[20px] font-semibold text-text tabular-nums">
-              0
-            </dd>
-          </div>
-        </dl>
-
-        <a href="/dashboard"
-           data-umami-event="cta-full-dashboard"
-           class="mt-auto pt-4 block text-right font-mono text-[10.5px] uppercase
-                  tracking-[0.14em] text-text-dim hover:text-primary">
-          full dashboard →
-        </a>
-      </aside>
+      </div>
     </div>
   </section>
 
@@ -258,56 +235,65 @@ const volumes = [
   {/* Brief 86a — dynamic status from Supabase project_status table.
        Full-width under the hero, above the Blog section. Updatable by
        CEO/Max/CC via plain UPDATE on the row; no deploy needed. Hidden
-       by default; live-stats.ts unhides after the row resolves. */}
-  <section class="mx-auto max-w-6xl px-4 pt-1 pb-3 sm:px-6 sm:pt-2 sm:pb-4">
+       by default; live-stats.ts unhides after the row resolves.
+       min-h reserves the slot so the late reveal doesn't push the page
+       down (CLS jump felt at the footer). S95. */}
+  <section class="mx-auto min-h-[72px] max-w-6xl px-4 pt-1 pb-3 sm:px-6 sm:pt-2 sm:pb-4">
     <div
       id="project-status-box"
-      class="hidden rounded-lg flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1"
-      style="background: rgba(94, 202, 165, 0.06);
-             border: 1px solid rgba(94, 202, 165, 0.12);
-             padding: 14px 16px;">
-      <div class="flex items-baseline gap-x-3 min-w-0 flex-shrink">
-        <span id="project-status-emoji" style="font-size: 22px; line-height: 1;"></span>
+      class="hidden flex flex-wrap items-center justify-between gap-x-4 gap-y-1
+             rounded-2xl border border-border bg-surface px-4 py-3.5 shadow-sticker-sm">
+      <div class="flex min-w-0 flex-shrink items-center gap-x-3">
+        <span id="project-status-emoji" class="text-[22px] leading-none"></span>
         <span id="project-status-text"
-              style="font-size: 16px; font-weight: 500; color: #5DCAA5;
-                     line-height: 1.4;"></span>
+              class="font-mono text-[12px] font-medium leading-[1.4] text-text"></span>
       </div>
       <span id="project-status-meta"
-            class="font-mono text-text-dim ml-auto whitespace-nowrap"
-            style="font-size: 12px;"></span>
+            class="ml-auto whitespace-nowrap font-mono text-[10px] uppercase
+                   tracking-[0.08em] text-text-muted"></span>
     </div>
   </section>
 
   {/* =============================================================== BLOG */}
   {/* Latest 3 published blog posts. Whole block links to /blog (same UX
        as the diary section below). Titles only — no subtitle, no summary. */}
-  <section class="reveal mx-auto max-w-6xl px-4 pt-4 pb-6 sm:px-6 sm:pt-5 sm:pb-7">
+  <section class="reveal mx-auto max-w-6xl px-4 py-4 sm:px-6 sm:py-5">
     <div class="mb-4 flex items-baseline justify-between">
-      <h2 class="font-mono text-[11px] uppercase tracking-[0.18em] text-pos">
-        § · Blog
+      <h2 class="font-display text-[22px] font-extrabold tracking-[-0.01em] text-text">
+        Latest <span class="text-sand">posts</span>
       </h2>
-      <span class="font-mono text-[10px] uppercase tracking-[0.16em]
+      <span class="font-mono text-[10px] font-bold uppercase tracking-[0.14em]
                    text-text-muted">
-        latest posts
+        from the blog
       </span>
     </div>
 
-    <a href="/blog" class="block group" aria-label="Read the blog">
-      <ul class="divide-y divide-border border-y border-border">
-        {homeBlogPosts.map((post) => (
-          <li class="py-3 px-1 flex items-baseline gap-3
-                     text-text font-sans transition-colors
-                     group-hover:text-text">
-            <span class="flex-1 truncate text-[14px]">{post.data.title}</span>
-            <span class="font-mono text-[11px] text-text-muted whitespace-nowrap">
-              {fmtBlogDate(post.data.date)}
-            </span>
-          </li>
-        ))}
+    <a href="/blog" class="group block" aria-label="Read the blog">
+      <ul class="flex flex-col gap-3">
+        {homeBlogPosts.map((post) => {
+          const d = post.data.date;
+          const mon = d.toLocaleDateString("en-US", { month: "short" });
+          const day = d.getDate();
+          const yr = d.getFullYear();
+          return (
+            <li class="grid grid-cols-[auto_1fr] items-center gap-5
+                       rounded-2xl border border-border border-l-4 border-l-sand
+                       bg-surface px-5 py-4
+                       shadow-sticker-sm transition hover:-translate-y-0.5
+                       hover:bg-surface-hover hover:shadow-sticker">
+              <div class="min-w-[56px] text-center">
+                <span class="block font-mono text-[9px] font-bold uppercase tracking-[0.16em] text-text-muted">{mon}</span>
+                <span class="block font-display text-[34px] font-extrabold leading-none text-sand">{day}</span>
+                <span class="block font-mono text-[9.5px] uppercase tracking-[0.06em] text-text-muted">{yr}</span>
+              </div>
+              <span class="font-sans text-[14.5px] leading-[1.45] text-text">{post.data.title}</span>
+            </li>
+          );
+        })}
       </ul>
-      <div class="mt-3 text-right font-mono text-[10.5px] uppercase
+      <div class="mt-3 text-right font-mono text-[10px] font-bold uppercase
                   tracking-[0.14em] text-text-dim
-                  group-hover:text-primary transition-colors">
+                  transition-colors group-hover:text-primary">
         Read the blog →
       </div>
     </a>
@@ -317,12 +303,12 @@ const volumes = [
   {/* The hero of the home — visible without much scrolling.
        In a future session this will become the "office scene" with the
        4 bots actually working. */}
-  <section class="reveal mx-auto max-w-6xl px-4 pt-4 pb-8 sm:px-6 sm:pt-5 sm:pb-10">
+  <section class="reveal mx-auto max-w-6xl px-4 py-4 sm:px-6 sm:py-5">
     <div class="mb-5 flex items-baseline justify-between">
-      <h2 class="font-mono text-[11px] uppercase tracking-[0.18em] text-pos">
-        The AI Bots <span class="text-text-muted">· at work</span>
+      <h2 class="font-display text-[22px] font-extrabold tracking-[-0.01em] text-text">
+        The AI <span class="text-pos">bots</span>
       </h2>
-      <span class="font-mono text-[10px] uppercase tracking-[0.16em]
+      <span class="font-mono text-[10px] font-bold uppercase tracking-[0.14em]
                    text-text-muted">
         ● live · supabase
       </span>
@@ -341,94 +327,82 @@ const volumes = [
   {/* Last 3 diary entries from Supabase, populated by live-stats.ts.
        Each row links to /diary (no deep links yet). The 3 rows render
        as skeletons server-side and get filled in client-side. */}
-  <section class="reveal mx-auto max-w-6xl px-4 pt-4 pb-6 sm:px-6 sm:pt-5 sm:pb-7">
+  <section class="reveal mx-auto max-w-6xl px-4 py-4 sm:px-6 sm:py-5">
     <div class="mb-4 flex items-baseline justify-between">
-      <h2 class="font-mono text-[11px] uppercase tracking-[0.18em] text-pos">
-        § · Development diary
+      <h2 class="font-display text-[22px] font-extrabold tracking-[-0.01em] text-text">
+        Development <span class="text-pos">diary</span>
       </h2>
-      <span class="font-mono text-[10px] uppercase tracking-[0.16em]
+      <span class="font-mono text-[10px] font-bold uppercase tracking-[0.14em]
                    text-text-muted">
         ● live · supabase
       </span>
     </div>
 
-    <a href="/diary" class="block group" aria-label="Read the development diary">
-      <ul id="home-diary-list"
-          class="divide-y divide-border border-y border-border">
-        <li class="diary-row py-3 px-1 flex items-baseline gap-3
-                   text-text font-sans transition-colors
-                   group-hover:text-text" data-slot="0">
-          <span class="font-mono text-[11px] text-text-muted whitespace-nowrap"
-                data-field="session">Session —</span>
-          <span class="flex-1 truncate text-[14px]"
-                data-field="title">…</span>
-          <span class="font-mono text-[11px] text-text-muted whitespace-nowrap"
-                data-field="date">—</span>
-        </li>
-        <li class="diary-row py-3 px-1 flex items-baseline gap-3
-                   text-text font-sans transition-colors
-                   group-hover:text-text" data-slot="1">
-          <span class="font-mono text-[11px] text-text-muted whitespace-nowrap"
-                data-field="session">Session —</span>
-          <span class="flex-1 truncate text-[14px]"
-                data-field="title">…</span>
-          <span class="font-mono text-[11px] text-text-muted whitespace-nowrap"
-                data-field="date">—</span>
-        </li>
-        <li class="diary-row py-3 px-1 flex items-baseline gap-3
-                   text-text font-sans transition-colors
-                   group-hover:text-text" data-slot="2">
-          <span class="font-mono text-[11px] text-text-muted whitespace-nowrap"
-                data-field="session">Session —</span>
-          <span class="flex-1 truncate text-[14px]"
-                data-field="title">…</span>
-          <span class="font-mono text-[11px] text-text-muted whitespace-nowrap"
-                data-field="date">—</span>
-        </li>
+    <a href="/diary" class="group block" aria-label="Read the development diary">
+      <ul id="home-diary-list" class="flex flex-col gap-3">
+        {[0, 1, 2].map((slot) => (
+          <li class="diary-row grid grid-cols-[auto_1fr] items-center gap-5
+                     rounded-2xl border border-border border-l-4 border-l-pos
+                     bg-surface px-5 py-4
+                     shadow-sticker-sm transition hover:-translate-y-0.5
+                     hover:bg-surface-hover hover:shadow-sticker"
+              data-slot={slot}>
+            <div class="min-w-[56px] text-center">
+              <span class="block font-mono text-[9px] font-bold uppercase tracking-[0.16em] text-text-muted">session</span>
+              <span class="block font-display text-[34px] font-extrabold leading-none text-pos"
+                    data-field="session">—</span>
+              <span class="block font-mono text-[9.5px] uppercase tracking-[0.06em] text-text-muted"
+                    data-field="date">—</span>
+            </div>
+            <p class="font-sans text-[14.5px] leading-[1.45] text-text-dim"
+               data-field="title">…</p>
+          </li>
+        ))}
       </ul>
-      <div class="mt-3 text-right font-mono text-[10.5px] uppercase
+      <div class="mt-3 text-right font-mono text-[10px] font-bold uppercase
                   tracking-[0.14em] text-text-dim
-                  group-hover:text-primary transition-colors">
+                  transition-colors group-hover:text-primary">
         Read the full diary →
       </div>
     </a>
   </section>
 
   {/* ============================================================== TEAM */}
-  <section class="reveal mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10">
-    <h2 class="mb-5 font-mono text-[11px] uppercase tracking-[0.18em] text-pos">
-      The Team
+  <section class="reveal mx-auto max-w-6xl px-4 py-4 sm:px-6 sm:py-5">
+    <h2 class="mb-5 font-display text-[22px] font-extrabold tracking-[-0.01em] text-text">
+      The team
     </h2>
 
-    <div class="grid grid-cols-3 gap-3 reveal-stagger">
-      {team.map(m => (
-        <div class="flex items-center gap-3 rounded-xl border border-border-soft
-                    bg-surface/50 p-3 sm:p-4">
-          <div class="text-2xl sm:text-3xl">{m.emoji}</div>
-          <div class="min-w-0">
-            <div class="text-[14px] font-semibold text-text sm:text-[15px]">
-              {m.name}
+    <div class="grid grid-cols-1 gap-3 sm:grid-cols-3 reveal-stagger">
+      {team.map(m => {
+        const a = teamAccent[m.accent];
+        return (
+          <a href="/howwework"
+             aria-label={`How we work — ${m.name}`}
+             class={`group flex items-start gap-3.5 rounded-2xl border border-border
+                     border-t-[3px] ${a.top} bg-surface p-4 shadow-sticker-sm
+                     transition hover:-translate-y-0.5 hover:shadow-sticker`}>
+            <div class={`flex h-12 w-12 flex-shrink-0 items-center justify-center
+                         rounded-xl ${a.av} text-2xl`}>{m.emoji}</div>
+            <div class="min-w-0">
+              <div class="font-display text-[16px] font-extrabold text-text">{m.name}</div>
+              <div class={`mt-0.5 font-mono text-[9.5px] uppercase tracking-[0.12em] ${a.role}`}>{m.role}</div>
+              <div class="mt-1.5 font-sans text-[12.5px] leading-[1.45] text-text-dim">{m.desc}</div>
             </div>
-            <div class="font-mono text-[10px] uppercase tracking-[0.14em]
-                        text-text-muted">{m.role}</div>
-            <div class="mt-1 hidden text-[12.5px] leading-[1.4]
-                        text-text-dim sm:block">
-              {m.desc}
-            </div>
-          </div>
-        </div>
-      ))}
+          </a>
+        );
+      })}
     </div>
   </section>
 
   {/* ============================================================ STORY */}
-  <section class="reveal mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10">
+  <section class="reveal mx-auto max-w-6xl px-4 py-4 sm:px-6 sm:py-5">
     <div class="mb-5 flex items-baseline justify-between">
-      <h2 class="font-mono text-[11px] uppercase tracking-[0.18em] text-pos">
-        The Story <span class="text-text-muted">· books</span>
+      <h2 class="font-display text-[22px] font-extrabold tracking-[-0.01em] text-text">
+        The <span class="text-primary">story</span>
       </h2>
       <a href="/library"
-         class="font-mono text-[10.5px] uppercase tracking-[0.14em]
+         class="font-mono text-[10px] font-bold uppercase tracking-[0.14em]
                 text-text-dim hover:text-primary">
         Library →
       </a>
@@ -436,9 +410,10 @@ const volumes = [
 
     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 reveal-stagger">
       {volumes.map(v => (
-        <article class="overflow-hidden rounded-xl border border-border-soft
-                        bg-surface/40 transition-colors hover:border-border">
-          <div class="aspect-[4/3] w-full bg-bg/60">
+        <article class="group flex flex-col overflow-hidden rounded-2xl border border-border
+                        bg-surface shadow-sticker-sm transition
+                        hover:-translate-y-1 hover:shadow-sticker">
+          <div class="aspect-square w-full bg-primary-soft">
             {v.cover ? (
               <img src={v.cover} alt={v.title}
                    class="h-full w-full object-cover" loading="lazy"/>
@@ -450,15 +425,15 @@ const volumes = [
               </div>
             )}
           </div>
-          <div class="p-4">
-            <div class="font-mono text-[10px] uppercase tracking-[0.16em]
+          <div class="flex flex-1 flex-col p-4">
+            <div class="font-mono text-[9px] font-bold uppercase tracking-[0.16em]
                         text-text-muted">
               {v.tag}
             </div>
-            <h3 class="mt-1 text-[16.5px] font-semibold text-text">
+            <h3 class="mt-1 font-display text-[16px] font-extrabold text-text">
               {v.title}
             </h3>
-            <p class="mt-2 text-[12.5px] leading-[1.5] text-text-dim">
+            <p class="mt-2 font-sans text-[12.5px] leading-[1.5] text-text-dim">
               {v.desc}
             </p>
 
@@ -468,10 +443,10 @@ const volumes = [
                    aria-label={`Get "${v.title}" on Payhip`}
                    data-umami-event="buy-click"
                    data-umami-event-source={`home-story-${v.vol}`}
-                   class="inline-flex items-center gap-1.5 rounded-lg
-                          bg-primary/10 border border-primary/30
-                          px-2.5 py-1 text-[11.5px] font-medium text-primary
-                          transition-colors hover:bg-primary/15">
+                   class="inline-flex items-center gap-1.5 rounded-full
+                          bg-primary px-3.5 py-1.5 text-[11.5px] font-bold
+                          text-primary-ink shadow-sticker-sm
+                          transition-transform hover:-translate-y-0.5">
                   Get on Payhip →
                 </a>
                 <a href={v.preview} target="_blank" rel="noopener noreferrer"
@@ -483,7 +458,7 @@ const volumes = [
               </div>
             )}
 
-            <div class="mt-3 font-mono text-[10px] uppercase
+            <div class="mt-auto pt-3 font-mono text-[9.5px] uppercase
                         tracking-[0.14em] text-text-muted">
               {v.meta}
             </div>

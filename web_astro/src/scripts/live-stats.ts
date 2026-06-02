@@ -260,9 +260,14 @@ diaryPromise.then(rows => {
     const sEl = slot.querySelector('[data-field="session"]');
     const tEl = slot.querySelector('[data-field="title"]');
     const dEl = slot.querySelector('[data-field="date"]');
-    if (sEl) sEl.textContent = `Session ${row.session}`;
+    if (sEl) sEl.textContent = String(row.session);
     if (tEl) tEl.textContent = row.title;
-    if (dEl) dEl.textContent = row.date;
+    if (dEl) {
+      const d = new Date(`${row.date}T00:00:00`);
+      dEl.textContent = isNaN(d.getTime())
+        ? row.date
+        : d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    }
   });
   /* If fewer than 3 entries exist (unlikely), hide remaining slots
      so we don't show empty placeholders. */
