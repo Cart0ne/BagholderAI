@@ -167,6 +167,9 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 
 | Data | Decisione | Perché |
 |---|---|---|
+| 2026-06-01 (S94a) | **Regex classifier morto per severity/direction, sostituito con Haiku S2 + Python pre-processing** (Brief S94a) | 65% FP, direzioni invertite, inutilizzabile per trading |
+| 2026-06-01 (S94a) | **Feed macro aggiunti (BBC→CNBC Economy + MarketWatch).** BBC scartata post-verifica: contenuto general business, zero macro | Serve catturare Fed/tariffe/inflation prima che arrivino su testate crypto |
+| 2026-06-01 (S94a) | **Daily macro feed check fino a T+7 (8 giugno)** | Max ha corretto il piano "aspettiamo 7 giorni", verifica attiva batte osservazione passiva |
 | 2026-05-30 (S92) | **Protocollo cross-check anti-assenso su tre mandati (CEO / CC / Auditor)**, non un "Decision Panel" separato | La versione panel di CC rendeva Max corriere tra sessioni fresche; cablare un obbligo nel mandato esistente di ogni agente riusa il flusso, zero infrastruttura nuova. CEO: auto-obiezione nei brief + verifica critica del lavoro CC. CC: ≥1 obiezione tecnica prima di implementare. Auditor: caccia incoerenze deciso/implementato/reale |
 | 2026-05-30 (S92) | **Convenzione naming brief/report**: `YYYY-MM-DD_SXX[z]_brief_SCOPE` / `YYYY-MM-DD_SXX[z]_RforCEO_SCOPE`. Chiave accoppiamento Auditor = sessione + SCOPE (slug identico ereditato dal brief) | L'Auditor non vede le conversazioni, lavora solo sugli artefatti; senza accoppiamento la cross-analisi è cieca |
 | 2026-05-30 (S92) | **Zero retrofit file pre-S88**; grandfather alla baseline degli audit del 27/05 (S87) | Rinominare il passato mentre si pulisce il presente crea nuovo drift |
@@ -216,6 +219,9 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 
 | Vincolo | Scadenza | Note |
 |---|---|---|
+| **NewsKeeper T+7 quality review** | ~8 giugno 2026 | Verifica qualità: tasso FP, direzioni corrette, lead/lag vs Sentinel, costo Haiku. Sblocca decisione timing Sentinel |
+| **Correzione feed CNBC Economy** | ✅ FATTA (S94, commit `8515378`) | BBC→CNBC Economy + MarketWatch. Restart Mac Mini 22:04 CET, CNBC contribuisce `haiku_s2` verificato. (Era "da dare a CC" nel paste, già shippata) |
+| **Site redesign light theme** | sessione dedicata 2 giugno | Con Claude Design |
 | **Apple Notes pulizia: cancellare 8 note obsolete (Max)** | A discrezione Max | 4 note attive da mantenere, 8 obsolete da cancellare manualmente |
 | **Go-live mainnet** | Nessuna data fissa | Dipende da condizioni di mercato (bear+bull+laterale osservati). Sequenza: NewsKeeper build (S2-S4 residue) → Sherpa testnet LIVE → dry_run → Board approval |
 | **Sherpa LIVE su testnet** | Post Brain Analysis 2 ✅ | Un parametro alla volta (sell_pct primo). Bloccato da timing Sentinel lento (slow loop 4h) |
@@ -232,6 +238,9 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 
 | Cosa | Perché |
 |---|---|
+| **Sentinel Phase B** | Parcheggiata fino a post T+7 NewsKeeper (8 giugno) |
+| **Sherpa testnet activation** | Bloccata da Brain Analysis che dipende da NewsKeeper pulito |
+| **Audit Area 2** | Finestra scaduta, riprogrammare post-redesign |
 | **Reset testnet** | Rimandato: prima i fix (stop_buy ✅ + Sentinel/NewsKeeper). Possibile sblocco da un rimbalzo di mercato. "Mai capitolare / no cash morto" vale solo per mainnet, non per il testnet |
 | **Decisione timing Sentinel (Phase B vs accelerare NewsKeeper)** | Parcheggiata fino a post prima analisi NewsKeeper (lun 1 giugno) |
 | **Scheduled task Area 2 e Area 3 non automatizzati** | Solo l'audit Area 1 gira come Cowork scheduled task. Area 2/3 parcheggiati in Apple Notes todo, da configurare in sessione dedicata |
