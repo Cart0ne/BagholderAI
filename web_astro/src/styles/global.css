@@ -411,8 +411,10 @@ body {
 .bot-footer .arrow.sherpa   { color: var(--color-bot-sherpa); font-weight: 700; }
 
 @media (max-width: 700px) {
+  /* Stack all 4 bot cards full-width (1 per row) on mobile — at half-width
+     the stat bars (bar + right value, esp. Sherpa) collide. */
   .bots-row  { flex-wrap: wrap; }
-  .bot-card  { flex: 1 1 calc(50% - 14px); max-width: none; }
+  .bot-card  { flex: 1 1 100%; max-width: none; }
 }
 
 /* — diary log entries — show/hide pattern from legacy site —————————
