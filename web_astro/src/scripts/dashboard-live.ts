@@ -744,10 +744,12 @@ const RECENT_TRADES_LIMIT = 6;
 
     const fmtTradeTime = (iso: string): string => {
       const d = new Date(iso);
-      return d.toLocaleString("en-US", {
-        month: "short", day: "numeric",
-        hour: "2-digit", minute: "2-digit", hour12: false,
-      });
+      /* Build manually: toLocaleString joins date+time with a locale
+         separator ("May 27 at 23:45" on recent Safari/ICU) that's long and
+         inconsistent. "May 27 23:45" is shorter and stable cross-browser. */
+      const date = d.toLocaleString("en-US", { month: "short", day: "numeric" });
+      const time = d.toLocaleString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false });
+      return `${date} ${time}`;
     };
     const fmtCost = (n: number): string => `$${n.toFixed(2)}`;
     const fmtPnl  = (n: number): string => `${n >= 0 ? "+" : "-"}$${Math.abs(n).toFixed(2)}`;
