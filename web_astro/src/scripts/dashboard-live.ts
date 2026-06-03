@@ -1317,15 +1317,27 @@ type DailyPnlRow = {
       return todayStr === r.lastDate;
     });
 
-    /* ----- Bar colors with in-progress treatment on last bar ----- */
-    const gridColors = barRows.map((_r, i) => inProgressFlags[i]
-      ? "rgba(78,138,87,0.32)" : "rgba(78,138,87,0.7)");
-    const gridBorders = barRows.map((_r, i) => inProgressFlags[i]
-      ? "rgba(78,138,87,0.55)" : "#4E8A57");
-    const tfColors = barRows.map((_r, i) => inProgressFlags[i]
-      ? "rgba(181,134,46,0.32)" : "rgba(181,134,46,0.7)");
-    const tfBorders = barRows.map((_r, i) => inProgressFlags[i]
-      ? "rgba(181,134,46,0.55)" : "#B5862E");
+    /* ----- Bar colors: per-bot hue + SIGN (gain = base, loss = darker
+       same-hue) + in-progress fade on the last (current) period.
+       Legend in dashboard.astro mirrors these 4 colors. ----- */
+    const GRID_GAIN = "78,138,87",  GRID_LOSS = "46,88,54";    // sage / dark sage
+    const TF_GAIN   = "181,134,46", TF_LOSS   = "122,90,28";   // butter / dark butter
+    const GRID_GAIN_HEX = "#4E8A57", GRID_LOSS_HEX = "#2E5836";
+    const TF_GAIN_HEX   = "#B5862E", TF_LOSS_HEX   = "#7A5A1C";
+    const gridColors = barRows.map((r, i) => {
+      const rgb = r.grid < 0 ? GRID_LOSS : GRID_GAIN;
+      return `rgba(${rgb},${inProgressFlags[i] ? 0.32 : 0.7})`;
+    });
+    const gridBorders = barRows.map((r, i) =>
+      inProgressFlags[i] ? `rgba(${r.grid < 0 ? GRID_LOSS : GRID_GAIN},0.55)`
+                         : (r.grid < 0 ? GRID_LOSS_HEX : GRID_GAIN_HEX));
+    const tfColors = barRows.map((r, i) => {
+      const rgb = r.tf < 0 ? TF_LOSS : TF_GAIN;
+      return `rgba(${rgb},${inProgressFlags[i] ? 0.32 : 0.7})`;
+    });
+    const tfBorders = barRows.map((r, i) =>
+      inProgressFlags[i] ? `rgba(${r.tf < 0 ? TF_LOSS : TF_GAIN},0.55)`
+                         : (r.tf < 0 ? TF_LOSS_HEX : TF_GAIN_HEX));
 
     /* ----- Update labels ----- */
     const cumLabelEl = document.getElementById("cumul-label");
