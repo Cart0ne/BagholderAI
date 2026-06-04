@@ -58,11 +58,17 @@ def init_avg_cost_state_from_db(bot):
     if not bot.trade_logger:
         return
     try:
+        # S96a clean slate: replay only the current testnet cycle. Pre-reset
+        # trades stay in the DB tagged with the closed cycle and are skipped,
+        # so the bot boots with a clean state on the reset wallet.
+        from db.client import get_current_cycle
+        _cycle = get_current_cycle(bot.trade_logger.client, bot.symbol)
         result = (
             bot.trade_logger.client.table("trades")
             .select("side,amount,price,cost,fee,fee_asset,created_at")
             .eq("symbol", bot.symbol)
             .eq("config_version", "v3")
+            .eq("cycle", _cycle)
             .order("created_at", desc=False)
             .execute()
         )

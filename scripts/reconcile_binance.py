@@ -123,13 +123,15 @@ def aggregate_binance_fills(fills):
 # ============================================================
 
 def fetch_db_trades(client, symbol, limit=DB_LOOKBACK):
-    """Recent v3 grid trades for a symbol, sorted DESC by created_at."""
+    """Recent v3 grid trades for a symbol, current cycle only, DESC by created_at."""
+    from db.client import get_current_cycle
     res = (
         client.table("trades")
         .select("id,created_at,symbol,side,amount,price,cost,fee,exchange_order_id,managed_by,config_version")
         .eq("symbol", symbol)
         .eq("config_version", "v3")
         .eq("managed_by", "grid")
+        .eq("cycle", get_current_cycle(client, symbol))  # S96a: reconcile live cycle only
         .order("created_at", desc=True)
         .limit(limit)
         .execute()

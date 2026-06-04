@@ -34,7 +34,7 @@ import logging
 import time
 from datetime import timezone
 
-from db.client import get_client
+from db.client import get_client, get_current_cycle
 
 _logger = logging.getLogger("bagholderai.snapshots")
 
@@ -126,6 +126,7 @@ def write_state_snapshot(bot, symbol: str) -> None:
             "stop_loss_active": bool(getattr(bot, "_stop_loss_triggered", False)),
             "stop_buy_active": bool(getattr(bot, "_stop_buy_active", False)),
             "last_trade_at": last_trade_at_iso,
+            "cycle": get_current_cycle(get_client(), symbol),  # S96a clean slate
         }
 
         # Brief 79c (S79): skip if nothing meaningful changed AND last

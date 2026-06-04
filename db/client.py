@@ -18,6 +18,42 @@ def get_client():
     return create_client(DatabaseConfig.SUPABASE_URL, DatabaseConfig.SUPABASE_KEY)
 
 
+# --- Testnet cycle (S96a clean slate) ---------------------------------------
+# Current cycle label (e.g. 'testnet_2') lives in bot_config.cycle, set by
+# migration_20260604_s96a_clean_slate_cycle.sql. All grid rows are uniform.
+# Writers stamp it on new rows; readers (boot replay, reserve, dashboards)
+# filter by it so a monthly Binance testnet reset is handled by tagging the
+# closed cycle, never deleting data. Next reset = UPDATE bot_config.cycle.
+import time as _time
+_CYCLE_CACHE = {"val": None, "ts": 0.0}
+_CYCLE_TTL = 300  # seconds
+
+
+def get_current_cycle(client=None, symbol: Optional[str] = None) -> str:
+    """Return the current testnet cycle label from bot_config.
+
+    Cached for _CYCLE_TTL when read globally (symbol=None). Falls back to
+    'testnet_1' on any DB error so a write/replay never crashes on this.
+    """
+    now = _time.time()
+    if symbol is None and _CYCLE_CACHE["val"] and (now - _CYCLE_CACHE["ts"]) < _CYCLE_TTL:
+        return _CYCLE_CACHE["val"]
+    try:
+        c = client or get_client()
+        q = c.table("bot_config").select("cycle")
+        if symbol:
+            q = q.eq("symbol", symbol)
+        rows = q.execute().data or []
+        # bot_config only ever holds the current cycle, uniform across grids.
+        val = max((r["cycle"] for r in rows if r.get("cycle")), default="testnet_1")
+        if symbol is None:
+            _CYCLE_CACHE["val"] = val
+            _CYCLE_CACHE["ts"] = now
+        return val
+    except Exception:
+        return _CYCLE_CACHE["val"] or "testnet_1"
+
+
 class TradeLogger:
     """Logs every trade the bot makes."""
     
@@ -62,6 +98,7 @@ class TradeLogger:
             "realized_pnl": realized_pnl,
             "buy_trade_id": buy_trade_id,
             "config_version": config_version,
+            "cycle": get_current_cycle(self.client, symbol),  # S96a clean slate
         }
         if managed_by is not None:
             data["managed_by"] = managed_by
@@ -263,6 +300,7 @@ class DailyPnLTracker:
             "buys_count": buys_count,
             "sells_count": sells_count,
             "positions": json.dumps(positions or []),
+            "cycle": get_current_cycle(self.client),  # S96a clean slate
         }
 
         # Use ignore_duplicates=True so only the first bot to insert wins.
@@ -322,6 +360,7 @@ class ReserveLedger:
             "trade_id": trade_id,
             "config_version": config_version,
             "managed_by": managed_by,
+            "cycle": get_current_cycle(self.client, symbol),  # S96a clean slate
         }
         result = self.client.table("reserve_ledger").insert(data).execute()
         # Invalidate so next call queries fresh
@@ -342,6 +381,7 @@ class ReserveLedger:
             .select("amount")
             .eq("symbol", symbol)
             .eq("config_version", config_version)
+            .eq("cycle", get_current_cycle(self.client, symbol))  # S96a: only current cycle
             .execute()
         )
         total = sum(float(r["amount"]) for r in (result.data or []))
