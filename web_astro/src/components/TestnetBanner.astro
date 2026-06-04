@@ -1,8 +1,16 @@
 ---
 /* Brief 70c §2 — Testnet disclaimer banner shown on home + dashboard.
-   Positioned below SiteHeader, above the main content. */
+   Positioned below SiteHeader, above the main content.
+
+   S96a (2026-06-04): copy extended to state that testnet balances are
+   reset periodically by Binance without notice (a monthly reset wiped
+   the grid wallets and triggered the clean slate). IS_TESTNET is the
+   single flag to flip when we go to mainnet — set it false (or swap the
+   copy) and the banner disappears everywhere it's used. */
+const IS_TESTNET = true;
 ---
 
+{IS_TESTNET && (
 <div class="border-y border-pos/25 bg-pos/[0.06]">
   <div class="mx-auto flex max-w-6xl items-center gap-3 px-4 py-2.5 sm:px-6">
     <span class="inline-flex h-1.5 w-1.5 flex-shrink-0 rounded-full bg-pos
@@ -12,8 +20,10 @@
         Live on Binance Testnet
       </span>
       <span class="text-text-dim"> — Real orders, simulated money. Every trade
-        you see is executed on Binance's test exchange.
-        The logic is real, the dollars aren't. Yet.</span>
+        runs on Binance's test exchange, where prices are synthetic and
+        balances are reset periodically without notice. The logic is real,
+        the dollars aren't. Yet.</span>
     </p>
   </div>
 </div>
+)}

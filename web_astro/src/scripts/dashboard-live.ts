@@ -27,6 +27,12 @@ const headers = {
   Authorization: `Bearer ${SB_KEY}`,
 };
 
+/* Current testnet cycle (S96a clean slate) — grid queries filter on it so
+   a monthly Binance testnet reset hides the closed cycle. Bump on next
+   reset (here + live-stats.ts + grid.html), with `UPDATE bot_config`. */
+const CYCLE = "testnet_2";
+const CQ = `&cycle=eq.${CYCLE}`;
+
 const sbq = async <T>(table: string, params: string): Promise<T> => {
   const r = await fetch(`${SB_URL}/rest/v1/${table}?${params}`, { headers });
   if (!r.ok) throw new Error(`${table}: ${r.status}`);
@@ -41,7 +47,7 @@ async function fetchAllTrades<T extends { created_at: string }>(
   selectFields: string,
 ): Promise<T[]> {
   const rows = await sbFetchAll<T>(
-    `trades?select=${selectFields}&config_version=eq.v3&order=created_at.asc`,
+    `trades?select=${selectFields}&config_version=eq.v3${CQ}&order=created_at.asc`,
   );
   return (rows ?? []).slice().sort(
     (a, b) => a.created_at.localeCompare(b.created_at),
@@ -285,7 +291,7 @@ const fetchLivePrices = async (symbols: string[]): Promise<Record<string, number
       fetchAllTrades<AllTrade>("symbol,side,amount,cost,fee,fee_asset,created_at,managed_by"),
       sbq<SkimRow[]>(
         "reserve_ledger",
-        "select=symbol,amount&config_version=eq.v3",
+        "select=symbol,amount&config_version=eq.v3" + CQ,
       ),
     ]);
 
@@ -442,7 +448,7 @@ function analyzeCoin(trades: AllTrade[]): {
       ),
       sbq<SkimRow[]>(
         "reserve_ledger",
-        "select=symbol,amount&config_version=eq.v3",
+        "select=symbol,amount&config_version=eq.v3" + CQ,
       ),
       sbq<{ tf_budget: string | number }[]>(
         "trend_config",

@@ -1090,6 +1090,28 @@ classe `.prose-blog` (h2/h3, blockquote, ul/ol, code inline, pre, hr,
 strong, a). Se vuoi aggiungere un elemento (tabelle? footnote?
 callout?), aggiungi la regola lì e documentalo qui.
 
+### Immagini nei post
+
+Le immagini si aggiungono con markdown standard nel corpo del post:
+
+```md
+![Descrizione accessibile dell'immagine](/images/blog/nome-file.png)
+```
+
+**Dove mettere i file:**
+- Cartella: `web_astro/public/images/blog/` (creala se non esiste)
+- Formati accettati: `.png`, `.jpg`, `.webp`
+- Naming: kebab-case, descrittivo (es. `old-site-homepage.png`, `dashboard-v1.png`)
+
+**Sizing:**
+- Larghezza massima consigliata: 800px (il CSS `.prose-blog img` gestisce il responsive: `max-width: 100%`, `height: auto`, `border-radius: 8px`, margine verticale)
+- Comprimi le immagini prima del commit (`pngquant`, `jpegoptim`, o un compressore online) — git non è pensato per binari grandi
+
+**Accessibilità:**
+- Il testo alt (`![QUESTO TESTO QUI]()`) è obbligatorio — descrive l'immagine per screen reader e quando l'immagine non carica
+
+**Nota:** il blog NON ha un campo `cover`/`image` nel frontmatter. Le immagini vivono solo nel corpo markdown del post.
+
 ### CTA Payhip (`BlogCTA.astro`)
 
 Il componente sceglie automaticamente lo stile in base a `volume`:

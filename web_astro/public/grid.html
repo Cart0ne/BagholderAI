@@ -340,6 +340,14 @@
         <a href="/admin">Admin</a>
       </nav>
 
+      <!-- S96a: testnet disclaimer (persistent, non-dismissible). Remove on mainnet. -->
+      <div style="border: 1px solid var(--green); background: rgba(134,239,172,0.06);
+                  border-radius: 8px; padding: 8px 12px; margin: 10px 0;
+                  font-family: var(--mono); font-size: 11px; line-height: 1.5; color: var(--text-dim);">
+        <span style="color: var(--green); text-transform: uppercase; letter-spacing: 0.12em;">⚠ Testnet data</span>
+        — Binance test exchange. Prices are synthetic and balances are reset periodically without notice. No real money is at risk.
+      </div>
+
       <!-- Header -->
       <div class="top-bar">
         <span><span class="dot">●</span> GRID — private</span>
@@ -534,9 +542,11 @@
         // Effect: removes 2 TF rows leaking in (1 sell, ~$0.04 realized,
         // ~$0.014 fees) → grid.html "Net realized profit" now bit-identical
         // to /dashboard.
-        sbGet('trades', 'select=id,symbol,side,amount,price,cost,fee,fee_asset,realized_pnl,created_at&config_version=eq.v3&managed_by=eq.grid&order=created_at.desc'),
-        sbGet('daily_pnl', 'order=date.desc&limit=10'),
-        sbGet('reserve_ledger', 'select=symbol,amount&config_version=eq.v3'),
+        // S96a clean slate: cycle=eq.testnet_2 hides the pre-reset cycle.
+        // Bump on next Binance testnet reset (with `UPDATE bot_config`).
+        sbGet('trades', 'select=id,symbol,side,amount,price,cost,fee,fee_asset,realized_pnl,created_at&config_version=eq.v3&managed_by=eq.grid&cycle=eq.testnet_2&order=created_at.desc'),
+        sbGet('daily_pnl', 'cycle=eq.testnet_2&order=date.desc&limit=10'),
+        sbGet('reserve_ledger', 'select=symbol,amount&config_version=eq.v3&cycle=eq.testnet_2'),
         // Brief 74b Bug 2 (S74b 2026-05-12): runtime state mirror.
         // Replaces the events-derived stop-buy lookup. One row per symbol,
         // UPSERTed by the bot every tick (~5-30s). Exposes:

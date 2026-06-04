@@ -44,6 +44,14 @@ const sbqCount = async (table: string, params: string): Promise<number> => {
   return Number.isNaN(n) ? 0 : n;
 };
 
+/* Current testnet cycle (S96a clean slate). Grid data queries filter on
+   it so a monthly Binance testnet reset hides the closed cycle's rows.
+   Data-driven on the bot side (bot_config.cycle); on the site bump this
+   constant (here + grid.html + admin.html + dashboard-live.ts) on the
+   next reset, together with `UPDATE bot_config SET cycle=...`. */
+const CYCLE = "testnet_2";
+const CQ = `&cycle=eq.${CYCLE}`;
+
 /* Prefer the global animated updater (set up in Layout.astro) so that
    counters tween smoothly to the new value. Falls back to plain text
    write if the API isn't available (e.g. on pages without Layout). */
@@ -60,7 +68,7 @@ const setText = (id: string, value: string) => {
 };
 
 /* ---------- 1. orders executed ---------- */
-sbqCount("trades", "select=id&config_version=eq.v3")
+sbqCount("trades", "select=id&config_version=eq.v3" + CQ)
   .then(n => setText("stat-trades", String(n)))
   .catch(() => setText("stat-trades", "N.A."));
 
@@ -98,10 +106,10 @@ Promise.all([
        BUY rows where Binance scaled the fee from the base coin (live live
        testnet) and apply P2 (qty_acquired = filled − fee_native). */
     "trades?select=symbol,side,amount,cost,fee,fee_asset,realized_pnl,created_at" +
-    "&config_version=eq.v3&order=created_at.asc",
+    "&config_version=eq.v3" + CQ + "&order=created_at.asc",
   ),
   sbFetchAll<SkimRow>(
-    "reserve_ledger?select=symbol,amount&config_version=eq.v3",
+    "reserve_ledger?select=symbol,amount&config_version=eq.v3" + CQ,
   ),
 ]).then(async ([trades, skimRows]) => {
   trades = trades ?? [];
@@ -167,7 +175,7 @@ Promise.all([
 /* ---------- 3. days running (since first v3 trade) ---------- */
 sbq<{ created_at: string }[]>(
   "trades",
-  "select=created_at&config_version=eq.v3&order=created_at.asc&limit=1",
+  "select=created_at&config_version=eq.v3" + CQ + "&order=created_at.asc&limit=1",
 ).then(rows => {
   if (!rows || !rows.length) return setText("stat-days", "0");
   const first = new Date(rows[0].created_at);
@@ -199,7 +207,7 @@ type SellRow = { side: "buy" | "sell"; realized_pnl: number | null };
 
 const fetchBotStats = async (managedBy: string) => {
   const rows = await sbFetchAll<SellRow>(
-    `trades?select=side,realized_pnl&config_version=eq.v3` +
+    `trades?select=side,realized_pnl&config_version=eq.v3${CQ}` +
     `&managed_by=eq.${managedBy}&side=eq.sell`,
   );
   let wins = 0, losses = 0;
