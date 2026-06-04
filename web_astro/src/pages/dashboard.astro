@@ -1,6 +1,10 @@
 ---
 import Layout from "../layouts/Layout.astro";
 import TestnetBanner from "../components/TestnetBanner.astro";
+import BotMascot from "../components/BotMascot.astro";
+import SentinelMascot   from "../components/SentinelMascot.astro";
+import NewsKeeperMascot from "../components/NewsKeeperMascot.astro";
+import SherpaMascotV2   from "../components/SherpaMascotV2.astro";
 import {
   mockSnapshot, mockGrid, mockTF, mockTools,
   mockTrades, mockCEOLog, fmtUsd, fmtSigned, fmtPct, fmtPrice, fmtTime, fmtDate,
@@ -10,6 +14,14 @@ const totalNW    = mockGrid.netWorth + mockTF.netWorth;
 const totalInit  = mockGrid.initial + mockTF.initial;
 const totalPnl   = totalNW - totalInit;
 const totalPct   = (totalPnl / totalInit) * 100;
+
+/* Hero NET WORTH card mirrors the LIVE hero: Grid-ONLY, $500 basis
+   (Brief 72a / S72 — TF/Sentinel/Sherpa excluded from public P&L, so the
+   numbers stay self-consistent: netWorth − P&L = started). */
+const heroInit = mockGrid.initial;
+const heroNW   = mockGrid.netWorth;
+const heroPnl  = heroNW - heroInit;
+const heroPct  = (heroPnl / heroInit) * 100;
 
 /* ====== "Today" snapshot — fotografia del giorno ====== */
 const todayPnl       = mockGrid.todayPnl + mockTF.todayPnl;
@@ -35,33 +47,54 @@ const tfSubtitle   = "The breakout hunter";
   {/* ============================================================ HERO (pattern /diary) */}
   <section class="mx-auto max-w-4xl px-4 pt-10 pb-6 sm:px-6 sm:pt-14 sm:pb-8">
 
-    <h1 class="text-[28px] font-semibold leading-[1.12] tracking-tight
-               text-text sm:text-[34px] md:text-[40px] md:leading-[1.08]">
-      Lab <span class="text-primary">notebook</span>.
-    </h1>
+    <div class="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
 
-    <p class="mt-3 max-w-2xl text-[14.5px] leading-[1.55] text-text-dim sm:text-[15px]">
-      Two live, two shadowed. Capital at risk:
-      <span class="font-mono text-text">$500 Grid + $100 TF (Tier 1-2)</span>
-      <span class="font-mono text-text-muted">(Sentinel/Sherpa shadow-only)</span>.
-      Snapshot recorded {mockSnapshot.asOfLabel}.
-    </p>
+      {/* left — title + lede + meta */}
+      <div class="min-w-0">
+        <h1 class="font-display text-[34px] font-extrabold leading-[1.04] tracking-[-0.02em]
+                   text-text sm:text-[42px]">
+          Lab <span class="text-primary">notebook</span>.
+        </h1>
 
-    <div class="mt-5 flex flex-wrap items-center gap-3 font-mono text-[10.5px]
-                uppercase tracking-[0.16em] text-text-muted">
-      <span class="inline-flex items-center gap-1.5">
-        <span class="inline-block h-1.5 w-1.5 rounded-full bg-pos
-                     shadow-[0_0_8px_rgba(134,239,172,0.7)]"></span>
-        day <span id="hero-day">{mockSnapshot.dayNumber}</span>
-      </span>
-      <span class="text-border">·</span>
-      <span>v3 · launched 2026-03-30</span>
-      <span class="text-border">·</span>
-      <span>net worth <span id="hero-nw" class="normal-case font-semibold text-text">{fmtUsd(totalNW)}</span></span>
-      <span id="hero-pnl"
-            class={totalPnl >= 0 ? "text-pos normal-case" : "text-neg normal-case"}>
-        ({fmtSigned(totalPnl)}, {fmtPct(totalPct)})
-      </span>
+        <p class="mt-3 max-w-2xl text-[14.5px] leading-[1.55] text-text-dim sm:text-[15px]">
+          Two live, two shadowed. Capital at risk:
+          <span class="font-mono text-text">$500 Grid + $100 TF (Tier 1-2)</span>
+          <span class="font-mono text-text-muted">(Sentinel/Sherpa shadow-only)</span>.
+          Snapshot recorded {mockSnapshot.asOfLabel}.
+        </p>
+
+        <div class="mt-5 flex flex-wrap items-center gap-3 font-mono text-[10.5px]
+                    uppercase tracking-[0.16em] text-text-muted">
+          <span class="inline-flex items-center gap-1.5">
+            <span class="inline-block h-1.5 w-1.5 rounded-full bg-primary"></span>
+            live
+          </span>
+          <span class="text-border">·</span>
+          <span>v3 · launched 2026-03-30</span>
+        </div>
+      </div>
+
+      {/* right — NET WORTH card (Grid-only $500 basis; top border = P&L sign) */}
+      <div id="hero-nw-card"
+           class={`shrink-0 self-start rounded-2xl border border-border border-t-4 bg-surface
+                   px-5 py-4 shadow-sticker sm:min-w-[208px] sm:text-right
+                   ${heroPnl >= 0 ? "border-t-pos" : "border-t-neg"}`}>
+        <div class="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-text-muted">
+          Net worth
+        </div>
+        <div id="hero-nw"
+             class="mt-1 font-display text-[36px] font-extrabold leading-none tabular-nums text-text">
+          {fmtUsd(heroNW)}
+        </div>
+        <div id="hero-pnl"
+             class={`mt-1.5 font-mono text-[12px] font-semibold tabular-nums
+                     ${heroPnl >= 0 ? "text-pos" : "text-neg"}`}>
+          {fmtSigned(heroPnl)} · {fmtPct(heroPct)}
+        </div>
+        <div class="mt-2.5 font-mono text-[9px] uppercase tracking-[0.14em] text-text-muted">
+          started {fmtUsd(heroInit)} · day <span id="hero-day">{mockSnapshot.dayNumber}</span>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -71,7 +104,7 @@ const tfSubtitle   = "The breakout hunter";
     {/* ============ TODAY SNAPSHOT — fotografia del giorno ============ */}
     <section class="reveal">
       <div class="mb-3 flex items-baseline gap-3">
-        <h2 class="font-sans text-[18px] sm:text-[20px] font-semibold text-text">
+        <h2 class="font-display text-[20px] sm:text-[22px] font-extrabold tracking-[-0.01em] text-text">
           Today
         </h2>
         <span id="today-date"
@@ -88,7 +121,7 @@ const tfSubtitle   = "The breakout hunter";
           figures — only last trade and current regime. */}
       <div id="regime-watch-banner"
            class="hidden mb-3 flex flex-wrap items-center gap-x-2 gap-y-1
-                  rounded-lg border border-border-soft bg-surface/60
+                  rounded-xl border border-border bg-panel
                   px-3.5 py-2 font-mono text-[11.5px] text-text-dim">
         <span aria-hidden="true">🔍</span>
         <span class="text-text">Watching market</span>
@@ -100,14 +133,14 @@ const tfSubtitle   = "The breakout hunter";
 
       {/* Same font hierarchy as the home live-snapshot panel:
           label 10px uppercase + value 20px semibold. */}
-      <dl class="rounded-lg border border-border bg-surface
+      <dl class="rounded-2xl border border-border bg-surface shadow-sticker-sm
                  grid grid-cols-2 sm:grid-cols-5 divide-x divide-border-soft">
         <div class="px-4 py-3.5">
           <dt class="font-mono text-[10px] uppercase tracking-[0.14em] text-text-muted">
             P&amp;L
           </dt>
           <dd id="today-pnl"
-              class={`font-mono text-[20px] font-semibold tabular-nums mt-0.5
+              class={`font-display text-[24px] font-extrabold tabular-nums mt-0.5
                       ${todayPnl >= 0 ? "text-pos" : "text-neg"}`}>
             {fmtSigned(todayPnl)}
           </dd>
@@ -117,7 +150,7 @@ const tfSubtitle   = "The breakout hunter";
             trades
           </dt>
           <dd id="today-trades"
-              class="font-mono text-[20px] font-semibold text-text tabular-nums mt-0.5">
+              class="font-display text-[24px] font-extrabold text-text tabular-nums mt-0.5">
             {todayTrades}
           </dd>
         </div>
@@ -126,7 +159,7 @@ const tfSubtitle   = "The breakout hunter";
             buys
           </dt>
           <dd id="today-buys"
-              class="font-mono text-[20px] font-semibold text-text-dim tabular-nums mt-0.5">
+              class="font-display text-[24px] font-extrabold text-text-dim tabular-nums mt-0.5">
             {todayBuys}
           </dd>
         </div>
@@ -135,7 +168,7 @@ const tfSubtitle   = "The breakout hunter";
             sells
           </dt>
           <dd id="today-sells"
-              class="font-mono text-[20px] font-semibold text-text-dim tabular-nums mt-0.5">
+              class="font-display text-[24px] font-extrabold text-text-dim tabular-nums mt-0.5">
             {todaySells}
           </dd>
         </div>
@@ -144,35 +177,45 @@ const tfSubtitle   = "The breakout hunter";
             allocated
           </dt>
           <dd id="today-allocated"
-              class="font-mono text-[20px] font-semibold text-text tabular-nums mt-0.5">
+              class="font-display text-[24px] font-extrabold text-text tabular-nums mt-0.5">
             {fmtUsd(todayAllocated)}
           </dd>
         </div>
       </dl>
     </section>
 
-    {/* ============ § 1 — CEO LOG di oggi ============ */}
+    {/* ============ 1 — CEO LOG di oggi ============ */}
     <hr class="mt-12 border-t border-border-soft" />
     <section class="mt-8 reveal">
-      <h2 class="font-mono text-[12px] uppercase tracking-[0.18em] text-pos mb-5">
-        § 1 · CEO observation log
+      <h2 class="font-display text-[20px] font-extrabold tracking-[-0.01em] text-text mb-5">
+        1 · CEO observation log
       </h2>
-      <article id="ceo-today" class="rounded-lg border border-border bg-surface p-6">
-        <div class="font-mono text-[11px] text-text-muted mb-3 flex justify-between gap-3">
-          <span id="ceo-today-meta">Day {mockCEOLog.today.dayNumber} · {fmtDate(mockCEOLog.today.date + "T00:00:00Z")}</span>
-          <span id="ceo-today-model" class="opacity-60">via {mockCEOLog.today.model}</span>
+      <article id="ceo-today" class="grid grid-cols-[auto_1fr] items-center gap-6
+               rounded-2xl border border-border border-l-4 border-l-pos
+               bg-surface shadow-sticker-sm p-6">
+        <div class="w-[60px] shrink-0 text-center leading-none">
+          <span class="block font-mono text-[9px] font-bold uppercase tracking-[0.18em] text-text-muted">day</span>
+          <span id="ceo-today-day" class="mt-1 block font-display text-[40px] font-extrabold leading-none text-pos">{mockCEOLog.today.dayNumber}</span>
+          <span id="ceo-today-date" class="mt-1.5 block font-mono text-[9px] uppercase tracking-[0.12em] text-text-muted">{fmtDate(mockCEOLog.today.date + "T00:00:00Z")}</span>
         </div>
-        <p id="ceo-today-text" class="text-text leading-[1.7] text-[15px] italic">
-          "{mockCEOLog.today.text}"
-        </p>
+        <div>
+          <div class="mb-2 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.16em] text-text-muted">
+            <span>latest</span>
+            <span class="text-border">·</span>
+            <span id="ceo-today-model" class="opacity-70">via {mockCEOLog.today.model}</span>
+          </div>
+          <p id="ceo-today-text" class="text-text leading-[1.7] text-[15px] italic">
+            "{mockCEOLog.today.text}"
+          </p>
+        </div>
       </article>
     </section>
 
-    {/* ============ § 2 — INSTRUMENTS ============ */}
+    {/* ============ 2 — INSTRUMENTS ============ */}
     <hr class="mt-12 border-t border-border-soft" />
     <section class="mt-8">
-      <h2 class="reveal font-mono text-[12px] uppercase tracking-[0.18em] text-pos mb-7">
-        § 2 · Instruments
+      <h2 class="reveal font-display text-[20px] font-extrabold tracking-[-0.01em] text-text mb-7">
+        2 · Instruments
       </h2>
 
       {/* ============ HORIZONTAL PIPELINE LAYOUT ============
@@ -184,9 +227,13 @@ const tfSubtitle   = "The breakout hunter";
                   gap-x-3 gap-y-4 items-stretch">
 
         {/* === TF CARD (left) — mirror of Grid card frame. */}
-        <article class="h-full rounded-lg border border-border bg-surface p-6">
-          <div class="flex items-center gap-3 mb-4 flex-wrap">
-            <div class="w-[3px] h-[22px] rounded-sm" style="background:#f59e0b"></div>
+        <article class="relative h-full rounded-2xl border border-border border-l-4 border-l-[#B5862E] bg-surface shadow-sticker-sm p-6 overflow-hidden">
+          {/* mascot peeking from the top-right corner */}
+          <BotMascot color="#f59e0b" accent="#f59e0b" build="lanky" expression="scanning"
+                     carrying="binoculars" size={58} uid="mascot-tf"
+                     class="pointer-events-none absolute top-3 right-3 select-none" />
+          <div class="flex items-center gap-3 mb-4 flex-wrap pr-16">
+            <div class="w-[3px] h-[22px] rounded-sm" style="background:#B5862E"></div>
             <div class="font-mono text-[14px] text-text uppercase tracking-[0.05em] font-semibold">
               Trend Follower
             </div>
@@ -244,7 +291,7 @@ const tfSubtitle   = "The breakout hunter";
               Handoff: TF picks Tier 1-2 coins, Grid manages them. */}
           <div class="flex flex-col items-center mb-3 w-full">
             <span class="font-mono text-[9px] uppercase tracking-[0.22em] mb-1 text-center leading-[1.4]"
-                  style="color:#38bdf8">
+                  style="color:#3F7589">
               TF picks,<br/>Grid manages
             </span>
             <div class="pipeline-arrow w-full max-w-[200px] h-[14px] relative">
@@ -262,9 +309,13 @@ const tfSubtitle   = "The breakout hunter";
         </div>
 
         {/* === GRID BOT CARD (right) — ORIGINAL look (rounded-lg, bg-surface, p-6) === */}
-        <article class="h-full rounded-lg border border-border bg-surface p-6">
-          <div class="flex items-center gap-3 mb-4 flex-wrap">
-            <div class="w-[3px] h-[22px] rounded-sm" style="background:#22c55e"></div>
+        <article class="relative h-full rounded-2xl border border-border border-l-4 border-l-pos bg-surface shadow-sticker-sm p-6 overflow-hidden">
+          {/* mascot peeking from the top-right corner */}
+          <BotMascot color="#22c55e" accent="#22c55e" build="stocky" expression="focused"
+                     size={58} uid="mascot-grid"
+                     class="pointer-events-none absolute top-3 right-3 select-none" />
+          <div class="flex items-center gap-3 mb-4 flex-wrap pr-16">
+            <div class="w-[3px] h-[22px] rounded-sm" style="background:#4E8A57"></div>
             <div class="font-mono text-[14px] text-text uppercase tracking-[0.05em] font-semibold">
               Grid Bot
             </div>
@@ -327,7 +378,7 @@ const tfSubtitle   = "The breakout hunter";
           brief 70c §4 (parked pending full Strada 2 fix). Kept visible so
           the gap with raw "Total P&L" stays auditable on the public page. */}
       <section class="reveal mt-10">
-        <div class="rounded-lg border border-border bg-surface px-5 py-4
+        <div class="rounded-2xl border border-border bg-surface shadow-sticker-sm px-5 py-4
                     flex flex-wrap items-baseline justify-between gap-3">
           <div class="flex flex-wrap items-baseline gap-3">
             <span class="font-mono text-[10px] uppercase tracking-[0.16em] text-text-muted">
@@ -338,7 +389,7 @@ const tfSubtitle   = "The breakout hunter";
             </span>
           </div>
           <span id="net-realized-test"
-                class="font-mono text-[20px] font-semibold text-pos tabular-nums">
+                class="font-display text-[24px] font-extrabold text-pos tabular-nums">
             —
           </span>
         </div>
@@ -393,14 +444,16 @@ const tfSubtitle   = "The breakout hunter";
       </script>
 
       {/* ============ SENTINEL + SHERPA — live observational brains ============ */}
-      <div class="reveal mt-14 grid grid-cols-2 gap-5">
+      <div class="reveal mt-14 grid grid-cols-1 gap-5 sm:grid-cols-3 items-stretch">
         {mockTools.filter((t) => t.status === "active" || t.status === "testing").map((tool) => {
           const live = tool.status === "active";
           const statusLine = tool.key === "sentinel"
             ? "Scoring risk + regime every 60s (fast) and 4h (slow)."
+            : tool.key === "newskeeper"
+            ? "Classifying crypto headlines by severity + signal, hourly."
             : "Proposing per-coin Grid parameters — logged, not applied.";
           return (
-            <div>
+            <div class="flex flex-col h-full">
               <div class="flex items-center gap-3 mb-3.5">
                 <div class="w-[3px] h-[22px] rounded-sm" style={`background:${tool.color}`}></div>
                 <div class="font-mono text-[14px] text-text uppercase tracking-[0.05em] font-semibold">
@@ -410,9 +463,16 @@ const tfSubtitle   = "The breakout hunter";
                   — {live ? "LIVE" : "DRY_RUN"}
                 </div>
               </div>
-              <div class="rounded-lg border border-border-soft bg-surface/50 p-5">
-                <p class="text-text-dim text-[14px] leading-relaxed">{tool.blurb}</p>
-                <div class="mt-3 font-mono text-[11px] text-text-muted">
+              <div class="flex-1 flex flex-col rounded-2xl border border-border bg-surface shadow-sticker-sm p-5">
+                <div class="flex items-start gap-3">
+                  <div class="shrink-0 -mt-1 -ml-1 select-none pointer-events-none">
+                    {tool.key === "sentinel"  && <SentinelMascot   size={70} />}
+                    {tool.key === "newskeeper" && <NewsKeeperMascot size={70} />}
+                    {tool.key === "sherpa"     && <SherpaMascotV2   size={70} />}
+                  </div>
+                  <p class="text-text-dim text-[14px] leading-relaxed">{tool.blurb}</p>
+                </div>
+                <div class="mt-auto pt-4 font-mono text-[11px] text-text-muted">
                   {live ? "🟢" : "🔬"} {statusLine}
                 </div>
               </div>
@@ -422,7 +482,7 @@ const tfSubtitle   = "The breakout hunter";
       </div>
     </section>
 
-    {/* ============ § 3 — CHARTS (full-width, stacked) ============
+    {/* ============ 3 — CHARTS (full-width, stacked) ============
          One range selector controls both charts: line cumulative P&L on
          top, stacked weekly/monthly bar chart below. Net labels for the
          bar chart are rendered as an HTML row absolutely positioned over
@@ -430,8 +490,8 @@ const tfSubtitle   = "The breakout hunter";
     <hr class="mt-12 border-t border-border-soft" />
     <section class="mt-8 reveal">
       <div class="flex items-baseline justify-between flex-wrap gap-3 mb-5">
-        <h2 class="font-mono text-[12px] uppercase tracking-[0.18em] text-pos">
-          § 3 · Performance · time series
+        <h2 class="font-display text-[20px] font-extrabold tracking-[-0.01em] text-text">
+          3 · Performance · time series
         </h2>
         <div id="range-selector"
              class="inline-flex gap-1 p-1 rounded-md bg-surface border border-border">
@@ -452,7 +512,7 @@ const tfSubtitle   = "The breakout hunter";
 
       <div class="space-y-4">
         {/* ---- Cumulative line ---- */}
-        <div class="rounded-lg border border-border bg-surface p-5">
+        <div class="rounded-2xl border border-border bg-surface shadow-sticker-sm p-5">
           <div class="flex items-baseline justify-between mb-3">
             <span id="cumul-label"
                   class="font-mono text-[11px] uppercase tracking-[0.1em] text-text-dim">
@@ -470,7 +530,7 @@ const tfSubtitle   = "The breakout hunter";
         </div>
 
         {/* ---- Stacked bar (weekly default) ---- */}
-        <div class="rounded-lg border border-border bg-surface p-5">
+        <div class="rounded-2xl border border-border bg-surface shadow-sticker-sm p-5">
           <div class="flex items-baseline justify-between mb-3">
             <span id="bar-label"
                   class="font-mono text-[11px] uppercase tracking-[0.1em] text-text-dim">
@@ -484,20 +544,22 @@ const tfSubtitle   = "The breakout hunter";
               <canvas id="chart-daily"></canvas>
             </div>
           </div>
-          <div class="mt-3 flex gap-4 font-mono text-[10px] text-text-muted">
-            <span><span class="inline-block w-2 h-2 align-middle mr-1" style="background:#22c55e"></span>grid</span>
-            <span><span class="inline-block w-2 h-2 align-middle mr-1" style="background:#f59e0b"></span>tf</span>
+          <div class="mt-3 flex flex-wrap gap-x-4 gap-y-1 font-mono text-[10px] text-text-muted">
+            <span><span class="inline-block w-2 h-2 align-middle mr-1" style="background:#4E8A57"></span>gain grid</span>
+            <span><span class="inline-block w-2 h-2 align-middle mr-1" style="background:#B5862E"></span>gain tf</span>
+            <span><span class="inline-block w-2 h-2 align-middle mr-1" style="background:#C05A43"></span>loss grid</span>
+            <span><span class="inline-block w-2 h-2 align-middle mr-1" style="background:#8A6390"></span>loss tf</span>
           </div>
         </div>
       </div>
     </section>
 
     <style is:inline>
-      /* § 3 charts — range selector active state + net-row layout.
+      /* 3 charts — range selector active state + net-row layout.
          Net labels are absolutely positioned spans aligned to bar centers
          via JS (see syncNetRow in dashboard-live.ts). */
       #range-selector .range-btn.is-active {
-        background: rgba(255,255,255,0.08);
+        background: var(--color-primary);
         color: #fff;
       }
       .bar-stack { display: block; }
@@ -519,21 +581,21 @@ const tfSubtitle   = "The breakout hunter";
         line-height: 16px;
         pointer-events: none;
       }
-      .net-row .net-pos { color: #4ade80; }
-      .net-row .net-neg { color: #f87171; }
-      .net-row .net-flat { color: rgba(255,255,255,0.55); }
+      .net-row .net-pos { color: var(--color-pos); }
+      .net-row .net-neg { color: var(--color-neg); }
+      .net-row .net-flat { color: var(--color-text-muted); }
       .net-row .net-inprog { opacity: 0.55; }
     </style>
 
-    {/* ============ § 4 — RECENT TRADES — 2 tabelle: Grid + TF ============
+    {/* ============ 4 — RECENT TRADES — 2 tabelle: Grid + TF ============
          Grid = managed_by='manual' only.
          TF   = managed_by IN ('trend_follower', 'tf_grid') (tf_grid stays
                 under TF for coherence with brief 46b: TF capital). */}
     <hr class="mt-12 border-t border-border-soft" />
     <section class="mt-8 reveal">
       <div class="flex items-baseline justify-between flex-wrap gap-3 mb-5">
-        <h2 class="font-mono text-[12px] uppercase tracking-[0.18em] text-pos">
-          § 4 · Recent activity
+        <h2 class="font-display text-[20px] font-extrabold tracking-[-0.01em] text-text">
+          4 · Recent activity
         </h2>
         <span class="font-mono text-[11px] text-text-muted">last 6 per bot</span>
       </div>
@@ -542,13 +604,13 @@ const tfSubtitle   = "The breakout hunter";
         {/* ---- GRID table ---- */}
         <div>
           <div class="flex items-center gap-2 mb-2">
-            <div class="w-[3px] h-[14px] rounded-sm" style="background:#22c55e"></div>
+            <div class="w-[3px] h-[14px] rounded-sm" style="background:#4E8A57"></div>
             <span class="font-mono text-[11px] uppercase tracking-[0.14em] text-text-dim">
               Grid Bot
             </span>
           </div>
-          <div class="overflow-x-auto rounded-lg border border-border bg-surface">
-            <table class="w-full table-fixed font-mono text-[12.5px]">
+          <div class="overflow-x-auto rounded-2xl border border-border border-l-4 border-l-pos bg-surface shadow-sticker-sm">
+            <table class="w-full min-w-[500px] table-fixed font-mono text-[12.5px]">
               {/* Fixed column widths so Grid and TF tables align identically.
                  Without this, each <table> auto-sizes from its own content
                  (e.g. TF p&l shows "@ buy avg", Grid often doesn't), giving
@@ -579,14 +641,14 @@ const tfSubtitle   = "The breakout hunter";
         {/* ---- TF table ---- */}
         <div>
           <div class="flex items-center gap-2 mb-2">
-            <div class="w-[3px] h-[14px] rounded-sm" style="background:#f59e0b"></div>
+            <div class="w-[3px] h-[14px] rounded-sm" style="background:#B5862E"></div>
             <span class="font-mono text-[11px] uppercase tracking-[0.14em] text-text-dim">
               Trend Follower
             </span>
             <span class="font-mono text-[9px] text-text-muted">incl. tf_grid</span>
           </div>
-          <div class="overflow-x-auto rounded-lg border border-border bg-surface">
-            <table class="w-full table-fixed font-mono text-[12.5px]">
+          <div class="overflow-x-auto rounded-2xl border border-border border-l-4 border-l-[#B5862E] bg-surface shadow-sticker-sm">
+            <table class="w-full min-w-[500px] table-fixed font-mono text-[12.5px]">
               <colgroup>
                 <col style="width:24%" />
                 <col style="width:11%" />
@@ -612,23 +674,25 @@ const tfSubtitle   = "The breakout hunter";
       </div>
     </section>
 
-    {/* ============ § 5 — CEO LOG ARCHIVE ============ */}
+    {/* ============ 5 — CEO LOG ARCHIVE ============ */}
     <hr class="mt-12 border-t border-border-soft" />
     <section class="mt-8 reveal">
-      <h2 class="font-mono text-[12px] uppercase tracking-[0.18em] text-pos mb-6">
-        § 5 · Earlier from the log
+      <h2 class="font-display text-[20px] font-extrabold tracking-[-0.01em] text-text mb-6">
+        5 · Earlier from the log
       </h2>
       {/* Scrollable archive window — pattern from web/dashboard.html
           (.commentary-history): fixed max-height with overflow scroll,
           smaller font for the entries since they're ancillary. */}
       <div id="ceo-archive"
-           class="rounded-lg border border-border bg-surface
+           class="rounded-2xl border border-border bg-surface shadow-sticker-sm
                   max-h-[320px] overflow-y-auto
                   divide-y divide-border-soft">
         {mockCEOLog.archive.map((e) => (
-          <article class="px-4 py-3">
-            <div class="font-mono text-[10px] uppercase tracking-[0.16em] text-pos/60 mb-1">
-              Day {e.dayNumber} · {fmtDate(e.date + "T00:00:00Z")}
+          <article class="grid grid-cols-[auto_1fr] items-center gap-5 px-4 py-4">
+            <div class="w-[52px] shrink-0 text-center leading-none">
+              <span class="block font-mono text-[8.5px] font-bold uppercase tracking-[0.18em] text-text-muted">day</span>
+              <span class="mt-1 block font-display text-[32px] font-extrabold leading-none text-pos">{e.dayNumber}</span>
+              <span class="mt-1 block font-mono text-[8px] uppercase tracking-[0.1em] text-text-muted">{fmtDate(e.date + "T00:00:00Z")}</span>
             </div>
             <p class="text-text-dim text-[13px] leading-[1.6] italic">"{e.text}"</p>
           </article>
@@ -642,7 +706,7 @@ const tfSubtitle   = "The breakout hunter";
         per symbol) by dashboard-reconciliation.ts. */}
     <section class="reveal mt-10 sm:mt-12">
       <div class="mb-3 flex items-baseline gap-3">
-        <h2 class="font-sans text-[18px] sm:text-[20px] font-semibold text-text">
+        <h2 class="font-display text-[20px] sm:text-[22px] font-extrabold tracking-[-0.01em] text-text">
           Reconciliation
         </h2>
         <span class="font-mono text-[12px] uppercase tracking-[0.16em] text-text-muted">
@@ -650,9 +714,9 @@ const tfSubtitle   = "The breakout hunter";
         </span>
       </div>
 
-      <div class="rounded-lg border border-border bg-surface overflow-x-auto">
+      <div class="rounded-2xl border border-border border-l-4 border-l-primary bg-surface shadow-sticker-sm overflow-x-auto">
         <table class="w-full min-w-[520px] text-left">
-          <thead class="bg-surface/60 border-b border-border-soft">
+          <thead class="bg-bg/40 border-b border-border-soft">
             <tr class="font-mono text-[10px] uppercase tracking-[0.14em] text-text-muted whitespace-nowrap">
               <th class="px-4 py-2.5 font-medium">Bot</th>
               <th class="px-4 py-2.5 font-medium">Status</th>
@@ -702,7 +766,7 @@ const tfSubtitle   = "The breakout hunter";
     import "../scripts/regime-banner.ts";
   </script>
 
-  {/* § 3 charts: Chart.js loaded via CDN, rendering done in dashboard-live.ts
+  {/* 3 charts: Chart.js loaded via CDN, rendering done in dashboard-live.ts
       (waits for window.Chart before initializing). */}
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" is:inline></script>
 

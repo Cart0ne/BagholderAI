@@ -11,8 +11,8 @@ import Layout from "../layouts/Layout.astro";
   {/* ============================================================ HERO */}
   <section class="mx-auto max-w-4xl px-4 pt-10 pb-6 sm:px-6 sm:pt-14 sm:pb-8">
 
-    <h1 class="text-[28px] font-semibold leading-[1.12] tracking-tight
-               text-text sm:text-[34px] md:text-[40px] md:leading-[1.08]">
+    <h1 class="font-display text-[34px] font-extrabold leading-[1.04] tracking-[-0.02em]
+               text-text sm:text-[42px]">
       Refund <span class="text-primary">policy</span>.
     </h1>
 
@@ -25,8 +25,7 @@ import Layout from "../layouts/Layout.astro";
     <div class="mt-5 flex flex-wrap items-center gap-3 font-mono text-[10.5px]
                 uppercase tracking-[0.16em] text-text-muted">
       <span class="inline-flex items-center gap-1.5">
-        <span class="inline-block h-1.5 w-1.5 rounded-full bg-pos
-                     shadow-[0_0_8px_rgba(134,239,172,0.7)]"></span>
+        <span class="inline-block h-1.5 w-1.5 rounded-full bg-primary"></span>
         last updated · 13 April 2026
       </span>
       <span class="text-border">·</span>
@@ -39,11 +38,15 @@ import Layout from "../layouts/Layout.astro";
   {/* ============================================================ MAIN */}
   <main class="mx-auto max-w-4xl px-4 pb-24 sm:px-6">
 
-    {/* ============ § 1 — DIGITAL PRODUCTS — NO REFUNDS ============ */}
-    <hr class="mt-4 border-t border-border-soft" />
-    <section class="mt-8">
-      <h2 class="font-mono text-[12px] uppercase tracking-[0.18em] text-pos mb-5">
-        § 1 · Digital products — no refunds
+    {/* The legal copy sits on one white "paper sheet" so prose never
+        floats on the page sage (REDESIGN_PATTERNS §15). */}
+    <div class="rounded-2xl border border-border bg-surface
+                px-5 py-7 shadow-sticker sm:px-8 sm:py-9">
+
+    {/* ============ 1 — DIGITAL PRODUCTS — NO REFUNDS ============ */}
+    <section class="mt-2">
+      <h2 class="font-display text-[20px] font-extrabold tracking-[-0.01em] text-text mb-5">
+        1 · Digital products — no refunds
       </h2>
 
       <p class="text-[14.5px] leading-[1.7] text-text-dim mb-4">
@@ -55,7 +58,7 @@ import Layout from "../layouts/Layout.astro";
         2011/83/EU, Article 16(m).
       </p>
 
-      <section class="rounded-lg border border-pos/30 bg-pos/[0.04] p-5 sm:p-6">
+      <section class="rounded-xl border border-pos/30 bg-pos/10 p-5 sm:p-6">
         <p class="text-[14.5px] leading-[1.7] text-text-dim">
           <strong class="text-pos">All sales are final.</strong>{" "}
           Because digital files cannot be "returned" once delivered,
@@ -64,11 +67,11 @@ import Layout from "../layouts/Layout.astro";
       </section>
     </section>
 
-    {/* ============ § 2 — WE MAKE THIS FAIR ============ */}
+    {/* ============ 2 — WE MAKE THIS FAIR ============ */}
     <hr class="mt-12 border-t border-border-soft" />
     <section class="mt-8">
-      <h2 class="font-mono text-[12px] uppercase tracking-[0.18em] text-pos mb-5">
-        § 2 · We make this fair
+      <h2 class="font-display text-[20px] font-extrabold tracking-[-0.01em] text-text mb-5">
+        2 · We make this fair
       </h2>
 
       <p class="text-[14.5px] leading-[1.7] text-text-dim">
@@ -78,11 +81,11 @@ import Layout from "../layouts/Layout.astro";
       </p>
     </section>
 
-    {/* ============ § 3 — EXCEPTIONS ============ */}
+    {/* ============ 3 — EXCEPTIONS ============ */}
     <hr class="mt-12 border-t border-border-soft" />
     <section class="mt-8">
-      <h2 class="font-mono text-[12px] uppercase tracking-[0.18em] text-pos mb-5">
-        § 3 · Exceptions
+      <h2 class="font-display text-[20px] font-extrabold tracking-[-0.01em] text-text mb-5">
+        3 · Exceptions
       </h2>
 
       <p class="text-[14.5px] leading-[1.7] text-text-dim mb-4">
@@ -106,11 +109,11 @@ import Layout from "../layouts/Layout.astro";
       </p>
     </section>
 
-    {/* ============ § 4 — CHARGEBACKS ============ */}
+    {/* ============ 4 — CHARGEBACKS ============ */}
     <hr class="mt-12 border-t border-border-soft" />
     <section class="mt-8">
-      <h2 class="font-mono text-[12px] uppercase tracking-[0.18em] text-pos mb-5">
-        § 4 · Chargebacks
+      <h2 class="font-display text-[20px] font-extrabold tracking-[-0.01em] text-text mb-5">
+        4 · Chargebacks
       </h2>
 
       <p class="text-[14.5px] leading-[1.7] text-text-dim">
@@ -121,11 +124,11 @@ import Layout from "../layouts/Layout.astro";
       </p>
     </section>
 
-    {/* ============ § 5 — CONTACT ============ */}
+    {/* ============ 5 — CONTACT ============ */}
     <hr class="mt-12 border-t border-border-soft" />
     <section class="mt-8">
-      <h2 class="font-mono text-[12px] uppercase tracking-[0.18em] text-pos mb-5">
-        § 5 · Contact
+      <h2 class="font-display text-[20px] font-extrabold tracking-[-0.01em] text-text mb-5">
+        5 · Contact
       </h2>
 
       <p class="text-[14.5px] leading-[1.7] text-text-dim">
@@ -136,6 +139,8 @@ import Layout from "../layouts/Layout.astro";
         </a>
       </p>
     </section>
+
+    </div>{/* /sheet */}
 
   </main>
 </Layout>

@@ -1,44 +1,132 @@
 @import "tailwindcss";
 
 /* =========================================================================
-   BagHolderAI design system — Tailwind v4 inline theme
-   Single source of truth. Change here, propagate everywhere.
+   BagHolderAI — design tokens v2 "Pastel Sticker"
+   DROP-IN replacement for the @theme block in src/styles/global.css
+
+   Direction approved (Session ~94): dark → light, pastel palette
+   (powder blue + sage), Bricolage Grotesque as display font, legible red
+   for loss. Semantic ROLES preserved — only hues shift.
+
+   ── Old → New quick map ─────────────────────────────────────────────────
+   bg            #0f1626 (dark navy)   → #D7E0CA (deep sage page)
+   surface       #172037               → #FFFFFF (white card — primary content)
+   panel         (new)                 → #E9EEDF (pale-sage reading panel)
+   text          #e8ecf5 (near-white)  → #283026 (ink)
+   primary       #7dd3fc (cyan)        → #3F7589 (powder blue)
+   pos           #86efac (mint)        → #4E8A57 (sage, deepened for light)
+   neg           #fca5a5 (soft pink)   → #BC4032 (legible red — kept on purpose)
+   neu           #67e8f9 (cyan)        → #2F7E91 (teal-powder)
+   amber-400/yellow (TF·NEW·Max·todo)  → --color-tf / --color-warn (butter/ochre)
+   cc            #818cf8 (indigo)      → #6E68B0 (pastel lilac)
+   bot grid/tf/sentinel/sherpa (sat.)  → pastel tokens (see below) ⚠ override
+   font: + --font-display Bricolage Grotesque (NEW; sans+mono unchanged)
+
+   ⚠ The styleguide §5 says "do not desaturate the bot identity colors".
+     For THIS rebrand that rule is intentionally overridden — the bot hues
+     move into the pastel family. See REFACTOR_GUIDE_FOR_CC.md.
+
+   ── 3-SURFACE RULE (Option A — approved) ────────────────────────────────
+   The page is a sage "gallery wall". Content NEVER sits on the bare page.
+     • surface  (#FFFFFF, white) → PRIMARY content: data cards, snapshot,
+       bot cards, tables, charts, book cards. White = "look here / data".
+     • panel    (#E9EEDF, pale sage) → SECONDARY reading sections: dev diary,
+       CEO log, lore/explanatory blocks. Reads calm, not poppy.
+     • bg       (#D7E0CA, deep sage) → only the gaps BETWEEN cards.
+   Every white/panel surface carries a 1px --color-border frame so it stays
+   defined on the sage page (shadow alone is not enough).
+   Narration (subtitles, blurbs, descriptions) → --font-sans, NOT mono.
+   Mono stays for data/labels/numbers only.
    ========================================================================= */
 @theme {
-  /* — neutri (struttura) ————————————————————————— */
-  --color-bg:             #0f1626;
-  --color-surface:        #172037;
-  --color-surface-hover:  #1f2a44;
-  --color-border:         #2a3556;
-  --color-border-soft:    #1c2540;
+  /* — neutri (struttura) — 3-surface system (Option A) ————————— */
+  --color-bg:             #D7E0CA;  /* page — deep sage (gaps between cards only) */
+  --color-surface:        #FFFFFF;  /* WHITE — primary content: cards, table, charts */
+  --color-panel:          #E9EEDF;  /* PALE SAGE — secondary reading panels (diary, log, lore) */
+  --color-surface-hover:  #F4F7EE;  /* hover on clickable cards */
+  --color-border:         #D2DCC4;  /* card/panel frame — keeps surfaces defined on sage */
+  --color-border-soft:    #DFE4D5;  /* inner dividers, list separators */
 
-  /* — testo ——————————————————————————————————— */
-  --color-text:           #e8ecf5;
-  --color-text-dim:       #9aa3b8;
-  --color-text-muted:     #828aa0;  /* WCAG: ~5.1:1 su --color-bg, passa AA su testo piccolo */
+  /* — testo (darkened to pass AA on white AND pale sage) ——————— */
+  --color-text:           #283026;  /* main ink */
+  --color-text-dim:       #455041;  /* body / narration paragraphs */
+  --color-text-muted:     #59634F;  /* mono labels / meta — ≥4.5:1 on surface & panel */
 
-  /* — primario brand ———————————————————————————— */
-  --color-primary:        #7dd3fc;
-  --color-primary-hover:  #38bdf8;
-  --color-primary-ink:    #08131f;
+  /* — primario brand (editorial accent: cyan → powder blue) ———— */
+  --color-primary:        #3F7589;
+  --color-primary-hover:  #2F6377;
+  --color-primary-ink:    #FFFFFF;  /* text on a primary fill (was dark on light cyan) */
 
   /* — accent funzionali ———————————————————————— */
-  --color-pos:            #86efac;
-  --color-neu:            #67e8f9;
-  --color-neg:            #fca5a5;
+  --color-pos:            #4E8A57;  /* positive / gain / "bot health" */
+  --color-neu:            #2F7E91;  /* neutral / active / info */
+  --color-neg:            #BC4032;  /* negative / loss / error — LEGIBLE red */
 
-  /* — role accent (used on /howwework) —————————————
-     CC = Claude Code (the intern). Indigo, distinct from
-     primary/neu/pos so the three project actors each have
-     their own identity color. */
-  --color-cc:             #818cf8;
+  /* — warning / todo (was yellow-300 / yellow-500) ———————————— */
+  --color-warn:           #B79029;  /* todo, open, warning */
+
+  /* — identità ruoli/sezioni (was amber-400) —————————————————
+     TF section · "NEW" tag · Max (board) identity. */
+  --color-tf:             #B5862E;  /* butter / amber */
+
+  /* — sand — accento caldo "sabbia" (S95 redesign, scelta Max).
+     Deep warm ochre per testo/accenti su fondo sabbia. Sta col salvia. */
+  --color-sand:           #9A7C3C;
+
+  /* — CC (Claude Code, intern) — indigo → pastel lilac —————————— */
+  --color-cc:             #6E68B0;
+
+  /* — identità prodotto: i 4 bot (⚠ pastel override) ——————————
+     Erano saturi (green/amber/blue/red); ora pastello e tokenizzati,
+     così non driftano più. */
+  --color-bot-grid:       #5E8A54;  /* Grid Bot — sage */
+  --color-bot-tf:         #B5862E;  /* Trend Follower — butter */
+  --color-bot-sentinel:   #4E8198;  /* Sentinel/Watchtower — powder */
+  --color-bot-sherpa:     #BC4032;  /* Sherpa — clay/red */
+
+  /* — tinte SOLIDE morbide ————————————————————————————
+     Use these instead of the old dark-tuned translucencies
+     (bg-pos/[0.04] etc.) — 4% alpha is invisible on a light page.
+     Pair as: solid soft fill + matching accent border/text. */
+  --color-primary-soft:   #D6E5EC;
+  --color-pos-soft:       #DCEAD3;
+  --color-neg-soft:       #F2DAD4;
+  --color-neu-soft:       #D2E6EA;
+  --color-warn-soft:      #F2E9CC;
+  --color-tf-soft:        #F4ECD3;
+  --color-sand-soft:      #F4ECD3;  /* riempimento sabbia (= tf-soft) */
+  --color-cc-soft:        #E2E0F2;
+  --color-bot-grid-soft:     #DCEAD3;
+  --color-bot-tf-soft:       #F4ECD3;
+  --color-bot-sentinel-soft: #D5E6EE;
+  --color-bot-sherpa-soft:   #F2DAD4;
 
   /* — tipografia ———————————————————————————————— */
+  /* NEW: display font for h1 / big section titles. */
+  --font-display: "Bricolage Grotesque", "Inter", -apple-system,
+                  BlinkMacSystemFont, system-ui, sans-serif;
+  /* body / narration — unchanged */
   --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Text",
                system-ui, sans-serif;
+  /* data / labels / numbers — unchanged (legibility for figures) */
   --font-mono: "JetBrains Mono", "SF Mono", ui-monospace, "Cascadia Code",
                Menlo, Consolas, monospace;
+
+  /* — ombre sticker (sostituiscono le ombre nere dark) —————————
+     Tailwind v4 exposes these as shadow-sticker / shadow-sticker-sm. */
+  --shadow-sticker:    0 14px 34px rgba(74, 118, 140, 0.16);
+  --shadow-sticker-sm: 0 6px 16px rgba(74, 118, 140, 0.12);
+
+  /* — raggi sticker (più morbidi del rounded-lg attuale) ————————
+     Exposed as rounded-sticker / rounded-tile. */
+  --radius-sticker: 22px;
+  --radius-tile:    16px;
 }
+
+/* NOTE — ::selection and :focus-visible in global.css already reference
+   --color-primary, so they update automatically. Verify the focus ring
+   still reads on the light bg (it does at #3F7589). */
+
 
 /* — base reset / body ———————————————————————————— */
 html {
@@ -87,14 +175,15 @@ body {
   min-width: 0;
   max-width: 240px;
   padding: 14px;
-  background: #0e1320;
-  border: 1.5px solid rgba(255, 255, 255, 0.12);
-  border-radius: 6px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 18px;
   position: relative;
   font-family: var(--font-mono);
   font-size: 11px;          /* was inheriting browser default → footer text rendered too large */
   line-height: 1.4;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--shadow-sticker-sm);
+  color: var(--color-text);
 }
 /* Tilt + reveal-friendly: split transform into two custom properties so
    the .reveal-stagger animation can compose translateY with the tilt
@@ -108,25 +197,25 @@ body {
 .bot-card.tilt-r { --tilt: rotate( 1.5deg); }
 .bot-card.dim    { opacity: 0.78; }
 .bot-card.grid-active {
-  border-color: #22c55e;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4),
+  border-color: var(--color-bot-grid);
+  box-shadow: var(--shadow-sticker-sm),
               inset 0 0 30px rgba(34, 197, 94, 0.06);
 }
 .bot-card.tf-active {
-  border-color: #f59e0b;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4),
+  border-color: var(--color-bot-tf);
+  box-shadow: var(--shadow-sticker-sm),
               inset 0 0 30px rgba(245, 158, 11, 0.06);
 }
 /* Brief 70c §7 — Sentinel/Sherpa cornice colorata in TEST MODE.
    Stesso pattern di grid-active/tf-active, colori per-bot. */
 .bot-card.sentinel-active {
-  border-color: #3b82f6;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4),
+  border-color: var(--color-bot-sentinel);
+  box-shadow: var(--shadow-sticker-sm),
               inset 0 0 30px rgba(59, 130, 246, 0.06);
 }
 .bot-card.sherpa-active {
-  border-color: #ef4444;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4),
+  border-color: var(--color-bot-sherpa);
+  box-shadow: var(--shadow-sticker-sm),
               inset 0 0 30px rgba(239, 68, 68, 0.06);
 }
 
@@ -134,29 +223,29 @@ body {
   position: absolute;
   top: -8px;
   right: 12px;
-  padding: 2px 7px;
-  border-radius: 8px;
-  background: #0a0e17;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--color-surface);
   font-size: 7px;
   font-weight: 700;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.6px;
+  box-shadow: var(--shadow-sticker-sm);
 }
-.bot-pill.live-grid { border: 1px solid #22c55e; color: #22c55e; }
-.bot-pill.live-tf   { border: 1px solid #f59e0b; color: #f59e0b; }
-.bot-pill.soon      { border: 1px solid rgba(255, 255, 255, 0.2); color: rgba(255, 255, 255, 0.6); }
-/* Brief 70c §7 fix: background composito (tint colorato sopra opaco)
-   per coprire la cornice della card che altrimenti attraversa la pill. */
+/* LIVE → pastello pieno + testo bianco. TEST/locked → outline soft. */
+.bot-pill.live-grid { background: var(--color-bot-grid); color: #fff; }
+.bot-pill.live-tf   { background: var(--color-bot-tf);   color: #fff; }
+.bot-pill.soon      { border: 1px solid var(--color-border); color: var(--color-text-muted); }
 .bot-pill.testmode-sentinel {
-  border: 1px solid #3b82f6; color: #3b82f6;
-  background: linear-gradient(rgba(59, 130, 246, 0.15), rgba(59, 130, 246, 0.15)), #0a0e17;
+  border: 1px solid var(--color-bot-sentinel); color: var(--color-bot-sentinel);
+  background: var(--color-bot-sentinel-soft);
 }
 .bot-pill.testmode-sherpa {
-  border: 1px solid #ef4444; color: #ef4444;
-  background: linear-gradient(rgba(239, 68, 68, 0.15), rgba(239, 68, 68, 0.15)), #0a0e17;
+  border: 1px solid var(--color-bot-sherpa); color: var(--color-bot-sherpa);
+  background: var(--color-bot-sherpa-soft);
 }
 .bot-pill.paused-tf {
-  border: 1px solid #f59e0b; color: #f59e0b;
-  background: linear-gradient(rgba(245, 158, 11, 0.15), rgba(245, 158, 11, 0.15)), #0a0e17;
+  border: 1px solid var(--color-bot-tf); color: var(--color-bot-tf);
+  background: var(--color-bot-tf-soft);
 }
 
 .bot-head {
@@ -166,29 +255,29 @@ body {
   margin-bottom: 4px;
 }
 .bot-name { font-size: 11px; font-weight: 700; letter-spacing: 0.6px; }
-.bot-name.grid     { color: #22c55e; }
-.bot-name.tf       { color: #f59e0b; }
-.bot-name.sentinel { color: #3b82f6; }
-.bot-name.sherpa   { color: #ef4444; }
-.bot-rarity   { font-size: 7px; color: rgba(255, 255, 255, 0.4); }
-.bot-subtitle { font-size: 8.5px; color: rgba(255, 255, 255, 0.5); margin-bottom: 10px; }
+.bot-name.grid     { color: var(--color-bot-grid); }
+.bot-name.tf       { color: var(--color-bot-tf); }
+.bot-name.sentinel { color: var(--color-bot-sentinel); }
+.bot-name.sherpa   { color: var(--color-bot-sherpa); }
+.bot-rarity   { font-size: 7px; color: var(--color-text-muted); }
+.bot-subtitle { font-size: 8.5px; color: var(--color-text-dim); margin-bottom: 10px; }
 
 .bot-frame {
-  background: #0a0e17;
-  border-radius: 3px;
+  background: var(--color-bg);
+  border-radius: 12px;
   padding: 6px;
   margin-bottom: 10px;
-  height: 150px;
+  height: 172px;
   position: relative;
   overflow: hidden;
   display: flex;
   justify-content: center;
   align-items: center;
 }
-.bot-frame.grid     { border: 1px dashed rgba( 34, 197,  94, 0.25); }
-.bot-frame.tf       { border: 1px dashed rgba(245, 158,  11, 0.25); }
-.bot-frame.sentinel { border: 1px dashed rgba( 59, 130, 246, 0.25); }
-.bot-frame.sherpa   { border: 1px dashed rgba(239,  68,  68, 0.25); }
+.bot-frame.grid     { background: var(--color-bot-grid-soft);     border: 1px dashed var(--color-bot-grid); }
+.bot-frame.tf       { background: var(--color-bot-tf-soft);       border: 1px dashed var(--color-bot-tf); }
+.bot-frame.sentinel { background: var(--color-bot-sentinel-soft); border: 1px dashed var(--color-bot-sentinel); }
+.bot-frame.sherpa   { background: var(--color-bot-sherpa-soft);   border: 1px dashed var(--color-bot-sherpa); }
 
 .bot-scanlines { position: absolute; inset: 0; pointer-events: none; }
 .bot-frame.grid     .bot-scanlines { background: repeating-linear-gradient(0deg, transparent 0, transparent 3px, rgba( 34, 197,  94, 0.04) 3px, rgba( 34, 197,  94, 0.04) 4px); }
@@ -280,11 +369,11 @@ body {
   gap: 6px;
 }
 .bot-stat-row + .bot-stat-row { margin-top: 4px; }
-.bot-stat-label { color: rgba(255, 255, 255, 0.55); width: 56px; flex-shrink: 0; }
+.bot-stat-label { color: var(--color-text-muted); width: 56px; flex-shrink: 0; }
 .bot-stat-bar-track {
   flex: 1;
   height: 3px;
-  background: rgba(255, 255, 255, 0.07);
+  background: var(--color-border-soft);
   border-radius: 2px;
   overflow: hidden;
 }
@@ -298,15 +387,15 @@ body {
   min-width: 30px;
   text-align: right;
 }
-.bot-stat-row.dim .bot-stat-bar-fill { background: rgba(255, 255, 255, 0.15); }
-.bot-stat-row.dim .bot-stat-value    { color: rgba(255, 255, 255, 0.35); }
+.bot-stat-row.dim .bot-stat-bar-fill { background: var(--color-border); }
+.bot-stat-row.dim .bot-stat-value    { color: var(--color-text-muted); }
 
 .bot-footer {
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  border-top: 1px solid var(--color-border-soft);
   padding-top: 8px;
   margin-top: 8px;
   font-size: 11px;          /* legacy used 8.5px but card was 220px wide; ours is wider */
-  color: rgba(255, 255, 255, 0.85);
+  color: var(--color-text-dim);
   line-height: 1.4;
   display: flex;
   align-items: baseline;
@@ -316,22 +405,32 @@ body {
   display: inline;
   flex: 0 0 auto;
 }
-.bot-footer .arrow.grid     { color: #22c55e; font-weight: 700; }
-.bot-footer .arrow.tf       { color: #f59e0b; font-weight: 700; }
-.bot-footer .arrow.sentinel { color: #3b82f6; font-weight: 700; }
-.bot-footer .arrow.sherpa   { color: #ef4444; font-weight: 700; }
+.bot-footer .arrow.grid     { color: var(--color-bot-grid); font-weight: 700; }
+.bot-footer .arrow.tf       { color: var(--color-bot-tf); font-weight: 700; }
+.bot-footer .arrow.sentinel { color: var(--color-bot-sentinel); font-weight: 700; }
+.bot-footer .arrow.sherpa   { color: var(--color-bot-sherpa); font-weight: 700; }
 
 @media (max-width: 700px) {
+  /* Stack all 4 bot cards full-width (1 per row) on mobile — at half-width
+     the stat bars (bar + right value, esp. Sherpa) collide. */
   .bots-row  { flex-wrap: wrap; }
-  .bot-card  { flex: 1 1 calc(50% - 14px); max-width: none; }
+  .bot-card  { flex: 1 1 100%; max-width: none; }
 }
 
 /* — diary log entries — show/hide pattern from legacy site —————————
    Same approach as web/diary.html: no animation, just display toggle.
    Works identically in Safari, Chrome, Firefox. */
 .log-body            { display: none; }
-.log-entry.expanded  { background: rgba(255, 255, 255, 0.04); }
+/* Expanded = keep the card opaque (light theme). A faint sand wash signals
+   the open state without letting the page's sage show through. */
+.log-entry.expanded  { background: var(--color-surface-hover); }
 .log-entry.expanded .log-body { display: block; }
+
+/* First entry (most recent) = "featured": warm sand-soft base that turns
+   white on hover. Id-scoped so it beats the bg-surface utility and the
+   .expanded rule; works for both fallback and live-rendered lists. */
+#log-container .log-entry:first-child        { background: var(--color-sand-soft); }
+#log-container .log-entry:first-child:hover  { background: var(--color-surface); }
 
 /* — scroll reveal — fade + slide-up when entering viewport —————————
    Toggled by an IntersectionObserver in Layout.astro.
@@ -381,8 +480,8 @@ body {
 }
 
 /* — Pipeline arrow — TF→GRID directional flow.
-   Base track is a static gradient from TF amber (#f59e0b) on the left
-   to GRID green (#22c55e) on the right, with full opacity at the ends
+   Base track is a static gradient from TF amber (var(--color-bot-tf)) on the left
+   to GRID green (var(--color-bot-grid)) on the right, with full opacity at the ends
    and a soft mid-tone in the middle. On top, a moving white "shimmer"
    pulse travels left→right, suggesting flow without obscuring the
    color transition. */

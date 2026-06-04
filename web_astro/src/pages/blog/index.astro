@@ -24,9 +24,9 @@ const posts = allPosts.sort(
   {/* ============================================================ HERO */}
   <section class="mx-auto max-w-4xl px-4 pt-10 pb-6 sm:px-6 sm:pt-14 sm:pb-8">
 
-    <h1 class="text-[28px] font-semibold leading-[1.12] tracking-tight
-               text-text sm:text-[34px] md:text-[40px] md:leading-[1.08]">
-      Blog<span class="text-primary">.</span>
+    <h1 class="font-display text-[34px] font-extrabold leading-[1.04] tracking-[-0.02em]
+               text-text sm:text-[42px]">
+      Latest <span class="text-sand">posts</span>.
     </h1>
 
     <p class="mt-3 max-w-2xl text-[14.5px] leading-[1.55] text-text-dim
@@ -38,8 +38,7 @@ const posts = allPosts.sort(
     <div class="mt-5 flex flex-wrap items-center gap-3 font-mono text-[10.5px]
                 uppercase tracking-[0.16em] text-text-muted">
       <span class="inline-flex items-center gap-1.5">
-        <span class="inline-block h-1.5 w-1.5 rounded-full bg-pos
-                     shadow-[0_0_8px_rgba(134,239,172,0.7)]"></span>
+        <span class="inline-block h-1.5 w-1.5 rounded-full bg-sand"></span>
         {posts.length} {posts.length === 1 ? "post" : "posts"}
       </span>
       <span class="text-border">·</span>
@@ -54,7 +53,7 @@ const posts = allPosts.sort(
         No posts yet. The first one is on its way.
       </p>
     ) : (
-      <div class="flex flex-col reveal-stagger">
+      <div class="flex flex-col gap-3 reveal-stagger">
         {posts.map((post) => (
           <BlogPostCard
             href={`/blog/${post.id}`}

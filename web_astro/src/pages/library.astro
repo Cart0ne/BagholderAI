@@ -17,11 +17,11 @@ import Layout from "../layouts/Layout.astro";
         href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT,WONK@0,9..144,400;0,9..144,500;0,9..144,700;0,9..144,900;1,9..144,400;1,9..144,500;1,9..144,700&display=swap" />
 
   {/* ============================================================ HERO */}
-  <section class="mx-auto max-w-4xl px-4 pt-10 pb-6 sm:px-6 sm:pt-14 sm:pb-8">
+  <section class="mx-auto max-w-4xl px-4 pt-10 pb-4 sm:px-6 sm:pt-12 sm:pb-4">
 
-    <h1 class="text-[28px] font-semibold leading-[1.12] tracking-tight
-               text-text sm:text-[34px] md:text-[40px] md:leading-[1.08]">
-      The <span class="text-primary">library</span>.
+    <h1 class="font-display text-[34px] font-extrabold leading-[1.04] tracking-[-0.02em]
+               text-text sm:text-[42px]">
+      The <span class="text-sand">library</span>.
     </h1>
 
     <p class="mt-3 max-w-2xl text-[14.5px] leading-[1.55] text-text-dim
@@ -31,11 +31,11 @@ import Layout from "../layouts/Layout.astro";
       own coins.
     </p>
 
-    <div class="mt-5 flex flex-wrap items-center gap-3 font-mono text-[10.5px]
-                uppercase tracking-[0.16em] text-text-muted">
-      <span class="inline-flex items-center gap-1.5">
-        <span class="inline-block h-1.5 w-1.5 rounded-full bg-pos
-                     shadow-[0_0_8px_rgba(134,239,172,0.7)]"></span>
+    <div class="mt-5 inline-flex flex-wrap items-center gap-3 rounded-2xl
+                border border-border bg-surface px-4 py-2.5 shadow-sticker-sm
+                font-mono text-[10.5px] uppercase tracking-[0.16em] text-text-muted">
+      <span class="inline-flex items-center gap-1.5 text-text-dim">
+        <span class="inline-block h-1.5 w-1.5 rounded-full bg-sand"></span>
         3 volumes out
       </span>
       <span class="text-border">·</span>
@@ -49,10 +49,10 @@ import Layout from "../layouts/Layout.astro";
        Above the shelf so the visitor has a reason to look at the
        books, not just three pretty spines. */}
   <section class="mx-auto max-w-4xl px-4 sm:px-6">
-    <hr class="border-t border-border-soft" />
-    <div class="mt-8">
-      <h2 class="font-mono text-[12px] uppercase tracking-[0.18em] text-pos mb-5">
-        § 1 · Why read these
+    <div class="mt-2 rounded-2xl border border-border-soft bg-panel px-6 py-7
+                shadow-sticker-sm sm:px-8 sm:py-8">
+      <h2 class="mb-5 font-display text-[22px] font-extrabold tracking-[-0.01em] text-text">
+        Why read <span class="text-sand">these</span>
       </h2>
 
       <p class="text-[14.5px] leading-[1.7] text-text-dim mb-4">
@@ -82,8 +82,8 @@ import Layout from "../layouts/Layout.astro";
         <div class="shelf-glow"></div>
         <div class="shelf-plank"></div>
 
-        {/* Volume 1 */}
-        <div class="shelf-book b1" data-vol="b1">
+        {/* Volume 1 (default open) */}
+        <div class="shelf-book b1 open" data-vol="b1">
           <div class="spine">
             <div class="spine-content">
               <div class="spine-num">I</div>
@@ -127,8 +127,8 @@ import Layout from "../layouts/Layout.astro";
           </div>
         </div>
 
-        {/* Volume 2 (default open) */}
-        <div class="shelf-book b2 open" data-vol="b2">
+        {/* Volume 2 */}
+        <div class="shelf-book b2" data-vol="b2">
           <div class="spine">
             <div class="spine-content">
               <div class="spine-num">II</div>
@@ -264,8 +264,8 @@ import Layout from "../layouts/Layout.astro";
     <div class="space-y-5">
 
       {/* Volume 1 */}
-      <article class="overflow-hidden rounded-lg border border-border bg-surface
-                      sm:grid sm:grid-cols-[200px_1fr]">
+      <article class="overflow-hidden rounded-2xl border border-border bg-surface
+                      shadow-sticker-sm sm:grid sm:grid-cols-[200px_1fr]">
         <div class="aspect-[3/4] w-full bg-cover bg-center sm:aspect-auto sm:h-full"
              style="background-image: url('/cover_vol1_final.jpg');"></div>
         <div class="p-5 sm:p-6">
@@ -281,7 +281,7 @@ import Layout from "../layouts/Layout.astro";
             <span class="text-border">·</span>
             <span>PDF</span>
           </div>
-          <h3 class="mt-2 text-[22px] font-semibold leading-tight text-text">
+          <h3 class="mt-2 font-display text-[22px] font-extrabold leading-tight tracking-[-0.01em] text-text">
             From Zero to Grid
           </h3>
           <p class="mt-1 text-[14px] italic text-text-dim">
@@ -301,19 +301,19 @@ import Layout from "../layouts/Layout.astro";
                target="_blank" rel="noopener"
                data-umami-event="buy-click"
                data-umami-event-source="library-card-v1"
-               class="rounded-md bg-pos px-4 py-2 font-mono text-[11px] font-semibold
-                      uppercase tracking-[0.14em] text-bg
-                      transition-colors hover:bg-pos/90">
+               class="rounded-full bg-pos px-5 py-2.5 font-mono text-[11px] font-semibold
+                      uppercase tracking-[0.14em] text-white shadow-sticker-sm
+                      transition hover:-translate-y-0.5 hover:shadow-sticker">
               €4.99 · Payhip ↗
             </a>
             <a href="https://payhip.com/preview/a4yMc"
                target="_blank" rel="noopener"
                data-umami-event="preview-click"
                data-umami-event-source="library-card-v1"
-               class="rounded-md border border-border-soft px-4 py-2
+               class="rounded-full border border-border bg-surface px-5 py-2.5
                       font-mono text-[11px] font-semibold uppercase tracking-[0.14em]
-                      text-text-dim transition-colors
-                      hover:border-text-muted hover:text-text">
+                      text-text-dim shadow-sticker-sm transition
+                      hover:-translate-y-0.5 hover:bg-surface-hover hover:text-text hover:shadow-sticker">
               ↓ Free preview
             </a>
           </div>
@@ -321,8 +321,8 @@ import Layout from "../layouts/Layout.astro";
       </article>
 
       {/* Volume 2 */}
-      <article class="overflow-hidden rounded-lg border border-neu/30
-                      bg-surface ring-1 ring-neu/10
+      <article class="overflow-hidden rounded-2xl border border-neu/30
+                      bg-surface shadow-sticker-sm ring-1 ring-neu/10
                       sm:grid sm:grid-cols-[200px_1fr]">
         <div class="aspect-[3/4] w-full bg-cover bg-center sm:aspect-auto sm:h-full"
              style="background-image: url('/cover_vol2_final.jpg');"></div>
@@ -339,7 +339,7 @@ import Layout from "../layouts/Layout.astro";
             <span class="text-border">·</span>
             <span>PDF</span>
           </div>
-          <h3 class="mt-2 text-[22px] font-semibold leading-tight text-text">
+          <h3 class="mt-2 font-display text-[22px] font-extrabold leading-tight tracking-[-0.01em] text-text">
             From Grid to Brain
           </h3>
           <p class="mt-1 text-[14px] italic text-text-dim">
@@ -362,19 +362,19 @@ import Layout from "../layouts/Layout.astro";
                target="_blank" rel="noopener"
                data-umami-event="buy-click"
                data-umami-event-source="library-card-v2"
-               class="rounded-md bg-neu px-4 py-2 font-mono text-[11px] font-semibold
-                      uppercase tracking-[0.14em] text-bg
-                      transition-colors hover:bg-neu/90">
+               class="rounded-full bg-neu px-5 py-2.5 font-mono text-[11px] font-semibold
+                      uppercase tracking-[0.14em] text-white shadow-sticker-sm
+                      transition hover:-translate-y-0.5 hover:shadow-sticker">
               €4.99 · Payhip ↗
             </a>
             <a href="https://payhip.com/preview/NHw53"
                target="_blank" rel="noopener"
                data-umami-event="preview-click"
                data-umami-event-source="library-card-v2"
-               class="rounded-md border border-border-soft px-4 py-2
+               class="rounded-full border border-border bg-surface px-5 py-2.5
                       font-mono text-[11px] font-semibold uppercase tracking-[0.14em]
-                      text-text-dim transition-colors
-                      hover:border-text-muted hover:text-text">
+                      text-text-dim shadow-sticker-sm transition
+                      hover:-translate-y-0.5 hover:bg-surface-hover hover:text-text hover:shadow-sticker">
               ↓ Free preview
             </a>
           </div>
@@ -382,15 +382,15 @@ import Layout from "../layouts/Layout.astro";
       </article>
 
       {/* Volume 3 — live */}
-      <article class="overflow-hidden rounded-lg border border-pos/30
-                      bg-surface ring-1 ring-pos/10
+      <article class="overflow-hidden rounded-2xl border border-cc/30
+                      bg-surface shadow-sticker-sm ring-1 ring-cc/10
                       sm:grid sm:grid-cols-[200px_1fr]">
         <div class="aspect-[3/4] w-full bg-cover bg-center sm:aspect-auto sm:h-full"
              style="background-image: url('/cover_vol3_final.jpg');"></div>
         <div class="p-5 sm:p-6">
           <div class="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[10px]
                       uppercase tracking-[0.16em] text-text-muted">
-            <span class="text-pos">Volume III · live</span>
+            <span class="text-cc">Volume III · live</span>
             <span class="text-border">·</span>
             <span>2026</span>
             <span class="text-border">·</span>
@@ -400,14 +400,14 @@ import Layout from "../layouts/Layout.astro";
             <span class="text-border">·</span>
             <span>PDF</span>
           </div>
-          <h3 class="mt-2 text-[22px] font-semibold leading-tight text-text">
+          <h3 class="mt-2 font-display text-[22px] font-extrabold leading-tight tracking-[-0.01em] text-text">
             From Brain to Eyes
           </h3>
           <p class="mt-1 text-[14px] italic text-text-dim">
             The bots trade. The numbers don't match. And the Board has
             had enough.
           </p>
-          <p class="mt-4 border-l-2 border-pos pl-3 text-[14px] leading-[1.55] text-text">
+          <p class="mt-4 border-l-2 border-cc pl-3 text-[14px] leading-[1.55] text-text">
             "30 sessions where oversight stopped trusting the brain on
             faith."
           </p>
@@ -423,19 +423,19 @@ import Layout from "../layouts/Layout.astro";
                target="_blank" rel="noopener"
                data-umami-event="buy-click"
                data-umami-event-source="library-card-v3"
-               class="rounded-md bg-pos px-4 py-2 font-mono text-[11px] font-semibold
-                      uppercase tracking-[0.14em] text-bg
-                      transition-colors hover:bg-pos/90">
+               class="rounded-full bg-cc px-5 py-2.5 font-mono text-[11px] font-semibold
+                      uppercase tracking-[0.14em] text-white shadow-sticker-sm
+                      transition hover:-translate-y-0.5 hover:shadow-sticker">
               €4.99 · Payhip ↗
             </a>
             <a href="https://payhip.com/preview/hCWNX"
                target="_blank" rel="noopener"
                data-umami-event="preview-click"
                data-umami-event-source="library-card-v3"
-               class="rounded-md border border-border-soft px-4 py-2
+               class="rounded-full border border-border bg-surface px-5 py-2.5
                       font-mono text-[11px] font-semibold uppercase tracking-[0.14em]
-                      text-text-dim transition-colors
-                      hover:border-text-muted hover:text-text">
+                      text-text-dim shadow-sticker-sm transition
+                      hover:-translate-y-0.5 hover:bg-surface-hover hover:text-text hover:shadow-sticker">
               ↓ Free preview
             </a>
           </div>
@@ -443,8 +443,8 @@ import Layout from "../layouts/Layout.astro";
       </article>
 
       {/* Volume 4 — coming */}
-      <article class="overflow-hidden rounded-lg border border-border-soft bg-surface/60
-                      sm:grid sm:grid-cols-[200px_1fr]">
+      <article class="overflow-hidden rounded-2xl border border-border-soft bg-surface/60
+                      shadow-sticker-sm sm:grid sm:grid-cols-[200px_1fr]">
         <div class="flex aspect-[3/4] w-full flex-col items-center justify-center
                     gap-3 border-b border-dashed border-border-soft bg-bg/40 p-5
                     sm:aspect-auto sm:h-full sm:border-b-0 sm:border-r">
@@ -462,7 +462,7 @@ import Layout from "../layouts/Layout.astro";
             <span class="text-border">·</span>
             <span>ETA TBD</span>
           </div>
-          <h3 class="mt-2 text-[22px] font-semibold leading-tight text-text">
+          <h3 class="mt-2 font-display text-[22px] font-extrabold leading-tight tracking-[-0.01em] text-text">
             From Eyes to Live
           </h3>
           <p class="mt-1 text-[14px] italic text-text-dim">
@@ -483,10 +483,10 @@ import Layout from "../layouts/Layout.astro";
           <div class="mt-5">
             <a href="https://t.me/BagHolderAI_report"
                target="_blank" rel="noopener"
-               class="rounded-md border border-border-soft px-4 py-2
+               class="rounded-full border border-border bg-surface px-5 py-2.5
                       font-mono text-[11px] font-semibold uppercase tracking-[0.14em]
-                      text-text-dim transition-colors
-                      hover:border-text-muted hover:text-text">
+                      text-text-dim shadow-sticker-sm transition
+                      hover:-translate-y-0.5 hover:bg-surface-hover hover:text-text hover:shadow-sticker">
               📡 Notify me on Telegram
             </a>
           </div>
@@ -500,38 +500,27 @@ import Layout from "../layouts/Layout.astro";
   <main class="mx-auto max-w-4xl px-4 pb-24 sm:px-6">
 
     {/* ============ § 2 — BY THE NUMBERS ============ */}
-    <hr class="mt-12 border-t border-border-soft" />
-    <section class="mt-8">
-      <h2 class="font-mono text-[12px] uppercase tracking-[0.18em] text-pos mb-5">
-        § 2 · By the numbers
+    <section class="mt-12">
+      <h2 class="mb-5 font-display text-[22px] font-extrabold tracking-[-0.01em] text-text">
+        By the <span class="text-sand">numbers</span>
       </h2>
 
-      <div class="grid grid-cols-2 gap-px overflow-hidden rounded-lg
-                  border border-border bg-border sm:grid-cols-4">
-        <div class="bg-surface px-4 py-5 text-center">
-          <div class="font-mono text-[24px] font-semibold text-pos tabular-nums">308</div>
-          <div class="mt-1 font-mono text-[10px] uppercase tracking-[0.16em] text-text-muted">
-            pages
+      <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {[
+          { n: "308", label: "pages",       accent: "text-sand" },
+          { n: "82",  label: "sessions",    accent: "text-pos"  },
+          { n: "3",   label: "volumes out", accent: "text-primary" },
+          { n: "1",   label: "ai ceo",      accent: "text-cc"   },
+        ].map((s) => (
+          <div class="rounded-2xl border border-border bg-surface px-4 py-5
+                      text-center shadow-sticker-sm transition
+                      hover:-translate-y-0.5 hover:shadow-sticker">
+            <div class:list={["font-display text-[32px] font-extrabold leading-none tabular-nums", s.accent]}>{s.n}</div>
+            <div class="mt-1.5 font-mono text-[10px] uppercase tracking-[0.16em] text-text-muted">
+              {s.label}
+            </div>
           </div>
-        </div>
-        <div class="bg-surface px-4 py-5 text-center">
-          <div class="font-mono text-[24px] font-semibold text-pos tabular-nums">82</div>
-          <div class="mt-1 font-mono text-[10px] uppercase tracking-[0.16em] text-text-muted">
-            sessions
-          </div>
-        </div>
-        <div class="bg-surface px-4 py-5 text-center">
-          <div class="font-mono text-[24px] font-semibold text-pos tabular-nums">3</div>
-          <div class="mt-1 font-mono text-[10px] uppercase tracking-[0.16em] text-text-muted">
-            volumes out
-          </div>
-        </div>
-        <div class="bg-surface px-4 py-5 text-center">
-          <div class="font-mono text-[24px] font-semibold text-pos tabular-nums">1</div>
-          <div class="mt-1 font-mono text-[10px] uppercase tracking-[0.16em] text-text-muted">
-            ai ceo
-          </div>
-        </div>
+        ))}
       </div>
     </section>
 
@@ -555,10 +544,15 @@ import Layout from "../layouts/Layout.astro";
   .library-shelf {
     --display: 'Fraunces', 'Times New Roman', serif;
     --book-mono: 'JetBrains Mono', 'SF Mono', 'Menlo', monospace;
-    --book-cyan: #67e8f9;        /* matches site --neu */
-    --book-cyan-dim: rgba(103, 232, 249, 0.45);
-    --book-green: #86efac;       /* matches site --pos */
-    --shelf-wood: linear-gradient(180deg, #1a1410 0%, #100c0a 60%, #060403 100%);
+    /* Pastel Sticker v2 — light library. Jewel-tone darks → soft pastels;
+       mahogany plank → light oak; white text → ink. */
+    --book-cyan: #2F7E91;        /* site --neu (teal), readable on light — Vol II */
+    --book-green: #4E8A57;       /* site --pos (sage) — Vol I */
+    --book-lilla: #6E68B0;       /* site --cc (lilla) — Vol III */
+    --book-ink: #283026;
+    --book-ink-dim: #455041;
+    --book-ink-muted: #59634F;
+    --shelf-wood: linear-gradient(180deg, #E7DABB 0%, #D6C398 55%, #BFA877 100%);
   }
 
   .library-shelf .shelf-stage {
@@ -584,27 +578,27 @@ import Layout from "../layouts/Layout.astro";
     background: var(--shelf-wood);
     transform: rotateX(58deg);
     transform-origin: top center;
-    box-shadow: 0 30px 60px -10px rgba(0,0,0,0.85), inset 0 1px 0 rgba(255,255,255,0.04);
+    box-shadow: 0 30px 60px -10px rgba(40,48,38,0.28), inset 0 1px 0 rgba(255,255,255,0.45);
     border-radius: 1px;
   }
   .library-shelf .shelf-plank::before {
     content: '';
     position: absolute; inset: 0;
     background:
-      repeating-linear-gradient(90deg, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 1px, transparent 1px, transparent 80px),
-      repeating-linear-gradient(90deg, rgba(0,0,0,0.4) 0px, rgba(0,0,0,0.4) 2px, transparent 2px, transparent 240px);
+      repeating-linear-gradient(90deg, rgba(255,255,255,0.30) 0px, rgba(255,255,255,0.30) 1px, transparent 1px, transparent 80px),
+      repeating-linear-gradient(90deg, rgba(120,92,48,0.16) 0px, rgba(120,92,48,0.16) 2px, transparent 2px, transparent 240px);
     mix-blend-mode: overlay;
   }
   .library-shelf .shelf-plank::after {
     content: '';
     position: absolute; left: 0; right: 0; top: 0; height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08) 30%, rgba(255,255,255,0.08) 70%, transparent);
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.55) 30%, rgba(255,255,255,0.55) 70%, transparent);
   }
   .library-shelf .shelf-glow {
     position: absolute;
     left: 20%; right: 20%; top: -40px;
     height: 80px;
-    background: radial-gradient(ellipse at center, rgba(234,179,8,0.06), transparent 70%);
+    background: radial-gradient(ellipse at center, rgba(154,124,60,0.12), transparent 70%);
     pointer-events: none;
     z-index: -1;
   }
@@ -636,39 +630,43 @@ import Layout from "../layouts/Layout.astro";
     border-radius: 1px 3px 3px 1px;
     transform-style: preserve-3d;
     box-shadow:
-      inset -3px 0 8px rgba(0,0,0,0.6),
-      inset 3px 0 0 rgba(255,255,255,0.05),
-      0 8px 30px -6px rgba(0,0,0,0.8),
-      0 30px 50px -20px rgba(0,0,0,0.6);
+      inset -3px 0 8px rgba(40,48,38,0.14),
+      inset 3px 0 0 rgba(255,255,255,0.65),
+      0 8px 24px -8px rgba(40,48,38,0.22),
+      0 24px 44px -20px rgba(40,48,38,0.16);
     transition: opacity 0.4s ease;
   }
-  .library-shelf .shelf-book.b1 .spine,
+  .library-shelf .shelf-book.b1 .spine {
+    background:
+      linear-gradient(180deg, rgba(78,138,87,0.20), rgba(255,255,255,0)),
+      linear-gradient(90deg, #CADCBD 0%, #B6CFA6 50%, #C2D7B4 100%);
+  }
   .library-shelf .shelf-book.b3 .spine {
     background:
-      linear-gradient(180deg, rgba(134,239,172,0.18), rgba(0,0,0,0)),
-      linear-gradient(90deg, #0e1d12 0%, #182a1d 50%, #0a160e 100%);
+      linear-gradient(180deg, rgba(110,104,176,0.22), rgba(255,255,255,0)),
+      linear-gradient(90deg, #D3D0EA 0%, #C2BEE0 50%, #CDC9E6 100%);
   }
   .library-shelf .shelf-book.b2 .spine {
     background:
-      linear-gradient(180deg, rgba(103,232,249,0.22), rgba(0,0,0,0)),
-      linear-gradient(90deg, #0a1c20 0%, #0f2c33 50%, #061418 100%);
+      linear-gradient(180deg, rgba(47,126,145,0.20), rgba(255,255,255,0)),
+      linear-gradient(90deg, #BCD7DC 0%, #A6CBD2 50%, #B2D2D8 100%);
   }
   .library-shelf .shelf-book.b4 .spine {
     background:
-      linear-gradient(180deg, rgba(255,255,255,0.06), rgba(0,0,0,0)),
-      linear-gradient(90deg, #161616 0%, #1f1f1f 50%, #0d0d0d 100%);
+      linear-gradient(180deg, rgba(40,48,38,0.05), rgba(255,255,255,0)),
+      linear-gradient(90deg, #E0E0D6 0%, #D4D4C8 50%, #DCDCD2 100%);
   }
   .library-shelf .shelf-book .spine::before {
     content: '';
     position: absolute; left: 8px; right: 8px;
     top: 22px; height: 2px;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.22), transparent);
+    background: linear-gradient(90deg, transparent, rgba(40,48,38,0.18), transparent);
   }
   .library-shelf .shelf-book .spine::after {
     content: '';
     position: absolute; left: 8px; right: 8px;
     bottom: 28px; height: 2px;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+    background: linear-gradient(90deg, transparent, rgba(40,48,38,0.18), transparent);
   }
   .library-shelf .spine-content {
     position: absolute; inset: 0;
@@ -680,11 +678,11 @@ import Layout from "../layouts/Layout.astro";
     font-family: var(--display);
     font-style: italic; font-weight: 400;
     font-size: 18px;
-    color: rgba(255,255,255,0.5);
+    color: rgba(40,48,38,0.5);
     letter-spacing: 0.1em;
   }
-  .library-shelf .shelf-book.b1 .spine-num,
-  .library-shelf .shelf-book.b3 .spine-num { color: var(--book-green); }
+  .library-shelf .shelf-book.b1 .spine-num { color: var(--book-green); }
+  .library-shelf .shelf-book.b3 .spine-num { color: var(--book-lilla); }
   .library-shelf .shelf-book.b2 .spine-num { color: var(--book-cyan); }
   .library-shelf .spine-title {
     writing-mode: vertical-rl;
@@ -693,41 +691,40 @@ import Layout from "../layouts/Layout.astro";
     font-weight: 900;
     font-size: 18px;
     letter-spacing: 0.04em;
-    color: #f4f0e8;
-    text-shadow: 0 1px 0 rgba(0,0,0,0.6);
+    color: var(--book-ink);
+    text-shadow: 0 1px 0 rgba(255,255,255,0.5);
   }
-  .library-shelf .shelf-book.b1 .spine-title,
-  .library-shelf .shelf-book.b3 .spine-title { color: #d6f5d6; }
-  .library-shelf .shelf-book.b2 .spine-title { color: #d3f4f8; }
-  .library-shelf .shelf-book.b4 .spine-title { color: rgba(255,255,255,0.4); }
+  .library-shelf .shelf-book.b1 .spine-title { color: #2c4a32; }
+  .library-shelf .shelf-book.b3 .spine-title { color: #353072; }
+  .library-shelf .shelf-book.b2 .spine-title { color: #1f4651; }
+  .library-shelf .shelf-book.b4 .spine-title { color: rgba(40,48,38,0.45); }
   .library-shelf .spine-mark {
     font-family: var(--book-mono);
     font-size: 9px;
     letter-spacing: 0.25em;
-    color: rgba(255,255,255,0.55);
+    color: rgba(40,48,38,0.5);
     text-transform: uppercase;
   }
-  .library-shelf .shelf-book.b1 .spine-mark,
-  .library-shelf .shelf-book.b3 .spine-mark { color: rgba(134,239,172,0.7); }
-  .library-shelf .shelf-book.b2 .spine-mark { color: rgba(103,232,249,0.75); }
+  .library-shelf .shelf-book.b1 .spine-mark { color: var(--book-green); }
+  .library-shelf .shelf-book.b3 .spine-mark { color: var(--book-lilla); }
+  .library-shelf .shelf-book.b2 .spine-mark { color: var(--book-cyan); }
 
   .library-shelf .shelf-book:not(.open):hover { transform: translateY(-10px) translateZ(20px); }
   .library-shelf .shelf-book:not(.open):hover .spine {
     box-shadow:
-      inset -3px 0 8px rgba(0,0,0,0.6),
-      inset 3px 0 0 rgba(255,255,255,0.08),
-      0 14px 44px -6px rgba(0,0,0,0.95),
-      0 44px 60px -20px rgba(0,0,0,0.7);
+      inset -3px 0 8px rgba(40,48,38,0.14),
+      inset 3px 0 0 rgba(255,255,255,0.75),
+      0 18px 44px -8px rgba(40,48,38,0.30),
+      0 40px 60px -24px rgba(40,48,38,0.20);
   }
 
   .library-shelf .book-open-content {
     position: absolute; inset: 0;
     border-radius: 2px 6px 6px 2px;
-    background: linear-gradient(135deg, #161413 0%, #0d0c0b 100%);
+    background: linear-gradient(135deg, #FFFFFF 0%, #FAF8F0 100%);
     box-shadow:
-      0 30px 60px -15px rgba(0,0,0,0.85),
-      inset 0 0 0 1px rgba(255,255,255,0.06),
-      inset 0 0 80px rgba(0,0,0,0.4);
+      0 30px 60px -18px rgba(40,48,38,0.30),
+      inset 0 0 0 1px rgba(40,48,38,0.06);
     opacity: 0;
     transition: opacity 0.45s ease 0.35s;
     overflow: hidden;
@@ -742,7 +739,7 @@ import Layout from "../layouts/Layout.astro";
     position: absolute;
     left: 354px; top: 16px; bottom: 16px;
     width: 1px;
-    background: linear-gradient(180deg, transparent, rgba(255,255,255,0.08) 20%, rgba(255,255,255,0.08) 80%, transparent);
+    background: linear-gradient(180deg, transparent, rgba(40,48,38,0.10) 20%, rgba(40,48,38,0.10) 80%, transparent);
     z-index: 2;
   }
 
@@ -754,22 +751,22 @@ import Layout from "../layouts/Layout.astro";
        breakpoint. */
     background-position: left center;
     position: relative;
-    box-shadow: inset -8px 0 24px rgba(0,0,0,0.6);
+    box-shadow: inset -8px 0 24px rgba(40,48,38,0.16);
   }
   .library-shelf .open-cover.placeholder {
-    background: linear-gradient(135deg, #1a1a1a 0%, #0d0d0d 100%);
-    border-right: 1px dashed rgba(255,255,255,0.18);
+    background: linear-gradient(135deg, #EFEAD9 0%, #E2DBC3 100%);
+    border-right: 1px dashed rgba(40,48,38,0.22);
     display: flex; align-items: center; justify-content: center;
     flex-direction: column; gap: 14px; padding: 24px; text-align: center;
   }
   .library-shelf .open-cover.placeholder .ph-num {
     font-family: var(--display); font-style: italic; font-weight: 400;
-    font-size: 84px; color: rgba(255,255,255,0.18); line-height: 1;
+    font-size: 84px; color: rgba(40,48,38,0.16); line-height: 1;
   }
   .library-shelf .open-cover.placeholder .ph-text {
     font-family: var(--book-mono); font-size: 10px;
     letter-spacing: 0.25em; text-transform: uppercase;
-    color: rgba(255,255,255,0.3);
+    color: var(--book-ink-muted);
   }
 
   .library-shelf .open-details {
@@ -786,24 +783,24 @@ import Layout from "../layouts/Layout.astro";
     font-variation-settings: "opsz" 144, "SOFT" 100, "WONK" 1;
     font-size: 180px;
     line-height: 1;
-    color: rgba(255,255,255,0.05);
+    color: rgba(40,48,38,0.05);
     pointer-events: none;
     z-index: 0;
   }
-  .library-shelf .b1 .open-numeral,
-  .library-shelf .b3 .open-numeral { color: rgba(134,239,172,0.10); }
-  .library-shelf .b2 .open-numeral { color: rgba(103,232,249,0.11); }
+  .library-shelf .b1 .open-numeral { color: rgba(78,138,87,0.12); }
+  .library-shelf .b3 .open-numeral { color: rgba(110,104,176,0.13); }
+  .library-shelf .b2 .open-numeral { color: rgba(47,126,145,0.12); }
   .library-shelf .open-meta {
     font-family: var(--book-mono); font-size: 10px;
     letter-spacing: 0.18em; text-transform: uppercase;
-    color: rgba(255,255,255,0.4);
+    color: var(--book-ink-muted);
     margin-bottom: 14px;
     display: flex; gap: 14px; flex-wrap: wrap;
     position: relative; z-index: 1;
   }
-  .library-shelf .open-meta span { color: rgba(255,255,255,0.85); }
-  .library-shelf .b1 .open-meta .accent,
-  .library-shelf .b3 .open-meta .accent { color: var(--book-green); }
+  .library-shelf .open-meta span { color: var(--book-ink); }
+  .library-shelf .b1 .open-meta .accent { color: var(--book-green); }
+  .library-shelf .b3 .open-meta .accent { color: var(--book-lilla); }
   .library-shelf .b2 .open-meta .accent { color: var(--book-cyan); }
   .library-shelf .open-title {
     font-family: var(--display);
@@ -812,7 +809,7 @@ import Layout from "../layouts/Layout.astro";
     font-size: 38px;
     line-height: 1.02;
     letter-spacing: -0.025em;
-    color: #fff;
+    color: var(--book-ink);
     margin-bottom: 6px;
     position: relative; z-index: 1;
   }
@@ -820,7 +817,7 @@ import Layout from "../layouts/Layout.astro";
     font-family: var(--display);
     font-style: italic; font-weight: 400;
     font-size: 17px;
-    color: rgba(255,255,255,0.4);
+    color: var(--book-ink-dim);
     margin-bottom: 22px;
     position: relative; z-index: 1;
   }
@@ -828,19 +825,19 @@ import Layout from "../layouts/Layout.astro";
     font-family: var(--display);
     font-weight: 400;
     font-size: 16px; line-height: 1.5;
-    color: rgba(255,255,255,0.85);
+    color: var(--book-ink);
     padding: 8px 0 8px 18px;
     border-left: 2px solid;
     margin-bottom: 18px;
     position: relative; z-index: 1;
   }
-  .library-shelf .b1 .open-pull,
-  .library-shelf .b3 .open-pull { border-color: var(--book-green); }
+  .library-shelf .b1 .open-pull { border-color: var(--book-green); }
+  .library-shelf .b3 .open-pull { border-color: var(--book-lilla); }
   .library-shelf .b2 .open-pull { border-color: var(--book-cyan); }
   .library-shelf .open-desc {
     font-family: var(--display);
     font-size: 14px; line-height: 1.65;
-    color: rgba(255,255,255,0.55);
+    color: var(--book-ink-dim);
     margin-bottom: 24px;
     position: relative; z-index: 1;
   }
@@ -853,36 +850,42 @@ import Layout from "../layouts/Layout.astro";
     font-family: var(--book-mono);
     font-size: 11px; font-weight: 500;
     letter-spacing: 0.1em; text-transform: uppercase;
-    padding: 12px 20px; border-radius: 2px;
+    padding: 12px 22px; border-radius: 999px;
     text-decoration: none;
-    transition: transform 0.2s ease, filter 0.2s ease, border-color 0.2s ease;
+    transition: transform 0.2s ease, filter 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
     display: inline-flex; align-items: center; gap: 10px;
   }
   .library-shelf .book-btn-primary {
     background: var(--book-cyan);
-    color: #061418;
+    color: #fff;
     border: 1px solid var(--book-cyan);
+    box-shadow: var(--shadow-sticker-sm);
   }
-  .library-shelf .b1 .book-btn-primary,
-  .library-shelf .b3 .book-btn-primary {
+  .library-shelf .b1 .book-btn-primary {
     background: var(--book-green);
-    color: #061410;
+    color: #fff;
     border-color: var(--book-green);
   }
-  .library-shelf .book-btn-primary:hover { transform: translateY(-2px); filter: brightness(1.1); }
-  .library-shelf .book-btn-secondary {
-    background: transparent;
-    color: rgba(255,255,255,0.85);
-    border: 1px solid rgba(255,255,255,0.2);
+  .library-shelf .b3 .book-btn-primary {
+    background: var(--book-lilla);
+    color: #fff;
+    border-color: var(--book-lilla);
   }
-  .library-shelf .book-btn-secondary:hover { border-color: rgba(255,255,255,0.85); transform: translateY(-2px); }
+  .library-shelf .book-btn-primary:hover { transform: translateY(-2px); filter: brightness(1.05); box-shadow: var(--shadow-sticker); }
+  .library-shelf .book-btn-secondary {
+    background: #fff;
+    color: var(--book-ink-dim);
+    border: 1px solid var(--color-border);
+    box-shadow: var(--shadow-sticker-sm);
+  }
+  .library-shelf .book-btn-secondary:hover { border-color: var(--book-ink-muted); transform: translateY(-2px); box-shadow: var(--shadow-sticker); }
   .library-shelf .v3-state {
     font-family: var(--book-mono); font-size: 10px;
-    color: rgba(255,255,255,0.4);
+    color: var(--book-ink-muted);
     letter-spacing: 0.15em; text-transform: uppercase;
     padding: 10px 14px;
-    border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 2px;
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
     margin-bottom: 18px;
     display: inline-block;
     position: relative; z-index: 1;

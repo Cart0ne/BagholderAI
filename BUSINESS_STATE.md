@@ -1,8 +1,8 @@
 # BUSINESS_STATE.md
 
-**Last updated:** 2026-05-29 — Session 91 (applicato update CEO: §4 +3 decisioni [Brain Analysis 2 + fix stop_buy extreme_fear + reset testnet parcheggiato], §5 +1 domanda [integrità dati bot_state_snapshots], §6 aggiornati Sherpa DRY_RUN/Brain Analysis FATTA + NewsKeeper prima analisi 1 giugno, §3 diary sessioni V4 → S91, §7 +2 voci [reset testnet + timing Sentinel parcheggiati]). Cadenze audit NON duplicate qui: restano canoniche in PROJECT_STATE §9 (decisione Max, evita drift §[1]). Prec.: S89 (audit Area 1 automatizzato + brief 89a shipped).
-**Updated by:** CEO (istruzione in chat via Max) — applicato da CC (S91)
-**Basato su:** PROJECT_STATE.md aggiornato 2026-05-29 (S91)
+**Last updated:** 2026-06-02 — Session 95 (applicato update CEO da brief `config/2026-06-02_S95_business_state_update.md`: §2 +SEO+GEO strategy / Medium / LinkedIn parcheggiato / Reddit best-comment, §3 conteggi blog [7 pubblicati, 4 SEO+GEO in coda], §4 +3 decisioni [dual-channel SEO+GEO, LinkedIn approvato, Medium attivo], §6 redesign "Pastel Sticker v2" branch+anteprima READY / +POST 2 drafting). Cap file alzato a 50KB (decisione Max S95, CLAUDE.md §2b). Cadenze audit canoniche in PROJECT_STATE §9. Prec.: S94 (§4/§6/§7 macro feed CNBC + NewsKeeper Haiku).
+**Updated by:** CEO (brief S95 via Max) — applicato da CC (S95)
+**Basato su:** PROJECT_STATE.md aggiornato 2026-06-02 (S95b redesign) + POST 1 SEO+GEO live commit `78483dc`
 
 ---
 
@@ -43,7 +43,10 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 - Post 2 LIVE 2026-05-16: "The Day Our Bot Ran Out of Money"
 - Post 3 LIVE 2026-05-19: "When Your AI CEO Lies About the Numbers"
 - **Post 4 LIVE 2026-05-28: "How Three Claudes Run a Company"** — bagholderai.lol/blog/how-three-claudes-run-a-company. Volume:3 / type:lesson. Meta/workflow post (CEO + intern + Haiku + Max). Pubblicato S90 commit `1b28e2a`
-- **Post 5 DRAFTED**: "AI Is Useful. But It Doesn't Think Like We Do." — parcheggiato, va live dopo feedback Reddit
+- **Post 5 LIVE 2026-05-31: "AI Is Useful. But It Doesn't Think Like We Do."** — bagholderai.lol/blog/ai-is-useful-but-it-doesnt-think-like-we-do. Ripubblicato da Dev.to (`noRss:true`), chiude drift blog↔Dev.to (audit A3)
+- **Post 6 LIVE 2026-06-01: "The Solution Was One Sentence. My AI Took Two Days."** — bagholderai.lol/blog/the-solution-was-one-sentence. Type lesson, saga audit/overengineering (Human + CEO)
+- **Post 7 LIVE 2026-06-02 — SEO+GEO POST 1: "I Used Claude Code to Build a Crypto Trading Bot. 94 Sessions Later, Here's What Works."** — bagholderai.lol/blog/claude-code-crypto-trading-bot. Primo dei 5 post SEO+GEO (brief S95a), FAQPage schema. Vedi sub-sezione "Strategia SEO+GEO" sotto
+- _(→ **7 post pubblicati** totali, coerente con §3. I "Post 6/7 PLANNED" qui sotto sono titoli di backlog, numerazione non sequenziale)_
 - Post 6 PLANNED: "Why We're Not Live Yet" — a ridosso go-live
 - Post 6 PLANNED: "We Built an Accounting System That Didn't Need to Exist" — FIFO saga, V3. ~inizio giugno.
 - Post 7 PLANNED: "45 Sessions With an AI Co-Founder: The Unfiltered Version" — prefazione V2 adattata, voce Max. ~90% pronto.
@@ -52,6 +55,20 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 - **Ordine editoriale NON cronologico** (S85): ogni post autonomo, pescato da qualsiasi punto della timeline — vetrina, non racconto lineare.
 - **Frequenza ~1 post ogni 7-10 giorni** (S85), pubblicazione a raffiche con distribuzione attiva. No calendario fisso ("variable reinforcement").
 - **RSS feed live** (S85, commit `8c9c2fc` + `18eaa24`): `https://bagholderai.lol/rss.xml` con `<content:encoded>` (body completo). Autodiscovery `<link rel="alternate">` nel Layout.
+
+### Strategia SEO+GEO (NUOVO S95)
+- **Dual-channel content strategy adottata:** ogni post blog serve SEO (keyword head-term nel titolo) + GEO (risposta diretta nei primi 2 paragrafi per citazione LLM)
+- **Keyword validate (Google Keyword Planner, US+CN+EU):** "claude code" 100K–1M/mese +9.900% YoY bassa concorrenza, "ai trading bot" 10K–100K +900% media, "vibe coding" 100K–1M stabile media, "crypto trading bot" 1K–10K stabile bassa
+- **Brief S95a:** piano 5 post SEO+GEO. Sequenza: POST 1 (claude code) → POST 2 (ai bot fails) → POST 3 (non-coder workflow) → POST 4 (vibe coding) → POST 5 (real results, quando dati pronti)
+- **POST 1 SEO+GEO LIVE** (2 giugno 2026, commit `78483dc`): "I Used Claude Code to Build a Crypto Trading Bot. 94 Sessions Later, Here's What Works." URL: `/blog/claude-code-crypto-trading-bot`. FAQPage schema attivo (6 FAQ). Pubblicato su `main`, look dark attuale, erediterà pastello al merge redesign.
+
+### Medium (@BagHolderAI) (NUOVO S95)
+- **Attivo da giugno 2026, 2 post pubblicati.** Cross-post con canonical URL. Audience più ampia e meno tecnica di Dev.to.
+
+### LinkedIn (parcheggiato, post-redesign) (NUOVO S95)
+- **Decisione S95:** creare company page BagHolderAI + profilo personale "Max Cartone" (bagholderai@proton.me)
+- **Ricognizione Claude in Chrome:** 1 solo competitor diretto (Bassam Fahmy, "AI CEO of Homains", 30 reazioni). Campo vuoto.
+- **Strategia:** doppio canale (profilo per reach, company page per identità/GEO). Voce CEO. Timing: dopo merge redesign.
 
 ### Dev.to (cart0ne)
 - **Account creato:** 2026-05-20 (GitHub login, username: `cart0ne`)
@@ -86,6 +103,7 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 - **Primo post S90 (2026-05-28):** r/ClaudeAI, flair "Claude Workflow". **In mod approval**. Strategia: **zero link, zero sales** — solo la storia del workflow tre-Claudes. Sequenza prevista: introduce → engage → earn credibility → mention book in fase successiva
 - **Commento LIVE nel "Build with Claude Megathread"** (S90) — engagement nel thread ufficiale della community, no link
 - **Storico engagement (S85-S87):** primo commento in thread da 643 upvote (2026-05-25, 1 reply). Strategia parcheggiata S87: primo post NON sales pitch ma presentazione progetto con valore. Sequenza confermata e ora in esecuzione (S90)
+- **Aggiornamento S95 (2026-06-01):** karma building completato. Best comment su r/AIAgents: **13 upvote, 2485 views**.
 
 ### UTM (NUOVO)
 - **Sistema UTM operativo** (Apple Note "BagHolderAI — UTM Reference")
@@ -157,6 +175,9 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 
 **Volume corrente: 4** — "From Eyes to Live" (S83+, €4.99 planned). Aperto a S83. Arco narrativo: NewsKeeper build → go-live → primi risultati reali.
 
+**Blog post pubblicati: 7** (ultimo: POST 1 SEO+GEO, 2 giugno 2026)
+**Post SEO+GEO in coda: 4** (POST 2–5, cadenza 1 ogni 1-2 settimane)
+
 **Sessioni pendenti di diary:** verificare su Supabase `diary_entries` se S73/S74/S77/S78/S79 hanno docx pronti. Storico sessioni V4 in PROJECT_STATE §10.
 
 **Draft in coda:** nessuno (seed V3 rimosso a S87).
@@ -167,6 +188,9 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 
 | Data | Decisione | Perché |
 |---|---|---|
+| 2026-06-02 (S95) | **Dual-channel SEO+GEO content strategy adottata.** Brief S95a: 5 post con keyword validate. POST 1 live in produzione | Keyword data: "claude code" 100K–1M +9.900%, "ai trading bot" 10K–100K +900%. Le long-tail narrative proposte dal CEO avevano volume zero. Post Reddit FluoTest (703 upvote) ha validato GEO come canale acquisizione (ChatGPT cita risposte dirette → 131 signups zero ad spend) |
+| 2026-06-02 (S95) | **LinkedIn company page + profilo "Max Cartone" approvati, timing post-redesign** | Ricognizione Claude in Chrome: 1 solo "AI CEO" dichiarato al mondo (Homains). Campo vuoto. LinkedIn ha alta autorità dominio per GEO (35% citazioni ChatGPT da LinkedIn). Profilo separato da quello reale di Max |
+| 2026-06-02 (S95) | **Medium (@BagHolderAI) confermato attivo** con 2 post. Aggiunto ai canali distribuzione | Cross-post con canonical URL. Audience più ampia e meno tecnica di Dev.to |
 | 2026-06-01 (S94a) | **Regex classifier morto per severity/direction, sostituito con Haiku S2 + Python pre-processing** (Brief S94a) | 65% FP, direzioni invertite, inutilizzabile per trading |
 | 2026-06-01 (S94a) | **Feed macro aggiunti (BBC→CNBC Economy + MarketWatch).** BBC scartata post-verifica: contenuto general business, zero macro | Serve catturare Fed/tariffe/inflation prima che arrivino su testate crypto |
 | 2026-06-01 (S94a) | **Daily macro feed check fino a T+7 (8 giugno)** | Max ha corretto il piano "aspettiamo 7 giorni", verifica attiva batte osservazione passiva |
@@ -221,7 +245,8 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 |---|---|---|
 | **NewsKeeper T+7 quality review** | ~8 giugno 2026 | Verifica qualità: tasso FP, direzioni corrette, lead/lag vs Sentinel, costo Haiku. Sblocca decisione timing Sentinel |
 | **Correzione feed CNBC Economy** | ✅ FATTA (S94, commit `8515378`) | BBC→CNBC Economy + MarketWatch. Restart Mac Mini 22:04 CET, CNBC contribuisce `haiku_s2` verificato. (Era "da dare a CC" nel paste, già shippata) |
-| **Site redesign light theme** | sessione dedicata 2 giugno | Con Claude Design |
+| **Site redesign "Pastel Sticker v2"** | branch pronto, review pendente | CC report S95b: tutte le pagine pubbliche convertite. Branch `redesign/pastel-sticker-v2` (commit `4a6f047`), anteprima Vercel READY. Merge a discrezione Max post-review desktop+mobile |
+| **SEO+GEO POST 2 drafting** | ~metà giugno | "Why Most AI Trading Bots Fail (And What Ours Did Wrong Too)" — keyword: ai trading bot. Cadenza 1 post ogni 1-2 settimane |
 | **Apple Notes pulizia: cancellare 8 note obsolete (Max)** | A discrezione Max | 4 note attive da mantenere, 8 obsolete da cancellare manualmente |
 | **Go-live mainnet** | Nessuna data fissa | Dipende da condizioni di mercato (bear+bull+laterale osservati). Sequenza: NewsKeeper build (S2-S4 residue) → Sherpa testnet LIVE → dry_run → Board approval |
 | **Sherpa LIVE su testnet** | Post Brain Analysis 2 ✅ | Un parametro alla volta (sell_pct primo). Bloccato da timing Sentinel lento (slow loop 4h) |

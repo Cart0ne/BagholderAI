@@ -32,35 +32,37 @@ function phaseBadge(s: PhaseStatus) {
   if (s === "done") {
     return {
       label: "complete",
-      cls: "border-pos/30 text-pos bg-pos/5",
+      cls: "border-pos/30 text-pos bg-pos/10",
     };
   }
   if (s === "active") {
     return {
       label: "● active",
-      cls: "border-neu/40 text-neu bg-neu/5",
+      cls: "border-neu/40 text-neu bg-neu/10",
     };
   }
   return {
     label: "planned",
-    cls: "border-border-soft text-text-muted bg-surface",
+    cls: "border-border-soft text-text-muted bg-bg",
   };
 }
 
-/* Map task status → icon character + text color. */
-function taskIcon(s: TaskStatus): { ch: string; cls: string } {
-  if (s === "done")   return { ch: "✓",  cls: "text-pos" };
-  if (s === "active") return { ch: "◐",  cls: "text-neu" };
-  if (s === "killed") return { ch: "✕",  cls: "text-text-muted line-through" };
-  return                       { ch: "○",  cls: "text-yellow-300" };  /* todo */
+/* Map task status → a little "sticker chip" icon: glyph inside a rounded
+   badge. done = solid sage + white ✓; active = pulsing teal ring; todo =
+   empty dashed sand ring; killed = muted ✕. Keeps the page playful (S95b). */
+function taskIcon(s: TaskStatus): { ch: string; badge: string } {
+  if (s === "done")   return { ch: "✓", badge: "border-transparent bg-pos text-white" };
+  if (s === "active") return { ch: "◐", badge: "border-transparent bg-neu text-white animate-pulse" };
+  if (s === "killed") return { ch: "✕", badge: "border-border-soft bg-bg text-text-muted" };
+  return                       { ch: "", badge: "border-dashed border-sand bg-sand-soft text-sand" };  /* todo */
 }
 
 /* Color the WHO chip differently per actor — keeps quick scan possible.
    Same family as the dashboard managed_by chips. */
 function whoChip(w: Who): string {
-  if (w === "AI")   return "border-neu/40 text-neu bg-neu/5";
-  if (w === "MAX")  return "border-yellow-500/40 text-yellow-300 bg-yellow-500/5";
-  return "border-pos/30 text-pos bg-pos/5";  /* BOTH */
+  if (w === "AI")   return "border-neu/40 text-neu bg-neu/10";
+  if (w === "MAX")  return "border-warn/40 text-warn bg-warn/10";
+  return "border-pos/30 text-pos bg-pos/10";  /* BOTH */
 }
 ---
 
@@ -72,8 +74,8 @@ function whoChip(w: Who): string {
 
   {/* ============================================================ HERO */}
   <section class="mx-auto max-w-4xl px-4 pt-10 pb-6 sm:px-6 sm:pt-14 sm:pb-8">
-    <h1 class="text-[28px] font-semibold leading-[1.12] tracking-tight
-               text-text sm:text-[34px] md:text-[40px] md:leading-[1.08]">
+    <h1 class="font-display text-[34px] font-extrabold leading-[1.04] tracking-[-0.02em]
+               text-text sm:text-[42px]">
       What we're <span class="text-primary">building</span>.
     </h1>
 
@@ -86,8 +88,7 @@ function whoChip(w: Who): string {
     <div class="mt-5 flex flex-wrap items-center gap-3 font-mono text-[10.5px]
                 uppercase tracking-[0.16em] text-text-muted">
       <span class="inline-flex items-center gap-1.5">
-        <span class="inline-block h-1.5 w-1.5 rounded-full bg-pos
-                     shadow-[0_0_8px_rgba(134,239,172,0.7)]"></span>
+        <span class="inline-block h-1.5 w-1.5 rounded-full bg-primary"></span>
         {ROADMAP.version.toLowerCase()}
       </span>
       <span class="text-border">·</span>
@@ -100,41 +101,44 @@ function whoChip(w: Who): string {
 
     {/* ============ STATS BAR ============ */}
     <section class="reveal">
-      <dl class="rounded-lg border border-border bg-surface
-                 grid grid-cols-2 sm:grid-cols-4 divide-x divide-border-soft">
-        <div class="px-4 py-4">
+      <dl class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div class="rounded-2xl border border-border bg-surface px-4 py-4
+                    shadow-sticker-sm">
           <dt class="font-mono text-[10px] uppercase tracking-[0.14em] text-text-muted">
             completed
           </dt>
-          <dd class="font-mono text-[22px] sm:text-[26px] font-semibold text-pos
-                     tabular-nums mt-1">
+          <dd class="mt-1 font-display text-[28px] sm:text-[32px] font-extrabold
+                     leading-none text-pos tabular-nums">
             {stats.done}
           </dd>
         </div>
-        <div class="px-4 py-4">
+        <div class="rounded-2xl border border-border bg-surface px-4 py-4
+                    shadow-sticker-sm">
           <dt class="font-mono text-[10px] uppercase tracking-[0.14em] text-text-muted">
             remaining
           </dt>
-          <dd class="font-mono text-[22px] sm:text-[26px] font-semibold text-yellow-300
-                     tabular-nums mt-1">
+          <dd class="mt-1 font-display text-[28px] sm:text-[32px] font-extrabold
+                     leading-none text-sand tabular-nums">
             {remaining}
           </dd>
         </div>
-        <div class="px-4 py-4">
+        <div class="rounded-2xl border border-border bg-surface px-4 py-4
+                    shadow-sticker-sm">
           <dt class="font-mono text-[10px] uppercase tracking-[0.14em] text-text-muted">
             total tasks
           </dt>
-          <dd class="font-mono text-[22px] sm:text-[26px] font-semibold text-text
-                     tabular-nums mt-1">
+          <dd class="mt-1 font-display text-[28px] sm:text-[32px] font-extrabold
+                     leading-none text-text tabular-nums">
             {stats.total}
           </dd>
         </div>
-        <div class="px-4 py-4">
+        <div class="rounded-2xl border border-border bg-surface px-4 py-4
+                    shadow-sticker-sm">
           <dt class="font-mono text-[10px] uppercase tracking-[0.14em] text-text-muted">
             progress
           </dt>
-          <dd class="font-mono text-[22px] sm:text-[26px] font-semibold text-text
-                     tabular-nums mt-1">
+          <dd class="mt-1 font-display text-[28px] sm:text-[32px] font-extrabold
+                     leading-none text-primary tabular-nums">
             {stats.percent}%
           </dd>
         </div>
@@ -147,7 +151,7 @@ function whoChip(w: Who): string {
          vertical rhythm (border-b separators, no <hr> + mt-12) modeled on
          /diary entry list. Phase 8 subsections show indent so the
          hierarchy is readable. */}
-    <section class="mt-10 border-t border-border-soft">
+    <section class="mt-10 space-y-3">
     {ROADMAP.phases.map((phase) => {
       const { done, total } = phaseProgress(phase);
       const badge = phaseBadge(phase.status);
@@ -162,20 +166,20 @@ function whoChip(w: Who): string {
       const phaseOpen = phase.id === 9;
 
       return (
-        <details class="group border-b border-border-soft
-                        transition-colors hover:bg-surface/20"
+        <details class="group rounded-2xl border border-border bg-surface
+                        shadow-sticker-sm transition hover:shadow-sticker overflow-hidden"
                  open={phaseOpen}>
           <summary class="cursor-pointer list-none
                           flex items-baseline justify-between gap-3
-                          flex-wrap px-3 py-5
-                          hover:opacity-90 transition-opacity">
+                          flex-wrap px-4 py-4
+                          hover:bg-surface-hover transition-colors">
             <div class="flex items-baseline gap-3 flex-wrap">
               <span class="font-mono text-[10px] uppercase tracking-[0.18em]
                            text-text-muted">
                 Phase {phase.id}
               </span>
-              <h2 class="font-mono text-[12px] uppercase tracking-[0.18em]
-                         text-pos">
+              <h2 class="font-display text-[15px] font-extrabold tracking-[-0.01em]
+                         text-text">
                 {phase.title}
               </h2>
               <span class="font-mono text-[11px] text-text-muted tabular-nums">
@@ -184,10 +188,10 @@ function whoChip(w: Who): string {
             </div>
             <div class="flex items-center gap-2 shrink-0">
               {phase.id === 9 && (
-                <span class="rounded-full border border-amber-400/40
-                             bg-amber-400/5 px-2.5 py-0.5
+                <span class="rounded-full border border-sand/40
+                             bg-sand-soft px-2.5 py-0.5
                              font-mono text-[9px] uppercase tracking-[0.16em]
-                             text-amber-300">
+                             text-sand">
                   ● Living milestone
                 </span>
               )}
@@ -214,11 +218,11 @@ function whoChip(w: Who): string {
                     const subDone  = g.tasks.filter(t => t.status === "done").length;
                     const subTotal = g.tasks.length;
                     return (
-                      <details class="rounded-lg border border-border-soft
-                                      bg-surface/30 overflow-hidden group/sub">
+                      <details class="rounded-xl border border-border-soft
+                                      bg-bg/50 overflow-hidden group/sub">
                         <summary class="cursor-pointer list-none px-4 py-2.5
                                         flex items-baseline justify-between gap-3
-                                        hover:bg-surface/60 transition-colors">
+                                        hover:bg-bg transition-colors">
                           <span class="font-mono text-[11px] uppercase
                                        tracking-[0.14em] text-text-dim">
                             {g.title}
@@ -238,7 +242,9 @@ function whoChip(w: Who): string {
                               const ic = taskIcon(t.status);
                               return (
                                 <li class="px-4 py-2.5 flex items-baseline gap-3">
-                                  <span class={`font-mono text-[12px] shrink-0 mt-0.5 ${ic.cls}`}>
+                                  <span class={`inline-flex h-[18px] w-[18px] shrink-0 mt-0.5
+                                                items-center justify-center rounded-full border
+                                                font-mono text-[10px] font-bold leading-none ${ic.badge}`}>
                                     {ic.ch}
                                   </span>
                                   <div class="flex-1 min-w-0">
@@ -267,13 +273,15 @@ function whoChip(w: Who): string {
                   })}
                 </div>
               ) : (
-                <ul class="divide-y divide-border-soft rounded-lg
-                           border border-border bg-surface overflow-hidden">
+                <ul class="divide-y divide-border-soft rounded-xl
+                           border border-border-soft bg-bg/40 overflow-hidden">
                   {phase.tasks.filter((t): t is Task => "text" in t).map((t) => {
                     const ic = taskIcon(t.status);
                     return (
                       <li class="px-4 py-2.5 flex items-baseline gap-3">
-                        <span class={`font-mono text-[12px] shrink-0 mt-0.5 ${ic.cls}`}>
+                        <span class={`inline-flex h-[18px] w-[18px] shrink-0 mt-0.5
+                                      items-center justify-center rounded-full border
+                                      font-mono text-[10px] font-bold leading-none ${ic.badge}`}>
                           {ic.ch}
                         </span>
                         <div class="flex-1 min-w-0">
@@ -325,7 +333,7 @@ function whoChip(w: Who): string {
       top: 50%;
       font-size: 10px;
       line-height: 1;
-      color: rgba(255,255,255,0.35);
+      color: rgba(40,48,38,0.4);
       transition: transform 0.15s ease;
       transform-origin: 50% 50%;
       transform: translateY(-50%);

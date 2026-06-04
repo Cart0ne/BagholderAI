@@ -41,9 +41,9 @@ const fallbackEntries = [
   {/* ============================================================ HERO */}
   <section class="mx-auto max-w-4xl px-4 pt-10 pb-6 sm:px-6 sm:pt-14 sm:pb-8">
 
-    <h1 class="text-[28px] font-semibold leading-[1.12] tracking-tight
-               text-text sm:text-[34px] md:text-[40px] md:leading-[1.08]">
-      Construction <span class="text-primary">log</span>.
+    <h1 class="font-display text-[34px] font-extrabold leading-[1.04] tracking-[-0.02em]
+               text-text sm:text-[42px]">
+      Construction <span class="text-pos">log</span>.
     </h1>
 
     <p class="mt-3 max-w-2xl text-[14.5px] leading-[1.55] text-text-dim
@@ -55,8 +55,7 @@ const fallbackEntries = [
     <div class="mt-5 flex flex-wrap items-center gap-3 font-mono text-[10.5px]
                 uppercase tracking-[0.16em] text-text-muted">
       <span class="inline-flex items-center gap-1.5">
-        <span class="inline-block h-1.5 w-1.5 rounded-full bg-pos
-                     shadow-[0_0_8px_rgba(134,239,172,0.7)]"></span>
+        <span class="inline-block h-1.5 w-1.5 rounded-full bg-pos"></span>
         <span id="diary-count">…</span> sessions
       </span>
       <span class="text-border">·</span>
@@ -65,54 +64,62 @@ const fallbackEntries = [
   </section>
 
   {/* ====================================================== ENTRIES LIST */}
-  <section class="reveal mx-auto max-w-4xl px-4 pb-20 sm:px-6">
-    <div id="log-container" class="flex flex-col reveal-stagger">
+  {/* min-h reserves vertical space so the fallback→live swap (3 → ~88
+       entries via Supabase) can't jump the footer up while it loads. */}
+  <section class="reveal mx-auto min-h-[70vh] max-w-4xl px-4 pb-20 sm:px-6">
+    <div id="log-container" class="flex flex-col gap-3 reveal-stagger">
       {fallbackEntries.map((entry, i) => (
         <div
           class:list={[
-            "log-entry cursor-pointer border-b border-border-soft",
-            "py-2.5 px-3 transition-colors hover:bg-surface/40",
-            "first:border-t",
+            "log-entry group cursor-pointer grid grid-cols-[auto_1fr] items-start gap-5",
+            "rounded-2xl border border-border border-l-4 border-l-pos",
+            "bg-surface px-5 py-4 shadow-sticker-sm",
+            "transition hover:-translate-y-0.5 hover:bg-surface-hover hover:shadow-sticker",
             i === 0 && "expanded",
           ]}
         >
-          <div class="log-header">
-            <div class="flex items-center justify-between gap-3">
-              <span class="font-mono text-[10.5px] uppercase tracking-[0.14em]
-                           text-text-muted whitespace-nowrap">
-                Session {entry.session}
-                <span class="mx-1 text-border">·</span>
-                {entry.date}
-              </span>
-              <span
-                class:list={[
-                  "shrink-0 rounded-full border px-2 py-0.5",
-                  "font-mono text-[9px] uppercase tracking-[0.16em]",
-                  entry.status === "BUILDING"
-                    ? "border-neu/40 text-neu bg-neu/5"
-                    : "border-pos/30 text-pos bg-pos/5",
-                ]}
-              >
-                {entry.status === "BUILDING" ? "● building" : "complete"}
-              </span>
-            </div>
-            <div class="mt-1 text-[14.5px] text-text font-medium">
-              {entry.title}
-            </div>
+          {/* left — numerone */}
+          <div class="w-[60px] shrink-0 pt-0.5 text-center leading-tight">
+            <span class="block font-mono text-[9px] font-bold uppercase tracking-[0.16em] text-text-muted">session</span>
+            <span class="block font-display text-[34px] font-extrabold leading-none text-pos">{entry.session}</span>
+            <span class="mt-0.5 block font-mono text-[9.5px] uppercase tracking-[0.06em] text-text-muted">{entry.date.replace(/ \d{4}$/, "")}</span>
           </div>
-          <div class="log-body pt-2.5 text-[13.5px] leading-[1.6] text-text-dim">
-            <p>{entry.summary}</p>
-            {entry.tags.length > 0 && (
-              <div class="mt-2.5 flex flex-wrap gap-2">
-                {entry.tags.map(t => (
-                  <span class="rounded-md border border-border-soft
-                               bg-surface/50 px-2 py-0.5
-                               font-mono text-[10px] text-text-muted">
-                    #{t}
-                  </span>
-                ))}
+
+          {/* right — content */}
+          <div>
+            <div class="log-header">
+              <div class="flex items-start justify-between gap-3">
+                <h2 class="font-display text-[17px] font-extrabold leading-[1.2]
+                           tracking-[-0.01em] text-text transition-colors group-hover:text-pos">
+                  {entry.title}
+                </h2>
+                <span
+                  class:list={[
+                    "mt-0.5 shrink-0 rounded-full border px-2 py-0.5",
+                    "font-mono text-[9px] uppercase tracking-[0.16em]",
+                    entry.status === "BUILDING"
+                      ? "border-neu/40 text-neu bg-neu/10"
+                      : "border-pos/30 text-pos bg-pos/10",
+                  ]}
+                >
+                  {entry.status === "BUILDING" ? "● building" : "complete"}
+                </span>
               </div>
-            )}
+            </div>
+            <div class="log-body pt-2.5 text-[13.5px] leading-[1.6] text-text-dim">
+              <p>{entry.summary}</p>
+              {entry.tags.length > 0 && (
+                <div class="mt-2.5 flex flex-wrap gap-2">
+                  {entry.tags.map(t => (
+                    <span class="rounded-md border border-border-soft
+                                 bg-bg px-2 py-0.5
+                                 font-mono text-[10px] text-text-muted">
+                      #{t}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       ))}
