@@ -27,7 +27,7 @@ L'audit **Area 2** è obbligatorio PRIMA di:
   (b) ogni lancio di un nuovo Volume del Diary su Payhip;
   (c) ogni introduzione di un nuovo brain o macro-feature;
   (d) se un audit Area 1 o Area 3 trova ≥1 finding HIGH che tocca documentazione/state files.
-**Backstop temporale:** 120 giorni se nessun trigger sopra è scattato.
+**Backstop temporale:** 60 giorni se nessun trigger sopra è scattato.
 
 - **Area 1**: dopo ogni feature significativa, oppure mensile. Backstop 30gg.
 - **Area 3**: **ogni 2 settimane** (cadenza fissa) + pre-lancio prodotto. Backstop 14gg. La cadenza è frequente perché il marketing è ad alta varianza e l'audit a 2 strati (cruscotto + strategia) resta leggero da ripetere; vedi `audits/requests/audit_request_A3.md`.
@@ -137,4 +137,4 @@ L'Auditor gestisce entrambi i formati.
 
 ---
 
-*Last updated: 2026-05-30 (S92) — Area 3 ridefinita (connettori dati via API + output diagnosi+strategia + cadenza bisettimanale + template `audit_request_A3.md`); nuovo naming `YYYYMMDD_audit[AX].md` + struttura `audits/reports/` e `audits/requests/`; rimosso audit_in_flight; §8 Accoppiamento artefatti.*
+*Last updated: 2026-06-01 (S96) — Area 2 backstop 120→60 giorni; Area 3 cadenza bisettimanale→mensile.*
