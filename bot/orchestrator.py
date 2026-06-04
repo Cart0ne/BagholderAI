@@ -412,6 +412,15 @@ def run_orchestrator():
                 if info.process.poll() is None:
                     continue  # still alive
 
+                # S96 (Max 2026-06-04): a grid bot that exhausted
+                # MAX_RESTART_ATTEMPTS stays tracked but is never
+                # respawned or re-logged. Without this guard the dead
+                # process falls into the else-branch below, gets removed
+                # from grid_processes, and section 4 respawns it fresh
+                # (gave_up flag lost) -> infinite restart loop + spam.
+                if info.gave_up:
+                    continue
+
                 exit_code = info.process.returncode
                 logger.info(f"[{sym}] Grid bot exited with code {exit_code}")
 
