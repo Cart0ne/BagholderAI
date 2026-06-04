@@ -1322,10 +1322,10 @@ type DailyPnlRow = {
     /* ----- Bar colors: per-bot hue + SIGN (gain = base, loss = darker
        same-hue) + in-progress fade on the last (current) period.
        Legend in dashboard.astro mirrors these 4 colors. ----- */
-    const GRID_GAIN = "78,138,87",  GRID_LOSS = "46,88,54";    // sage / dark sage
-    const TF_GAIN   = "181,134,46", TF_LOSS   = "122,90,28";   // butter / dark butter
-    const GRID_GAIN_HEX = "#4E8A57", GRID_LOSS_HEX = "#2E5836";
-    const TF_GAIN_HEX   = "#B5862E", TF_LOSS_HEX   = "#7A5A1C";
+    const GRID_GAIN = "78,138,87",  GRID_LOSS = "192,90,67";   // sage / clay
+    const TF_GAIN   = "181,134,46", TF_LOSS   = "138,99,144";  // butter / plum
+    const GRID_GAIN_HEX = "#4E8A57", GRID_LOSS_HEX = "#C05A43";
+    const TF_GAIN_HEX   = "#B5862E", TF_LOSS_HEX   = "#8A6390";
     const gridColors = barRows.map((r, i) => {
       const rgb = r.grid < 0 ? GRID_LOSS : GRID_GAIN;
       return `rgba(${rgb},${inProgressFlags[i] ? 0.32 : 0.7})`;
