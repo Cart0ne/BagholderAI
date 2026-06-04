@@ -270,23 +270,32 @@ const volumes = [
 
     <a href="/blog" class="group block" aria-label="Read the blog">
       <ul class="flex flex-col gap-3">
-        {homeBlogPosts.map((post) => {
+        {homeBlogPosts.map((post, i) => {
           const d = post.data.date;
           const mon = d.toLocaleDateString("en-US", { month: "short" });
           const day = d.getDate();
           const yr = d.getFullYear();
+          const isLatest = i === 0;   /* most recent post — featured */
           return (
-            <li class="grid grid-cols-[auto_1fr] items-center gap-5
+            <li class={`grid grid-cols-[auto_1fr] items-center gap-5
                        rounded-2xl border border-border border-l-4 border-l-sand
-                       bg-surface px-5 py-4
+                       ${isLatest ? "bg-sand-soft" : "bg-surface"} px-5 py-4
                        shadow-sticker-sm transition hover:-translate-y-0.5
-                       hover:bg-surface-hover hover:shadow-sticker">
+                       hover:bg-surface-hover hover:shadow-sticker`}>
               <div class="min-w-[56px] text-center">
                 <span class="block font-mono text-[9px] font-bold uppercase tracking-[0.16em] text-text-muted">{mon}</span>
                 <span class="block font-display text-[34px] font-extrabold leading-none text-sand">{day}</span>
                 <span class="block font-mono text-[9.5px] uppercase tracking-[0.06em] text-text-muted">{yr}</span>
               </div>
-              <span class="font-sans text-[14.5px] leading-[1.45] text-text">{post.data.title}</span>
+              <div>
+                {isLatest && (
+                  <span class="mb-1.5 inline-flex items-center rounded-full bg-sand px-2 py-0.5
+                               font-mono text-[9px] font-bold uppercase tracking-[0.16em] text-white">
+                    Latest
+                  </span>
+                )}
+                <span class="block font-sans text-[14.5px] leading-[1.45] text-text">{post.data.title}</span>
+              </div>
             </li>
           );
         })}
