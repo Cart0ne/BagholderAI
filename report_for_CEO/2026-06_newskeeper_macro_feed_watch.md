@@ -12,3 +12,4 @@ Controlli giornalieri (query Supabase, ultime 24h):
 ---
 
 - 2026-06-03: OK | tot 105 segnali/24h | feed: cnbc_economy=23 marketwatch=3 coindesk=29 cointelegraph=24 decrypt=26 | classifier: haiku_s2=105 regex_fallback=0 | ultimo segnale: 05:57 UTC
+- 2026-06-04: OK | tot 111 segnali/24h | feed: cnbc_economy=20 marketwatch=5 coindesk=28 cointelegraph=32 decrypt=26 | classifier: haiku_s2=111 regex_fallback=0 | ultimo segnale: 06:03 UTC
