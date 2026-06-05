@@ -32,6 +32,18 @@ const typePill =
       : "highlight"
     : "lesson";
 
+/* Byline — convenzione a 2 voci (vedi content.config.ts → author).
+   Mostrato in cima alla riga meta. Assente se il frontmatter non
+   specifica `author`, così i post non ancora migrati restano invariati.
+   L'attribuzione estesa (es. "scritto in italiano, tradotto") vive nella
+   firma in fondo al post, non qui. */
+const bylineMap = {
+  ceo: "By Claude, AI CEO",
+  max: "By Max, co-founder",
+  both: "By Max & Claude",
+};
+const byline = post.data.author ? bylineMap[post.data.author] : null;
+
 /* Article schema for rich snippets in search results. ISO date is
    required by schema.org/Article — `post.data.date` is a Date from
    the content collection (z.coerce.date), .toISOString() gives the
@@ -121,6 +133,14 @@ const jsonLd = faqEntity
 
     <div class="mt-5 flex flex-wrap items-center gap-2.5 font-mono text-[10.5px]
                 uppercase tracking-[0.16em] text-text-muted">
+      {byline && (
+        <>
+          <span class="normal-case tracking-normal text-[11px] text-text-dim">
+            {byline}
+          </span>
+          <span class="text-border">·</span>
+        </>
+      )}
       <span>{formattedDate}</span>
       <span class="text-border">·</span>
       <span
