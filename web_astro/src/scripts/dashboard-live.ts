@@ -32,6 +32,11 @@ const headers = {
    reset (here + live-stats.ts + grid.html), with `UPDATE bot_config`. */
 const CYCLE = "testnet_2";
 const CQ = `&cycle=eq.${CYCLE}`;
+/* Clean-slate start of the current cycle (S96a/S97b). Day counters + the
+   §3 chart range anchor here so a monthly Binance reset restarts them instead
+   of carrying the prior cycle's age. Bump on the next reset together with
+   CYCLE (and live-stats.ts / grid.html). */
+const CYCLE_START_ISO = "2026-06-04T00:00:00Z";
 
 const sbq = async <T>(table: string, params: string): Promise<T> => {
   const r = await fetch(`${SB_URL}/rest/v1/${table}?${params}`, { headers });
@@ -66,11 +71,8 @@ const fmtPct     = (n: number)         => `${n >= 0 ? "+" : ""}${n.toFixed(2)}%`
 /* ====================================================================
    0. HEADER — date label + hero meta strip (day, net worth, P&L).
    The "Today" date is just today's calendar date (UTC, same boundary
-   used downstream). Day number = floor((now - v3_launch) / 1 day) + 1.
+   used downstream). Day number = floor((now - cycle_start) / 1 day) + 1.
    ==================================================================== */
-
-const V3_LAUNCH_ISO = "2026-03-30T00:00:00Z";   /* Grid v3 start */
-const TF_LAUNCH_ISO = "2026-04-15T00:00:00Z";   /* first TF trade — matches legacy dashboard.html */
 
 (() => {
   const today = new Date();
@@ -80,7 +82,7 @@ const TF_LAUNCH_ISO = "2026-04-15T00:00:00Z";   /* first TF trade — matches le
   });
   setText("today-date", dateLabel);
 
-  const launch = new Date(V3_LAUNCH_ISO);
+  const launch = new Date(CYCLE_START_ISO);
   const dayN = Math.max(
     1,
     Math.floor((today.getTime() - launch.getTime()) / 86_400_000) + 1,
@@ -170,7 +172,7 @@ const escapeHTML = (s: string) =>
   }[c]!));
 
 const dayNumber = (isoDate: string): number => {
-  const launch = new Date(V3_LAUNCH_ISO);
+  const launch = new Date(CYCLE_START_ISO);
   const d = new Date(isoDate + "T00:00:00Z");
   return Math.max(1, Math.floor((d.getTime() - launch.getTime()) / 86_400_000) + 1);
 };
@@ -295,32 +297,45 @@ const fetchLivePrices = async (symbols: string[]): Promise<Record<string, number
       ),
     ]);
 
-    /* Brief 72a S72 (Max audit 2026-05-11): hero is now Grid-ONLY.
-       TF/Sentinel/Sherpa do not affect public P&L numbers — capital at
-       risk is the $500 Grid budget, period. TF was "dal dottore" since
-       S70, never showing real capital movement; including its $100 in
-       the hero made the math noisy.
-       computeCanonicalState is the SAME function used by /home, /grid,
-       /tf — single source of truth, bit-identical. */
+    /* S97b: hero = aggregate of BOTH funds, $600 basis (Grid $500 + TF $100),
+       superseding the S72 Grid-only $500 hero. The old rationale (TF "dal
+       dottore" with stale state inflating the math) no longer holds: in the
+       current testnet cycle TF has 0 trades, so it contributes exactly $100
+       cash and $0 P&L. The $ P&L therefore equals the Grid-only number; only
+       the % denominator becomes 600. computeCanonicalState is the SAME
+       function used by /home, /grid, /tf — single source of truth. */
     const GRID_INITIAL = 500;
+    const TF_INITIAL = 100;
+    const TOTAL_INITIAL = GRID_INITIAL + TF_INITIAL;
 
     const gridTrades = (allTrades ?? []).filter(t => t.managed_by === "grid");
+    const tfTrades = (allTrades ?? []).filter(
+      t => t.managed_by === "tf" || t.managed_by === "tf_grid",
+    );
     const gridSymbols = new Set<string>();
     for (const t of gridTrades) gridSymbols.add(t.symbol);
+    const tfSymbols = new Set<string>();
+    for (const t of tfTrades) tfSymbols.add(t.symbol);
 
-    /* skim filtered to Grid coins (reserve_ledger has all coins; we want only Grid). */
+    /* skim partitioned per fund (reserve_ledger holds all coins). */
     const gridSkim = (skimRows ?? []).reduce(
       (s, r) => gridSymbols.has(r.symbol) ? s + Number(r.amount || 0) : s, 0,
     );
-
-    const prices = await fetchLivePrices([...gridSymbols]);
-
-    const heroCanonical = computeCanonicalState(
-      gridTrades, gridSkim, prices, GRID_INITIAL
+    const tfSkim = (skimRows ?? []).reduce(
+      (s, r) => tfSymbols.has(r.symbol) ? s + Number(r.amount || 0) : s, 0,
     );
-    const netWorth = heroCanonical.netWorth;
-    const totalPnl = heroCanonical.totalPnL;
-    const totalPct = (totalPnl / GRID_INITIAL) * 100;
+
+    const prices = await fetchLivePrices([...gridSymbols, ...tfSymbols]);
+
+    const gridCanonical = computeCanonicalState(
+      gridTrades, gridSkim, prices, GRID_INITIAL,
+    );
+    const tfCanonical = computeCanonicalState(
+      tfTrades, tfSkim, prices, TF_INITIAL,
+    );
+    const netWorth = gridCanonical.netWorth + tfCanonical.netWorth;
+    const totalPnl = gridCanonical.totalPnL + tfCanonical.totalPnL;
+    const totalPct = (totalPnl / TOTAL_INITIAL) * 100;
 
     setText("hero-nw", fmtUsd(netWorth));
 
@@ -614,7 +629,7 @@ function analyzeCoin(trades: AllTrade[]): {
 
     /* ============ Render GRID totals ============ */
     setText("grid-budget", `$${GRID_BUDGET.toFixed(0)}`);
-    setText("grid-day", String(daysSince(V3_LAUNCH_ISO)));
+    setText("grid-day", String(daysSince(CYCLE_START_ISO)));
     setText("grid-cash-reinvest", fmtUsd(grid.cash));
     setText("grid-nw", fmtUsd(grid.netWorth));
     const gridPnl = grid.totalPnL;
@@ -642,7 +657,7 @@ function analyzeCoin(trades: AllTrade[]): {
 
     /* ============ Render TF totals (S80 brief 80b) ============ */
     setText("tf-budget", `$${TF_BUDGET.toFixed(0)}`);
-    setText("tf-day", String(daysSince(TF_LAUNCH_ISO)));
+    setText("tf-day", String(daysSince(CYCLE_START_ISO)));
     setText("tf-cash-reinvest", fmtUsd(tf.cash));
     setText("tf-nw", fmtUsd(tf.netWorth));
     const tfPnl = tf.totalPnL;
@@ -1007,7 +1022,7 @@ type DailyPnlRow = {
       sbq<DailyPnlRow[]>(
         "daily_pnl",
         "select=date,total_value,realized_pnl_today,total_pnl" +
-        "&managed_by=eq.grid&order=date.asc",
+        "&managed_by=eq.grid" + CQ + "&order=date.asc",
       ),
       fetchAllTrades<AllTrade>(
         "symbol,side,amount,price,cost,realized_pnl,created_at,managed_by",
@@ -1020,8 +1035,9 @@ type DailyPnlRow = {
     return;
   }
 
-  /* Filter from V3 launch onward (matches legacy dashboard). */
-  dailyPnlRows = dailyPnlRows.filter(d => d.date >= V3_LAUNCH_ISO.slice(0, 10));
+  /* S97b: filter from the current cycle start onward (daily_pnl is already
+     cycle-filtered server-side; this guards against any pre-cycle row). */
+  dailyPnlRows = dailyPnlRows.filter(d => d.date >= CYCLE_START_ISO.slice(0, 10));
 
   const gridTrades = allTrades.filter(t => t.managed_by === "grid");
   const tfTrades   = allTrades.filter(t =>
@@ -1117,8 +1133,8 @@ type DailyPnlRow = {
   };
 
   function buildDailySeries(): DailyPoint[] {
-    /* Date range: V3 launch → max(daily_pnl last date, today). */
-    const startDate = V3_LAUNCH_ISO.slice(0, 10);
+    /* Date range: current cycle start → max(daily_pnl last date, today). */
+    const startDate = CYCLE_START_ISO.slice(0, 10);
     const today = new Date();
     const todayStr = today.toISOString().slice(0, 10);
     const lastDp = dailyPnlRows.length
@@ -1149,9 +1165,8 @@ type DailyPnlRow = {
         const gridVal = Number(dp.total_value || 0);
         const tfVal = reconstructTFForDay(dStr);
         /* Subtract initial capital so the line shows P&L not net worth.
-           Initial = $500 pre-TF, $600 post-TF (April 15). */
-        const TF_START = TF_LAUNCH_ISO.slice(0, 10);
-        const initial = dStr >= TF_START ? 600 : 500;
+           S97b: the current cycle is $600 throughout (Grid $500 + TF $100). */
+        const initial = 600;
         mtmCum = +(gridVal + tfVal - initial).toFixed(2);
       } else {
         /* No daily_pnl snapshot for this day yet — fall back to realized

@@ -16,13 +16,16 @@ const totalInit  = mockGrid.initial + mockTF.initial;
 const totalPnl   = totalNW - totalInit;
 const totalPct   = (totalPnl / totalInit) * 100;
 
-/* Hero NET WORTH card mirrors the LIVE hero: Grid-ONLY, $500 basis
-   (Brief 72a / S72 — TF/Sentinel/Sherpa excluded from public P&L, so the
-   numbers stay self-consistent: netWorth − P&L = started). */
-const heroInit = mockGrid.initial;
-const heroNW   = mockGrid.netWorth;
-const heroPnl  = heroNW - heroInit;
-const heroPct  = (heroPnl / heroInit) * 100;
+/* Hero NET WORTH card — $600 basis = Grid $500 + TF $100, aggregate of both
+   funds (S97b, supersedes the S72 Grid-only $500 hero). TF is idle in the
+   current testnet cycle (0 trades) so it adds $100 cash and $0 P&L: the $
+   P&L is identical to Grid-only, only the % denominator becomes 600. Numbers
+   stay self-consistent (netWorth − P&L = started). The live JS hero in
+   dashboard-live.ts mirrors this same 600 basis. */
+const heroInit = totalInit;
+const heroNW   = totalNW;
+const heroPnl  = totalPnl;
+const heroPct  = totalPct;
 
 /* ====== "Today" snapshot — fotografia del giorno ====== */
 const todayPnl       = mockGrid.todayPnl + mockTF.todayPnl;
@@ -75,7 +78,7 @@ const tfSubtitle   = "The breakout hunter";
         </div>
       </div>
 
-      {/* right — NET WORTH card (Grid-only $500 basis; top border = P&L sign) */}
+      {/* right — NET WORTH card ($600 basis = Grid+TF; top border = P&L sign) */}
       <div id="hero-nw-card"
            class={`relative shrink-0 self-start rounded-2xl border border-border border-t-4 bg-surface
                    px-5 py-4 shadow-sticker sm:min-w-[208px] sm:text-right
@@ -413,9 +416,12 @@ const tfSubtitle   = "The breakout hunter";
             "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9." +
             "eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB4ZGh0bXFmd2p3amh0Y29hY3NuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4NDI1OTIsImV4cCI6MjA4OTQxODU5Mn0." +
             "G76lvYWrqlM0z2RoSkU1uAglfMBKN_rXvBGOQhb4kdg";
+          // S97b: cycle=eq.testnet_2 filter (S96a clean slate) so this metric
+          // counts only the current testnet cycle — was summing testnet_1 +
+          // testnet_2 realized/fees (stale +$9.02). Mirrors grid.html.
           const url =
             SB_URL +
-            "/rest/v1/trades?config_version=eq.v3&managed_by=eq.grid&select=side,realized_pnl,fee";
+            "/rest/v1/trades?config_version=eq.v3&managed_by=eq.grid&cycle=eq.testnet_2&select=side,realized_pnl,fee";
           const el = document.getElementById("net-realized-test");
           if (!el) return;
           try {
