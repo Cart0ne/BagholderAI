@@ -234,9 +234,18 @@ def execute_percentage_buy(bot, price: float) -> Optional[dict]:
     # between sell triggers that lock real profit vs ones that lock
     # losses after fee. Trade-off only visible at the boundary; corrected
     # by construction here.
-    if bot.state.holdings > 0:
+    # S96b (2026-06-05): compute the average on MANAGED holdings, NOT total.
+    # state.holdings includes the testnet phantom baseline (gift coins held
+    # at $0 cost). Including it dragged the average toward zero, which then
+    # inflated realized P&L (and skim) on every sell — BTC reported +$49.59
+    # on a real ~$0.04 gain. _phantom_holdings is constant across a buy, so
+    # managed = holdings - phantom on both sides. On mainnet phantom=0 →
+    # managed==total → identical to the 72a P2 formula (no behavior change).
+    managed_after = bot.state.holdings - bot._phantom_holdings
+    old_managed = max(0.0, old_holdings - bot._phantom_holdings)
+    if managed_after > 0:
         bot.state.avg_buy_price = (
-            (old_avg * old_holdings + cost) / bot.state.holdings
+            (old_avg * old_managed + cost) / managed_after
         )
 
     bot._pct_last_buy_price = price
