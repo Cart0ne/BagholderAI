@@ -211,7 +211,11 @@ def _force_liquidate(bot, exchange, trade_logger, notifier, symbol: str,
     recorded +$0.18 vs actual −$1.21). Also routes skim on positive PnL,
     which the old flow bypassed unconditionally.
     """
-    holdings = bot.state.holdings if bot.state else 0
+    # S97a: managed_holdings (excludes testnet phantom). This var drives the
+    # "nothing to liquidate" guard, the cost basis, the sell amount and the
+    # realized P&L below — using state.holdings would sell the phantom and
+    # compute garbage realized (the S96b avg-cost incident). Mainnet phantom=0.
+    holdings = bot.managed_holdings if bot.state else 0
     managed_by = getattr(bot, "managed_by", "grid")
 
     if holdings <= 1e-6:

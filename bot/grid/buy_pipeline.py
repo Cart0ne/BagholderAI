@@ -60,7 +60,7 @@ def execute_percentage_buy(bot, price: float) -> Optional[dict]:
     # driven by external signals and bypass the guard. Strategy A only.
     if (bot.strategy == "A"
             and bot.managed_by == "grid"
-            and bot.state.holdings > 0
+            and bot.managed_holdings > 0  # S97a: economic position, not wallet (phantom excluded)
             and bot.state.avg_buy_price > 0
             and price > bot.state.avg_buy_price):
         logger.info(
