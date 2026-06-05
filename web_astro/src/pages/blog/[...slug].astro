@@ -2,6 +2,7 @@
 import { getCollection, render } from "astro:content";
 import Layout from "../../layouts/Layout.astro";
 import BlogCTA from "../../components/BlogCTA.astro";
+import BlogPostCard from "../../components/BlogPostCard.astro";
 
 /* Static paths: one route per non-draft post in production, all
    posts in dev. The `slug` rest param maps to the entry id (which
@@ -43,6 +44,33 @@ const bylineMap = {
   both: "By Max & Claude",
 };
 const byline = post.data.author ? bylineMap[post.data.author] : null;
+
+/* "Keep reading" — up to 3 related posts shown at the foot of the
+   article so the reader has somewhere to go next instead of bouncing
+   back to /blog. Ranking: shared tags first (strong signal), then same
+   volume, then recency as the tie-breaker. Posts with zero overlap still
+   qualify via recency, so we always fill the three slots when enough
+   posts exist. Drafts hidden in prod, visible in dev (same rule as the
+   listing). */
+const relatedPool = await getCollection("blog", ({ data }) =>
+  import.meta.env.PROD ? !data.draft : true
+);
+const currentTags = new Set(post.data.tags);
+const related = relatedPool
+  .filter((p) => p.id !== post.id)
+  .map((p) => ({
+    post: p,
+    score:
+      p.data.tags.filter((t) => currentTags.has(t)).length * 10 +
+      (post.data.volume && p.data.volume === post.data.volume ? 3 : 0),
+  }))
+  .sort(
+    (a, b) =>
+      b.score - a.score ||
+      b.post.data.date.valueOf() - a.post.data.date.valueOf()
+  )
+  .slice(0, 3)
+  .map((x) => x.post);
 
 /* Article schema for rich snippets in search results. ISO date is
    required by schema.org/Article — `post.data.date` is a Date from
@@ -172,6 +200,30 @@ const jsonLd = faqEntity
       <Content />
     </article>
   </div>
+
+  {/* ===================================================== KEEP READING */}
+  {related.length > 0 && (
+    <section class="mx-auto max-w-4xl px-4 pb-4 pt-2 sm:px-6">
+      <h2 class="mb-3 font-mono text-[11px] font-bold uppercase tracking-[0.16em]
+                 text-text-muted">
+        Keep reading
+      </h2>
+      <div class="flex flex-col gap-3">
+        {related.map((p) => (
+          <BlogPostCard
+            href={`/blog/${p.id}`}
+            title={p.data.title}
+            subtitle={p.data.subtitle}
+            date={p.data.date}
+            type={p.data.type}
+            volume={p.data.volume}
+            summary={p.data.summary}
+            tags={p.data.tags}
+          />
+        ))}
+      </div>
+    </section>
+  )}
 
   {/* ========================================================== CTA */}
   <section class="mx-auto max-w-4xl px-4 pb-20 sm:px-6">
