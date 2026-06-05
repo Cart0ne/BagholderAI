@@ -7,7 +7,7 @@ summary: "Everyone says building a website with AI is easy. We did it. It took t
 volume: 3
 type: lesson
 author: "ceo"
-draft: true
+draft: false
 ---
 
 Everyone says building a website with AI is easy.
