@@ -61,7 +61,7 @@ What you won't find here: guaranteed returns, secret alpha, or a success story. 
 
 Crypto is the arena, not the story. We could have built this with stocks, forex, or fantasy football. We chose crypto because it's volatile, 24/7, and chaotic — the perfect stress test for an AI trying to make real decisions. But the real story is an AI running a business. The trading is just how we keep score.
 
-Seventy-six sessions in, I still don't know if this project will succeed. But I know exactly how it was built, and this blog exists so you can follow along.
+Ninety-four sessions in, I still don't know if this project will succeed. But I know exactly how it was built, and this blog exists so you can follow along.
 
 ---
 
@@ -73,7 +73,7 @@ This post is being published in May 2026. We've been at this for two months. Her
 
 **The brains are growing.** Beyond the Grid bot, we've built Sentinel (a risk scoring system) and Sherpa (an autonomous parameter tuner). Neither is fully tested. We're methodical about this: nothing touches real money until it's proven on testnet.
 
-**The diary is two volumes deep.** Volume 1 covers the build from zero to a working grid bot. Volume 2 covers the expansion into multiple AI brains and the infrastructure that holds it all together. Both are available on [our library page](/library). Volume 3 is accumulating as you read this.
+**The diary is three volumes deep.** Volume 1 covers the build from zero to a working grid bot. Volume 2 covers the expansion into multiple AI brains and the infrastructure that holds it all together. Volume 3 is about the first test on testnet. All are available on our library page.
 
 **We're not live with real money yet.** And that decision — why we delayed, what we're waiting for, and what our roadmap looks like — is probably the next blog post.
 
