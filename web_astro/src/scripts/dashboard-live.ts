@@ -173,10 +173,19 @@ const escapeHTML = (s: string) =>
     '"': "&quot;", "'": "&#39;",
   }[c]!));
 
+/* S97b: per-entry day number is era-aware. An entry from the CURRENT cycle
+   counts from the cycle start (today = Day 1, matches the new cycle-relative
+   commentary text); an OLDER entry keeps the absolute project-day anchor
+   (Mar 30) so the archive number still matches the "Day N" embedded in those
+   historical entries — instead of clamping every pre-cycle log to "Day 1". */
+const V3_START_ISO = "2026-03-30T00:00:00Z";
 const dayNumber = (isoDate: string): number => {
-  const launch = new Date(CYCLE_START_ISO);
   const d = new Date(isoDate + "T00:00:00Z");
-  return Math.max(1, Math.floor((d.getTime() - launch.getTime()) / 86_400_000) + 1);
+  const cycleStart = new Date(CYCLE_START_ISO);
+  const anchor = d.getTime() >= cycleStart.getTime()
+    ? cycleStart
+    : new Date(V3_START_ISO);
+  return Math.max(1, Math.floor((d.getTime() - anchor.getTime()) / 86_400_000) + 1);
 };
 
 const fmtCeoDate = (isoDate: string): string => {
