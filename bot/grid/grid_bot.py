@@ -907,11 +907,16 @@ class GridBot:
 
         if not buy_cooldown_active:
             if self._pct_last_buy_price == 0:
-                if self.state.holdings > 0:
+                if self.managed_holdings > 0:
                     # Brief s70 FASE 2: holdings esistenti senza ref → usa avg.
                     # Path coperto dal boot replay (state_manager carica
                     # holdings + avg_buy_price), ma defensive per restart
                     # edge cases.
+                    # S96b (2026-06-05): usa managed_holdings, NON state.holdings.
+                    # Dopo un reset testnet / clean slate la posizione gestita è 0
+                    # ma il wallet regala il baseline (phantom) → con state.holdings
+                    # il gate saltava la prima entrata e ancorava la scala ad avg=$0
+                    # → il bot non comprava mai. managed_holdings esclude il regalo.
                     self._pct_last_buy_price = self.state.avg_buy_price
                     logger.info(
                         f"[{self.symbol}] Pct mode: existing holdings found, skipping first buy. "
