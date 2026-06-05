@@ -32,11 +32,13 @@ const headers = {
    reset (here + live-stats.ts + grid.html), with `UPDATE bot_config`. */
 const CYCLE = "testnet_2";
 const CQ = `&cycle=eq.${CYCLE}`;
-/* Clean-slate start of the current cycle (S96a/S97b). Day counters + the
-   §3 chart range anchor here so a monthly Binance reset restarts them instead
-   of carrying the prior cycle's age. Bump on the next reset together with
-   CYCLE (and live-stats.ts / grid.html). */
-const CYCLE_START_ISO = "2026-06-04T00:00:00Z";
+/* Start of the current cycle = date of its FIRST trade (S96a/S97b). The clean
+   slate was tagged Jun 4 but the first testnet_2 trade landed Jun 5 (first-buy
+   gate unblocked in S96b), so Day 1 = Jun 5 — matches the bot's data-driven
+   get_cycle_start_date and the home (live-stats.ts first-trade query). Day
+   counters + the §3 chart range anchor here. Bump on the next reset together
+   with CYCLE (and live-stats.ts / grid.html). */
+const CYCLE_START_ISO = "2026-06-05T00:00:00Z";
 
 const sbq = async <T>(table: string, params: string): Promise<T> => {
   const r = await fetch(`${SB_URL}/rest/v1/${table}?${params}`, { headers });
