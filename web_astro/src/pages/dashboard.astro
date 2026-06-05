@@ -1,6 +1,7 @@
 ---
 import Layout from "../layouts/Layout.astro";
 import TestnetBanner from "../components/TestnetBanner.astro";
+import CleanSlateSticker from "../components/CleanSlateSticker.astro";
 import BotMascot from "../components/BotMascot.astro";
 import SentinelMascot   from "../components/SentinelMascot.astro";
 import NewsKeeperMascot from "../components/NewsKeeperMascot.astro";
@@ -60,7 +61,7 @@ const tfSubtitle   = "The breakout hunter";
           Two live, two shadowed. Capital at risk:
           <span class="font-mono text-text">$500 Grid + $100 TF (Tier 1-2)</span>
           <span class="font-mono text-text-muted">(Sentinel/Sherpa shadow-only)</span>.
-          Snapshot recorded {mockSnapshot.asOfLabel}.
+          <span class="text-pos">Clean slate since Jun 4, 2026</span> — testnet was reset, counters start fresh.
         </p>
 
         <div class="mt-5 flex flex-wrap items-center gap-3 font-mono text-[10.5px]
@@ -76,9 +77,10 @@ const tfSubtitle   = "The breakout hunter";
 
       {/* right — NET WORTH card (Grid-only $500 basis; top border = P&L sign) */}
       <div id="hero-nw-card"
-           class={`shrink-0 self-start rounded-2xl border border-border border-t-4 bg-surface
+           class={`relative shrink-0 self-start rounded-2xl border border-border border-t-4 bg-surface
                    px-5 py-4 shadow-sticker sm:min-w-[208px] sm:text-right
                    ${heroPnl >= 0 ? "border-t-pos" : "border-t-neg"}`}>
+        <CleanSlateSticker class="absolute -top-5 -left-3 z-20" />
         <div class="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-text-muted">
           Net worth
         </div>
