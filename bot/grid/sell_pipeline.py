@@ -374,6 +374,11 @@ def execute_percentage_sell(
         fee = res["fee_cost"]
         fee_currency = res["fee_currency"] or "USDT"
         exchange_order_id = res["order_id"]
+        # S96b option B (2026-06-05): post-reset testnet charges zero fee →
+        # synthesize FEE_RATE so realized_pnl carries a realistic fee drag
+        # (realized = revenue - cost_basis - fee below). Mainnet fee passes through.
+        if fee == 0:
+            fee = revenue * bot.FEE_RATE
         if check_price > 0:
             slippage_pct = (price - check_price) / check_price * 100
     else:

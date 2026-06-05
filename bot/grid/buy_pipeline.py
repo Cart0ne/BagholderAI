@@ -185,6 +185,13 @@ def execute_percentage_buy(bot, price: float) -> Optional[dict]:
         # Paper mode keeps fee_base=0 because the simulated fill doesn't
         # touch base balance — paper fee is informational, USDT-equivalent.
         fee_base = float(res.get("fee_base", 0.0) or 0.0)
+        # S96b option B (2026-06-05): the post-reset Binance testnet charges
+        # zero commission. Synthesize the configured FEE_RATE so testnet P&L
+        # reflects a realistic mainnet-like fee drag. Fires only when the real
+        # fill reported no fee (testnet); on mainnet fee_cost>0 passes through.
+        synth_fee = (fee == 0)
+        if synth_fee:
+            fee = cost * bot.FEE_RATE
         if check_price > 0:
             slippage_pct = (price - check_price) / check_price * 100
     else:
@@ -203,6 +210,7 @@ def execute_percentage_buy(bot, price: float) -> Optional[dict]:
 
         fee = cost * bot.FEE_RATE
         fee_base = 0.0  # 72a: paper has no base-coin commission
+        synth_fee = False  # paper fee is legacy-simulated, kept out of avg
 
     old_last_buy = bot._pct_last_buy_price
     old_holdings = bot.state.holdings
@@ -243,9 +251,14 @@ def execute_percentage_buy(bot, price: float) -> Optional[dict]:
     # managed==total → identical to the 72a P2 formula (no behavior change).
     managed_after = bot.state.holdings - bot._phantom_holdings
     old_managed = max(0.0, old_holdings - bot._phantom_holdings)
+    # S96b option B: a synthetic testnet fee is paid in quote currency and is
+    # NOT reflected in qty_acquired, so fold it into the cost basis here —
+    # mirrors the 72a intent (avg includes the buy fee). On mainnet the fee is
+    # taken in base coin (already in qty_acquired) so we must NOT double-count.
+    cost_for_avg = cost + fee if synth_fee else cost
     if managed_after > 0:
         bot.state.avg_buy_price = (
-            (old_avg * old_managed + cost) / managed_after
+            (old_avg * old_managed + cost_for_avg) / managed_after
         )
 
     bot._pct_last_buy_price = price

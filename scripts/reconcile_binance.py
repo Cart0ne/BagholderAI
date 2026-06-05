@@ -232,8 +232,12 @@ def check_drift(db, bn):
                 "tol_pct": round(PRICE_TOL_PCT * 100, 4),
             })
 
+    # S96b option B: the post-reset testnet charges zero commission, so the
+    # bot synthesizes FEE_RATE locally (testnet P&L mirrors mainnet fee drag).
+    # When Binance reports no fee, the DB's synthetic fee is EXPECTED, not a
+    # drift. Only compare fees when Binance actually charged one (mainnet).
     delta_fee = abs(db["fee_usdt"] - bn["fee_usdt"])
-    if delta_fee > FEE_TOL_ABS:
+    if bn["fee_usdt"] > 0 and delta_fee > FEE_TOL_ABS:
         findings.append({
             "field": "fee_usdt",
             "db_val": db["fee_usdt"],
