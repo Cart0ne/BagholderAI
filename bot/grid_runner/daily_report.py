@@ -10,8 +10,9 @@ Refactor S76 (2026-05-14): extracted from grid_runner.py main loop.
 import logging
 from datetime import datetime, date
 
-from commentary import generate_daily_commentary, get_tf_state
+from commentary import generate_daily_commentary, get_tf_state, get_cycle_start_date
 from config.settings import GRID_INSTANCES
+from db.client import get_current_cycle
 
 logger = logging.getLogger("bagholderai.runner")
 
@@ -50,8 +51,12 @@ def maybe_send_daily_report(
             trade_logger, exchange, bot, cfg.symbol
         )
 
-        # Get today's trades for ALL symbols
+        # Get today's trades for ALL symbols (S97b: current testnet cycle only,
+        # clean-slate aware — keeps a same-day reset from mixing prior-cycle rows).
         today_all_trades = trade_logger.get_today_trades(config_version="v3") if trade_logger else []
+        current_cycle = get_current_cycle(trade_logger.client) if trade_logger else None
+        if current_cycle:
+            today_all_trades = [t for t in today_all_trades if t.get("cycle") == current_cycle]
         today_buys = sum(1 for t in today_all_trades if t.get("side") == "buy")
         today_sells = sum(1 for t in today_all_trades if t.get("side") == "sell")
         day_fees = sum(float(t.get("fee", 0)) for t in today_all_trades)
@@ -73,14 +78,12 @@ def maybe_send_daily_report(
                 p["grid_active_buys"] = status.get("levels", {}).get("active_buys", 0)
                 p["grid_active_sells"] = status.get("levels", {}).get("active_sells", 0)
 
-        # Calculate trading day number
+        # Calculate trading day number (S97b: cycle-relative, clean-slate aware
+        # — Day 1 = first trade of the current cycle, not the first trade ever).
         day_number = 1
         try:
-            first_trade_result = trade_logger.client.table("trades").select("created_at").order("created_at", desc=False).limit(1).execute()
-            if first_trade_result.data:
-                first_date_str = first_trade_result.data[0]["created_at"]
-                first_date = datetime.fromisoformat(first_date_str.replace("Z", "+00:00")).date()
-                day_number = (date.today() - first_date).days + 1
+            cycle_start = get_cycle_start_date(trade_logger.client, current_cycle)
+            day_number = (date.today() - cycle_start).days + 1
         except Exception:
             pass
 

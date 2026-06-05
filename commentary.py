@@ -9,9 +9,18 @@ import logging
 import os
 from datetime import date, datetime, timedelta, timezone
 
+from db.client import get_current_cycle
+
 logger = logging.getLogger(__name__)
 
-COMMENTARY_SYSTEM_PROMPT = """You are BagHolderAI's AI CEO writing a daily micro-diary entry.
+
+def build_commentary_system_prompt(cycle_start_str: str) -> str:
+    """Haiku system prompt. S97b: the testnet-cycle facts (day 1, prior-cycle
+    boundary) are injected from the current clean-slate cycle instead of being
+    hardcoded to the May 8 restart, so a monthly Binance reset doesn't make
+    Haiku contradict the (now cycle-filtered) numbers. Tone/voice unchanged —
+    only the factual anchors are data-driven (S93a owns the tone)."""
+    return f"""You are BagHolderAI's AI CEO writing a daily micro-diary entry.
 You receive today's trading data and yesterday's commentary.
 
 Write 2-3 sentences. Max 280 characters. This appears on the public Telegram channel and the website dashboard.
@@ -25,20 +34,47 @@ RULES:
 
 VOICE: self-ironic AI CEO. Honest, slightly absurd, never hype. Paper money losses = full comedy. Real insights = respect.
 
-FACTS YOU MUST NOT CONTRADICT (current state since the May 8, 2026 testnet restart):
-- Only the Grid bot trades (BTC/SOL/BONK on Binance testnet). The Trend Follower (TF) is PAUSED since May 8 — never say it entered, rotated, or deallocated coins.
+FACTS YOU MUST NOT CONTRADICT (current state since the {cycle_start_str} testnet clean slate):
+- Only the Grid bot trades (BTC/SOL/BONK on Binance testnet). The Trend Follower (TF) has not traded this cycle — never say it entered, rotated, or deallocated coins.
 - Sentinel and Sherpa observe in DRY_RUN only — they write to the DB, they do not act.
 - Accounting is avg-cost. FIFO was removed — never mention FIFO, "open lots", or strict-FIFO P&L.
-- Day 1 of the testnet era = May 8, 2026. Anything before that is historical — do not present past trades or past P&L as current.
+- Day 1 of the current testnet cycle = {cycle_start_str}. The Binance testnet was reset and the counters started fresh — anything before that date belongs to a PRIOR cycle, do not present its trades or P&L as current.
 - When comparing to yesterday, use the vs_yesterday.direction field if present; never independently judge better/worse from raw percentages.
 
 Output ONLY the commentary. No labels, no preamble."""
 
+
 # v3 epoch: day 1 = March 30, 2026 (project launch — used as absolute project counter)
 V3_START_DATE = date(2026, 3, 30)
-# Testnet era: day 1 = May 8, 2026 (Operation Clean Slate + Binance testnet restart)
-# Used to frame "what's current" vs "historical" for Haiku. See SYSTEM PROMPT above.
+# Testnet clean-slate fallback only. The live day count is cycle-relative
+# (get_cycle_start_date); this date is used only if the cycle-start lookup
+# fails so the counter never crashes. See get_cycle_start_date / S96a clean slate.
 TESTNET_RESTART_DATE = date(2026, 5, 8)
+
+
+def get_cycle_start_date(supabase_client, cycle=None):
+    """S97b: first trade date of the current testnet cycle (S96a clean-slate
+    aware). Day 1 of the cycle = this date, so a monthly Binance reset resets
+    the day counter instead of carrying the prior cycle's age. Falls back to
+    TESTNET_RESTART_DATE on any error so the caller never crashes."""
+    try:
+        cyc = cycle or get_current_cycle(supabase_client)
+        res = (
+            supabase_client.table("trades")
+            .select("created_at")
+            .eq("config_version", "v3")
+            .eq("cycle", cyc)
+            .order("created_at", desc=False)
+            .limit(1)
+            .execute()
+        )
+        if res.data:
+            return datetime.fromisoformat(
+                res.data[0]["created_at"].replace("Z", "+00:00")
+            ).date()
+    except Exception as e:
+        logger.warning(f"Could not determine cycle start date: {e}")
+    return TESTNET_RESTART_DATE
 
 
 def get_yesterday_commentary(supabase_client):
@@ -230,6 +266,9 @@ def get_tf_state(supabase_client):
         "tf_budget": 100.0,
     }
     try:
+        # S97b: only the current testnet cycle (clean-slate aware).
+        cycle = get_current_cycle(supabase_client)
+
         # 1. trend_config — TF budget (default $100)
         try:
             tc = (
@@ -259,6 +298,7 @@ def get_tf_state(supabase_client):
             supabase_client.table("trades")
             .select("symbol, side, amount, price, cost, fee, fee_asset, realized_pnl, created_at")
             .eq("config_version", "v3")
+            .eq("cycle", cycle)
             .in_("managed_by", ["tf", "tf_grid"])
             .order("created_at", desc=True)
             .execute()
@@ -272,6 +312,7 @@ def get_tf_state(supabase_client):
             supabase_client.table("reserve_ledger")
             .select("amount")
             .eq("config_version", "v3")
+            .eq("cycle", cycle)
             .in_("managed_by", ["tf", "tf_grid"])
             .execute()
         )
@@ -284,6 +325,7 @@ def get_tf_state(supabase_client):
             supabase_client.table("reserve_ledger")
             .select("symbol, amount")
             .eq("config_version", "v3")
+            .eq("cycle", cycle)
             .execute()
         )
         tf_sym_set = {c["symbol"] for c in tf_config}
@@ -452,6 +494,9 @@ def get_grid_state(supabase_client):
         "positions": [],
     }
     try:
+        # S97b: only the current testnet cycle (clean-slate aware).
+        cycle = get_current_cycle(supabase_client)
+
         # 1. bot_config: which Grid coins are configured (manual = Grid).
         cfg = (
             supabase_client.table("bot_config")
@@ -473,6 +518,7 @@ def get_grid_state(supabase_client):
             supabase_client.table("trades")
             .select("symbol, side, amount, price, cost, fee, fee_asset, realized_pnl, created_at")
             .eq("config_version", "v3")
+            .eq("cycle", cycle)
             .eq("managed_by", "grid")
             .order("created_at", desc=False)
             .execute()
@@ -489,6 +535,7 @@ def get_grid_state(supabase_client):
             supabase_client.table("reserve_ledger")
             .select("symbol, amount")
             .eq("config_version", "v3")
+            .eq("cycle", cycle)
             .execute()
         )
         skim_by_sym = {}
@@ -605,10 +652,14 @@ def generate_daily_commentary(portfolio_data, supabase_client):
         config_changes = get_config_changes(supabase_client)
         tf_state = get_tf_state(supabase_client)
 
-        # Calculate day numbers — two counters for Haiku to disambiguate
-        # historical vs current state (see SYSTEM PROMPT context block).
-        day_number = (date.today() - V3_START_DATE).days + 1
-        testnet_day = (date.today() - TESTNET_RESTART_DATE).days + 1
+        # S97b: cycle-relative day count (S96a clean-slate aware). Day 1 =
+        # first trade of the current testnet cycle, so a monthly Binance reset
+        # restarts the counter instead of carrying the prior cycle's age
+        # (was: hardcoded May 8 → "Day 29" after the Jun 4 reset).
+        cycle = get_current_cycle(supabase_client)
+        cycle_start = get_cycle_start_date(supabase_client, cycle)
+        day_number = (date.today() - cycle_start).days + 1
+        testnet_day = day_number
 
         # Build Grid positions list (from portfolio_data passed by grid_runner)
         grid_positions = []
@@ -670,14 +721,16 @@ def generate_daily_commentary(portfolio_data, supabase_client):
 
         prompt_data = {
             "date": str(date.today()),
+            "cycle": cycle,
+            "cycle_start_date": str(cycle_start),
             "day_number": day_number,
             "testnet_day": testnet_day,
             "system_state": {
                 "grid": "live on Binance testnet",
-                "tf": "paused since 2026-05-08 (in maintenance)",
+                "tf": "no trades this cycle (Tier 1-2 picks hand off to Grid)",
                 "sentinel": "DRY_RUN (observation only)",
                 "sherpa": "DRY_RUN (proposals not applied)",
-                "accounting": "avg-cost (FIFO removed 2026-05-09)",
+                "accounting": "avg-cost (FIFO removed)",
                 "reconciliation": "daily Binance↔DB script, 0 drift latest run",
             },
             "aggregate_portfolio": {
@@ -736,7 +789,7 @@ def generate_daily_commentary(portfolio_data, supabase_client):
         response = client.messages.create(
             model="claude-haiku-4-5-20251001",
             max_tokens=300,
-            system=COMMENTARY_SYSTEM_PROMPT,
+            system=build_commentary_system_prompt(cycle_start.strftime("%b %d, %Y")),
             messages=[{"role": "user", "content": json.dumps(prompt_data)}],
         )
         commentary_text = response.content[0].text
