@@ -65,7 +65,7 @@ def init_avg_cost_state_from_db(bot):
         _cycle = get_current_cycle(bot.trade_logger.client, bot.symbol)
         result = (
             bot.trade_logger.client.table("trades")
-            .select("side,amount,price,cost,fee,fee_asset,created_at")
+            .select("side,amount,price,cost,fee,fee_asset,managed_by,created_at")
             .eq("symbol", bot.symbol)
             .eq("config_version", "v3")
             .eq("cycle", _cycle)
@@ -86,6 +86,14 @@ def init_avg_cost_state_from_db(bot):
     avg = 0.0
     qty = 0.0
     realized = 0.0
+    # Brief S98a (2026-06-06): ricostruisce la Adaptive Sell Penalty (in-memory,
+    # persa al restart). Camminando i sell cronologicamente l'accumulo emerge
+    # esatto: ogni sell con fill < avg somma loss_pct, ogni sell con fill >= avg
+    # azzera. Il valore finale = penalty accumulata dall'ultimo sell non-in-perdita.
+    # Solo Grid/Strategy A (gate sul bot); il ricalcolo è migliore del brief
+    # ("solo ultimo sell") perché preserva l'accumulo su N sell consecutivi.
+    sell_pct_penalty = 0.0
+    is_grid = getattr(bot, "managed_by", "grid") == "grid"
 
     for t in trades:
         side = t.get("side")
@@ -122,6 +130,15 @@ def init_avg_cost_state_from_db(bot):
                 # Pre-72a was just (price − avg) × qty → systematically
                 # overstated P&L by the sell fee (~0.1% per trade).
                 realized += (price - avg) * amount - fee_usdt
+                # Brief S98a: penalty recalc — `avg` qui è ancora l'avg PRE-sell
+                # (avg-cost non cambia in vendita), cioè l'avg_cost al momento
+                # del sell. Mirror esatto del runtime (sell_pipeline post-fill).
+                trade_managed_by = t.get("managed_by") or "grid"
+                if is_grid and trade_managed_by == "grid" and avg > 0:
+                    if price < avg:
+                        sell_pct_penalty += (avg - price) / avg * 100
+                    else:
+                        sell_pct_penalty = 0.0
                 qty -= amount
                 # Brief 73b (S73 2026-05-12): economic full sell-out — if
                 # the residual is below ~$0.50 it's dust unsellable on
@@ -139,6 +156,13 @@ def init_avg_cost_state_from_db(bot):
 
     bot._pct_last_buy_price = last_buy_price
     bot._last_sell_price = last_sell_price
+    # Brief S98a: ripristina la Adaptive Sell Penalty ricostruita dal replay.
+    bot._sell_pct_penalty = sell_pct_penalty
+    if sell_pct_penalty > 0:
+        logger.info(
+            f"[{bot.symbol}] Restored sell penalty {sell_pct_penalty:.2f}% "
+            f"(effective sell_pct {(getattr(bot, 'sell_pct', 0) or 0) + sell_pct_penalty:.2f}%)"
+        )
 
     # Restore last trade time so idle re-entry countdown is correct.
     # Convert to UTC-naive so comparison with datetime.utcnow() is always correct

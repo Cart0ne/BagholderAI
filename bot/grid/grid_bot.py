@@ -176,6 +176,15 @@ class GridBot:
         # sell del nuovo ciclo. Restored from DB by state_manager.
         # Reset to 0 quando holdings → 0 (sell_pipeline).
         self._last_sell_price: float = 0.0
+        # Brief S98a (2026-06-06): Adaptive Sell Penalty (Grid/Strategy A only).
+        # Dopo un sell il cui FILL è atterrato sotto avg_cost (slippage da book
+        # vuoto, l'incidente BONK 2026-06-06), alza la soglia di vendita del
+        # danno subìto: effective_sell_pct = sell_pct + _sell_pct_penalty.
+        # Accumula su sell consecutivi sotto-avg; un sell con fill >= avg la
+        # azzera (il mercato regge l'esecuzione → situazione rientrata).
+        # In-memory: ricostruita al restart dal replay (state_manager).
+        # NON si applica ai sell TF (force-liquidate sotto avg è by design).
+        self._sell_pct_penalty: float = 0.0
         # Brief fix_slippage_AB (S90, 2026-05-28): cooldown 1-tick post
         # dead_zone_recalibrate. Quando il recalibrate scatta, il prossimo
         # check_price_and_execute esce subito senza valutare sell/buy, per
@@ -815,6 +824,10 @@ class GridBot:
             # calibrazione greed-decay esistente (vincolo brief).
             if avg_cost > 0:
                 if self.managed_by == "grid":
+                    # Brief S98a (2026-06-06): Adaptive Sell Penalty. Alza la
+                    # soglia effettiva del danno-slippage accumulato. TF escluso
+                    # (ramo else): le sue uscite di emergenza non vanno penalizzate.
+                    threshold_pct = threshold_pct + self._sell_pct_penalty
                     reference = self._last_sell_price if self._last_sell_price > 0 else avg_cost
                     sell_trigger = reference * (1 + threshold_pct / 100 + self.FEE_RATE) / (1 - self.FEE_RATE)
                 else:

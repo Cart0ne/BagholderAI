@@ -492,6 +492,75 @@ def execute_percentage_sell(
             except Exception:
                 pass
 
+    # Brief S98a (2026-06-06): Adaptive Sell Penalty (Grid / Strategy A only).
+    # Post-fill guard contro l'incidente BONK 2026-06-06 (7 sell consecutivi
+    # in perdita per slippage da book vuoto). La guardia Strategy A controlla
+    # il PREZZO pre-esecuzione; lo slippage sul market order può comunque far
+    # atterrare il fill sotto avg_cost. Quando succede, alziamo la soglia di
+    # vendita effettiva del danno subìto, così il prossimo sell scatta solo
+    # più in alto e non si ripete l'errore in ciclo stretto.
+    #   - fill < avg → accumula loss_pct nella penalty (effective sale).
+    #   - fill >= avg → reset a 0 (il mercato regge l'esecuzione → rientrati).
+    # Decisione Max/Board (vs lettera brief): trigger PRICE-BASED (fill<avg),
+    # non realized_pnl<0. Motivo: una perdita da sola fee (fill>avg ma pnl<0)
+    # darebbe loss_pct negativo → abbasserebbe la soglia, l'opposto del voluto.
+    # TF escluso: i suoi sell sotto avg (stop-loss/trailing/etc.) sono by design.
+    is_grid_strategy_a = (
+        getattr(bot, "managed_by", "grid") == "grid" and bot.strategy == "A"
+    )
+    if is_grid_strategy_a and sell_avg_cost > 0:
+        if price < sell_avg_cost:
+            loss_pct = (sell_avg_cost - price) / sell_avg_cost * 100
+            prev_penalty = bot._sell_pct_penalty
+            bot._sell_pct_penalty = prev_penalty + loss_pct
+            effective_sell_pct = (getattr(bot, "sell_pct", 0) or 0) + bot._sell_pct_penalty
+            try:
+                log_event(
+                    severity="warn",
+                    category="safety",
+                    event="sell_penalty_increased",
+                    symbol=bot.symbol,
+                    message=(
+                        f"Sell penalty +{loss_pct:.2f}% (fill {fmt_price(price)} "
+                        f"below avg {fmt_price(sell_avg_cost)}); effective sell_pct "
+                        f"now {effective_sell_pct:.2f}%"
+                    ),
+                    details={
+                        "fill_price": float(price),
+                        "avg_buy_price": float(sell_avg_cost),
+                        "loss_pct": float(loss_pct),
+                        "previous_penalty": float(prev_penalty),
+                        "new_penalty": float(bot._sell_pct_penalty),
+                        "base_sell_pct": float(getattr(bot, "sell_pct", 0) or 0),
+                        "effective_sell_pct": float(effective_sell_pct),
+                        "realized_pnl": float(realized_pnl),
+                    },
+                )
+            except Exception:
+                pass
+        elif bot._sell_pct_penalty > 0:
+            prev_penalty = bot._sell_pct_penalty
+            bot._sell_pct_penalty = 0.0
+            try:
+                log_event(
+                    severity="info",
+                    category="safety",
+                    event="sell_penalty_reset",
+                    symbol=bot.symbol,
+                    message=(
+                        f"Sell penalty reset (fill {fmt_price(price)} >= avg "
+                        f"{fmt_price(sell_avg_cost)}); was {prev_penalty:.2f}%"
+                    ),
+                    details={
+                        "previous_penalty": float(prev_penalty),
+                        "profitable_sell_price": float(price),
+                        "avg_buy_price": float(sell_avg_cost),
+                        "realized_pnl": float(realized_pnl),
+                    },
+                )
+            except Exception:
+                pass
+
     # Brief s70 FASE 1: avg-cost trading — no FIFO queue to consume.
     # TODO 62a (Phase 2): these state mutations happen BEFORE log_trade.
     # If log_trade fails (60c), state is desynced from DB. Make atomic.
