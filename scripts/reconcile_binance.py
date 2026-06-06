@@ -260,7 +260,22 @@ def reconcile_symbol(exchange, client, symbol):
     bn_orders = aggregate_binance_fills(fills)
     db_orders = fetch_db_trades(client, symbol)
 
-    print(f"  Binance: {len(fills)} fills → {len(bn_orders)} orders")
+    # S99: scope Binance to the current testnet cycle. After a monthly reset
+    # (clean slate, S96a) Binance still returns pre-reset fills in its recent
+    # window while the DB is cycle-filtered — those pre-reset fills surface as
+    # false "binance orphans" (DRIFT_BINANCE_ORPHAN) even with zero monetary
+    # drift. Drop Binance orders older than the cycle's first DB trade so the
+    # compare is apples-to-apples (current cycle only). Edge: with no current-
+    # cycle DB trade yet we can't derive the boundary, so bn_orders is left as-is.
+    pre_reset_dropped = 0
+    if db_orders:
+        cycle_start_ms = min(d["ts_ms"] for d in db_orders) - TS_FALLBACK_MS
+        before = len(bn_orders)
+        bn_orders = [b for b in bn_orders if b["ts_ms"] >= cycle_start_ms]
+        pre_reset_dropped = before - len(bn_orders)
+
+    print(f"  Binance: {len(fills)} fills → {len(bn_orders)} orders (current cycle)"
+          + (f", {pre_reset_dropped} pre-reset dropped" if pre_reset_dropped else ""))
     print(f"  DB:      {len(db_orders)} trades (v3, managed_by=grid)")
 
     if len(bn_orders) == 0:
