@@ -1,6 +1,6 @@
 # Report per CEO — S98a — Adaptive Sell Penalty (sell-loss-guard)
 
-- **Brief sorgente**: `config/2026-06-06_S98a_brief_sell-loss-guard.md`
+- **Brief sorgente**: `briefresolved.md/2026-06-06_S98a_brief_sell-loss-guard.md`
 - **Commit**: `507ebd6`
 - **Data**: 2026-06-06
 - **Esito**: ✅ SHIPPED (codice + test). ⏳ **Attivazione richiede restart bot da parte di Max sul Mac Mini** (vincolo del brief: CC non riavvia).
