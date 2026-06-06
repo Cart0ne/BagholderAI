@@ -170,7 +170,7 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 
 ## 3. Diary Status
 
-**Sessione corrente: 96 BUILDING** (testnet reset clean slate + audit Area 2 review + disclaimer testnet). S95 → COMPLETE. Volume 3 in final review Max. V4 opening arc: testnet reset + clean slate → go-live.
+**Sessione corrente: 98 BUILDING** (adaptive sell penalty v1→v2 + tbot competitive analysis + blog pipeline update). S97 → COMPLETE.
 
 **Volumi pubblicati:**
 - Volume 1 "From Zero to Grid" (S1–S23, €4.99) → https://payhip.com/b/a4yMc
@@ -179,7 +179,7 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 
 **Volume corrente: 4** — "From Eyes to Live" (S83+, €4.99 planned). Aperto a S83. Arco narrativo: NewsKeeper build → go-live → primi risultati reali.
 
-**Blog post pubblicati: 7** (ultimo: POST 1 SEO+GEO, 2 giugno 2026)
+**Blog post pubblicati: 8** (ultimo: Post 8 "Thirty-Two Hours", 5 giugno 2026)
 **Post SEO+GEO in coda: 4** (POST 2–5, cadenza 1 ogni 1-2 settimane)
 
 **Sessioni pendenti di diary:** verificare su Supabase `diary_entries` se S73/S74/S77/S78/S79 hanno docx pronti. Storico sessioni V4 in PROJECT_STATE §10.
@@ -192,6 +192,9 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 
 | Data | Decisione | Perché |
 |---|---|---|
+| 2026-06-06 (S98) | **Adaptive Sell Penalty SHIPPED** (brief S98a, commit `507ebd6` + `a7d644d`) — guardia post-fill: se un sell Strategy A filla sotto avg_cost, il bot alza sell_pct dell'ultimo slippage osservato; sell profittevole resetta a base | Incidente BONK: 7 sell in 6 min, tutti in perdita per slippage testnet (ticker ok, fill −4/−14%). Strategy A checkava pre-fill, non post-fill. Guardia proporzionale, adattiva, auto-guarigione |
+| 2026-06-06 (S98) | **Board override: penalty da cumulativa a ultima perdita** | Design v1 (CEO) sommava tutte le perdite → BONK congelato a 31.3%. Max ha identificato il freeze: le 7 perdite non sarebbero mai accadute con la guardia attiva, il cumulativo bootstrappava da storia non guardata. Design v2 (Board): penalty = ultimo slippage osservato. Più semplice, auto-guaribile, nessun deadlock |
+| 2026-06-06 (S98) | **tbot competitive analysis completata** (report S93b, read-only). Conferma moat: accounting onesto + multi-brain + news classificata. Tre mosse proposte: /news pubblica PARKED (serve Haiku classifier), tabella regime PARKED (serve più dati), blog accounting trap IN PIPELINE | L'analisi conferma: il competitor ha architettura più stretta (solo trend-follower), numeri rotti (nostro bug S96b), stesso slippage BONK al quadrato (−52% su microcap). Nessun contatto, nessuna modifica al sito |
 | 2026-06-05 (S97) | **Phantom-holdings-audit SHIPPED** (brief S97a) | Grep sistematico: 9+ cluster dove `state.holdings` (include phantom testnet) guidava decisioni economiche. Tutti fixati → `managed_holdings`. Sell-side round-trip pendente (regola S96b: serve un trade vero). Su mainnet è no-op (phantom=0) |
 | 2026-06-05 (S97) | **Decisione 73c aggiornata** (force-liquidate → managed) | Brief 73c (S73) vendeva `state.holdings` su force-liquidate. S96b ha dimostrato che vendere phantom = realized spazzatura. S97a aggiorna: force-liquidate usa `managed_holdings`, commento 73c nel codice allineato |
 | 2026-06-05 (S97) | **NewsKeeper daily digest: concept approvato, scope S3** | Strada A: Haiku riceve tutte le headline 24h, produce risk score 3 livelli (calmo/alert/tempesta). NON produce BUY/SELL. Strada B (clustering) parcheggiata per volume >50 headline/giorno. Timing: post quality review T+7 (~8 giugno) |
@@ -277,6 +280,8 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 
 | Cosa | Perché |
 |---|---|
+| **Pagina /news pubblica** | Parked fino a maturità NewsKeeper (Haiku live da S94, ma T+7 quality review ~8 giugno ancora pendente; il vecchio regex aveva ~60% FP → non si espone classificazione non validata). Fonte: analisi tbot S98 (lui mostra gli stessi 3 feed RSS ma senza label AI → quando esponiamo, lo battiamo con sentiment/severità) |
+| **Tabella performance per regime su dashboard** | Parked fino a profondità dati sufficiente (testnet_2 ha ~2 giorni). Fonte: analisi tbot S98 |
 | **Sherpa non controlla i grid bot** | DRY_RUN intenzionale. I grid comprano durante extreme_fear (BTC ~$62K, F&G=11). Decisione Board S97: testnet = dati gratuiti, la roadmap non cambia. Sherpa LIVE (solo stop_buy) resta il primo passo post-Brain Analysis matura |
 | **BONK grid — RISOLTO** | Era bloccato dalla guardia 72a (deficit 99,91% dopo il reset mensile testnet). Sbloccato dal clean slate S96a (cycle tagging `testnet_2`): ripartito pulito il 2026-06-04, $150 cash, holdings 0, guardia passata. _(NB: le righe "Reset testnet — Rimandato" qui sotto sono ora superate.)_ |
 | **Paper trade re-import** | Backup esiste (`/Volumes/Archivio/bagholderai/audits/2026-05-08_pre-reset-s67/`, 51.943 righe JSONL) ma non serve re-importarlo nel DB. Disponibile per narrativa/diary quando serve |
@@ -285,7 +290,7 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 | **Audit Area 2** | Finestra scaduta, riprogrammare post-redesign |
 | **Reset testnet** | Rimandato: prima i fix (stop_buy ✅ + Sentinel/NewsKeeper). Possibile sblocco da un rimbalzo di mercato. "Mai capitolare / no cash morto" vale solo per mainnet, non per il testnet |
 | **Decisione timing Sentinel (Phase B vs accelerare NewsKeeper)** | Parcheggiata fino a post prima analisi NewsKeeper (lun 1 giugno) |
-| **Scheduled task Area 2 e Area 3 non automatizzati** | Solo l'audit Area 1 gira come Cowork scheduled task. Area 2/3 parcheggiati in Apple Notes todo, da configurare in sessione dedicata |
+| **Scheduled task Area 2 non automatizzato** | Area 1 e Area 3 girano come Cowork scheduled task (Area 3 dal 2026-05-31, cadenza bisettimanale — vedi PROJECT_STATE §9). Resta solo Area 2 (on-demand pre go-live/lancio), da configurare in sessione dedicata |
 | **Micro-brief `datetime.utcnow()` deprecation + cleanup PortfolioManager** | Low priority, scoperti in S89 (audit Area 1). Parcheggiati in Apple Notes todo. Toccano `bot/` runtime → fuori scope housekeeping. Tracciati in PROJECT_STATE §8 |
 | **Go-live mainnet €100** | Bloccato da 4 pre-requisiti in sequenza: NewsKeeper build (S2-S4, ~3 sessioni residue) + Sherpa testnet LIVE (post Brain Analysis 2) + dry_run observation periodo standard + Board approval finale. Niente data fissa, gated da condizioni di mercato osservate (bear+bull+laterale) |
 | **TF-Scout (Tier 3 shitcoins)** | Post-mainnet, esplicitamente parcheggiato. Richiede capitale extra e tolleranza rischio che oggi non abbiamo |
