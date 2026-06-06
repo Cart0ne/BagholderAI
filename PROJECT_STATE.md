@@ -126,12 +126,7 @@ Comm Sentinel↔Sherpa↔Grid via Supabase only. Telegram alerts: solo Grid trad
 
 - **2026-05-25/26 (S85) — housekeeping CEO-driven SHIPPED** (5 commit `8c9c2fc`→`86af67b`). RSS feed Dev.to + CLAUDE.md §[2b] compaction BUSINESS_STATE + S85 update. Verbatim → archive S88 + §10 riga S85.
 
-- **2026-05-24 (S84 chiusura) → vedi voce §10**. Verbatim §4 in [audits/PROJECT_STATE_archive.md](audits/PROJECT_STATE_archive.md) sezione "Rimosso in sessione S86".
-- **2026-05-24 (S83 chiusura) → vedi voce §10**. Verbatim §4 in [audits/PROJECT_STATE_archive.md](audits/PROJECT_STATE_archive.md) sezione "Rimosso in sessione S86".
-- **2026-05-23 (S82) → vedi voce §10**.
-- **2026-05-22 (S81) → vedi voce §10**.
-
-> Decisioni S81 + S82 + tutte le precedenti compattate in S83 + S86 compaction. Storico completo in §10 + commit log + archive.
+> Decisioni S81→S84 e precedenti: vedi §10 + commit log + [archive](audits/PROJECT_STATE_archive.md) (compaction S83/S86).
 
 ## 5. Bug noti
 
