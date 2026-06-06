@@ -32,8 +32,13 @@ ma non il generatore del commentary).
   "Grid-only $500". TF è fermo nel ciclo (0 trade) → il P&L in $ è identico,
   cambia solo il denominatore %; net worth mostra l'aggregato, self-consistente
   (netWorth − P&L = started).
-- **Day-count + grafico §3 cycle-aware**: "DAY 68" (da Mar 30) → Day 1. Il
-  grafico performance ora riparte dal ciclo corrente (era cross-ciclo).
+- **Grafico §3 cycle-scoped**: il grafico performance riparte dal ciclo corrente
+  (era cross-ciclo).
+- **"DAY N" per CONTESTO** (regola Max, dopo 2 tentativi sbagliati — vedi sotto):
+  i numeri SOLDI ripartono col ciclo (card NET WORTH/Grid/TF, grafico, home
+  LIVE SNAPSHOT → oggi ≈ Day 2); i numeri PROGETTO/diario restano progressivi
+  dal lancio v3 (CEO-log "Earlier from the log" → oggi ≈ Day 69, archivio
+  Apr 3 = Day 5). Ancore separate `CYCLE_START_ISO` vs `V3_LAUNCH_ISO`.
 
 ### 3. Post blog
 - `thirty-two-hours` pubblicato (`draft:false`). Build verde, 19 pagine.
@@ -58,6 +63,10 @@ quei fatti data-driven, lasciando intatto il tono.
 1. **Anchor day**: data-driven da inizio ciclo (vs fix-forward minimale).
 2. **Grafico §3**: incluso nel cycle-filter (coerenza con resto pagina).
 3. **Regen**: solo commentary, niente re-send Telegram.
+4. **"DAY N" per contesto** (chiarito da Max in revisione): SOLDI → riparte col
+   ciclo; PROGETTO/diario → progressivo dal lancio sito. Contraddice il brief
+   S97b ("Day 1 ovunque") → Max ha l'ultima parola. Ho sbagliato 2 volte prima
+   (tutto-ciclo, poi tutto-progetto) → versione finale = per-contesto.
 
 ## Scoperta inattesa
 La data d'inizio ciclo NON è il 4 giugno (clean slate) ma il **5 giugno**: il
@@ -70,8 +79,8 @@ solo in S96b (5/6). Quindi Day 1 = oggi. Ho allineato la costante frontend
   cross-ciclo (codice vecchio), quindi lo "swing" è artefatto del fix, non vero
   recupero. Si auto-corregge da domani (entrambi i giorni cycle-filtered). La
   riga vecchia resta in DB ma nascosta dalla dedup-per-data della dashboard.
-- CEO-log archivio: eventuali commentary di testnet_1 (pre 5/6) mostrano "day 1"
-  (clamp). Cosmetico, bassa priorità.
+- CEO-log archivio: ora i numeri diario sono progressivi di progetto (V3_LAUNCH),
+  quindi le voci vecchie tornano coerenti col loro testo (Apr 3 = Day 5). Risolto.
 
 ## Roadmap impact
 Nessuno. Fix interno + coerenza dashboard, nessun cambio di funzionalità pubblica.
