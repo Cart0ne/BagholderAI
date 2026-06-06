@@ -32,12 +32,16 @@ const headers = {
    reset (here + live-stats.ts + grid.html), with `UPDATE bot_config`. */
 const CYCLE = "testnet_2";
 const CQ = `&cycle=eq.${CYCLE}`;
-/* Start of the current cycle = date of its FIRST trade (S96a/S97b). The clean
-   slate was tagged Jun 4 but the first testnet_2 trade landed Jun 5 (first-buy
-   gate unblocked in S96b), so Day 1 = Jun 5 — matches the bot's data-driven
-   get_cycle_start_date and the home (live-stats.ts first-trade query). Day
-   counters + the §3 chart range anchor here. Bump on the next reset together
-   with CYCLE (and live-stats.ts / grid.html). */
+/* Two day anchors (S99). The rule is by CONTEXT, not by surface:
+   - MONEY numbers reset per testnet cycle (clean slate). → CYCLE_START_ISO
+   - PROJECT/diary numbers are continuous from the v3/site launch. → V3_LAUNCH_ISO
+   So the MONEY day counters (NET WORTH / Grid / TF cards + §3 P&L chart) use
+   CYCLE_START_ISO, while the CEO-log "Earlier from the log" diary numbers stay
+   progressive on V3_LAUNCH_ISO. CYCLE_START_ISO = first trade of the current
+   cycle (Jun 5: clean slate tagged Jun 4 but first testnet_2 trade landed Jun 5,
+   first-buy gate unblocked in S96b). Bump it on the next reset together with
+   CYCLE (and live-stats.ts / grid.html). */
+const V3_LAUNCH_ISO = "2026-03-30T00:00:00Z";
 const CYCLE_START_ISO = "2026-06-05T00:00:00Z";
 
 const sbq = async <T>(table: string, params: string): Promise<T> => {
@@ -73,8 +77,8 @@ const fmtPct     = (n: number)         => `${n >= 0 ? "+" : ""}${n.toFixed(2)}%`
 /* ====================================================================
    0. HEADER — date label + hero meta strip (day, net worth, P&L).
    The "Today" date is just today's calendar date (UTC, same boundary
-   used downstream). Day number = floor((now - cycle_start) / 1 day) + 1.
-   ==================================================================== */
+   used downstream). The hero NET WORTH card is a MONEY surface → its day
+   resets per cycle: floor((now - cycle_start) / 1 day) + 1. */
 
 (() => {
   const today = new Date();
@@ -173,19 +177,13 @@ const escapeHTML = (s: string) =>
     '"': "&quot;", "'": "&#39;",
   }[c]!));
 
-/* S97b: per-entry day number is era-aware. An entry from the CURRENT cycle
-   counts from the cycle start (today = Day 1, matches the new cycle-relative
-   commentary text); an OLDER entry keeps the absolute project-day anchor
-   (Mar 30) so the archive number still matches the "Day N" embedded in those
-   historical entries — instead of clamping every pre-cycle log to "Day 1". */
-const V3_START_ISO = "2026-03-30T00:00:00Z";
+/* Per-entry day number is PROJECT-WIDE (v3 epoch), continuous — never resets
+   per cycle. Matches the "Day N" the commentary embedded historically; the
+   cycle is mentioned only in the entry text. (S99 correction of S97b.) */
 const dayNumber = (isoDate: string): number => {
+  const launch = new Date(V3_LAUNCH_ISO);
   const d = new Date(isoDate + "T00:00:00Z");
-  const cycleStart = new Date(CYCLE_START_ISO);
-  const anchor = d.getTime() >= cycleStart.getTime()
-    ? cycleStart
-    : new Date(V3_START_ISO);
-  return Math.max(1, Math.floor((d.getTime() - anchor.getTime()) / 86_400_000) + 1);
+  return Math.max(1, Math.floor((d.getTime() - launch.getTime()) / 86_400_000) + 1);
 };
 
 const fmtCeoDate = (isoDate: string): string => {
