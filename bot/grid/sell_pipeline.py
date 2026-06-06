@@ -172,9 +172,10 @@ def evaluate_gain_saturation(bot, current_price: float, trigger_source: str) -> 
     if pos_count < effective_n:
         return False
 
+    # S97a: economic calc → managed_holdings (excludes testnet phantom).
     unrealized = (
-        (current_price - bot.state.avg_buy_price) * bot.state.holdings
-        if bot.state.avg_buy_price > 0 and bot.state.holdings > 0
+        (current_price - bot.state.avg_buy_price) * bot.managed_holdings
+        if bot.state.avg_buy_price > 0 and bot.managed_holdings > 0
         else 0.0
     )
     was_override = bot.tf_exit_after_n_override is not None
@@ -182,7 +183,7 @@ def evaluate_gain_saturation(bot, current_price: float, trigger_source: str) -> 
         f"[{bot.symbol}] GAIN-SATURATION TRIGGERED ({trigger_source}): "
         f"{pos_count} positive sells ≥ N={effective_n} "
         f"({'override' if was_override else 'default'}). "
-        f"Holdings={bot.state.holdings:.6f}, unrealized ${unrealized:.2f}."
+        f"Holdings={bot.managed_holdings:.6f}, unrealized ${unrealized:.2f}."
     )
     # Set the flag BEFORE any side effects so a concurrent buy decision
     # sees the breaker as already armed (race protection from §3.5 of
@@ -200,10 +201,10 @@ def evaluate_gain_saturation(bot, current_price: float, trigger_source: str) -> 
             "was_override": was_override,
             "positive_sells_count": pos_count,
             "period_started_at": period_start.isoformat(),
-            "residual_holdings": float(bot.state.holdings or 0),
+            "residual_holdings": float(bot.managed_holdings or 0),
             "residual_avg_buy_price": float(bot.state.avg_buy_price or 0),
             "exit_price": float(current_price),
-            "liq_value_usd": float(bot.state.holdings or 0) * float(current_price),
+            "liq_value_usd": float(bot.managed_holdings or 0) * float(current_price),
             "liq_pnl_usd": unrealized,
             "total_period_realized_pnl_usd": float(bot.state.realized_pnl or 0),
             "trigger_source": trigger_source,
@@ -216,7 +217,7 @@ def evaluate_gain_saturation(bot, current_price: float, trigger_source: str) -> 
     # holdings>0 case: pending_liquidation will be set by the existing
     # cycle_closed path in _check_percentage_and_execute once the
     # forced sells empty the queue. Either way we converge.
-    if bot.state.holdings <= 1e-9:
+    if bot.managed_holdings <= 1e-9:  # S97a: economic position, not wallet
         bot.pending_liquidation = True
     return True
 
@@ -247,7 +248,7 @@ def execute_percentage_sell(
     """
     from bot.grid.dust_handler import handle_step_size_dust, handle_economic_dust
 
-    if bot.state.holdings <= 0:
+    if bot.managed_holdings <= 0:  # S97a: nothing managed to sell (phantom isn't ours)
         logger.info(f"No holdings left to sell {bot.symbol}, skipping pct sell.")
         return None
 
@@ -255,14 +256,19 @@ def execute_percentage_sell(
     # caller-provided amount (default capital_per_trade / price); fallback
     # to all holdings if no per-trade size configured. Always clamp to
     # current holdings so we never oversell.
+    # S97a: cap on managed_holdings, never state.holdings — selling the testnet
+    # phantom would convert un-owned coins to garbage realized P&L (the S96b
+    # avg-cost incident, but on the sell side). force_all now closes the
+    # MANAGED economic exposure, not the wallet (73c reasoning superseded —
+    # see grid_bot force-liquidate). On mainnet phantom=0 → identical.
     if force_all:
-        amount = bot.state.holdings
+        amount = bot.managed_holdings
     elif sell_amount is not None and sell_amount > 0:
-        amount = min(sell_amount, bot.state.holdings)
+        amount = min(sell_amount, bot.managed_holdings)
     elif bot.capital_per_trade > 0 and price > 0:
-        amount = min(bot.capital_per_trade / price, bot.state.holdings)
+        amount = min(bot.capital_per_trade / price, bot.managed_holdings)
     else:
-        amount = bot.state.holdings
+        amount = bot.managed_holdings
 
     # Mirror the same guards as _execute_sell
     if bot.min_profit_pct > 0 and bot.state.avg_buy_price > 0:
@@ -332,14 +338,14 @@ def execute_percentage_sell(
             min_notional / price if price > 0 else 0,
         )
         if min_sellable > 0:
-            residual = bot.state.holdings - amount
+            residual = bot.managed_holdings - amount  # S97a: managed, not wallet
             if 0 < residual < min_sellable * 1.5:
                 logger.info(
                     f"[{bot.symbol}] DUST PREVENTION: residual {residual:.8f} < "
                     f"1.5x min_sellable ({min_sellable * 1.5:.8f}). "
-                    f"Selling all {bot.state.holdings:.8f} instead of {amount:.8f}."
+                    f"Selling all {bot.managed_holdings:.8f} instead of {amount:.8f}."
                 )
-                amount = bot.state.holdings
+                amount = bot.managed_holdings
 
         from utils.exchange_filters import round_to_step, validate_order
         amount = round_to_step(amount, bot._exchange_filters["lot_step_size"])
@@ -374,12 +380,17 @@ def execute_percentage_sell(
         fee = res["fee_cost"]
         fee_currency = res["fee_currency"] or "USDT"
         exchange_order_id = res["order_id"]
+        # S96b option B (2026-06-05): post-reset testnet charges zero fee →
+        # synthesize FEE_RATE so realized_pnl carries a realistic fee drag
+        # (realized = revenue - cost_basis - fee below). Mainnet fee passes through.
+        if fee == 0:
+            fee = revenue * bot.FEE_RATE
         if check_price > 0:
             slippage_pct = (price - check_price) / check_price * 100
     else:
         revenue = amount * price
         fee = revenue * bot.FEE_RATE
-    holdings_value_before = bot.state.holdings * price
+    holdings_value_before = bot.managed_holdings * price  # S97a: economic position value
 
     # 66a (Operation Clean Slate): canonical avg-cost.
     #   cost_basis = avg_buy_price × sell_qty
@@ -527,9 +538,9 @@ def execute_percentage_sell(
     # Criterion mirrors grid_bot.py:646-652 cycle_closed: holdings*price <
     # MIN_NOTIONAL means the residual is unsellable on Binance → equivalent
     # to fully sold out for trading purposes.
-    fully_sold = bot.state.holdings <= 1e-10
+    fully_sold = bot.managed_holdings <= 1e-10  # S97a: managed position emptied (phantom stays in wallet)
     if not fully_sold and getattr(bot, "_exchange_filters", None):
-        residual_notional = bot.state.holdings * price
+        residual_notional = bot.managed_holdings * price
         min_notional = float((bot._exchange_filters or {}).get("min_notional", 0) or 0)
         if min_notional > 0 and residual_notional < min_notional:
             fully_sold = True
@@ -542,8 +553,8 @@ def execute_percentage_sell(
         # sell-out. Next cycle's first sell will use avg_cost as reference.
         bot._last_sell_price = 0.0
         logger.info(
-            f"[{bot.symbol}] Fully sold out (holdings={bot.state.holdings:.10f}, "
-            f"residual_notional=${bot.state.holdings * price:.6f}). "
+            f"[{bot.symbol}] Fully sold out (managed={bot.managed_holdings:.10f}, "
+            f"residual_notional=${bot.managed_holdings * price:.6f}). "
             f"Buy reference reset to {fmt_price(price)}."
         )
     else:

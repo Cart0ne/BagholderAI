@@ -5,6 +5,7 @@ import BotCardOriginal from "../components/BotCardOriginal.astro";
 import WatchtowerCard from "../components/WatchtowerCard.astro";
 import SherpaLockedCard from "../components/SherpaLockedCard.astro";
 import TestnetBanner from "../components/TestnetBanner.astro";
+import CleanSlateSticker from "../components/CleanSlateSticker.astro";
 
 /* Latest 3 published blog posts — build-time, same filter as /blog. */
 const allBlogPosts = await getCollection("blog", ({ data }) =>
@@ -189,7 +190,7 @@ const volumes = [
                          text-text-muted">testnet · live</span>
           </div>
 
-          <div class="grid grid-cols-2 gap-2.5">
+          <div class="relative grid grid-cols-2 gap-2.5">
             <div class="rounded-2xl bg-primary-soft px-4 py-3.5">
               <div class="font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-primary/80">orders</div>
               <div id="stat-trades" data-count="0"
@@ -212,6 +213,7 @@ const volumes = [
                 <span class="text-[11px] font-bold uppercase tracking-[0.1em] text-text-muted">testnet</span>
               </div>
             </div>
+            <CleanSlateSticker class="absolute -bottom-5 left-3 z-20" />
           </div>
 
           <div class="mt-auto flex gap-2.5 pt-3.5">

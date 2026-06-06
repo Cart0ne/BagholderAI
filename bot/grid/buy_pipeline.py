@@ -60,7 +60,7 @@ def execute_percentage_buy(bot, price: float) -> Optional[dict]:
     # driven by external signals and bypass the guard. Strategy A only.
     if (bot.strategy == "A"
             and bot.managed_by == "grid"
-            and bot.state.holdings > 0
+            and bot.managed_holdings > 0  # S97a: economic position, not wallet (phantom excluded)
             and bot.state.avg_buy_price > 0
             and price > bot.state.avg_buy_price):
         logger.info(
@@ -185,6 +185,13 @@ def execute_percentage_buy(bot, price: float) -> Optional[dict]:
         # Paper mode keeps fee_base=0 because the simulated fill doesn't
         # touch base balance — paper fee is informational, USDT-equivalent.
         fee_base = float(res.get("fee_base", 0.0) or 0.0)
+        # S96b option B (2026-06-05): the post-reset Binance testnet charges
+        # zero commission. Synthesize the configured FEE_RATE so testnet P&L
+        # reflects a realistic mainnet-like fee drag. Fires only when the real
+        # fill reported no fee (testnet); on mainnet fee_cost>0 passes through.
+        synth_fee = (fee == 0)
+        if synth_fee:
+            fee = cost * bot.FEE_RATE
         if check_price > 0:
             slippage_pct = (price - check_price) / check_price * 100
     else:
@@ -203,6 +210,7 @@ def execute_percentage_buy(bot, price: float) -> Optional[dict]:
 
         fee = cost * bot.FEE_RATE
         fee_base = 0.0  # 72a: paper has no base-coin commission
+        synth_fee = False  # paper fee is legacy-simulated, kept out of avg
 
     old_last_buy = bot._pct_last_buy_price
     old_holdings = bot.state.holdings
@@ -234,9 +242,23 @@ def execute_percentage_buy(bot, price: float) -> Optional[dict]:
     # between sell triggers that lock real profit vs ones that lock
     # losses after fee. Trade-off only visible at the boundary; corrected
     # by construction here.
-    if bot.state.holdings > 0:
+    # S96b (2026-06-05): compute the average on MANAGED holdings, NOT total.
+    # state.holdings includes the testnet phantom baseline (gift coins held
+    # at $0 cost). Including it dragged the average toward zero, which then
+    # inflated realized P&L (and skim) on every sell — BTC reported +$49.59
+    # on a real ~$0.04 gain. _phantom_holdings is constant across a buy, so
+    # managed = holdings - phantom on both sides. On mainnet phantom=0 →
+    # managed==total → identical to the 72a P2 formula (no behavior change).
+    managed_after = bot.state.holdings - bot._phantom_holdings
+    old_managed = max(0.0, old_holdings - bot._phantom_holdings)
+    # S96b option B: a synthetic testnet fee is paid in quote currency and is
+    # NOT reflected in qty_acquired, so fold it into the cost basis here —
+    # mirrors the 72a intent (avg includes the buy fee). On mainnet the fee is
+    # taken in base coin (already in qty_acquired) so we must NOT double-count.
+    cost_for_avg = cost + fee if synth_fee else cost
+    if managed_after > 0:
         bot.state.avg_buy_price = (
-            (old_avg * old_holdings + cost) / bot.state.holdings
+            (old_avg * old_managed + cost_for_avg) / managed_after
         )
 
     bot._pct_last_buy_price = price

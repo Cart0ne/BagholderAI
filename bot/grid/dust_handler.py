@@ -20,7 +20,7 @@ logger = logging.getLogger("bagholderai.grid")
 
 def _writeoff_dust(bot, reason: str):
     """Zero out residual holdings + avg when the position is unsellable."""
-    dust_amount = float(bot.state.holdings or 0)
+    dust_amount = float(bot.managed_holdings or 0)  # S97a: report the managed dust, not wallet+phantom
     bot.state.holdings = 0.0
     bot.state.avg_buy_price = 0.0
     logger.info(

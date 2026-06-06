@@ -1,8 +1,8 @@
 # BUSINESS_STATE.md
 
-**Last updated:** 2026-06-02 — Session 95 (applicato update CEO da brief `config/2026-06-02_S95_business_state_update.md`: §2 +SEO+GEO strategy / Medium / LinkedIn parcheggiato / Reddit best-comment, §3 conteggi blog [7 pubblicati, 4 SEO+GEO in coda], §4 +3 decisioni [dual-channel SEO+GEO, LinkedIn approvato, Medium attivo], §6 redesign "Pastel Sticker v2" branch+anteprima READY / +POST 2 drafting). Cap file alzato a 50KB (decisione Max S95, CLAUDE.md §2b). Cadenze audit canoniche in PROJECT_STATE §9. Prec.: S94 (§4/§6/§7 macro feed CNBC + NewsKeeper Haiku).
-**Updated by:** CEO (brief S95 via Max) — applicato da CC (S95)
-**Basato su:** PROJECT_STATE.md aggiornato 2026-06-02 (S95b redesign) + POST 1 SEO+GEO live commit `78483dc`
+**Last updated:** 2026-06-05 — Session 97 chiusura (phantom-holdings-audit, todo cleanup, brainstorming NewsKeeper daily digest, banner update). Cap file 50KB (Max S95, CLAUDE.md §2b). Cadenze audit canoniche in PROJECT_STATE §9. Prec.: S95 (§2/§3/§4/§6 SEO+GEO + redesign branch READY).
+**Updated by:** CEO (update S97 via Max, `config/S97_BUSINESS_STATE_update.md`) — applicato da CC
+**Basato su:** S97a report CC (`6ff7d6f` + `068fe7c`), quality review CEO, brainstorming Board
 
 ---
 
@@ -192,6 +192,11 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 
 | Data | Decisione | Perché |
 |---|---|---|
+| 2026-06-05 (S97) | **Phantom-holdings-audit SHIPPED** (brief S97a) | Grep sistematico: 9+ cluster dove `state.holdings` (include phantom testnet) guidava decisioni economiche. Tutti fixati → `managed_holdings`. Sell-side round-trip pendente (regola S96b: serve un trade vero). Su mainnet è no-op (phantom=0) |
+| 2026-06-05 (S97) | **Decisione 73c aggiornata** (force-liquidate → managed) | Brief 73c (S73) vendeva `state.holdings` su force-liquidate. S96b ha dimostrato che vendere phantom = realized spazzatura. S97a aggiorna: force-liquidate usa `managed_holdings`, commento 73c nel codice allineato |
+| 2026-06-05 (S97) | **NewsKeeper daily digest: concept approvato, scope S3** | Strada A: Haiku riceve tutte le headline 24h, produce risk score 3 livelli (calmo/alert/tempesta). NON produce BUY/SELL. Strada B (clustering) parcheggiata per volume >50 headline/giorno. Timing: post quality review T+7 (~8 giugno) |
+| 2026-06-05 (S97) | **Sherpa DRY_RUN durante extreme fear: lasciato intenzionalmente** | BTC -15%, Fear&Greed a 11, grid comprano in extreme_fear perché Sherpa non scrive stop_buy. Board: è testnet, soldi finti, dati gratuiti. La roadmap Sherpa non cambia |
+| 2026-06-05 (S97) | **Site redesign "Pastel Sticker v2" LIVE** | Merge e deploy completati da Max. Non più pending |
 | 2026-06-04 (S96) | **Clean slate tutti e 3 i grid bot (Opzione C)** — Board+CEO. Shippato: cycle tagging `testnet_1`/`testnet_2`, BONK ripartito pulito | Reset mensile testnet ha azzerato i wallet. Guardia 72a ha bloccato BONK. Invece di ricostruire la posizione, archiviamo i trade come `testnet_1` e ripartiamo come `testnet_2`. Campo `cycle` su trades/daily_pnl/snapshots/reserve_ledger/bot_config. Brief S96a |
 | 2026-06-04 (S96) | **Testnet disclaimer obbligatorio su sito** — CEO. Live su home + /dashboard + grid | Banner fisso non dismissibile. Testo chiaro: dati sintetici, no soldi veri, saldi resettabili senza preavviso |
 | 2026-06-04 (S96) | **Audit Area 2 backstop 120→60 giorni** — Board | Aggiornato AUDIT_PROTOCOL.md §2 e CLAUDE.md [1] |
@@ -232,8 +237,9 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 | **[S91 NEW] Integrità dati — `bot_state_snapshots` saldo grezzo** | 🆕 Da verificare | `bot_state_snapshots` fotografa il **saldo grezzo testnet (pre-funded)**, non la posizione €500 → verificare che **nessuna superficie pubblica** lo peschi. Minori: fallback `1,0×` non cappato in Sentinel; dead-band scritture Sherpa |
 | **[S90 NEW] Option C — slippage buffer su percentage sell path** | TODO pre-mainnet, brief separato | Brief separato pre-mainnet. Estendere il pattern `SLIPPAGE_BUFFER_PCT=0.03` (già attivo su SWEEP/LAST_SHOT path da brief 78b) anche al path `_execute_percentage_sell` per chiudere completamente la finestra di rischio post-fix A+B |
 | **[S90 NEW] Calibrazione parametri spike guard** (threshold 4% / confirm 50% / pause 5s) | Osservazione 7-14gg, poi decidere | Oggi i 3 parametri sono default argument della funzione `fetch_price_with_spike_guard`. Post osservazione: valutare se servono tunable per-coin via `bot_config` (BTC vs SOL vs BONK volatilità diverse). Voto CC: tenerli fissi finché dati live non suggeriscono altrimenti |
-| **[S83 NEW] NewsKeeper S2** | Board-approved, timeline post-osservazione | Sessioni 2-4 brief NewsKeeper Architecture: (a) Haiku classifier (promosso da S3-4 → S2 perché RSS non ha sentiment nativo); (b) Modulo 2 ETF flows + Modulo 3 macro_calendar; (c) integrazione orchestrator (`ENABLE_NEWSKEEPER` env + `_spawn_newskeeper()`). **Timeline: post 7gg osservazione (~31 maggio).** Priorità ALTA |
-| **[S88] Audit Area 2 remediation — 4/5 SHIPPED** | In corso (resta 88d) | Audit eseguito 2026-05-27 (CON RISERVE). 5 brief remediation (88a→88e); **88b/88c/88a/88e shippati in S88** (stessa sessione), **resta 88d** (UI debts, sessione dedicata). Tracking: `audit_remediation_cover_sheet.md`. Post-88d: diary S88 completo + update BUSINESS_STATE finale del CEO |
+| **[S83] NewsKeeper S2** | ✅ DONE (S94) | Haiku classifier live. Feed CNBC Economy + MarketWatch + CoinDesk. T+7 quality review ~8 giugno |
+| **[S97 NEW] NewsKeeper S3: daily digest** | Concept approvato | Haiku riceve headline 24h → risk score narrativo (calmo/alert/tempesta). Post quality review. Strada B (clustering) parcheggiata per volume alto |
+| **[S88] Audit Area 2 remediation — 4/5 SHIPPED** | Resta 88d (UI debts) — verificare se il redesign li ha chiusi | Audit 2026-05-27 (CON RISERVE). 88a/88b/88c/88e shippati S88, resta 88d (UI debts). Il redesign Pastel Sticker v2 potrebbe aver risolto parte dei debiti UI → da verificare nella prossima sessione. Tracking: `audit_remediation_cover_sheet.md` |
 | **[S82] Brief NewsKeeper architetturale Session 1** | ✅ DONE (S83) | Scaffold shippato commit `49473a9`. Module 1 RSS feeds live standalone Mac Mini PID 78098. Sessioni 2-4 ancora pending |
 | **[S81 NEW] Cross-post automation Dev.to + Indie Hackers** | Decisione rimandata post-weekend | Quando un post va live su `web_astro/src/content/blog/`, script che pubblica su Dev.to via API (canonical URL, tags, serie) + prepara testo adattato per IH. ~2-3h stimato |
 | ~~Brief 81a Sherpa Sprint 2~~ | ✅ DONE (S81) | Shipped commit `3ba1132`. Verifica live: BTC/SOL/BONK proposals diversi |
@@ -243,7 +249,7 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 | **Verifica identità accounting** (residuo Strada 2) | Post-go-live €100 | ~30 min check empirico Realized + Unrealized = Equity P&L. FIFO cancellato come canonical |
 | **Integration test config reader chain** | Pre-prossimo brief bot_config | Gap strutturale scoperto S76. ~30-60 min |
 | **Buy trigger anchor (A/B/C)** | Parcheggiata | A=last_buy, B=avg, C=hybrid. Decisione strategica |
-| **Phantom BONK 1.37M** | Bassa priorità | Non bloccante |
+| **Phantom BONK 1.37M** | ~~Bassa priorità~~ → SUPERATA | Clean slate S96 ha resettato tutto. Phantom ora è baseline testnet (1 BTC / 6 SOL / 18.446 BONK), gestito da `managed_holdings` post-audit S97a |
 
 ---
 
@@ -253,7 +259,7 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 |---|---|---|
 | **NewsKeeper T+7 quality review** | ~8 giugno 2026 | Verifica qualità: tasso FP, direzioni corrette, lead/lag vs Sentinel, costo Haiku. Sblocca decisione timing Sentinel |
 | **Correzione feed CNBC Economy** | ✅ FATTA (S94, commit `8515378`) | BBC→CNBC Economy + MarketWatch. Restart Mac Mini 22:04 CET, CNBC contribuisce `haiku_s2` verificato. (Era "da dare a CC" nel paste, già shippata) |
-| **Site redesign "Pastel Sticker v2"** | branch pronto, review pendente | CC report S95b: tutte le pagine pubbliche convertite. Branch `redesign/pastel-sticker-v2` (commit `4a6f047`), anteprima Vercel READY. Merge a discrezione Max post-review desktop+mobile |
+| **Site redesign "Pastel Sticker v2"** | ✅ FATTO (S97, 2026-06-05) | Merge e deploy completati da Max, LIVE su bagholderai.lol. Rimovibile dalla lista vincoli alla prossima compaction |
 | **SEO+GEO POST 2 drafting** | ~metà giugno | "Why Most AI Trading Bots Fail (And What Ours Did Wrong Too)" — keyword: ai trading bot. Cadenza 1 post ogni 1-2 settimane |
 | **Apple Notes pulizia: cancellare 8 note obsolete (Max)** | A discrezione Max | 4 note attive da mantenere, 8 obsolete da cancellare manualmente |
 | **Go-live mainnet** | Nessuna data fissa | Dipende da condizioni di mercato (bear+bull+laterale osservati). Sequenza: NewsKeeper build (S2-S4 residue) → Sherpa testnet LIVE → dry_run → Board approval |
@@ -271,6 +277,7 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 
 | Cosa | Perché |
 |---|---|
+| **Sherpa non controlla i grid bot** | DRY_RUN intenzionale. I grid comprano durante extreme_fear (BTC ~$62K, F&G=11). Decisione Board S97: testnet = dati gratuiti, la roadmap non cambia. Sherpa LIVE (solo stop_buy) resta il primo passo post-Brain Analysis matura |
 | **BONK grid — RISOLTO** | Era bloccato dalla guardia 72a (deficit 99,91% dopo il reset mensile testnet). Sbloccato dal clean slate S96a (cycle tagging `testnet_2`): ripartito pulito il 2026-06-04, $150 cash, holdings 0, guardia passata. _(NB: le righe "Reset testnet — Rimandato" qui sotto sono ora superate.)_ |
 | **Paper trade re-import** | Backup esiste (`/Volumes/Archivio/bagholderai/audits/2026-05-08_pre-reset-s67/`, 51.943 righe JSONL) ma non serve re-importarlo nel DB. Disponibile per narrativa/diary quando serve |
 | **Sentinel Phase B** | Parcheggiata fino a post T+7 NewsKeeper (8 giugno) |
@@ -283,15 +290,8 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 | **Go-live mainnet €100** | Bloccato da 4 pre-requisiti in sequenza: NewsKeeper build (S2-S4, ~3 sessioni residue) + Sherpa testnet LIVE (post Brain Analysis 2) + dry_run observation periodo standard + Board approval finale. Niente data fissa, gated da condizioni di mercato osservate (bear+bull+laterale) |
 | **TF-Scout (Tier 3 shitcoins)** | Post-mainnet, esplicitamente parcheggiato. Richiede capitale extra e tolleranza rischio che oggi non abbiamo |
 | **Grok/X scanner module** | Post-mainnet. Richiede API X premium (~$200/mese), giustificabile solo con MRR positivo |
-| **Reset testnet** | Rimandato: prima i fix (stop_buy ✅ + Sentinel timing lento + NewsKeeper). Possibile sblocco da rimbalzo di mercato. "Mai capitolare" vale solo mainnet |
-| **Decisione timing Sentinel (Phase B vs accelerare NewsKeeper)** | Parcheggiata fino a post prima analisi NewsKeeper (~1 giugno) |
-| **Scheduled task Area 2 e Area 3 non automatizzati** | Solo Area 1 gira come Cowork scheduled task. Area 2/3 parcheggiati in Apple Notes |
-| **Micro-brief `datetime.utcnow()` + cleanup PortfolioManager** | Low priority, scoperti in S89. Toccano `bot/` runtime → fuori scope housekeeping |
-| **Go-live mainnet €100** | Sequenza: NewsKeeper S2-S4 (~3 sessioni residue) → Sherpa testnet LIVE → dry_run → Board approval. Nessuna data fissa, gated da condizioni di mercato |
 | **NewsKeeper Sessions 2-4** | Session 1 live (RSS + regex, standalone Mac Mini). S2 priorità: Haiku classifier (RSS non ha sentiment nativo) |
 | **Nessuna nuova fonte dati per NewsKeeper** | API news gratuite morte (CryptoPanic, CoinDesk). RSS + Haiku resta il piano. Niente budget per news API paid pre-mainnet |
-| **TF-Scout (Tier 3 shitcoins)** | Post-mainnet. Capitale extra + tolleranza rischio non disponibili ora |
-| **Grok/X scanner module** | Post-mainnet. API X premium ~$200/mese giustificabile solo con MRR positivo |
 | **Nessun cross-post automatico** | Dev.to e IH manuali. Automazione in valutazione post-baseline |
 | **HN come canale** | Shadowban Cart0ne. Nuovo account non urgente — altri canali prioritari |
 | **Futures/hedging** | Parcheggiato S90+. Capitale >€100, stack separato, KYC aggiuntivo. Post-mainnet |

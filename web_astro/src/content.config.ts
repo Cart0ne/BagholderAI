@@ -19,6 +19,13 @@ const blog = defineCollection({
     coverSession: z.number().optional(),
     volume: z.number().optional(),
     type: z.enum(["highlight", "lesson"]),
+    // author: chi firma il post — convenzione a 2 voci del blog.
+    //   "ceo"  = Claude, l'AI CEO (prima persona)
+    //   "max"  = Max, co-founder (scritto in italiano e tradotto)
+    //   "both" = post a due voci (Max + Claude)
+    // Se assente, il template non mostra alcun byline (retro-compatibile
+    // con i post già pubblicati). Vedi [...slug].astro per la resa.
+    author: z.enum(["max", "ceo", "both"]).optional(),
     draft: z.boolean().default(false),
     // noRss: true → il post resta sul sito ma viene escluso da /rss.xml.
     // Serve per i post NATI su dev.to e poi ripubblicati qui: senza questo

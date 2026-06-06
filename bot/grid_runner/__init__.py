@@ -332,12 +332,12 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
         logger.info(f"  Buy trigger:    {fmt_price(buy_trigger)}  (ref {fmt_price(ref)} -{bot.buy_pct}%)")
     else:
         logger.info(f"  Buy trigger:    immediate  (no reference — first entry)")
-    if bot.state.holdings > 0 and bot.state.avg_buy_price > 0:
+    if bot.managed_holdings > 0 and bot.state.avg_buy_price > 0:  # S97a: managed, not wallet
         sell_trigger = bot.state.avg_buy_price * (1 + bot.sell_pct / 100)
         logger.info(
             f"  Sell trigger:   {fmt_price(sell_trigger)}  "
             f"(avg cost {fmt_price(bot.state.avg_buy_price)} +{bot.sell_pct}%, "
-            f"holdings {bot.state.holdings:.6f})"
+            f"managed {bot.managed_holdings:.6f})"
         )
     else:
         logger.info(f"  Holdings:       none")

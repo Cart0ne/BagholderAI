@@ -387,7 +387,7 @@ class GridBot:
         # (see brief: a restart "forgets" the peak which is conservative).
         if (self.managed_by == "tf"
                 and self.tf_trailing_stop_pct > 0
-                and self.state.holdings > 0
+                and self.managed_holdings > 0  # S97a: economic position, not wallet
                 and current_price > self._trailing_peak_price):
             self._trailing_peak_price = current_price
 
@@ -397,7 +397,7 @@ class GridBot:
         # (manual bots keep Strategy A's unconditional "never sell at loss").
         if (self.managed_by == "tf"
                 and self.tf_stop_loss_pct > 0
-                and self.state.holdings > 0
+                and self.managed_holdings > 0  # S97a: economic position, not wallet
                 and self.state.avg_buy_price > 0
                 and not self._stop_loss_triggered):
             unrealized = (current_price - self.state.avg_buy_price) * self.managed_holdings
@@ -408,7 +408,7 @@ class GridBot:
                     f"[{self.symbol}] STOP-LOSS TRIGGERED: unrealized ${unrealized:.2f} "
                     f"<= threshold ${loss_threshold:.2f} "
                     f"({self.tf_stop_loss_pct:.0f}% of open value ${open_value:.2f}). "
-                    f"Liquidating all holdings ({self.state.holdings:.6f})."
+                    f"Liquidating all holdings ({self.managed_holdings:.6f})."
                 )
                 self._stop_loss_triggered = True
                 # 45a v2: record SL timestamp in bot_config for the TF cooldown.
@@ -450,7 +450,7 @@ class GridBot:
                 and not self._take_profit_triggered
                 and not self._profit_lock_triggered
                 and not self._gain_saturation_triggered
-                and self.state.holdings > 0
+                and self.managed_holdings > 0  # S97a: economic position, not wallet
                 and self.state.avg_buy_price > 0
                 and self._trailing_peak_price > 0):
             activation_price = self.state.avg_buy_price * (1 + self.tf_trailing_stop_activation_pct / 100)
@@ -464,7 +464,7 @@ class GridBot:
                         f"dropped {drop_from_peak_pct:.1f}% from peak {fmt_price(self._trailing_peak_price)} "
                         f"(trigger: {fmt_price(trailing_trigger)}). "
                         f"Unrealized: ${unrealized:+.2f}. "
-                        f"Liquidating all holdings ({self.state.holdings:.6f})."
+                        f"Liquidating all holdings ({self.managed_holdings:.6f})."
                     )
                     self._trailing_stop_triggered = True
                     # Re-use the SL cooldown clock so the TF can't immediately
@@ -509,7 +509,7 @@ class GridBot:
         # essere contemporaneamente <= -X e >= +X).
         if (self.managed_by == "tf"
                 and self.tf_take_profit_pct > 0
-                and self.state.holdings > 0
+                and self.managed_holdings > 0  # S97a: economic position, not wallet
                 and self.state.avg_buy_price > 0
                 and not self._take_profit_triggered
                 and not self._stop_loss_triggered):
@@ -521,7 +521,7 @@ class GridBot:
                     f"[{self.symbol}] TAKE-PROFIT TRIGGERED: unrealized ${unrealized:.2f} "
                     f">= threshold ${profit_threshold:.2f} "
                     f"({self.tf_take_profit_pct:.0f}% of open value ${open_value:.2f}). "
-                    f"Liquidating all holdings ({self.state.holdings:.6f})."
+                    f"Liquidating all holdings ({self.managed_holdings:.6f})."
                 )
                 self._take_profit_triggered = True
                 log_event(
@@ -551,7 +551,7 @@ class GridBot:
         if (self.managed_by in ("tf", "tf_grid")
                 and (self.tf_profit_lock_enabled or self.managed_by == "tf_grid")
                 and self.tf_profit_lock_pct > 0
-                and self.state.holdings > 0
+                and self.managed_holdings > 0  # S97a: economic position, not wallet
                 and self.capital > 0
                 and not self._profit_lock_triggered
                 and not self._stop_loss_triggered
@@ -563,7 +563,7 @@ class GridBot:
                 logger.warning(
                     f"[{self.symbol}] PROFIT-LOCK TRIGGERED: net PnL ${net_pnl:.2f} "
                     f"({net_pnl_pct:.1f}%) >= {self.tf_profit_lock_pct:.1f}% of alloc "
-                    f"${self.capital:.2f}. Liquidating all holdings ({self.state.holdings:.6f}) "
+                    f"${self.capital:.2f}. Liquidating all holdings ({self.managed_holdings:.6f}) "
                     f"(realized ${self.state.realized_pnl:.2f} + unrealized ${unrealized:.2f})."
                 )
                 self._profit_lock_triggered = True
@@ -612,7 +612,7 @@ class GridBot:
         # finché una sell in profit lo resetta (isteresi event-based).
         if (self.managed_by != "tf"
                 and self.stop_buy_drawdown_pct > 0
-                and self.state.holdings > 0
+                and self.managed_holdings > 0  # S97a: economic position, not wallet
                 and self.state.avg_buy_price > 0
                 and not self._stop_buy_active):
             # 75c (S76 2026-05-14): the drawdown reference is `avg_buy_price`
@@ -716,7 +716,7 @@ class GridBot:
                 and not self._take_profit_triggered
                 and not self._profit_lock_triggered
                 and not self._gain_saturation_triggered
-                and self.state.holdings > 0
+                and self.managed_holdings > 0  # S97a: economic position, not wallet
                 and self._last_sell_price > 0
                 and self.state.avg_buy_price > 0
                 and current_price > self.state.avg_buy_price
@@ -788,7 +788,7 @@ class GridBot:
         # Force-liquidate paths (TF stop-loss / trailing / take-profit /
         # profit-lock / gain-saturation / pending_liquidation) sell
         # everything in one trade.
-        if self.state.holdings > 0:
+        if self.managed_holdings > 0:  # S97a: economic position, not wallet (phantom excluded)
             # 39a/39c/45f/45g/51b: TF override paths still fire on
             # avg-cost, but bypass the "no sell at loss" guard via
             # bot.strategy override in sell_pipeline.
@@ -827,15 +827,18 @@ class GridBot:
             )
 
             if should_sell:
-                # Brief 73c (S73 2026-05-12): cap sell_amount on
-                # managed_holdings (excludes phantom testnet/manual
-                # deposit) to prevent selling coins the bot never
-                # bought. Force-liquidate (TF) still empties state.holdings
-                # because that path is meant to close the bot's full
-                # economic exposure — but on mainnet phantom_holdings=0
-                # so the two are identical.
+                # Brief 73c (S73): cap sell_amount on managed_holdings
+                # (excludes the phantom testnet/manual baseline) to never
+                # sell coins the bot never bought.
+                # S97a (S97 2026-06-05) — UPDATE to 73c: force-liquidate now
+                # ALSO uses managed_holdings. 73c originally emptied
+                # state.holdings on force-liquidate ("close full exposure"),
+                # but S96b proved that selling the phantom converts un-owned
+                # coins into garbage realized P&L. The phantom is NOT the
+                # bot's exposure. On mainnet phantom=0 → identical, so this
+                # is a no-op for go-live and a bug fix for testnet.
                 if force_liquidate:
-                    sell_amount = self.state.holdings
+                    sell_amount = self.managed_holdings
                 else:
                     sell_amount = (
                         self.capital_per_trade / current_price
@@ -858,10 +861,10 @@ class GridBot:
                 # below 1e-10 OR residual notional below MIN_NOTIONAL
                 # (economic dust, not sellable on Binance).
                 cycle_closed = False
-                if self.state.holdings <= 1e-10:
+                if self.managed_holdings <= 1e-10:  # S97a: managed emptied (phantom stays)
                     cycle_closed = True
                 elif self._exchange_filters:
-                    residual_notional = self.state.holdings * current_price
+                    residual_notional = self.managed_holdings * current_price
                     min_notional = float(self._exchange_filters.get("min_notional", 0) or 0)
                     if min_notional > 0 and residual_notional < min_notional:
                         cycle_closed = True
@@ -885,7 +888,7 @@ class GridBot:
                         trigger = "Gain-saturation"
                     logger.warning(
                         f"[{self.symbol}] {trigger} liquidation complete "
-                        f"(holdings={self.state.holdings:.6f}). "
+                        f"(managed={self.managed_holdings:.6f}). "
                         f"Flagging pending_liquidation for TF cleanup."
                     )
                     self.pending_liquidation = True
@@ -907,11 +910,16 @@ class GridBot:
 
         if not buy_cooldown_active:
             if self._pct_last_buy_price == 0:
-                if self.state.holdings > 0:
+                if self.managed_holdings > 0:
                     # Brief s70 FASE 2: holdings esistenti senza ref → usa avg.
                     # Path coperto dal boot replay (state_manager carica
                     # holdings + avg_buy_price), ma defensive per restart
                     # edge cases.
+                    # S96b (2026-06-05): usa managed_holdings, NON state.holdings.
+                    # Dopo un reset testnet / clean slate la posizione gestita è 0
+                    # ma il wallet regala il baseline (phantom) → con state.holdings
+                    # il gate saltava la prima entrata e ancorava la scala ad avg=$0
+                    # → il bot non comprava mai. managed_holdings esclude il regalo.
                     self._pct_last_buy_price = self.state.avg_buy_price
                     logger.info(
                         f"[{self.symbol}] Pct mode: existing holdings found, skipping first buy. "
@@ -946,13 +954,13 @@ class GridBot:
             elapsed_h = int(elapsed)
             if elapsed_h != self._idle_logged_hour:
                 self._idle_logged_hour = elapsed_h
-                mode = "RE-ENTRY" if self.state.holdings <= 0 else "RECALIBRATE"
+                mode = "RE-ENTRY" if self.managed_holdings <= 0 else "RECALIBRATE"  # S97a
                 logger.info(
                     f"[{self.symbol}] IDLE {mode} CHECK: "
                     f"elapsed={elapsed:.2f}h / threshold={self.idle_reentry_hours}h "
                     f"| last_trade={self._last_trade_time:%Y-%m-%d %H:%M:%S} UTC "
                     f"| ref_price={fmt_price(self._pct_last_buy_price)} "
-                    f"| holdings={self.state.holdings:.6f} "
+                    f"| managed={self.managed_holdings:.6f} (wallet={self.state.holdings:.6f}) "
                     f"| will_fire={'YES' if elapsed >= self.idle_reentry_hours else 'NOT YET'}"
                 )
             if elapsed >= self.idle_reentry_hours:
@@ -964,10 +972,10 @@ class GridBot:
                 # stop_buy_active suppression in idle_alerts.py.
                 available = self._available_cash()
                 if available < HardcodedRules.MIN_LAST_SHOT_USD:
-                    path_label = "re-entry" if self.state.holdings <= 0 else "recalibrate"
+                    path_label = "re-entry" if self.managed_holdings <= 0 else "recalibrate"  # S97a
                     event_name = (
                         "idle_reentry_suppressed_no_cash"
-                        if self.state.holdings <= 0
+                        if self.managed_holdings <= 0
                         else "idle_recalibrate_suppressed_no_cash"
                     )
                     logger.info(
@@ -996,7 +1004,7 @@ class GridBot:
                     # after another full window (prevents per-cycle spam).
                     self._last_trade_time = datetime.utcnow()
                     self._idle_logged_hour = -1
-                elif self.state.holdings <= 0:
+                elif self.managed_holdings <= 0:  # S97a: no managed position → re-entry
                     # --- Path A: no holdings → force re-entry buy ---
                     logger.info(
                         f"[{self.symbol}] Idle re-entry after {elapsed:.1f}h: "
