@@ -40,7 +40,16 @@ ma non il generatore del commentary).
   dal lancio v3 (CEO-log "Earlier from the log" → oggi ≈ Day 69, archivio
   Apr 3 = Day 5). Ancore separate `CYCLE_START_ISO` vs `V3_LAUNCH_ISO`.
 
-### 3. Post blog
+### 3. Reconciliation table — falso "DRIFT" post-reset (`9d27b02`)
+- La tabella mostrava "⚠ DRIFT" su BTC/SOL/BONK ma con drift_count=0 e footer
+  "Zero discrepancies". Causa: `reconcile_binance.py` confronta i fill Binance
+  (che includono i trade pre-reset testnet_1) col DB cycle-filtered → i fill
+  pre-reset risultavano "binance orphan" → status DRIFT_BINANCE_ORPHAN, pur
+  con zero scarto monetario. Fix: scarto i fill Binance < primo trade del ciclo
+  → confronto current-cycle only → status OK (BTC 4/4, SOL 9/9, BONK 5/5).
+  Refresh manuale scritto su `reconciliation_runs`; il cron 01:00 UTC continua.
+
+### 4. Post blog
 - `thirty-two-hours` pubblicato (`draft:false`). Build verde, 19 pagine.
 
 ## Verifica
