@@ -499,11 +499,16 @@ def execute_percentage_sell(
     # atterrare il fill sotto avg_cost. Quando succede, alziamo la soglia di
     # vendita effettiva del danno subìto, così il prossimo sell scatta solo
     # più in alto e non si ripete l'errore in ciclo stretto.
-    #   - fill < avg → accumula loss_pct nella penalty (effective sale).
+    #   - fill < avg → penalty = loss_pct (l'ULTIMA perdita osservata).
     #   - fill >= avg → reset a 0 (il mercato regge l'esecuzione → rientrati).
-    # Decisione Max/Board (vs lettera brief): trigger PRICE-BASED (fill<avg),
-    # non realized_pnl<0. Motivo: una perdita da sola fee (fill>avg ma pnl<0)
-    # darebbe loss_pct negativo → abbasserebbe la soglia, l'opposto del voluto.
+    # DESIGN v2 (Max + CEO 2026-06-06, sovrascrive il cumulativo del brief):
+    # la penalty è l'ULTIMO slippage osservato, NON la somma. Il cumulativo
+    # rischiava un deadlock (soglia così alta da non vendere più → mai un sell
+    # profittevole → mai reset → coin congelato). Con "ultima perdita" il bot
+    # si adatta alla condizione corrente del mercato e si auto-guarisce: appena
+    # il book si ripopola il fill torna ≥ avg → reset. Numero sempre leggibile.
+    # Trigger PRICE-BASED (fill<avg), non realized_pnl<0: una perdita da sola
+    # fee (fill>avg ma pnl<0) darebbe loss_pct negativo → abbasserebbe la soglia.
     # TF escluso: i suoi sell sotto avg (stop-loss/trailing/etc.) sono by design.
     is_grid_strategy_a = (
         getattr(bot, "managed_by", "grid") == "grid" and bot.strategy == "A"
@@ -512,7 +517,7 @@ def execute_percentage_sell(
         if price < sell_avg_cost:
             loss_pct = (sell_avg_cost - price) / sell_avg_cost * 100
             prev_penalty = bot._sell_pct_penalty
-            bot._sell_pct_penalty = prev_penalty + loss_pct
+            bot._sell_pct_penalty = loss_pct  # v2: ultima perdita, NON cumulativo
             effective_sell_pct = (getattr(bot, "sell_pct", 0) or 0) + bot._sell_pct_penalty
             try:
                 log_event(

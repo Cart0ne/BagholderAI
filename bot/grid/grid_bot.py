@@ -180,8 +180,9 @@ class GridBot:
         # Dopo un sell il cui FILL è atterrato sotto avg_cost (slippage da book
         # vuoto, l'incidente BONK 2026-06-06), alza la soglia di vendita del
         # danno subìto: effective_sell_pct = sell_pct + _sell_pct_penalty.
-        # Accumula su sell consecutivi sotto-avg; un sell con fill >= avg la
-        # azzera (il mercato regge l'esecuzione → situazione rientrata).
+        # DESIGN v2 (Max+CEO): la penalty è l'ULTIMA perdita osservata, NON la
+        # somma (il cumulativo rischiava il freeze permanente del coin). Un sell
+        # con fill >= avg la azzera. Si adatta alla condizione corrente di mercato.
         # In-memory: ricostruita al restart dal replay (state_manager).
         # NON si applica ai sell TF (force-liquidate sotto avg è by design).
         self._sell_pct_penalty: float = 0.0

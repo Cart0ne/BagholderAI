@@ -181,10 +181,12 @@ def test_a_penalty_increases_on_fill_below_avg():
         sp.log_event = original
 
 
-def test_b_penalty_accumulates_then_resets():
-    """7 sell BONK consecutivi in perdita accumulano; 1 sell a fill>=avg azzera."""
+def test_b_penalty_tracks_last_loss_then_resets():
+    """DESIGN v2 (Max+CEO): la penalty = ULTIMA perdita osservata, NON la somma.
+    Più sell in perdita la SOSTITUISCONO (non accumulano); 1 sell a fill>=avg azzera.
+    Questo evita il deadlock del cumulativo (soglia che cresce all'infinito → freeze)."""
     print("=" * 70)
-    print("TEST B: 7 sell in perdita accumulano, poi reset al primo profittevole")
+    print("TEST B: penalty = ultima perdita (sostituisce, non accumula) + reset")
     print("=" * 70)
     import bot.grid.sell_pipeline as sp
 
@@ -194,17 +196,17 @@ def test_b_penalty_accumulates_then_resets():
     try:
         bot = _build_grid_position(avg_price=100.0, n_buys=10)
 
-        # 7 sell consecutivi con fill 4% sotto avg (book vuoto BONK).
-        for i in range(7):
-            _live_sell(bot, fill=96.0, check_price=105.0, sell_amount=0.05)
-            expected = 4.0 * (i + 1)
-            assert_close(bot._sell_pct_penalty, expected,
-                         label=f"penalty dopo sell {i+1}")
-        assert_close(bot._sell_pct_penalty, 28.0, label="penalty accumulata 7×4%")
+        # Sequenza di perdite diverse: la penalty deve riflettere SEMPRE l'ultima.
+        for fill, exp in [(96.0, 4.0), (97.0, 3.0), (95.0, 5.0), (96.0, 4.0)]:
+            _live_sell(bot, fill=fill, check_price=105.0, sell_amount=0.05)
+            assert_close(bot._sell_pct_penalty, exp, tol=1e-9,
+                         label=f"penalty = ultima perdita (fill {fill})")
+        # Anche dopo 4 sell in perdita NON accumula: resta = ultima (4%), non 16%.
+        assert_close(bot._sell_pct_penalty, 4.0, label="penalty = ultima, NON somma")
         increases = [c for c in captured if c.get("event") == "sell_penalty_increased"]
-        assert len(increases) == 7, f"7 increase events, got {len(increases)}"
-        print(f"  7 sell @ −4% → penalty {bot._sell_pct_penalty:.1f}% "
-              f"(soglia effettiva {2.0 + bot._sell_pct_penalty:.1f}%) ✓")
+        assert len(increases) == 4, f"4 increase events, got {len(increases)}"
+        print(f"  4 sell (−4/−3/−5/−4%) → penalty {bot._sell_pct_penalty:.1f}% "
+              f"(= ultima, NON 16%) ✓")
 
         # Sell profittevole: fill 110 >= avg 100 → reset a 0.
         captured.clear()
@@ -212,10 +214,10 @@ def test_b_penalty_accumulates_then_resets():
         assert_close(bot._sell_pct_penalty, 0.0, label="penalty azzerata")
         resets = [c for c in captured if c.get("event") == "sell_penalty_reset"]
         assert len(resets) == 1, f"1 reset event, got {len(resets)}"
-        assert_close(resets[0]["details"]["previous_penalty"], 28.0,
+        assert_close(resets[0]["details"]["previous_penalty"], 4.0,
                      label="reset event logs previous penalty")
         print(f"  sell @ fill 110 ≥ avg 100 → penalty reset a "
-              f"{bot._sell_pct_penalty:.1f}% (was 28%) ✓")
+              f"{bot._sell_pct_penalty:.1f}% (was 4%) ✓")
     finally:
         sp.log_event = original
 
@@ -335,23 +337,24 @@ def _sell(amount, price, ts, managed_by="grid"):
             "managed_by": managed_by, "created_at": ts}
 
 
-def test_e_restart_reconstructs_accumulated_penalty():
-    """Al restart il replay ricostruisce la penalty accumulata (non solo l'ultimo
-    sell, come voleva la lettera del brief)."""
+def test_e_restart_reconstructs_last_loss():
+    """DESIGN v2: al restart il replay ricostruisce l'ULTIMA perdita osservata,
+    non la somma. 3 sell sotto avg (−4/−3/−5%) → penalty = 5% (l'ultima), non 12%."""
     print("=" * 70)
-    print("TEST E: restart recalc ricostruisce l'accumulo (3 sell sotto avg)")
+    print("TEST E: restart recalc ricostruisce l'ULTIMA perdita (non l'accumulo)")
     print("=" * 70)
     history = [
         _buy(10.0, 100.0, "2026-06-06T09:00:00+00:00"),
         _sell(1.0, 96.0, "2026-06-06T09:07:00+00:00"),  # −4%
         _sell(1.0, 97.0, "2026-06-06T09:09:00+00:00"),  # −3%
-        _sell(1.0, 95.0, "2026-06-06T09:11:00+00:00"),  # −5%
+        _sell(1.0, 95.0, "2026-06-06T09:11:00+00:00"),  # −5% (ultima)
     ]
     bot = _replay(history)
-    # avg resta 100 (non cambia in vendita) → penalty = 4 + 3 + 5 = 12
-    assert_close(bot._sell_pct_penalty, 12.0, tol=1e-9,
-                 label="penalty accumulata da 3 sell sotto avg")
-    print(f"  3 sell (−4/−3/−5%) → penalty ricostruita {bot._sell_pct_penalty:.1f}% ✓")
+    # avg resta 100 (non cambia in vendita) → penalty = ultima perdita = 5% (NON 12%)
+    assert_close(bot._sell_pct_penalty, 5.0, tol=1e-9,
+                 label="penalty = ultima perdita, NON somma")
+    print(f"  3 sell (−4/−3/−5%) → penalty ricostruita {bot._sell_pct_penalty:.1f}% "
+          f"(= ultima, NON 12%) ✓")
 
 
 def test_f_restart_reset_by_last_profitable_sell():
@@ -391,10 +394,10 @@ def test_g_restart_tf_history_no_penalty():
 def main():
     tests = [
         test_a_penalty_increases_on_fill_below_avg,
-        test_b_penalty_accumulates_then_resets,
+        test_b_penalty_tracks_last_loss_then_resets,
         test_c_penalty_raises_sell_trigger,
         test_d_tf_sells_do_not_accumulate_penalty,
-        test_e_restart_reconstructs_accumulated_penalty,
+        test_e_restart_reconstructs_last_loss,
         test_f_restart_reset_by_last_profitable_sell,
         test_g_restart_tf_history_no_penalty,
     ]

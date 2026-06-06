@@ -87,11 +87,11 @@ def init_avg_cost_state_from_db(bot):
     qty = 0.0
     realized = 0.0
     # Brief S98a (2026-06-06): ricostruisce la Adaptive Sell Penalty (in-memory,
-    # persa al restart). Camminando i sell cronologicamente l'accumulo emerge
-    # esatto: ogni sell con fill < avg somma loss_pct, ogni sell con fill >= avg
-    # azzera. Il valore finale = penalty accumulata dall'ultimo sell non-in-perdita.
-    # Solo Grid/Strategy A (gate sul bot); il ricalcolo è migliore del brief
-    # ("solo ultimo sell") perché preserva l'accumulo su N sell consecutivi.
+    # persa al restart). DESIGN v2 (Max+CEO): penalty = ULTIMA perdita osservata,
+    # NON la somma. Camminando i sell cronologicamente, l'ultimo sell sotto-avg
+    # imposta loss_pct, il primo sell con fill >= avg azzera → il valore finale
+    # riflette la condizione corrente del mercato (l'ultimo evento di slippage),
+    # non la storia cumulata. Solo Grid/Strategy A (gate sul bot).
     sell_pct_penalty = 0.0
     is_grid = getattr(bot, "managed_by", "grid") == "grid"
 
@@ -136,7 +136,7 @@ def init_avg_cost_state_from_db(bot):
                 trade_managed_by = t.get("managed_by") or "grid"
                 if is_grid and trade_managed_by == "grid" and avg > 0:
                     if price < avg:
-                        sell_pct_penalty += (avg - price) / avg * 100
+                        sell_pct_penalty = (avg - price) / avg * 100  # v2: ultima perdita
                     else:
                         sell_pct_penalty = 0.0
                 qty -= amount
