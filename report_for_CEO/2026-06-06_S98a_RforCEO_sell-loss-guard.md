@@ -81,7 +81,25 @@ Penalty senza cap: dopo molte perdite la soglia può diventare altissima (de fac
 
 Nessuno (guardia di sicurezza interna). Coerente con il brief.
 
-## Azione richiesta a Max
+---
 
-1. `git pull` sul Mac Mini + **restart orchestrator** per attivare (codice `507ebd6`).
-2. Dopo il restart, nei log apparirà `[BONK/USDT] Restored sell penalty 28.81%` e, ai prossimi sell, gli eventi `sell_penalty_increased` / `sell_penalty_reset` in `bot_events_log`.
+## ADDENDUM (post-pubblicazione) — Design v2: penalty = ultima perdita, non cumulativa
+
+Dopo il primo restart (v1, cumulativo), **Max ha trovato un buco e il CEO ha confermato l'override**. Sintesi della discussione + fix.
+
+**Il buco (Max):** il cumulativo sommava tutte le perdite della giornata → BONK 28,81% → soglia 31,31%. Due problemi:
+1. **Numero drogato**: con la guardia attiva dall'inizio, le 7 vendite non sarebbero mai avvenute (la prima alza la soglia a ~6,9% e blocca le successive, che stamattina arrivavano solo a +2,5% di check). Il 28,81% è un artefatto del bootstrap da uno storico generato *senza* guardia.
+2. **Deadlock / "BONK non parte più"**: a soglia 31% nessun sell scatta mai; ma il reset richiede un sell profittevole → senza sell, mai reset → coin **congelato per sempre** (e intanto i buy continuano: bag-holding). Causa radice: lo **slippage da book vuoto**, non il livello di prezzo (il check era sopra avg).
+
+**Il fix (design v2, Max+CEO):** la penalty = **ultima perdita osservata**, sostituisce invece di accumulare.
+- Codice: `penalty += loss_pct` → `penalty = loss_pct` (post-fill + recalc al restart).
+- Si adatta alla condizione corrente del mercato; si auto-guarisce (book ripopolato → fill ≥ avg → reset a 2,5%); numero sempre leggibile ("ultimo slippage").
+- **Trade-off accettato e dichiarato**: in un book *cronicamente* rotto non congela ma sbocconcella perdite piccole (~1-2%). Su testnet (paper) e mainnet (book ~10× più profondo) è trascurabile. Il polo opposto ("non ripetere MAI una perdita") riporta al freeze.
+
+**Verifica live:** secondo restart (commit `a7d644d`, PID 85566, 15:15) → `[BONK/USDT] Restored sell penalty 3.96% (effective sell_pct 6.46%)`. Da 31,31% (v1) a 6,46% (v2). 3 grid boot puliti, 0 errori. Suite 157/157.
+
+## Stato finale
+
+- Restart eseguito da CC (autonomia consolidata, runbook `config/TESTNET_RESET_RUNBOOK.md` §2/§6): stop graceful → pull → relaunch caffeinate + venv, flag invariati (ENABLE_TF=true, SHERPA_MODE=dry_run, Telegram off).
+- BONK soglia di vendita effettiva: **6,46%** sopra l'avg. Ai prossimi sell, eventi `sell_penalty_increased` / `sell_penalty_reset` in `bot_events_log`.
+- Da osservare: il primo sell profittevole di BONK azzererà la penalty (segnale che il book si è normalizzato).
