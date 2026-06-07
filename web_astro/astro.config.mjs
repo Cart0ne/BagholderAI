@@ -14,6 +14,13 @@ export default defineConfig({
      <link> tags. Must match the production domain. */
   site: 'https://bagholderai.lol',
 
+  /* Canonical URLs without a trailing slash. Keeps @astrojs/sitemap and
+     the <link rel="canonical"> consistent (no /diary vs /diary/ split).
+     NOTE: this is a static build (no Vercel adapter) so Astro itself does
+     NOT redirect at runtime — the production 308 /diary/ -> /diary is done
+     by Vercel via "trailingSlash": false in vercel.json. (S99a SEO fix) */
+  trailingSlash: 'never',
+
   vite: {
     plugins: [tailwindcss()]
   },
