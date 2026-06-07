@@ -99,8 +99,12 @@ report_for_CEO/, ultimi 10 file in briefresolved.md/, TODO inline (62a/63a/...).
 NON includere nel file: codice intero, log verbose, output di test, 
 contenuto dei brief vecchi (basta linkarli).
 
-**REGOLA COMPACTION (formalizzata 2026-05-18 S79; cap alzato a 50KB 2026-06-02)** — quando il file vivo 
-supera 50KB, NON cancellare in toto le sezioni vecchie. Workflow:
+**REGOLA COMPACTION (formalizzata S79; isteresi 50/40 da S99 2026-06-07)** — il file ha 
+DUE soglie: **trigger 50KB** (quando scatta la compaction) e **target 40KB** (dove 
+deve rientrare). Quando a fine sessione il file supera 50KB, compatta riportandolo a 
+**≤40KB** — NON solo "appena sotto 50". Motivo: con trigger=target a 50KB il file 
+restava sempre al limite e serviva compattare ogni sessione; il margine di ~10KB copre 
+più sessioni. NON cancellare in toto le sezioni vecchie. Workflow:
 
 1. Identifica le sezioni da rimuovere (di solito header narrativi di 
    sessioni passate + voci §3 in-flight di sessioni shipped + voci §4 
