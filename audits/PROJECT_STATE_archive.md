@@ -518,3 +518,32 @@ Voci §3 in-flight di sessioni già SHIPPED (pointer-only, contenuto verbatim gi
 
 **Riga §10 S96a (compressa a pointer in S98 per cap):**
 | 2026-06-04 | 1 | S96a testnet clean slate (Opzione C) + disclaimer + anti-spam orchestrator | SHIPPED `a9aa48b` (bot+migration) + `7b35a4a` (sito) + `722da6a` (fix orchestrator) + restart | Reset mensile testnet ha azzerato i wallet (BONK 21.6M→18.446, guardia 72a bloccata). Clean slate non-distruttivo via colonna `cycle`: storico → testnet_1, 3 grid → testnet_2 (trades/daily_pnl/bot_state_snapshots/reserve_ledger/bot_config). Sorgente data-driven `get_current_cycle()`; replay/reserve/reconcile filtrano, writer timbrano; prossimo reset = 1 UPDATE. Scope esteso oltre trades dopo obiezione CC → CEO ok. Dashboard cycle-filtrate + disclaimer testnet (flag IS_TESTNET). Restart verificato. Fix collaterale: orchestrator ri-spawnava all'infinito un bot "gave_up" (guard `if info.gave_up: continue`). Brief `briefresolved.md/2026-06-04_S96a_brief_clean-slate-testnet.md`, report `report_for_CEO/2026-06-04_S96a_RforCEO_clean-slate-testnet.md`.
+
+## Rimosso in sessione S99 (2026-06-07) — compaction >50KB cap
+
+### §5 Bug noti — "Risolti recenti" voci S70→S78 (già sintetizzate in §10 + archive)
+- **S78**: blog post 1 + 2 LIVE; 78b SWEEP slippage buffer 3%; gitignore anchored.
+- **S77**: Sentinel Sprint 1 audit (tutti PASS); Sprint 2 slow loop F&G + CMC + regime detection (test 37→85 verdi).
+- **S76**: grid_runner monolite split in package (squash `9ceaa81`); brief 75b stop_buy_unlock_hours timer; audit idle suppression.
+- **S74b**: 74c partial fills (mainnet-gating), 74b stop-buy badge + trigger drift via `bot_runtime_state`, 74d DEAD_ZONE_HOURS per-coin.
+- **S73**: 73c BONK lot_size + BTC phantom mainnet-safe; 73b dust trap (criterio economico residual_notional); 73a dead zone recalibrate (BTC/SOL/BONK sbloccati 19-21h).
+- **S72**: brief 72a Fee Unification (BONK InsufficientFunds + holdings drift + realized_pnl gross + avg gross tutti chiusi). Backfill 18 sell testnet.
+- **S71**: mobile recon table overflow, LAST SHOT BUY rejected -2010, reason bugiardo su slippage (suffix added), drift numerico home/dashboard/grid.html.
+- **S70**: sell-at-loss BONK (slippage 2.46%), Sentinel risk binario 20/40 (ladder granulare), Open question 19 rename `manual→grid`.
+
+### §4 Decisioni recenti — pointer S85/S86/S90 (verbatim già in archive S88/S95a)
+- **2026-05-28 (S90) — fix slippage A+B SHIPPED** → verbatim (Opzione A doppio-fetch Board + Opzione B doppio gate, razionale/alternative/fallback) archiviato in compaction S95a (sez. "Rimosso in sessione S95a"). Sintesi §10 riga S90 + §4 BUSINESS_STATE.
+- **2026-05-26 (S86) — status badge homepage + regime overlay admin SHIPPED** (2 commit `9321a75`+`e511a7f`). Decisioni (drift Chart.js→Canvas 2D, palette finanziaria, Widget B killed, box positioning) verbatim → archive S88 + §10 riga S86.
+- **2026-05-25/26 (S85) — housekeeping CEO-driven SHIPPED** (5 commit `8c9c2fc`→`86af67b`). RSS feed Dev.to + CLAUDE.md §[2b] compaction BUSINESS_STATE + S85 update. Verbatim → archive S88 + §10 riga S85.
+
+### §3 In-flight — sottosezioni S87 + "Storico pre-S87" (già pointer a §10/archive)
+### S87 — V3 launch site updates + 2 task umami SHIPPED
+- Dettaglio in §10 riga S87. Blocco in-flight verbatim archiviato in compaction S88 → sez. "Rimosso in sessione S88".
+
+### Storico in-flight pre-S87
+- **S82→S86 dettaglio archiviato** in compaction S88 + righe sintetiche §10. In breve: S86 status badge + regime overlay admin; S85 RSS feed Dev.to + governance BUSINESS_STATE; S84 SEO fix; S83 NewsKeeper scaffold; S82 homepage redesign Watchtower/Sherpa.
+
+### §3 S95a + §4 S92 (pointer aggiuntivi tagliati per rientrare sotto cap)
+### S95a — content plan SEO+GEO SHIPPED → §10 riga S95a + archive S98
+- Enabler FAQ schema permanente (campo `faq` + FAQPage `@graph` condizionale). POST 1 (`claude-code-crypto-trading-bot`) live da S95. 4 post SEO+GEO restano `draft:true`. Checklist `config/SEO_GEO_post_checklist.md`.
+- **2026-05-30 (S92) — layer marketing Area 3 + cleanup SHIPPED (no bot)** → verbatim (3 decisioni GSC OAuth / Reddit dormiente / env separato + decisione cleanup) archiviato in compaction S95a. Sintesi §10 riga S92.

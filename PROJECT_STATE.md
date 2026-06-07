@@ -1,9 +1,8 @@
 # PROJECT_STATE.md
 
-**Ultimo aggiornamento:** 2026-06-06 — **S98 (brief S98a) SHIPPED — Adaptive Sell Penalty (sell-loss-guard) + analisi competitiva tbot (report S93b)** (commit `a7d644d`, **restart Mac Mini 15:15, PID 85566**). Guardia post-fill contro l'incidente BONK 06-06 (7 sell grid in perdita ~−$5,31: fill 4–14% sotto il check su book vuoto; Strategy A controlla il prezzo PRE-trade, non il fill). Per i soli Grid/Strategy A: dopo un sell con fill < avg la soglia sale del danno (`sell_pct + _sell_pct_penalty`), **reset a 0** al primo sell con fill ≥ avg. **Design v2 (Max+CEO): penalty = ULTIMA perdita, NON cumulativa** — il cumulativo rischiava il freeze del coin (deadlock). TF escluso. Dettaglio §4. 3 file bot + test (157/157). **Restart verificato**: BONK `Restored sell penalty 3.96% (effective 6.46%)`, boot puliti, 0 errori. Report `report_for_CEO/2026-06-06_S98a_RforCEO_sell-loss-guard.md`. Dettaglio §4/§10.
+**Ultimo aggiornamento:** 2026-06-07 — **S99 (brief S99a) SHIPPED — SEO trailing-slash canonical + llms.txt** (commit `9787aa5`, **web-only, no bot / no restart**). Fix post primo audit Semrush (97% health): `trailingSlash:'never'` (astro.config) + **`"trailingSlash": false` (vercel.json)** → 308 reale `/diary/`→`/diary` (build statico: la leva vera è Vercel, Astro non redirige a runtime). `web_astro/public/llms.txt` creato (`/about` 404 → `/howwework`). Verificato live: 308 + llms 200, build 19 pagine, sitemap senza slash. Repo runtime Mac Mini allineato `9787aa5` (fast-forward, 0 file codice bot). **+ brainstorming Passive Income Dashboard** (doc per CEO, decisioni B/E pending). Report `report_for_CEO/2026-06-07_S99a_RforCEO_seo-trailing-slash-llms-txt.md`. Dettaglio §4/§10. (oggi 7 giu = S99)
 
-**Ultimo aggiornamento precedente:** 2026-06-05 (S97, sera) — **S97c (brief S97b)** cycle filter commentary Haiku + coerenza dashboard (hero basis $600, day-count per contesto) + post `thirty-two-hours`; restart orchestrator 22:52. Verbatim → [archive](audits/PROJECT_STATE_archive.md) sez. S98. Sintesi §10. (Numerazione: 5 giu = S97 → S97a phantom-audit / S97b blog / S97c cycle-dash; oggi 6 giu = S98.)
-
+**Ultimo aggiornamento precedente:** 2026-06-06 — **S98 (brief S98a) SHIPPED — Adaptive Sell Penalty (sell-loss-guard) + analisi competitiva tbot (report S93b)** (commit `a7d644d`, **restart Mac Mini 15:15, PID 85566**). Guardia post-fill contro l'incidente BONK 06-06 (7 sell grid in perdita ~−$5,31: fill 4–14% sotto il check su book vuoto; Strategy A controlla il prezzo PRE-trade, non il fill). Per i soli Grid/Strategy A: dopo un sell con fill < avg la soglia sale del danno (`sell_pct + _sell_pct_penalty`), **reset a 0** al primo sell con fill ≥ avg. **Design v2 (Max+CEO): penalty = ULTIMA perdita, NON cumulativa** — il cumulativo rischiava il freeze del coin (deadlock). TF escluso. Dettaglio §4. 3 file bot + test (157/157). **Restart verificato**: BONK `Restored sell penalty 3.96% (effective 6.46%)`, boot puliti, 0 errori. Report `report_for_CEO/2026-06-06_S98a_RforCEO_sell-loss-guard.md`. Dettaglio §4/§10.
 > Storico S88/S83/S82/S81/...: vedi §10 + [audits/PROJECT_STATE_archive.md](audits/PROJECT_STATE_archive.md).
 
 **Owner del file:** Claude Code (Intern). Rigenerato a ogni fine sessione.
@@ -66,27 +65,21 @@ Comm Sentinel↔Sherpa↔Grid via Supabase only. Telegram alerts: solo Grid trad
 
 ## 3. In-flight (settimana 2026-05-18+)
 
+### S99 — Passive Income Dashboard (brainstorming, doc per CEO)
+- Brainstorming Max+CC su WIP Max (blueprint domanda #2: "AI genera passive income?"). Doc strutturato `config/2026-06-07_passive-income-dashboard_brainstorm-for-CEO.md` (untracked — Max lo gira al CEO; commit all'archiviazione). **Deciso**: revenue+traction · domanda-bot APERTA (zero numeri; il "30% datacenter" S80 è puntuale, non fidabile) · Trading="waiting to go live" · Payhip usa 150 (dashboard, dichiarando fonte; lista prodotti dà 91) · cadenza per-fonte con `updated` per riga · backend = Supabase + pattern `project_status` + connettori marketing esistenti, **MVP tutto manuale** (anti-over-engineering). **Al CEO**: (B) dove vive — racc. teaser home + pagina `/income`; (E) rischio €0 vs vendite libri. WIP Max in `config/brief_WIP_grafico-passive_income.xml` (untracked).
+
 ### S95b/S96 — redesign sito "Pastel Sticker v2" — ✅ LIVE (2026-06-04)
-- Verbatim archiviato in compaction S98 → [audits/PROJECT_STATE_archive.md](audits/PROJECT_STATE_archive.md) sez. "Rimosso in sessione S98". Sintesi §10 riga S95. As-built: `config/refactor/REDESIGN_PATTERNS.md` + `web_astro/STYLEGUIDE.md §5`. Rollback: tag `pre-redesign-pastel-v2`. **TODO aperto**: cancellare branch orfani `redesign/pastel-sticker-v2` (merged) + `refactor/grid_runner_split`.
+- Verbatim archiviato in compaction S98 → [audits/PROJECT_STATE_archive.md](audits/PROJECT_STATE_archive.md) sez. "Rimosso in sessione S98". Sintesi §10 riga S95. As-built: `config/refactor/REDESIGN_PATTERNS.md` + `web_astro/STYLEGUIDE.md §5`. Rollback: tag `pre-redesign-pastel-v2`. **TODO chiuso (S99)**: branch orfani `redesign/pastel-sticker-v2` + `refactor/grid_runner_split` già cancellati su GitHub — verificato S99 (resta solo `origin/main`).
 
 ### S98 — blog: convenzione 2 voci + "Keep reading" + cross-post (web-only, no bot)
 - **2 voci as-built**: campo `author` (`ceo`/`max`/`both`) → byline in cima (template) + firma standard in fondo (markdown, portabile). Trattino `—` = marcatore voce (CEO tiene, Max purga). Post a 2 voci: `## The Human Side` / `## The Machine Side` + sotto-byline. Checklist pre-pubblicazione che CC impone (autori non la seguono) in `blog/README.md` (gitignored, non tracciata per scelta Max). Memoria `project_blog_two_voice_convention`.
 - **🟡 In-flight cross-post (Max, manuale)**: change-list consegnate per Dev.to (6 post) / Substack (an-ai) / Medium (ai-is-useful, the-solution). Il byline non viaggia (template-only) → autore nei campi piattaforma; firma in fondo viaggia.
 - **🟡 5 draft `draft:true`** con convenzione applicata (4 SEO+GEO + `thirty-two-hours` Vol3 spostato da inbox, tbot anonimizzato + screenshot vecchio sito in `public/images/blog/`). Pubblicazione scaglionata.
 
-### S95a — content plan SEO+GEO SHIPPED → §10 riga S95a + archive S98
-- Enabler FAQ schema permanente (campo `faq` + FAQPage `@graph` condizionale). POST 1 (`claude-code-crypto-trading-bot`) live da S95. **4 post SEO+GEO restano `draft:true`** (stato draft aggiornato nella sottosezione §3 S98 sopra; verbatim §3+§4 in archive sez. "Rimosso in sessione S98"). Checklist `config/SEO_GEO_post_checklist.md`.
-
 > Voci §3 di sessioni shipped **S88-S92** (pointer) archiviate in compaction S95b → [audits/PROJECT_STATE_archive.md](audits/PROJECT_STATE_archive.md) sez. "Rimosso in sessione S95b". Sintesi in §10.
 
-### S87 — V3 launch site updates + 2 task umami SHIPPED
-- Dettaglio in §10 riga S87. Blocco in-flight verbatim archiviato in compaction S88 → [audits/PROJECT_STATE_archive.md](audits/PROJECT_STATE_archive.md) sez. "Rimosso in sessione S88".
-
-### Storico in-flight pre-S87
-- **S82→S86 dettaglio archiviato** in compaction S88 (`audits/PROJECT_STATE_archive.md`) + righe sintetiche §10. In breve: S86 status badge + regime overlay admin; S85 RSS feed Dev.to + governance BUSINESS_STATE; S84 SEO fix; S83 NewsKeeper scaffold; S82 homepage redesign Watchtower/Sherpa.
-
 ### Aperti / TODO
-- **🟡 [S95] Cancellare branch orfano `refactor/grid_runner_split`** (GitHub + anteprima Vercel residua): lavoro S76 (split `grid_runner` package + `stop_buy_unlock_hours`) **già in `main`**, branch fermo al 14-05 / 144 commit dietro. Sicuro da rimuovere: `git push origin --delete refactor/grid_runner_split`. Rimandato da Max (2026-06-02).
+- **✅ [S95→S99] Branch orfani cancellati**: `refactor/grid_runner_split` + `redesign/pastel-sticker-v2` non più su GitHub (verificato S99, resta solo `origin/main`). Drift §3 sanato.
 - **🟡 [S81 NEW] Cap kicks BONK in mainnet**: con `MAX_DELTA_PCT=0.30` Board BONK sell_pct=2.5, Sherpa può proporre max 3.25 in un tick. Pre-mainnet vorremo forse 0.10-0.15 (slippage mainnet 10× più basso). Brief separato pre-step 5.
 - **🟡 [S70] Sherpa rule-aware sull'hotfix slippage**: ora coperto parzialmente dal per-coin scaling Sprint 2, ma il `sell_pct` Sherpa non conosce esplicitamente `SLIPPAGE_BUFFER_PCT`. Da chiudere prima di `SHERPA_MODE=live`.
 - **🟡 [S70/S78 fase 2] sell_pct + slippage_buffer parametrico per coin**: estensione post-mainnet, parametrizzare per-coin in `bot_config` con dati slippage reali.
@@ -97,6 +90,11 @@ Comm Sentinel↔Sherpa↔Grid via Supabase only. Telegram alerts: solo Grid trad
 - **🟡 [S67 residuo]** Brief 67a Step 5 superato da reconciliation S70 Step A.
 
 ## 4. Decisioni recenti
+
+- **2026-06-07 (S99a) — trailing-slash: il redirect lo fa Vercel, non Astro (build statico)**.
+  DECISIONE: per chiudere il warning Semrush `/path` vs `/path/`, oltre a `trailingSlash:'never'` in astro.config (sitemap/canonical) si aggiunge `"trailingSlash": false` in `vercel.json` → 308 reale.
+  RAZIONALE: sito statico (no adapter Vercel) → Astro non ha runtime in prod, non redirige. Verificato live pre-fix: `/diary` e `/diary/` entrambi 200. La leva vera è host-side (Vercel 308). llms.txt: `/about` (404) corretto → `/howwework`.
+  ALTERNATIVE: solo-Astro come da brief letterale (lascia il warning vivo). FALLBACK: togliere la chiave da vercel.json (reversibile). Approvato Max pre-implementazione (anti-assenso §7).
 
 - **2026-06-06 (S98) — Adaptive Sell Penalty: penalty = ULTIMA perdita (non cumulativa) + trigger price-based + no DDL**.
   DECISIONE: (a) **penalty = ultima perdita osservata, NON la somma** (design v2 Max+CEO, sovrascrive il cumulativo del brief). (b) trigger/dimensione su `fill < avg` (price-based), NON `realized_pnl < 0`. (c) nessuna migration: avg_cost da `(cost−fee−realized_pnl)/amount`.
@@ -118,18 +116,10 @@ Comm Sentinel↔Sherpa↔Grid via Supabase only. Telegram alerts: solo Grid trad
 
 - **2026-06-02 (S95a) — content SEO+GEO: enabler one-and-done + draft scaglionati + anti-collisione** → 3 decisioni (FAQ `@graph` condizionale byte-identico / `draft:true` reversibile e scaglionato / Post 3 ri-angolato sui 5 brain vs `how-three-claudes` → cross-link) verbatim in [archive](audits/PROJECT_STATE_archive.md) sez. "Rimosso in sessione S98". Sintesi §10 riga S95a + `config/SEO_GEO_post_checklist.md`.
 
-- **2026-05-30 (S92) — layer marketing Area 3 + cleanup SHIPPED (no bot)** → verbatim (3 decisioni GSC OAuth / Reddit dormiente / env separato + decisione cleanup) archiviato in compaction S95a ([audits/PROJECT_STATE_archive.md](audits/PROJECT_STATE_archive.md) sez. "Rimosso in sessione S95a"). Sintesi §10 riga S92.
-
 - **2026-05-29 (S91) — Brain Analysis 2 + fix stop_buy extreme_fear SHIPPED**.
   DECISIONE: fix label-primary `fng_label=="Extreme Fear" OR fng_value<=25` in `regime_analyzer.py`; solo fix-forward (no backfill storico).
   RAZIONALE: soglia hardcoded `<=20` escludeva F&G 21-25 (etichettati "Extreme Fear" da alternative.me) → Sherpa non armava mai stop_buy in regime crash reale. Brain Analysis 2 ha validato i 3 fix Sprint 2 (coin-aware, oscillazione, cap); Sherpa pronto ma non mainnet-bound finché timing Sentinel lento non chiuso.
   ALTERNATIVE CONSIDERATE: backfill storico — scartato (operativamente conta il futuro, costo/beneficio nullo).
-
-- **2026-05-28 (S90) — fix slippage A+B SHIPPED** → verbatim (Opzione A doppio-fetch Board + Opzione B doppio gate, razionale/alternative/fallback) archiviato in compaction S95a ([audits/PROJECT_STATE_archive.md](audits/PROJECT_STATE_archive.md) sez. "Rimosso in sessione S95a"). Sintesi §10 riga S90 + §4 BUSINESS_STATE.
-
-- **2026-05-26 (S86) — status badge homepage + regime overlay admin SHIPPED** (2 commit `9321a75`+`e511a7f`). Decisioni (drift Chart.js→Canvas 2D, palette finanziaria, Widget B killed, box positioning) verbatim → archive S88 + §10 riga S86.
-
-- **2026-05-25/26 (S85) — housekeeping CEO-driven SHIPPED** (5 commit `8c9c2fc`→`86af67b`). RSS feed Dev.to + CLAUDE.md §[2b] compaction BUSINESS_STATE + S85 update. Verbatim → archive S88 + §10 riga S85.
 
 > Decisioni S81→S84 e precedenti: vedi §10 + commit log + [archive](audits/PROJECT_STATE_archive.md) (compaction S83/S86).
 
@@ -153,14 +143,6 @@ Comm Sentinel↔Sherpa↔Grid via Supabase only. Telegram alerts: solo Grid trad
 - **S96a**: orchestrator ri-spawnava all'infinito un grid bot dopo i 5 restart (flag `gave_up` perso quando il processo morto cadeva nel ramo `else` → del dal tracking → re-spawn fresh) → spam Telegram. Fix: guard `if info.gave_up: continue` (commit `722da6a`). Emerso col blocco BONK post reset testnet. Inoltre BONK reset gestito da clean slate S96a (vedi §10).
 - **S81**: brief 81a Sherpa Sprint 2 — per-coin volatility scaling + slow-loop gate + amplitude cap 30%. BONK ora riceve sell_pct proporzionato a volatilità (2.09× BTC). Brief 81b — Haiku `vs_yesterday.direction` field + 3 nuove rules system prompt (LENGTH/NUMBERS/DIRECTION).
 - **S79**: 79a idle suppression on capital exhausted; 79b TF Tier 1-2 reactivation; 79c Supabase write-on-change + heartbeat; drift FIFO sanato (bug [S70c] chiuso post-72a).
-- **S78**: blog post 1 + 2 LIVE; 78b SWEEP slippage buffer 3%; gitignore anchored.
-- **S77**: Sentinel Sprint 1 audit (tutti PASS); Sprint 2 slow loop F&G + CMC + regime detection (test 37→85 verdi).
-- **S76**: grid_runner monolite split in package (squash `9ceaa81`); brief 75b stop_buy_unlock_hours timer; audit idle suppression.
-- **S74b**: 74c partial fills (mainnet-gating), 74b stop-buy badge + trigger drift via `bot_runtime_state`, 74d DEAD_ZONE_HOURS per-coin.
-- **S73**: 73c BONK lot_size + BTC phantom mainnet-safe; 73b dust trap (criterio economico residual_notional); 73a dead zone recalibrate (BTC/SOL/BONK sbloccati 19-21h).
-- **S72**: brief 72a Fee Unification (BONK InsufficientFunds + holdings drift + realized_pnl gross + avg gross tutti chiusi). Backfill 18 sell testnet.
-- **S71**: mobile recon table overflow, LAST SHOT BUY rejected -2010, reason bugiardo su slippage (suffix added), drift numerico home/dashboard/grid.html.
-- **S70**: sell-at-loss BONK (slippage 2.46%), Sentinel risk binario 20/40 (ladder granulare), Open question 19 rename `manual→grid`.
 
 ## 6. Domande aperte per CEO
 
@@ -208,10 +190,10 @@ Comm Sentinel↔Sherpa↔Grid via Supabase only. Telegram alerts: solo Grid trad
 | 2026-05-15 | 3 | **A3-S78** marketing + SEO/GSC + X performance audit pre-go-live (primo audit Area 3 mai eseguito) | **CON RISERVE** | GSC: cached failure (non server-side). X: trend decrescente, ratio storytelling/technical inverso rispetto al raccomandato. Recommendations applicate in S84 (SEO) e S85 (distribuzione). Report: [audits/reports/20260515_audit[A3].md](audits/reports/20260515_audit[A3].md). |
 | 2026-05-07 | 1 | **Phase 1** split grid_bot.py monolite → 6 moduli (brief 62a) | APPROVED — zero regressioni | Verbatim diff: identical. Report: [audits/reports/20260507_audit[A1]_phase1_grid_split_review.md](audits/reports/20260507_audit[A1]_phase1_grid_split_review.md). |
 
-> **Stato cadenze al 2026-06-02** (conteggio sui FILE `audits/reports/YYYYMMDD_audit[AX].md`, non sulle righe §9):
-> - **Area 1**: ultimo audit 2026-05-27 (6 gg fa) — entro cadenza 30gg ✅ (prossimo scade ~2026-06-26). Findings H1/H2/M1/M3/L2 chiusi in S89.
-> - **Area 2**: ultimo audit 2026-05-27 (6 gg fa) — trigger event-based (pre-mainnet / pre-Volume / pre-nuovo-brain / backstop 120gg). Nuovo audit request in `audits/requests/20260530_audit[A2]_followup_pre_sherpa_live.md` (sessione fresh in Cowork). Nota: BUSINESS_STATE §7 segna A2 da riprogrammare **post-redesign**.
-> - **Area 3**: ultimo audit **2026-05-31** (2 gg fa) — cadenza bisettimanale 14gg ✅ (prossimo scade ~2026-06-14). Eseguito da Cowork scheduled automatico. Template `audits/requests/audit_request_A3.md`.
+> **Stato cadenze al 2026-06-07** (conteggio sui FILE `audits/reports/YYYYMMDD_audit[AX].md`, non sulle righe §9):
+> - **Area 1**: ultimo audit 2026-05-27 (11 gg fa) — entro cadenza 30gg ✅ (prossimo scade ~2026-06-26). Findings H1/H2/M1/M3/L2 chiusi in S89.
+> - **Area 2**: ultimo audit 2026-05-27 (11 gg fa) — trigger event-based (pre-mainnet / pre-Volume / pre-nuovo-brain / backstop 60gg). Nuovo audit request in `audits/requests/20260530_audit[A2]_followup_pre_sherpa_live.md` (sessione fresh in Cowork). Nota: BUSINESS_STATE §7 segna A2 da riprogrammare **post-redesign**.
+> - **Area 3**: ultimo audit **2026-05-31** (7 gg fa) — cadenza bisettimanale 14gg ✅ (prossimo scade ~2026-06-14). Eseguito da Cowork scheduled automatico. Template `audits/requests/audit_request_A3.md`.
 >
 > Pre-S70 e nota S77 fase 1 in [audits/PROJECT_STATE_archive.md](audits/PROJECT_STATE_archive.md).
 
@@ -219,6 +201,7 @@ Comm Sentinel↔Sherpa↔Grid via Supabase only. Telegram alerts: solo Grid trad
 
 | Data | Area | Topic | Esito | Sintesi + Report |
 |------|------|-------|-------|------------------|
+| 2026-06-07 | 3 | **S99a (brief S99a)** SEO trailing-slash canonical + llms.txt + brainstorming Passive Income | SHIPPED `9787aa5` (+ `c5f42aa` docs), **web-only, no bot/no restart** | `trailingSlash:'never'` (astro.config) + `"trailingSlash": false` (vercel.json → 308 reale `/diary/`→`/diary`; build statico, Astro non redirige a runtime). `web_astro/public/llms.txt` (link `/about` 404→`/howwework`). 18 href interni già senza slash. Verificato live: 308 + llms 200, build 19 pagine, sitemap pulita. Repo runtime Mac Mini allineato `9787aa5` (ff, 0 file codice bot). + brainstorming Passive Income Dashboard (doc per CEO, decisioni B/E pending). Brief `briefresolved.md/2026-06-07_S99a_brief_seo-trailing-slash-llms-txt.md`, report `report_for_CEO/2026-06-07_S99a_RforCEO_seo-trailing-slash-llms-txt.md`. |
 | 2026-06-06 | 1 | **S98 (brief S98a)** Adaptive Sell Penalty (sell-loss-guard) + analisi tbot (S93b) | SHIPPED `507ebd6`→`a7d644d` + **restart 15:15 (PID 85566)** | Sintesi/decisioni in header §1 + §4. Guardia post-fill (Grid/Strategy A) dopo incidente BONK 06-06 (7 sell in perdita, fill sotto avg da book vuoto): `effective_sell_pct = sell_pct + _sell_pct_penalty`. **Design v2 (Max+CEO): penalty = ultima perdita, NON cumulativa** (il cumulativo → deadlock/freeze coin). 3 file bot + test 157/157. **Restart verificato**: BONK `Restored sell penalty 3.96% (effective 6.46%)`, boot puliti, 0 errori. + analisi competitiva tbot (read-only, report S93b in `report_for_CEO/`): moat confermato. Brief `briefresolved.md/2026-06-06_S98a_brief_sell-loss-guard.md`, report `report_for_CEO/resolved/2026-06-06_S98a_RforCEO_sell-loss-guard.md`. |
 | 2026-06-05 (sera) | 1+3 | **S97c (brief S97b)** cycle filter commentary Haiku + coerenza dashboard + post | SHIPPED 5 commit (`feaf61d`→`3880d56`) + **restart orchestrator 22:52** + commentary rigenerato | Sintesi/decisioni in header §1 + §4. Gap S96a chiuso (commentary scommava i cicli). Scoperta: inizio ciclo = primo trade **5 giu** (post first-buy-fix S96b). Regen via nuovo `scripts/regen_commentary_now.py` (solo-commentary). **+ reconcile cycle-scoped** (`9d27b02`): tabella Reconciliation mostrava falso "⚠ DRIFT" (drift=0) — Binance teneva i fill pre-reset come orphan; ora scarto i fill < primo trade ciclo → OK (vedi report §3). Brief `briefresolved.md/2026-06-05_S97b_brief_haiku-cycle-filter.md`, report `report_for_CEO/resolved/2026-06-05_S97b_RforCEO_haiku-cycle-filter.md`. |
 | 2026-06-05 (sera) | docs+3 | **S97b** blog convenzione 2 voci + "Keep reading" + BUSINESS_STATE S97 | SHIPPED 6 commit (`e45efca`→`72f4bd7`), **no bot/no restart** | (1) **2-voce**: campo `author` (schema `content.config.ts`) → byline template (`[...slug].astro`) + firme standardizzate su 7 post live + 5 draft; **trattino `—` = marcatore voce** (CEO tiene / Max purga); 2 post a 2 voci riallineati a `The Human Side`/`The Machine Side` + sotto-byline. (2) **"Keep reading"**: correlati automatici (tag→volume→recency) in fondo a ogni post, riusa `BlogPostCard`, draft esclusi in PROD. (3) `thirty-two-hours` Vol3 spostato in collection (`draft:true`, tbot anonimizzato + screenshot vecchio sito ottimizzato in `public/images/blog/`). (4) Checklist pre-pub in `blog/README.md` (gitignored, enforced da CC). (5) **BUSINESS_STATE S97 update** (spec CEO) + dedup §7 (7 duplicati preesistenti). (6) Cross-post Dev.to(6)/Substack/Medium: change-list a Max (manuale, in-flight). Memoria `project_blog_two_voice_convention`. |
