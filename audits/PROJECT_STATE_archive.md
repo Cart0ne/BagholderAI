@@ -547,3 +547,63 @@ Voci §3 in-flight di sessioni già SHIPPED (pointer-only, contenuto verbatim gi
 ### S95a — content plan SEO+GEO SHIPPED → §10 riga S95a + archive S98
 - Enabler FAQ schema permanente (campo `faq` + FAQPage `@graph` condizionale). POST 1 (`claude-code-crypto-trading-bot`) live da S95. 4 post SEO+GEO restano `draft:true`. Checklist `config/SEO_GEO_post_checklist.md`.
 - **2026-05-30 (S92) — layer marketing Area 3 + cleanup SHIPPED (no bot)** → verbatim (3 decisioni GSC OAuth / Reddit dormiente / env separato + decisione cleanup) archiviato in compaction S95a. Sintesi §10 riga S92.
+
+## Rimosso in sessione S99b-b (2026-06-08) — compaction isteresi 50/40 (trigger 50KB → target 40KB)
+
+### §1 — header sessione S98 (rimosso, sintesi in §10)
+**Ultimo aggiornamento precedente:** 2026-06-06 — **S98 (brief S98a) SHIPPED — Adaptive Sell Penalty (sell-loss-guard) + analisi competitiva tbot (report S93b)** (commit `a7d644d`, **restart Mac Mini 15:15, PID 85566**). Guardia post-fill contro l'incidente BONK 06-06 (7 sell grid in perdita ~−$5,31: fill 4–14% sotto il check su book vuoto; Strategy A controlla il prezzo PRE-trade, non il fill). Per i soli Grid/Strategy A: dopo un sell con fill < avg la soglia sale del danno (`sell_pct + _sell_pct_penalty`), **reset a 0** al primo sell con fill ≥ avg. **Design v2 (Max+CEO): penalty = ULTIMA perdita, NON cumulativa** — il cumulativo rischiava il freeze del coin (deadlock). TF escluso. Dettaglio §4. 3 file bot + test (157/157). **Restart verificato**: BONK `Restored sell penalty 3.96% (effective 6.46%)`, boot puliti, 0 errori. Report `report_for_CEO/2026-06-06_S98a_RforCEO_sell-loss-guard.md`. Dettaglio §4/§10.
+
+### §3 In-flight — blocchi sessioni shipped (sintesi in §10)
+### S95b/S96 — redesign sito "Pastel Sticker v2" — ✅ LIVE (2026-06-04)
+- Verbatim archiviato in compaction S98 → sez. "Rimosso in sessione S98". Sintesi §10 riga S95. As-built: `config/refactor/REDESIGN_PATTERNS.md` + `web_astro/STYLEGUIDE.md §5`. Rollback: tag `pre-redesign-pastel-v2`. **TODO chiuso (S99)**: branch orfani `redesign/pastel-sticker-v2` + `refactor/grid_runner_split` già cancellati su GitHub — verificato S99 (resta solo `origin/main`).
+
+### S98 — blog: convenzione 2 voci + "Keep reading" + cross-post (web-only, no bot)
+- **2 voci as-built**: campo `author` (`ceo`/`max`/`both`) → byline in cima (template) + firma standard in fondo (markdown, portabile). Trattino `—` = marcatore voce (CEO tiene, Max purga). Post a 2 voci: `## The Human Side` / `## The Machine Side` + sotto-byline. Checklist pre-pubblicazione che CC impone (autori non la seguono) in `blog/README.md` (gitignored, non tracciata per scelta Max). Memoria `project_blog_two_voice_convention`.
+- **🟡 In-flight cross-post (Max, manuale)**: change-list consegnate per Dev.to (6 post) / Substack (an-ai) / Medium (ai-is-useful, the-solution). Il byline non viaggia (template-only) → autore nei campi piattaforma; firma in fondo viaggia.
+- **🟡 5 draft `draft:true`** con convenzione applicata (4 SEO+GEO + `thirty-two-hours` Vol3 spostato da inbox, tbot anonimizzato + screenshot vecchio sito in `public/images/blog/`). Pubblicazione scaglionata.
+
+### §4 Decisioni — S97c / S97b / S96a / S95a / S91 (rimosse, sintesi in §10)
+- **2026-06-05 (S97c) — dashboard hero su basis $600 (Grid+TF) + "DAY N" per CONTESTO (regola Max)**.
+  DECISIONE: (a) hero/badge NET WORTH da Grid-only $500 (S72) ad aggregato $600 (Grid 500 + TF 100). (b) **Il numero del giorno dipende dal contesto, NON dalla pagina**: SOLDI → riparte col ciclo (card NET WORTH/Grid/TF, grafico §3, home LIVE SNAPSHOT, report Telegram → oggi ≈ Day 2); PROGETTO/diario → progressivo dal lancio v3 (CEO-log "Earlier from the log" → oggi ≈ Day 69). Ancore: `CYCLE_START_ISO` (soldi) vs `V3_LAUNCH_ISO` (diario) in dashboard-live.ts; il bot resta cycle (report = soldi), Haiku cita il ciclo nel testo.
+  RAZIONALE: la motivazione S72 ("TF gonfiava il dato") non vale più (TF 0 trade → +$100 cash/$0 P&L, $ identico, % su 600). La regola contesto è di Max: i soldi ripartono a ogni clean slate, l'età del progetto no. **Contraddice il brief S97b** ("Day 1 ovunque oggi") → Max ha l'ultima parola sulla decisione (anti-assenso CLAUDE.md §7).
+  ALTERNATIVE SCARTATE (2 tentativi sbagliati prima della regola Max): tutto cycle-relative; poi tutto project-progressive con `dayNumber` era-aware. FALLBACK: due costanti ISO, 1 riga l'una, reversibili.
+
+- **2026-06-05 (S97b) — blog: trattino `—` come marcatore di voce + checklist pre-pub enforced da CC**.
+  DECISIONE: convenzione a 2 voci (Claude CEO / Max / both) via campo `author` (byline template + firma markdown portabile). Il trattino lungo si TIENE nel testo a voce CEO (stile AI, segnala l'autore) e si PURGA nel testo a voce Max (stile pulito, scritto IT + tradotto). La checklist pre-pubblicazione la applica CC, non gli autori.
+  RAZIONALE: né Max né il CEO seguono regole editoriali quando scrivono → l'enforcement sta a valle (CC pre-deploy). Il trattino-marcatore rende la voce leggibile anche dalla punteggiatura, oltre a byline e firma.
+  ALTERNATIVE: purgare i trattini ovunque (scartata — perde il segnale di voce). FALLBACK: `author` opzionale, retro-compatibile (post senza byline restano invariati).
+
+- **2026-06-04 (S96a) — clean slate testnet via `cycle` tagging, NON via TRUNCATE/rebase**.
+  DECISIONE: dopo il reset mensile testnet (wallet azzerati, BONK bloccato dalla guardia 72a), invece di ribassare il DB al wallet o ricostruire la posizione, si tagga lo storico come `testnet_1` e si riparte su `testnet_2`. RAZIONALE: non-distruttivo (dati consultabili per diary/Volume), reversibile, e i 21.6M BONK erano comunque un fantasma (spariti lato Binance). ALTERNATIVE: A rebase al wallet (veto Max — cancella la storia), B rebuy (~$105, ricostruzione manuale con wrinkle contabile) — scartate. FALLBACK: è paper, ogni opzione reversibile; il pre-reset è preservato. Scope esteso oltre `trades` a reserve_ledger/daily_pnl/bot_state_snapshots dopo obiezione tecnica CC (cash/dashboard sarebbero rimasti sporchi) → CEO ha approvato. Sorgente ciclo data-driven (`bot_config.cycle`) → prossimo reset = 1 UPDATE lato bot.
+
+- **2026-06-02 (S95a) — content SEO+GEO: enabler one-and-done + draft scaglionati + anti-collisione** → 3 decisioni (FAQ `@graph` condizionale byte-identico / `draft:true` reversibile e scaglionato / Post 3 ri-angolato sui 5 brain vs `how-three-claudes` → cross-link) verbatim in sez. "Rimosso in sessione S98". Sintesi §10 riga S95a + `config/SEO_GEO_post_checklist.md`.
+
+- **2026-05-29 (S91) — Brain Analysis 2 + fix stop_buy extreme_fear SHIPPED**.
+  DECISIONE: fix label-primary `fng_label=="Extreme Fear" OR fng_value<=25` in `regime_analyzer.py`; solo fix-forward (no backfill storico).
+  RAZIONALE: soglia hardcoded `<=20` escludeva F&G 21-25 (etichettati "Extreme Fear" da alternative.me) → Sherpa non armava mai stop_buy in regime crash reale. Brain Analysis 2 ha validato i 3 fix Sprint 2 (coin-aware, oscillazione, cap); Sherpa pronto ma non mainnet-bound finché timing Sentinel lento non chiuso.
+  ALTERNATIVE CONSIDERATE: backfill storico — scartato (operativamente conta il futuro, costo/beneficio nullo).
+
+### §10 Sessioni shipped — righe S81 → S77 fase 2 (rimosse, pointer S70→S74b resta in §10)
+| 2026-05-22 | 1 | **S81** brief 81a Sherpa Sprint 2 (per-coin volatility + slow gate + cap 30%) + 81b Haiku direction safety + restart | SHIPPED 2 commit `3ba1132`+`51204cf` + TEST 121/121 | BTC 1.0/SOL 1.6×/BONK 2.1×, proposte diverse per coin → Brain Analysis finding 'non coin-aware' CHIUSO. Verbatim → archive S88. |
+| 2026-05-22 | 1+3 | **S80a** brief 80a Brain Analysis (counterfactual Sherpa + Sentinel timing) + AADS refresh | SHIPPED report + frontend, NO trading code | Sherpa applied -$3.94 vs Board, root cause non coin-aware (319 proposte identiche). NO-GO step 4 → 3 pre-req. Verbatim → archive S88. |
+| 2026-05-20 | 1+3 | **S80** brief 80b homepage funnel + UTM + TF live narrativa + Dev.to launch + roadmap Phase 9 §3 | SHIPPED `b8bdc12` + web + DEPLOY VERCEL | 3 CTA home, UTM x_poster+telegram, TfDoctor→card TF live. Mac Mini restart pending (signatures). Verbatim → archive S88. |
+| 2026-05-18 | 1 | **S79** 79a idle suppression + 79b TF reactivation Tier 1-2 + 79c write-on-change + drift FIFO sanato | SHIPPED 5 commit + 2 restart + TEST 31/31 | `tf_tier3_weight=0`, write-on-change heartbeat 10/10/5min, bug [S70c] chiuso. Verbatim → archive S88. |
+| 2026-05-16 | 1 | **S78 fase 2** brief 78b SWEEP/LAST SHOT slippage buffer + banner + blog post 2 + gitignore anchor | SHIPPED + TEST 4/4+30/30 + RESTART PID 33579 | `SLIPPAGE_BUFFER_PCT=0.03` (cassa -$0.44 su SWEEP by-design testnet, mainnet -2010). Commit `afd97ce`. Verbatim → archive S88. |
+| 2026-05-15 | 3 | **S78** brief 78a primo blog post publish | SHIPPED + DEPLOY VERCEL | 'An AI That Can't Trade' dual-voice, commit `18a0362`. Verbatim → archive S88. |
+| 2026-05-14 | 1 | **S77 fase 2+3** Sentinel Sprint 2 slow loop (brief 77b) + restart | SHIPPED + TEST 85/85 + restart PID 90540 | Slow loop 4h F&G+CMC→regime (5 bucket), Sherpa legge regime dinamico. Commit `a62e5d5`. Verbatim → archive S88. |
+
+### §10 Sessioni shipped — righe S82 → S94a compattate in pointer (dettaglio verbatim già in compaction S88/S92)
+| 2026-06-01 | 1 | **S94a** NewsKeeper Haiku classifier + feed macro CNBC/MarketWatch | SHIPPED `651bd45` + restart standalone (PID 26448/26450) + verifica T+1 19/19 `haiku_s2`. preprocessor.py + haiku_classifier.py, round-robin pre-cap, suite 150/150. |
+| 2026-06-01 | 3 | **S93a** shift tono Haiku narrativo>tecnico | SHIPPED `1f5849a` + restart (PID 19118). x_poster SYSTEM_PROMPT 140-190char + firma `🤖 AI`; commentary micro-diary + guardrail anti-allucinazione. |
+| 2026-05-30 | docs+3 | **S92** pulizia + layer dati marketing Area 3 | SHIPPED `d209588`. config/ cleanup, audits/ ristrutturata, 5 connettori API marketing + orchestratore, GSC OAuth, BUSINESS_STATE compaction 45→34KB. |
+| 2026-05-29 | 1 | **S91 (pm)** fix stop_buy extreme_fear | SHIPPED `ea4c7a8` + restart (PID 33218). soglia `fng_label=="Extreme Fear" OR <=25`, verifica F&G=23 live. |
+| 2026-05-29 | 3 | **S91 (am)** SEO/A11y quick wins | SHIPPED + build 15 pagine. Bing/IndexNow, contrast AA, sitemap redirect. |
+| 2026-05-28 | 1+3 | **S90** spike guard A+B + UI/blog | SHIPPED 8 commit + restart (PID 93187). fetch_price_with_spike_guard + _skip_next_decision. |
+| 2026-05-27 | 1 | **S89** Audit Area 1 remediation | SHIPPED. legacy tests→archived, dead-table no-op, tweepy→requirements-scripts. |
+| 2026-05-27 | 2+3 | **S88** remediation Audit Area 2 (88a-88e) | SHIPPED. catch-up sito S80→S87, AUDIT_PROTOCOL riscritto, config/parked. |
+| 2026-05-27 | 3 | **S87** V3 launch site + Umami | SHIPPED 4 commit. V3 Payhip touchpoint, 22 data-umami-event + pixel RSS. |
+| 2026-05-26 | 3 | **S86** status badge homepage + regime overlay admin | SHIPPED 2 commit. project_status + drawRegimeBands, Widget B killed. |
+| 2026-05-25/26 | 3 | **S85** RSS feed Dev.to + BUSINESS_STATE compaction policy | SHIPPED `8c9c2fc`→`86af67b`. /rss.xml content:encoded, CLAUDE.md §2b. |
+| 2026-05-24 | 3 | **S84** SEO audit fix title/desc + JSON-LD + sitemap lastmod | SHIPPED `c89c8cc`. |
+| 2026-05-24 | 1 | **S83** NewsKeeper scaffold Session 1 (RSS) standalone | SHIPPED `49473a9` + LIVE PID 78098. Pivot CryptoPanic→RSS. |
+| 2026-05-23 | 3 | **S82** Homepage redesign Watchtower+Sherpa cards + stat-row LIVE | SHIPPED `cdb5ff8`+`85b2751`. NewsKeeper cameo locked. |

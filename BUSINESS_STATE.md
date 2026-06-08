@@ -1,8 +1,8 @@
 # BUSINESS_STATE.md
 
-**Last updated:** 2026-06-05 — Session 97 chiusura (phantom-holdings-audit, todo cleanup, brainstorming NewsKeeper daily digest, banner update). Cap file 50KB (Max S95, CLAUDE.md §2b). Cadenze audit canoniche in PROJECT_STATE §9. Prec.: S95 (§2/§3/§4/§6 SEO+GEO + redesign branch READY).
-**Updated by:** CEO (update S97 via Max, `config/S97_BUSINESS_STATE_update.md`) — applicato da CC
-**Basato su:** S97a report CC (`6ff7d6f` + `068fe7c`), quality review CEO, brainstorming Board
+**Last updated:** 2026-06-08 — Session 99b chiusura (sell pipeline audit, anti-slippage v2, dashboard fixes). Cap file 50KB (Max S95, CLAUDE.md §2b). Cadenze audit canoniche in PROJECT_STATE §9. Prec.: S97 (phantom-holdings-audit, NewsKeeper digest brainstorm).
+**Updated by:** CEO (update S99b via Max, `config/S99b_BUSINESS_STATE_update.md`) — applicato da CC
+**Basato su:** S99b + S99b-b report CC (`e26e67c`), sell-ladder audit + sell-pipeline-fixes
 
 ---
 
@@ -175,7 +175,7 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 
 ## 3. Diary Status
 
-**Sessione corrente: 99 BUILDING** (trailing slash + llms.txt SEO fix da audit Semrush + brainstorm passive income dashboard). S98 → COMPLETE.
+**Sessione corrente: 99 COMPLETE** (two-day: Semrush audit + trailing slash + passive income brainstorm + sell pipeline audit + anti-slippage v2).
 
 **Volumi pubblicati:**
 - Volume 1 "From Zero to Grid" (S1–S23, €4.99) → https://payhip.com/b/a4yMc
@@ -197,6 +197,9 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 
 | Data | Decisione | Perché |
 |---|---|---|
+| 2026-06-08 (S99b) | **Anti-slippage v2 SHIPPED** (brief S99b-b, 3 parti: dashboard text fix + penalty in NEXT SELL IF + slippage penalty su sell profittevoli; commit `e26e67c`) | BONK burst: 5 sell in 4 min, slippage 3-4% ma penalty mai attiva perché tutte profittevoli. Lo slippage abbassa la sell ladder (feedback loop). Nuova regola: slippage > 1% su sell profittevole → penalty si arma. Soglia unica, non-cumulativa |
+| 2026-06-08 (S99b) | **Board override: SOL sell_pct 1.0% → 1.5% (manuale)** | Max ha fatto da Sherpa umano: SOL vendeva con profitto troppo piccolo a 1.0%. `changed_by='manual-ceo'`. Conferma che il workflow Sherpa automatico serve |
+| 2026-06-08 (S99b) | **Dashboard "per-lot" text corretto** | Fossile FIFO pre-S70. Il bot usa avg_cost dal S70 FASE 2, il testo non era mai stato aggiornato. Fix cosmetico, 1 riga |
 | 2026-06-07 (S99) | **Trailing slash + llms.txt SHIPPED** (brief S99a, commit `9787aa5`). Fix SEO: Astro `trailingSlash: 'never'` + Vercel `trailingSlash: false` (308 redirect). `llms.txt` GEO creato in `public/` | Primo audit Semrush: 9 warning erano 4 pagine contate doppio. llms.txt: impatto pratico incerto ma costo ~zero e allineato a posizionamento AI-native |
 | 2026-06-07 (S99) | **Passive Income Dashboard: decisioni B+E approvate, implementazione PARKED** | B: teaser home + pagina dedicata `/income`. E: rischio €0 pubblico accettabile (target premia onestà). Obiezione CEO su timing: costruire il tabellone prima che il trading sia live rischia mesi di "€0 statico". Parked fino a post-analisi NewsKeeper/Brain + timeline go-live concreta |
 | 2026-06-06 (S98) | **Adaptive Sell Penalty SHIPPED** (brief S98a, commit `507ebd6` + `a7d644d`) — guardia post-fill: se un sell Strategy A filla sotto avg_cost, il bot alza sell_pct dell'ultimo slippage osservato; sell profittevole resetta a base | Incidente BONK: 7 sell in 6 min, tutti in perdita per slippage testnet (ticker ok, fill −4/−14%). Strategy A checkava pre-fill, non post-fill. Guardia proporzionale, adattiva, auto-guarigione |
@@ -244,11 +247,13 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 
 | Tema | Stato | Note |
 |---|---|---|
+| **[S99b NEW] Monitoraggio anti-slippage v2 su BONK testnet** | Osservazione | Soglia 1% con slippage strutturale 3-4%: BONK sarà penalizzato quasi sempre. Se si congela (deadlock), alzare soglia o renderla per-coin |
+| **[S99b] Dashboard penalty in NEXT SELL IF** | ✅ DONE | runtime mirror espone `_sell_pct_penalty`, dashboard la include nella formula |
 | **[S91 NEW] Integrità dati — `bot_state_snapshots` saldo grezzo** | 🆕 Da verificare | `bot_state_snapshots` fotografa il **saldo grezzo testnet (pre-funded)**, non la posizione €500 → verificare che **nessuna superficie pubblica** lo peschi. Minori: fallback `1,0×` non cappato in Sentinel; dead-band scritture Sherpa |
 | **[S90 NEW] Option C — slippage buffer su percentage sell path** | TODO pre-mainnet, brief separato | Brief separato pre-mainnet. Estendere il pattern `SLIPPAGE_BUFFER_PCT=0.03` (già attivo su SWEEP/LAST_SHOT path da brief 78b) anche al path `_execute_percentage_sell` per chiudere completamente la finestra di rischio post-fix A+B |
 | **[S90 NEW] Calibrazione parametri spike guard** (threshold 4% / confirm 50% / pause 5s) | Osservazione 7-14gg, poi decidere | Oggi i 3 parametri sono default argument della funzione `fetch_price_with_spike_guard`. Post osservazione: valutare se servono tunable per-coin via `bot_config` (BTC vs SOL vs BONK volatilità diverse). Voto CC: tenerli fissi finché dati live non suggeriscono altrimenti |
-| **[S83] NewsKeeper S2** | ✅ DONE (S94) | Haiku classifier live. T+7 quality review ~8 giugno → apre la porta a S3 (daily digest) e alla timeline go-live |
-| **[S97 NEW] NewsKeeper S3: daily digest** | Concept approvato | Haiku riceve headline 24h → risk score narrativo (calmo/alert/tempesta). Post quality review. Strada B (clustering) parcheggiata per volume alto |
+| **[S83] NewsKeeper S2** | ✅ DONE (S94) | Haiku classifier live. T+7 quality review → S100 |
+| **[S97 NEW] NewsKeeper S3: daily digest** | Concept approvato, gated da S100 review | Haiku riceve headline 24h → risk score narrativo (calmo/alert/tempesta). Post quality review. Strada B (clustering) parcheggiata per volume alto |
 | **[S99 NEW] Passive Income Dashboard** | PARKED (post go-live timeline) | Brainstorm CC+Max completo (`config/2026-06-07_S100a_brief_passive-income-dashboard.md`). Decisioni strategiche prese. Implementazione sospesa fino a timeline go-live concreta. Se manca poco: "coming soon". Se manca molto: aspettare |
 | **[S88] Audit Area 2 remediation — 4/5 SHIPPED** | Resta 88d (UI debts) — verificare se il redesign li ha chiusi | Audit 2026-05-27 (CON RISERVE). 88a/88b/88c/88e shippati S88, resta 88d (UI debts). Il redesign Pastel Sticker v2 potrebbe aver risolto parte dei debiti UI → da verificare nella prossima sessione. Tracking: `audit_remediation_cover_sheet.md` |
 | **[S82] Brief NewsKeeper architetturale Session 1** | ✅ DONE (S83) | Scaffold shippato commit `49473a9`. Module 1 RSS feeds live standalone Mac Mini PID 78098. Sessioni 2-4 ancora pending |
