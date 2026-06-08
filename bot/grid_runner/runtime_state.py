@@ -36,6 +36,11 @@ def _upsert_runtime_state(trade_logger, bot, symbol: str) -> None:
             "stop_buy_active": bool(getattr(bot, "_stop_buy_active", False)),
             "stop_buy_activated_at": sb_activated.isoformat() if sb_activated else None,
             "stop_buy_baseline_price": sb_baseline if sb_baseline > 0 else None,  # 75c
+            # S99b-b Parte B: mirror the Adaptive Sell Penalty so the /grid
+            # dashboard can fold it into NEXT SELL IF (the bot trades on
+            # sell_pct + _sell_pct_penalty; without this the widget understates
+            # the real trigger whenever a penalty is armed — e.g. BONK).
+            "sell_pct_penalty": float(getattr(bot, "_sell_pct_penalty", 0.0) or 0.0) or None,
             "phantom_holdings": float(phantom),
             "managed_holdings": float(managed) if managed is not None else None,
             "last_recalibrate_at": last_recal.isoformat() if last_recal else None,

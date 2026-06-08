@@ -38,6 +38,17 @@ from config.settings import TradingMode
 
 logger = logging.getLogger("bagholderai.grid")
 
+# Brief S99b-b Parte C (2026-06-08): Adaptive Sell Penalty — anti-slippage leg.
+# Sopra questa soglia di slippage AVVERSO (fill atterrato sotto il check price
+# pre-ordine) la penalty si arma ANCHE su vendite profittevoli (fill >= avg),
+# per rompere il burst auto-accelerante osservato su BONK 2026-06-08 (5 sell in
+# 4 min, slippage 3.5-4% ogni volta, penalty sempre 0 perché tutte in profitto).
+# Soglia unica per tutti i coin, NON in bot_config: è un safety parameter che
+# cambia raramente e solo con un brief (no hot-reload). Su mainnet lo slippage
+# fisiologico (0.1-0.3%) resta sotto soglia → non scatta; su testnet con book
+# sottile (3-4%) scatta quasi sempre (comportamento accettato dal Board).
+SLIPPAGE_PENALTY_THRESHOLD_PCT = 1.0
+
 
 # ----------------------------------------------------------------------
 # 42a: Greed decay TP resolver. Pure-ish (only reads bot state + clock).
@@ -499,8 +510,12 @@ def execute_percentage_sell(
     # atterrare il fill sotto avg_cost. Quando succede, alziamo la soglia di
     # vendita effettiva del danno subìto, così il prossimo sell scatta solo
     # più in alto e non si ripete l'errore in ciclo stretto.
-    #   - fill < avg → penalty = loss_pct (l'ULTIMA perdita osservata).
-    #   - fill >= avg → reset a 0 (il mercato regge l'esecuzione → rientrati).
+    #   - Caso 1: fill < avg → penalty = loss_pct (l'ULTIMA perdita osservata).
+    #   - Caso 2 (S99b-b 2026-06-08): fill >= avg MA slippage avverso > soglia
+    #     → penalty = slippage. Copre le vendite profittevoli su book sottile
+    #     (BONK 2026-06-08: 5 sell in 4 min, slippage 3.5-4%, penalty sempre 0
+    #     perché fill>avg → nessun freno). Rompe il burst auto-accelerante.
+    #   - Caso 3: fill >= avg E slippage <= soglia → reset a 0 (rientrati).
     # DESIGN v2 (Max + CEO 2026-06-06, sovrascrive il cumulativo del brief):
     # la penalty è l'ULTIMO slippage osservato, NON la somma. Il cumulativo
     # rischiava un deadlock (soglia così alta da non vendere più → mai un sell
@@ -514,7 +529,15 @@ def execute_percentage_sell(
         getattr(bot, "managed_by", "grid") == "grid" and bot.strategy == "A"
     )
     if is_grid_strategy_a and sell_avg_cost > 0:
+        # S99b-b Parte C: slippage AVVERSO = quanto il fill è atterrato SOTTO il
+        # check price pre-ordine. Segno opposto a `slippage_pct` (riga ~389, che
+        # è (fill−check)/check): qui positivo quando il fill è peggiore del check.
+        # In paper mode price == check_price → 0. Caso 2 sotto.
+        adverse_slippage_pct = (
+            (check_price - price) / check_price * 100 if check_price > 0 else 0.0
+        )
         if price < sell_avg_cost:
+            # Caso 1 (S98a v2, invariato): vendita in perdita → penalty = perdita.
             loss_pct = (sell_avg_cost - price) / sell_avg_cost * 100
             prev_penalty = bot._sell_pct_penalty
             bot._sell_pct_penalty = loss_pct  # v2: ultima perdita, NON cumulativo
@@ -543,7 +566,47 @@ def execute_percentage_sell(
                 )
             except Exception:
                 pass
+        elif adverse_slippage_pct > SLIPPAGE_PENALTY_THRESHOLD_PCT:
+            # Caso 2 (S99b-b Parte C, NUOVO): vendita profittevole (fill >= avg)
+            # ma con slippage avverso oltre soglia → arma comunque la penalty,
+            # pari allo slippage osservato. Rompe il burst auto-accelerante
+            # (la ladder si ancora al fill abbassato dallo slippage → il gradino
+            # successivo scendeva; la penalty lo rialza). Non-cumulativa: sempre
+            # l'ULTIMO slippage osservato. TF già escluso da is_grid_strategy_a.
+            prev_penalty = bot._sell_pct_penalty
+            bot._sell_pct_penalty = adverse_slippage_pct  # v2: ultimo valore, NON somma
+            effective_sell_pct = (getattr(bot, "sell_pct", 0) or 0) + bot._sell_pct_penalty
+            try:
+                log_event(
+                    severity="warn",
+                    category="safety",
+                    event="sell_penalty_slippage",
+                    symbol=bot.symbol,
+                    message=(
+                        f"Sell penalty armed from slippage: fill {fmt_price(price)} "
+                        f"vs check {fmt_price(check_price)} "
+                        f"(slippage {adverse_slippage_pct:.2f}%, threshold "
+                        f"{SLIPPAGE_PENALTY_THRESHOLD_PCT:.1f}%); effective sell_pct "
+                        f"now {effective_sell_pct:.2f}%"
+                    ),
+                    details={
+                        "fill_price": float(price),
+                        "check_price": float(check_price),
+                        "adverse_slippage_pct": float(adverse_slippage_pct),
+                        "threshold_pct": float(SLIPPAGE_PENALTY_THRESHOLD_PCT),
+                        "previous_penalty": float(prev_penalty),
+                        "new_penalty": float(bot._sell_pct_penalty),
+                        "base_sell_pct": float(getattr(bot, "sell_pct", 0) or 0),
+                        "effective_sell_pct": float(effective_sell_pct),
+                        "avg_buy_price": float(sell_avg_cost),
+                        "realized_pnl": float(realized_pnl),
+                    },
+                )
+            except Exception:
+                pass
         elif bot._sell_pct_penalty > 0:
+            # Caso 3 (invariato): fill >= avg E slippage <= soglia → rientrati,
+            # reset a 0. Solo se c'era una penalty attiva (no log di no-op).
             prev_penalty = bot._sell_pct_penalty
             bot._sell_pct_penalty = 0.0
             try:
@@ -554,7 +617,9 @@ def execute_percentage_sell(
                     symbol=bot.symbol,
                     message=(
                         f"Sell penalty reset (fill {fmt_price(price)} >= avg "
-                        f"{fmt_price(sell_avg_cost)}); was {prev_penalty:.2f}%"
+                        f"{fmt_price(sell_avg_cost)}, slippage "
+                        f"{adverse_slippage_pct:.2f}% <= {SLIPPAGE_PENALTY_THRESHOLD_PCT:.1f}%); "
+                        f"was {prev_penalty:.2f}%"
                     ),
                     details={
                         "previous_penalty": float(prev_penalty),

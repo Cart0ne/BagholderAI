@@ -176,14 +176,17 @@ class GridBot:
         # sell del nuovo ciclo. Restored from DB by state_manager.
         # Reset to 0 quando holdings → 0 (sell_pipeline).
         self._last_sell_price: float = 0.0
-        # Brief S98a (2026-06-06): Adaptive Sell Penalty (Grid/Strategy A only).
-        # Dopo un sell il cui FILL è atterrato sotto avg_cost (slippage da book
-        # vuoto, l'incidente BONK 2026-06-06), alza la soglia di vendita del
-        # danno subìto: effective_sell_pct = sell_pct + _sell_pct_penalty.
-        # DESIGN v2 (Max+CEO): la penalty è l'ULTIMA perdita osservata, NON la
+        # Brief S98a (2026-06-06) + S99b-b (2026-06-08): Adaptive Sell Penalty
+        # (Grid/Strategy A only). Alza la soglia di vendita effettiva:
+        # effective_sell_pct = sell_pct + _sell_pct_penalty. Si arma in due casi:
+        # (1) fill < avg_cost → penalty = perdita (S98a); (2) fill >= avg ma
+        # slippage avverso > soglia → penalty = slippage (S99b-b, anti-burst).
+        # DESIGN v2 (Max+CEO): la penalty è l'ULTIMO valore osservato, NON la
         # somma (il cumulativo rischiava il freeze permanente del coin). Un sell
-        # con fill >= avg la azzera. Si adatta alla condizione corrente di mercato.
-        # In-memory: ricostruita al restart dal replay (state_manager).
+        # con fill >= avg e slippage sotto soglia la azzera.
+        # In-memory: il caso (1) è ricostruito al restart dal replay
+        # (state_manager); il caso (2) NON è ripristinato (lo slippage non è
+        # colonna strutturata in `trades`) — si ri-arma al primo sell reale.
         # NON si applica ai sell TF (force-liquidate sotto avg è by design).
         self._sell_pct_penalty: float = 0.0
         # Brief fix_slippage_AB (S90, 2026-05-28): cooldown 1-tick post

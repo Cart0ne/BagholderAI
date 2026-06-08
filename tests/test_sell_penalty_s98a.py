@@ -279,6 +279,79 @@ def test_d_tf_sells_do_not_accumulate_penalty():
 
 
 # ----------------------------------------------------------------------
+# S99b-b Parte C — anti-slippage leg (penalty su vendite profittevoli)
+# ----------------------------------------------------------------------
+
+def test_h_slippage_penalty_arms_on_profitable_sell():
+    """S99b-b: un sell PROFITTEVOLE (fill >= avg) ma con slippage avverso oltre
+    soglia arma comunque la penalty = slippage. È il caso BONK 2026-06-08."""
+    print("=" * 70)
+    print("TEST H: penalty si arma da slippage su vendita profittevole (caso 2)")
+    print("=" * 70)
+    import bot.grid.sell_pipeline as sp
+
+    captured = []
+    original = sp.log_event
+    sp.log_event = lambda **kw: captured.append(kw)
+    try:
+        bot = _build_grid_position(avg_price=100.0, n_buys=4)
+        assert bot._sell_pct_penalty == 0.0, "starts at 0"
+
+        # check 105 (guard pass), fill 103 → PROFITTEVOLE (103 >= avg 100) ma
+        # slippage avverso = (105−103)/105 = 1.905% > soglia 1.0% → arma.
+        trade = _live_sell(bot, fill=103.0, check_price=105.0, sell_amount=0.05)
+        assert trade is not None, "sell must execute"
+        exp = (105.0 - 103.0) / 105.0 * 100
+        assert_close(bot._sell_pct_penalty, exp, label="penalty = adverse slippage")
+
+        events = [c for c in captured if c.get("event") == "sell_penalty_slippage"]
+        assert len(events) == 1, f"expected 1 slippage event, got {len(events)}"
+        d = events[0]["details"]
+        assert_close(d["adverse_slippage_pct"], exp, label="logged slippage")
+        assert_close(d["effective_sell_pct"], 2.0 + exp, label="effective = base + slippage")
+        # Nessun evento sell_penalty_increased (quello è solo per fill < avg).
+        assert not [c for c in captured if c.get("event") == "sell_penalty_increased"], \
+            "fill >= avg non deve loggare sell_penalty_increased"
+        print(f"  fill 103 ≥ avg 100, slippage {exp:.2f}% > 1% → "
+              f"penalty {bot._sell_pct_penalty:.2f}% (caso 2) ✓")
+    finally:
+        sp.log_event = original
+
+
+def test_i_small_slippage_does_not_arm_then_resets():
+    """S99b-b: slippage avverso SOTTO soglia su vendita profittevole NON arma;
+    e se una penalty era attiva, una vendita pulita la azzera (caso 3)."""
+    print("=" * 70)
+    print("TEST I: slippage sotto soglia → no arm; vendita pulita → reset (caso 3)")
+    print("=" * 70)
+    import bot.grid.sell_pipeline as sp
+
+    captured = []
+    original = sp.log_event
+    sp.log_event = lambda **kw: captured.append(kw)
+    try:
+        bot = _build_grid_position(avg_price=100.0, n_buys=8)
+
+        # 1) slippage 0.5% (< 1%) su fill profittevole → penalty resta 0, nessun evento.
+        _live_sell(bot, fill=104.5, check_price=105.0, sell_amount=0.05)  # slip 0.476%
+        assert_close(bot._sell_pct_penalty, 0.0, label="slippage sotto soglia non arma")
+        assert not [c for c in captured if "penalty" in (c.get("event") or "")], \
+            "slippage sotto soglia non deve loggare eventi penalty"
+
+        # 2) armo una penalty da slippage, poi una vendita pulita la azzera.
+        _live_sell(bot, fill=103.0, check_price=105.0, sell_amount=0.05)  # slip 1.9% → arma
+        assert bot._sell_pct_penalty > 1.0, "penalty armata da slippage"
+        captured.clear()
+        _live_sell(bot, fill=106.0, check_price=106.2, sell_amount=0.05)  # slip 0.188% → reset
+        assert_close(bot._sell_pct_penalty, 0.0, label="vendita pulita azzera")
+        resets = [c for c in captured if c.get("event") == "sell_penalty_reset"]
+        assert len(resets) == 1, f"1 reset event, got {len(resets)}"
+        print("  slip 0.48% → no arm; slip 1.9% → arm; slip 0.19% → reset ✓")
+    finally:
+        sp.log_event = original
+
+
+# ----------------------------------------------------------------------
 # Restart recalc (state_manager replay)
 # ----------------------------------------------------------------------
 
@@ -387,6 +460,27 @@ def test_g_restart_tf_history_no_penalty():
     print(f"  bot TF, sell −10%: penalty {bot._sell_pct_penalty:.1f}% ✓")
 
 
+def test_h2_restart_does_not_reconstruct_slippage_penalty():
+    """S99b-b Opzione 1 (Max/Board): la slippage-penalty (fill>=avg) NON è
+    ripristinata al restart — lo slippage non è colonna strutturata in `trades`,
+    solo `price` (fill). Un sell profittevole nello storico → replay penalty = 0
+    (si ri-armerà al primo sell reale). Il caso-perdita resta ricostruito (test E)."""
+    print("=" * 70)
+    print("TEST H2: restart NON ricostruisce la slippage-penalty (Opzione 1)")
+    print("=" * 70)
+    history = [
+        _buy(10.0, 100.0, "2026-06-08T09:00:00+00:00"),
+        # sell profittevole (fill 103 >= avg 100): in LIVE avrebbe armato la
+        # penalty da slippage, ma nel replay si vede solo price=103 >= avg → 0.
+        _sell(1.0, 103.0, "2026-06-08T13:01:00+00:00"),
+    ]
+    bot = _replay(history)
+    assert_close(bot._sell_pct_penalty, 0.0, tol=1e-9,
+                 label="slippage-penalty non ricostruita al restart")
+    print(f"  sell profittevole nello storico → penalty {bot._sell_pct_penalty:.1f}% "
+          f"(non ricostruita, si ri-arma a runtime) ✓")
+
+
 # ----------------------------------------------------------------------
 # Runner
 # ----------------------------------------------------------------------
@@ -397,9 +491,12 @@ def main():
         test_b_penalty_tracks_last_loss_then_resets,
         test_c_penalty_raises_sell_trigger,
         test_d_tf_sells_do_not_accumulate_penalty,
+        test_h_slippage_penalty_arms_on_profitable_sell,
+        test_i_small_slippage_does_not_arm_then_resets,
         test_e_restart_reconstructs_last_loss,
         test_f_restart_reset_by_last_profitable_sell,
         test_g_restart_tf_history_no_penalty,
+        test_h2_restart_does_not_reconstruct_slippage_penalty,
     ]
     passed = 0
     failed = []

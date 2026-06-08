@@ -951,8 +951,14 @@
         var nextBuyTrigger = hasBuyRef ? buyRefForTrigger * (1 - buyPct / 100) : 0;
         var ladderSellRef = botSellRef > 0 ? botSellRef : a.lastSellPrice;
         var sellRef = ladderSellRef > 0 ? ladderSellRef : a.avgBuyPrice;
+        // S99b-b Parte B: the bot trades on sell_pct + _sell_pct_penalty
+        // (Adaptive Sell Penalty, grid_bot.py:831). Fold the mirrored penalty
+        // into the trigger so NEXT SELL IF matches the bot when a penalty is
+        // armed (0 on coins without one → identical to the old value).
+        var penaltyPct = Number(rtState.sell_pct_penalty) || 0;
+        var effectiveSellPct = sellPct + penaltyPct;
         var nextSellTrigger = hasSellRef
-          ? sellRef * (1 + sellPct / 100 + FEE_RATE) / (1 - FEE_RATE)
+          ? sellRef * (1 + effectiveSellPct / 100 + FEE_RATE) / (1 - FEE_RATE)
           : 0;
         var nextBuyStr = hasBuyRef ? fmtPrice(nextBuyTrigger) : '—';
         var nextSellStr = hasSellRef ? fmtPrice(nextSellTrigger) : '—';
@@ -1099,7 +1105,7 @@
     ];
 
     var SUBLABELS = {
-      'sell_pct': 'Per-lot trigger: sells when price rises this % above that lot\'s buy price',
+      'sell_pct': 'Sell trigger: sells a slice when price rises this % (net of fees) above the cycle reference — the average buy cost on the first sell, then each prior sell\'s price (the "sell ladder"). Single average cost, not per-lot.',
       'profit_target_pct': 'Safety gate: blocks ALL sells unless price is this % above avg buy. 0 = disabled.',
       'buy_pct': 'Buys when price drops this % below the last buy price',
       'skim_pct': '% of each sell\'s profit routed to reserve instead of reinvested',

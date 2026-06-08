@@ -133,6 +133,13 @@ def init_avg_cost_state_from_db(bot):
                 # Brief S98a: penalty recalc — `avg` qui è ancora l'avg PRE-sell
                 # (avg-cost non cambia in vendita), cioè l'avg_cost al momento
                 # del sell. Mirror esatto del runtime (sell_pipeline post-fill).
+                # S99b-b (2026-06-08): ricostruiamo SOLO il caso-perdita (fill<avg).
+                # Il caso-slippage (fill>=avg, S99b-b Parte C) NON è ripristinabile
+                # qui — lo slippage richiede il check_price pre-ordine, che non è
+                # una colonna strutturata in `trades` (vive solo nel `reason`,
+                # noto come inaffidabile [S70]). Decisione Max/Board (Opzione 1):
+                # non ripristinare; la slippage-penalty si ri-arma al primo sell
+                # reale post-restart. Coerente con "penalty = mercato corrente".
                 trade_managed_by = t.get("managed_by") or "grid"
                 if is_grid and trade_managed_by == "grid" and avg > 0:
                     if price < avg:
