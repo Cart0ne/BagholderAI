@@ -74,6 +74,9 @@ Comm Sentinel↔Sherpa↔Grid via Supabase only. Telegram alerts: solo Grid trad
 > Voci §3 di sessioni shipped **S88-S98** (redesign Pastel v2 LIVE 2026-06-04; blog 2-voci + cross-post; pointer S88-S92) archiviate nelle compaction S95b/S99b-b → [audits/PROJECT_STATE_archive.md](audits/PROJECT_STATE_archive.md). Sintesi in §10.
 
 ### Aperti / TODO
+- 🔔 **[S100] Verifiche barometro v2 (cadenza tipo-audit — controllare a inizio sessione, come §9)**:
+  - **(1) Check T+36h — DOVUTO 2026-06-11 ~08:00 UTC.** Routine remota `trig_01UEfMiEEay7GgRNxiBAiukN` scrive `report_for_CEO/2026-06-11_S100_newskeeper-v2-shadow-check.md` (collect+classify, 0 fallback, `abstain_frac` muto-vs-lento). **A inizio sessione**: se la data è passata, leggi quel report; se manca o segnala anomalia, flagga a Max.
+  - **(2) Verdetto T+14 — DOVUTO ~2026-06-23.** Validare i flip di `newskeeper_regime` vs ritorno prezzo BTC 24h (da `sentinel_scores.btc_price` a flip+24h), **NON vs F&G** (circolare). Lente regime: se i 14gg restano solo-bear → verdetto parziale, estendere. Esito: promuovere (cablaggio Sentinel) o bocciare (→ /news, blog "esperimento fallito").
 - **✅ [S95→S99] Branch orfani cancellati**: `refactor/grid_runner_split` + `redesign/pastel-sticker-v2` non più su GitHub (verificato S99, resta solo `origin/main`). Drift §3 sanato.
 - **🟡 [S81 NEW] Cap kicks BONK in mainnet**: con `MAX_DELTA_PCT=0.30` Board BONK sell_pct=2.5, Sherpa può proporre max 3.25 in un tick. Pre-mainnet vorremo forse 0.10-0.15 (slippage mainnet 10× più basso). Brief separato pre-step 5.
 - **🟡 [S70] Sherpa rule-aware sull'hotfix slippage**: ora coperto parzialmente dal per-coin scaling Sprint 2, ma il `sell_pct` Sherpa non conosce esplicitamente `SLIPPAGE_BUFFER_PCT`. Da chiudere prima di `SHERPA_MODE=live`.
