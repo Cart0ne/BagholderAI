@@ -39,3 +39,5 @@ Controlli giornalieri (query Supabase, ultime 24h):
 **Sblocca**: decisione "timing Sentinel Phase B vs accelerare NewsKeeper" — dati sufficienti per review CEO.
 
 Routine di monitoraggio conclusa il 2026-06-08. Chiedere a Max di rimuoverla da claude.ai/code/routines.
+
+- 2026-06-09: routine conclusa il 2026-06-09, chiedere a Max di rimuoverla da claude.ai/code/routines
