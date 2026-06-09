@@ -1,8 +1,8 @@
 # BUSINESS_STATE.md
 
-**Last updated:** 2026-06-08 — Session 99b chiusura (sell pipeline audit, anti-slippage v2, dashboard fixes). Cap file 50KB (Max S95, CLAUDE.md §2b). Cadenze audit canoniche in PROJECT_STATE §9. Prec.: S97 (phantom-holdings-audit, NewsKeeper digest brainstorm).
-**Updated by:** CEO (update S99b via Max, `config/S99b_BUSINESS_STATE_update.md`) — applicato da CC
-**Basato su:** S99b + S99b-b report CC (`e26e67c`), sell-ladder audit + sell-pipeline-fixes
+**Last updated:** 2026-06-09 — Session 100 (NewsKeeper v2 "barometro" build + shadow LIVE). Cap file 50KB (Max S95, CLAUDE.md §2b). Cadenze audit canoniche in PROJECT_STATE §9. Prec.: S99b (sell pipeline audit, anti-slippage v2).
+**Updated by:** CEO (update S100 via Max) — applicato da CC
+**Basato su:** review T+7 + build report S100 (`c8774db`), SCOPE newskeeper-v2-barometro
 
 ---
 
@@ -197,6 +197,9 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 
 | Data | Decisione | Perché |
 |---|---|---|
+| 2026-06-09 (S100) | NewsKeeper diventa "barometro" 3-stati (bear/neutral/bull, bidirezionale) | La T+7 review ha provato che l'unità per-item è sbagliata, non solo mal-calibrata: 109 segnali/giorno = ~10 eventi veri + 1 narrativa ripetuta. Il valore è il clima aggregato anticipato sul prezzo, non il singolo articolo. Severità per-item dismessa come driver |
+| 2026-06-09 (S100) | Architettura C + voto pesato-confidenza + dedup event-level (terna unica) | C recide l'accoppiamento Python↔Haiku che causava il bug direzione (Haiku legge la polarità, il lexicon perde il veto). La dedup event-level è la chiave di volta: senza, un errore su una storia ripetuta 20× viene amplificato, non mediato (CC, anti-assenso). Confidenza bassa → astiene |
+| 2026-06-09 (S100) | Gate falsificabile: shadow ~2 settimane, validazione su prezzo BTC 24h — NON su F&G | Validare sul Fear & Greed è circolare: il F&G è costruito in parte sulle stesse news → si anticiperebbe il proprio riflesso (CC). Niente cablaggio in Sentinel finché lo shadow non prova che i flip anticipano il prezzo. Lente di regime: mercato solo-bear → verdetto parziale |
 | 2026-06-08 (S99b) | **Anti-slippage v2 SHIPPED** (brief S99b-b, 3 parti: dashboard text fix + penalty in NEXT SELL IF + slippage penalty su sell profittevoli; commit `e26e67c`) | BONK burst: 5 sell in 4 min, slippage 3-4% ma penalty mai attiva perché tutte profittevoli. Lo slippage abbassa la sell ladder (feedback loop). Nuova regola: slippage > 1% su sell profittevole → penalty si arma. Soglia unica, non-cumulativa |
 | 2026-06-08 (S99b) | **Board override: SOL sell_pct 1.0% → 1.5% (manuale)** | Max ha fatto da Sherpa umano: SOL vendeva con profitto troppo piccolo a 1.0%. `changed_by='manual-ceo'`. Conferma che il workflow Sherpa automatico serve |
 | 2026-06-08 (S99b) | **Dashboard "per-lot" text corretto** | Fossile FIFO pre-S70. Il bot usa avg_cost dal S70 FASE 2, il testo non era mai stato aggiornato. Fix cosmetico, 1 riga |
@@ -252,8 +255,9 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 | **[S91 NEW] Integrità dati — `bot_state_snapshots` saldo grezzo** | 🆕 Da verificare | `bot_state_snapshots` fotografa il **saldo grezzo testnet (pre-funded)**, non la posizione €500 → verificare che **nessuna superficie pubblica** lo peschi. Minori: fallback `1,0×` non cappato in Sentinel; dead-band scritture Sherpa |
 | **[S90 NEW] Option C — slippage buffer su percentage sell path** | TODO pre-mainnet, brief separato | Brief separato pre-mainnet. Estendere il pattern `SLIPPAGE_BUFFER_PCT=0.03` (già attivo su SWEEP/LAST_SHOT path da brief 78b) anche al path `_execute_percentage_sell` per chiudere completamente la finestra di rischio post-fix A+B |
 | **[S90 NEW] Calibrazione parametri spike guard** (threshold 4% / confirm 50% / pause 5s) | Osservazione 7-14gg, poi decidere | Oggi i 3 parametri sono default argument della funzione `fetch_price_with_spike_guard`. Post osservazione: valutare se servono tunable per-coin via `bot_config` (BTC vs SOL vs BONK volatilità diverse). Voto CC: tenerli fissi finché dati live non suggeriscono altrimenti |
-| **[S83] NewsKeeper S2** | ✅ DONE (S94) | Haiku classifier live. T+7 quality review → S100 |
-| **[S97 NEW] NewsKeeper S3: daily digest** | Concept approvato, gated da S100 review | Haiku riceve headline 24h → risk score narrativo (calmo/alert/tempesta). Post quality review. Strada B (clustering) parcheggiata per volume alto |
+| [S83] NewsKeeper S2 | ✅ DONE — T+7 review chiusa (S100) | Verdetto: miglioramento netto sul regex (0 righe irrilevanti, 0 fallback, ~€6/mese), ma unità per-item sbagliata → redesign barometro. Bug direzione assorbito nel redesign (opzione C) |
+| [S97] NewsKeeper S3 daily digest | Assorbito nel barometro v2 | Il "risk score 24h calmo/alert/tempesta" È l'aggregato del barometro (3 stati). Non più item separato |
+| [S100 NEW] NewsKeeper v2 "barometro" — build SHIPPED + shadow LIVE | In attesa: verdetto T+14 (~23 giu) | 185/185 test, 1 bug dedup (rappresentante stale) trovato in review avversariale e fixato. **Committato/pushato `c8774db` + shadow LIVE Mac Mini (pid 97566), accanto a v1, NON in Sentinel** (CC corregge il "NON committato" del draft: Max ha autorizzato commit+push+lancio in S100). Tabella nuova newskeeper_regime; per-item arricchito (relevance/polarity/event_key). SCOPE newskeeper-v2-barometro |
 | **[S99 NEW] Passive Income Dashboard** | PARKED (post go-live timeline) | Brainstorm CC+Max completo (`config/2026-06-07_S100a_brief_passive-income-dashboard.md`). Decisioni strategiche prese. Implementazione sospesa fino a timeline go-live concreta. Se manca poco: "coming soon". Se manca molto: aspettare |
 | **[S88] Audit Area 2 remediation — 4/5 SHIPPED** | Resta 88d (UI debts) — verificare se il redesign li ha chiusi | Audit 2026-05-27 (CON RISERVE). 88a/88b/88c/88e shippati S88, resta 88d (UI debts). Il redesign Pastel Sticker v2 potrebbe aver risolto parte dei debiti UI → da verificare nella prossima sessione. Tracking: `audit_remediation_cover_sheet.md` |
 | **[S82] Brief NewsKeeper architetturale Session 1** | ✅ DONE (S83) | Scaffold shippato commit `49473a9`. Module 1 RSS feeds live standalone Mac Mini PID 78098. Sessioni 2-4 ancora pending |
