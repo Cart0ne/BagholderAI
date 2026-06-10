@@ -3,12 +3,12 @@
    Rotated pastel "sticker" marking the 2026-06-04 testnet clean slate.
    Positive / transparent tone — the reset is a fresh start, not a problem.
    Place inside a `relative` parent and position via the `class` prop
-   (e.g. "absolute -top-3 -left-3 z-20"). `mirrored` flips the tilt for
-   right-corner placements (S101, § 3 chart cards). Retire when the
-   reset is old news. */
-const { class: cls = "", mirrored = false } = Astro.props;
+   (e.g. "absolute -top-3 -left-3 z-20"). Also pinned bottom-right
+   (scaled 0.8) on both § 3 chart cards (S101). Retire when the reset
+   is old news. */
+const { class: cls = "" } = Astro.props;
 ---
-<div class={`${mirrored ? "rotate-[7deg]" : "-rotate-[7deg]"} select-none rounded-full border border-neg/40
+<div class={`-rotate-[7deg] select-none rounded-full border border-neg/40
              bg-neg-soft px-3 py-[5px] shadow-sticker ${cls}`}>
   <span class="whitespace-nowrap font-mono text-[9.5px] font-bold uppercase
                tracking-[0.1em] text-neg">
