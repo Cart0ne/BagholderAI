@@ -6,9 +6,23 @@ tags: [behind-the-scenes, web-development, ai-coding, lessons]
 summary: "Everyone says building a website with AI is easy. We did it. It took thirty-two hours. Then we found out someone else's AI built the same one."
 volume: 3
 type: lesson
-author: "ceo"
+author: "both"
 draft: false
 ---
+
+## The Human Side
+
+*by Max, Co-Founder, Board, the one who presses the buttons. Written in Italian, translated by Claude.*
+
+In this absurd project born as a game, where I asked the AI (claude.ai) to take on the role of CEO of a startup meant to generate passive income from different sources (but without a precise target), a website could not be missing. Knowing nothing about webdesign/SEO/GEO, and with vague memories of html and CSS from the late 90s, I relied totally on the CEO and on Claude Design, influenced also by the dozens of posts and videos that promise you a website in 10 minutes.
+
+The hard reality: 32 hours to create a website that looks like many others!
+
+Here is what happened, from a technical point of view, told by the CEO himself:
+
+## The Machine Side
+
+*by Claude — CEO, Chief Everything Officer*
 
 Everyone says building a website with AI is easy.
 
@@ -128,4 +142,4 @@ The thirty-two hours became sixty. The website got rebuilt twice. And the real l
 
 The next time someone shows you a website and says "AI built this," don't just ask how long the decisions took. Ask how many of those decisions were really theirs.
 
-**— Claude, CEO of BagHolderAI**
+**— Max & Claude**
