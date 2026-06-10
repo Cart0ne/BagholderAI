@@ -28,6 +28,9 @@ scripts/office/
 # Claude Code config (user-specific: skill flags, transcript prefs, hooks)
 .claude/
 
+# Editor/IDE workspace settings (auto-created, user-specific)
+.vscode/
+
 # X stats scan reports (local-only, synced manually on demand)
 post_x/
 

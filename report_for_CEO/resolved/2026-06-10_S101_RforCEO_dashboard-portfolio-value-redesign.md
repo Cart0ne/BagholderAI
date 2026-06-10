@@ -1,6 +1,6 @@
-# RforCEO — S101b · Dashboard §3 "Portfolio value" redesign + fix MTM −$100
+# RforCEO — S101 · Dashboard §3 "Portfolio value" redesign + fix MTM −$100
 
-**Data:** 2026-06-10 · **Sorgente:** sessione diretta con Max (nessun brief CEO) · **Commit:** `8ea0a23` (web-only, no bot, no restart, push → deploy Vercel) · **Suffisso b:** la sessione GSC mattutina era già S101; il commit message/commenti dicono "S101" per refuso di numerazione.
+**Data:** 2026-06-10 · **Sorgente:** sessione diretta con Max (nessun brief CEO) · **Commit:** `8ea0a23` + `ce5602d` sticker bottom-right (web-only, no bot, no restart, push → deploy Vercel) · **Numerazione:** questa sessione tiene **S101** (decisione Max, coerente con commit e commenti nel codice); la sessione GSC mattutina, auto-etichettatasi S101 senza committare la chiusura, è ri-etichettata **S101b**.
 
 ## 1. Perché
 
@@ -16,7 +16,7 @@ Max non capiva il grafico "Cumulative P&L · time series" della dashboard pubbli
 - **Asse in valore di portafoglio**: $600 = break-even (decisione D1 Max), break-even tratteggiato con legenda "the $600 we started with".
 - **Big number**: es. "−$2.71 · −0.45% · as of Jun 9" + frase "if we sold everything today · started with $600". Ancorato all'ultimo snapshot `daily_pnl` reale (D2), così numero e fine curva combaciano sempre; il valore live resta nell'hero.
 - **Tooltip onesto**: "$597.29 · −$2.71 (−0.45%)", con suffisso "est." sui giorni senza snapshot (prima il fallback su realized era silenzioso).
-- **Sticker "Fresh start · Jun 4"** replicato (prop `mirrored`, scala 0.8) sull'angolo alto-destro di entrambe le card §3: uno screenshot del singolo grafico si porta dietro il contesto testnet/reset.
+- **Sticker "Fresh start · Jun 4"** replicato in basso a destra su entrambe le card §3 (scala 0.8, stessa inclinazione dell'hero — posizione iterata con Max): uno screenshot del singolo grafico si porta dietro il contesto testnet/reset.
 - Fix minore: etichette settimane delle barre corrette ("May 31" → "Jun 1"; bug timezone in `weekKey`).
 
 ## 3. Scoperta — snapshot daily_pnl day-1 sottostimato (serve brief)
@@ -34,6 +34,6 @@ Verificato su DB: `total_value` 5-giu = **350.63** e 6-giu = **476.72**, ma a fi
 
 ## 5. Note di chiusura
 
-- Il commit `8ea0a23` include anche la **chiusura docs della S101-GSC** (header/§4/§10 di PROJECT_STATE + `SEO_RULES.md`) trovata in staging e mai committata da quella sessione. Contenuto verificato: nessun dato sensibile. S101-GSC resta **senza report RforCEO** (gap da sanare se ritenuto utile).
+- Il commit `8ea0a23` include anche la **chiusura docs della sessione GSC mattutina** (header/§4/§10 di PROJECT_STATE + `SEO_RULES.md`) trovata in staging e mai committata da quella sessione. Contenuto verificato: nessun dato sensibile. Quella sessione è ora etichettata **S101b** e resta **senza report RforCEO** (gap da sanare se ritenuto utile).
 - **Niente pull a inizio sessione** (Mac Mini irraggiungibile, ok Max): nessuna divergenza emersa, push fast-forward pulito. Repo runtime Mac Mini da allineare al prossimo sync (irrilevante per il sito: deploy via GitHub → Vercel).
 - Verifica: build Astro 19 pagine ok, preview locale con dati live Supabase (big number, asse, fill, sticker, range 1M/3M/ALL), console browser pulita.
