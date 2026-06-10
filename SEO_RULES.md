@@ -1,6 +1,6 @@
 # SEO_RULES.md — regole operative SEO/GEO del sito
 
-**Owner:** Claude Code (Intern). **Nato:** 2026-06-10 (S101), alla chiusura del caso GSC "Couldn't fetch".
+**Owner:** Claude Code (Intern). **Nato:** 2026-06-10 (S101b), alla chiusura del caso GSC "Couldn't fetch".
 **Scopo:** un posto solo per le regole SEO di `web_astro/`. Da rileggere PRIMA di toccare
 sitemap, robots, redirect, meta — e prima di aprire (ri-aprire) indagini su Search Console.
 Cap: 15 KB. I dettagli vivono nei file linkati, qui solo le regole e il perché.
@@ -10,7 +10,7 @@ Cap: 15 KB. I dettagli vivono nei file linkati, qui solo le regole e il perché.
 ## 1. Sitemap
 
 - Generata da `@astrojs/sitemap` in `web_astro/astro.config.mjs` → `sitemap-index.xml` + `sitemap-0.xml`.
-- **`lastmod` solo con date vere per pagina** (S101): i post prendono `date:` dal frontmatter
+- **`lastmod` solo con date vere per pagina** (S101b): i post prendono `date:` dal frontmatter
   via `serialize()`, `/blog` la data del post più recente, le pagine statiche NESSUN lastmod
   (meglio omettere che mentire). **MAI `lastmod: new Date()` globale**: un timestamp di build
   su tutte le URL a ogni deploy è il pattern che Google documenta come inaffidabile→ignorato.
@@ -39,7 +39,7 @@ Cap: 15 KB. I dettagli vivono nei file linkati, qui solo le regole e il perché.
 
 **Sintomo:** righe sitemap rosse "Couldn't fetch", "Last read" vuoto. Da aprile 2026, 6+ submit, ~2 mesi.
 
-**Diagnosi (2 audit + S101, evidenze):**
+**Diagnosi (2 audit + S101b, evidenze):**
 - Server-side PERFETTO, verificato due volte (15/05 e 10/06): HTTP 200 + `application/xml`,
   UA Googlebot ok, robots ok, DNS/TLS ok, XML valido, nessun redirect.
 - Google indicizza comunque: URL Inspection **live test OK sulle pagine HTML**, `/roadmap` in
@@ -61,7 +61,7 @@ retry a bassissima priorità sui domini piccoli/nuovi). NON blocca l'indicizzazi
    (i Product Expert escalano i bug veri) e **STOP energie**: la SEO funziona già.
 
 **Stato:** resubmit tracciante `?v=20260610` eseguito il 10/06. Evidenze complete:
-`audits/reports/20260515_audit[A3].md` §3.1 (prima diagnosi) + sessione S101 (chiusura).
+`audits/reports/20260515_audit[A3].md` §3.1 (prima diagnosi) + sessione S101b (chiusura).
 
 ## 5. Contenuti / post nuovi
 
