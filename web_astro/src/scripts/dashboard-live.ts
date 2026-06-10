@@ -43,6 +43,9 @@ const CQ = `&cycle=eq.${CYCLE}`;
    CYCLE (and live-stats.ts / grid.html). */
 const V3_LAUNCH_ISO = "2026-03-30T00:00:00Z";
 const CYCLE_START_ISO = "2026-06-05T00:00:00Z";
+/* Money basis of the current cycle: Grid $500 + TF $100 (S97b). Used by
+   the § 3 chart for the $-axis relabel, tooltip net worth and big number. */
+const INITIAL_CAPITAL = 600;
 
 const sbq = async <T>(table: string, params: string): Promise<T> => {
   const r = await fetch(`${SB_URL}/rest/v1/${table}?${params}`, { headers });
@@ -1080,7 +1083,11 @@ type DailyPnlRow = {
     const TF_BUDGET = 100;
     const endOfDay = dateStr + "T23:59:59";
     const inWindow = tfTrades.filter(t => t.created_at <= endOfDay);
-    if (!inWindow.length) return 0;
+    /* No TF trades yet this cycle → the TF fund is its untouched cash
+       budget, NOT zero. The old `return 0` shifted the whole MTM line
+       down by $100 whenever TF was idle (S101 fix, same family as the
+       S97b hero basis). */
+    if (!inWindow.length) return TF_BUDGET;
     const realized = inWindow.reduce(
       (s, t) => s + Number(t.realized_pnl || 0), 0,
     );
@@ -1129,7 +1136,11 @@ type DailyPnlRow = {
     const diffToMonday = day === 0 ? -6 : 1 - day;
     const monday = new Date(d);
     monday.setDate(d.getDate() + diffToMonday);
-    return monday.toISOString().slice(0, 10);
+    /* Format in LOCAL date parts (S101): toISOString() shifted local
+       midnight back to the previous UTC day, labeling the Jun 1 week
+       as "May 31" for any TZ east of UTC. */
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${monday.getFullYear()}-${pad(monday.getMonth() + 1)}-${pad(monday.getDate())}`;
   };
   const monthKey = (dateStr: string): string => dateStr.slice(0, 7);
 
@@ -1139,6 +1150,8 @@ type DailyPnlRow = {
     realizedDay: { grid: number; tf: number };
     realizedCum: number;
     mtmCum: number;
+    /* true = no daily_pnl snapshot for this day, mtmCum fell back to realized */
+    estimated: boolean;
   };
 
   function buildDailySeries(): DailyPoint[] {
@@ -1170,17 +1183,18 @@ type DailyPnlRow = {
       /* MTM = Grid total_value (from daily_pnl) + reconstructed TF. */
       const dp = dpByDate[dStr];
       let mtmCum: number;
+      let estimated = false;
       if (dp) {
         const gridVal = Number(dp.total_value || 0);
         const tfVal = reconstructTFForDay(dStr);
-        /* Subtract initial capital so the line shows P&L not net worth.
-           S97b: the current cycle is $600 throughout (Grid $500 + TF $100). */
-        const initial = 600;
-        mtmCum = +(gridVal + tfVal - initial).toFixed(2);
+        /* Subtract initial capital so the line shows P&L not net worth. */
+        mtmCum = +(gridVal + tfVal - INITIAL_CAPITAL).toFixed(2);
       } else {
-        /* No daily_pnl snapshot for this day yet — fall back to realized
-           (MTM line will hug the realized line for these points). */
+        /* No daily_pnl snapshot for this day yet — fall back to realized.
+           Flagged so the tooltip says "est." instead of passing the
+           fallback off as a real mark-to-market point (S101). */
         mtmCum = realizedCum;
+        estimated = true;
       }
 
       out.push({
@@ -1188,6 +1202,7 @@ type DailyPnlRow = {
         realizedDay: { grid: gridDay, tf: tfDay },
         realizedCum,
         mtmCum,
+        estimated,
       });
       cur.setUTCDate(cur.getUTCDate() + 1);
     }
@@ -1196,16 +1211,36 @@ type DailyPnlRow = {
 
   const fullDaily = buildDailySeries();
 
+  /* ----- Big number on the line card (S101, decision D2): last point
+     backed by a REAL daily_pnl snapshot, so the number always matches
+     the end of the curve. The live "now" figure stays in the hero. ----- */
+  {
+    const lastReal = [...fullDaily].reverse().find(d => !d.estimated);
+    const valueEl = document.getElementById("cumul-value");
+    if (lastReal && valueEl) {
+      const pnl = lastReal.mtmCum;
+      const pct = (pnl / INITIAL_CAPITAL) * 100;
+      valueEl.textContent = `${fmtSigned(pnl)} · ${fmtPct(pct)}`;
+      valueEl.classList.remove("text-text-muted");
+      valueEl.classList.add(pnl >= 0 ? "text-pos" : "text-neg");
+      const todayStr = new Date().toISOString().slice(0, 10);
+      setText(
+        "cumul-asof",
+        lastReal.date === todayStr ? "today" : `as of ${fmtLabel(lastReal.date, "daily")}`,
+      );
+    }
+  }
+
   /* ----- Aggregations for line (sample-last) and bars (sum) ----- */
-  type LineRow = { date: string; realizedCum: number; mtmCum: number };
+  type LineRow = { date: string; realizedCum: number; mtmCum: number; estimated: boolean };
   type BarRow  = { key: string; grid: number; tf: number; lastDate: string };
 
   function aggregateLine(data: DailyPoint[], periodFn: (d: string) => string): LineRow[] {
-    const byPeriod: Record<string, { date: string; realizedCum: number; mtmCum: number }> = {};
+    const byPeriod: Record<string, LineRow> = {};
     for (const d of data) {
       const k = periodFn(d.date);
       if (!byPeriod[k] || d.date > byPeriod[k].date) {
-        byPeriod[k] = { date: d.date, realizedCum: d.realizedCum, mtmCum: d.mtmCum };
+        byPeriod[k] = { date: d.date, realizedCum: d.realizedCum, mtmCum: d.mtmCum, estimated: d.estimated };
       }
     }
     return Object.keys(byPeriod).sort().map(k => byPeriod[k]);
@@ -1321,11 +1356,11 @@ type DailyPnlRow = {
 
     /* ----- Line data ----- */
     const lineRows: LineRow[] = lineGran === "daily"
-      ? windowed.map(d => ({ date: d.date, realizedCum: d.realizedCum, mtmCum: d.mtmCum }))
+      ? windowed.map(d => ({ date: d.date, realizedCum: d.realizedCum, mtmCum: d.mtmCum, estimated: d.estimated }))
       : aggregateLine(windowed, lineGran === "weekly" ? weekKey : monthKey);
     const cumLabels = lineRows.map(r => fmtLabel(r.date, lineGran));
-    const realizedData = lineRows.map(r => r.realizedCum);
     const mtmData = lineRows.map(r => r.mtmCum);
+    const breakEvenData = lineRows.map(() => 0);
 
     /* ----- Bar data ----- */
     const barRows: BarRow[] = aggregateBars(windowed, barGran === "weekly" ? weekKey : monthKey);
@@ -1375,8 +1410,8 @@ type DailyPnlRow = {
     const cumLabelEl = document.getElementById("cumul-label");
     if (cumLabelEl) {
       cumLabelEl.textContent = lineGran === "daily"
-        ? "Cumulative P&L · Grid + TF"
-        : "Cumulative P&L · Grid + TF (weekly)";
+        ? "Portfolio value · Grid + TF"
+        : "Portfolio value · Grid + TF (weekly)";
     }
     const barLabelEl = document.getElementById("bar-label");
     if (barLabelEl) {
@@ -1396,15 +1431,22 @@ type DailyPnlRow = {
         data: {
           labels: cumLabels,
           datasets: [
-            { label: "Realized", data: realizedData,
-              borderColor: "#4E8A57", backgroundColor: "rgba(78,138,87,0.06)",
-              borderWidth: 2, fill: "origin", tension: 0.3, pointRadius: 0,
+            /* Single line = mark-to-market portfolio vs start (S101).
+               Realized-only lives in the bars below; the old two-line
+               realized+MTM combo confused more than it explained.
+               Fill is semantic: green above break-even, clay underwater. */
+            { label: "Portfolio vs start", data: mtmData,
+              borderColor: "#4E8A57",
+              fill: { target: "origin",
+                      above: "rgba(78,138,87,0.10)",
+                      below: "rgba(192,90,67,0.16)" },
+              borderWidth: 2, tension: 0.3, pointRadius: 0,
               pointHoverRadius: 4, pointBackgroundColor: "#4E8A57",
               pointBorderColor: "#FFFFFF", pointBorderWidth: 2 },
-            { label: "MTM", data: mtmData,
-              borderColor: "rgba(78,138,87,0.5)", borderWidth: 1.5,
-              borderDash: [5, 5], fill: false, tension: 0.3, pointRadius: 0,
-              pointHoverRadius: 4 },
+            { label: "Break-even", data: breakEvenData,
+              borderColor: "rgba(89,99,79,0.45)", borderWidth: 1,
+              borderDash: [6, 5], fill: false, pointRadius: 0,
+              pointHoverRadius: 0 },
           ],
         },
         options: {
@@ -1417,12 +1459,14 @@ type DailyPnlRow = {
               borderColor: "rgba(255,255,255,0.15)", borderWidth: 1,
               titleFont: { size: 10 }, bodyFont: { size: 11 },
               displayColors: false,
+              filter: (item: any) => item.datasetIndex === 0,
               callbacks: {
                 label: (ctx: any) => {
-                  const v = ctx.parsed.y;
-                  const sign = v >= 0 ? "+" : "";
-                  const name = ctx.datasetIndex === 0 ? "Realized" : "MTM";
-                  return `${name}: ${sign}$${v.toFixed(2)}`;
+                  const pnl = ctx.parsed.y;
+                  const worth = INITIAL_CAPITAL + pnl;
+                  const pct = (pnl / INITIAL_CAPITAL) * 100;
+                  const est = lineRows[ctx.dataIndex]?.estimated ? " · est." : "";
+                  return `$${worth.toFixed(2)} · ${fmtSigned(pnl)} (${fmtPct(pct)})${est}`;
                 },
               },
             },
@@ -1430,7 +1474,12 @@ type DailyPnlRow = {
           scales: {
             x: { grid: { display: false }, ticks: { font: { size: 9 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 8 } },
             y: { grid: { color: "rgba(40,48,38,0.08)" }, ticks: { font: { size: 9 },
-                 callback: (v: any) => `${v >= 0 ? "+" : ""}$${v}` } },
+                 /* $-axis relabel (S101 D1): tick math stays in P&L space,
+                    labels read as portfolio value ($600 = break-even). */
+                 callback: (v: any) => {
+                   const worth = INITIAL_CAPITAL + Number(v);
+                   return `$${Number.isInteger(worth) ? worth : worth.toFixed(2)}`;
+                 } } },
           },
         },
       });

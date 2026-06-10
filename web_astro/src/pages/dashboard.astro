@@ -520,26 +520,42 @@ const tfSubtitle   = "The breakout hunter";
 
       <div class="space-y-4">
         {/* ---- Cumulative line ---- */}
-        <div class="rounded-2xl border border-border bg-surface shadow-sticker-sm p-5">
-          <div class="flex items-baseline justify-between mb-3">
+        <div class="relative rounded-2xl border border-border bg-surface shadow-sticker-sm p-5">
+          <CleanSlateSticker mirrored class="absolute -top-3 -right-3 z-20 origin-top-right scale-[0.8]" />
+          <div class="flex items-baseline justify-between flex-wrap gap-2 mb-2">
             <span id="cumul-label"
                   class="font-mono text-[11px] uppercase tracking-[0.1em] text-text-dim">
-              Cumulative P&amp;L · Grid + TF
+              Portfolio value · Grid + TF
             </span>
-            <span class="font-mono text-[10px] text-text-muted">realized + mtm</span>
+          </div>
+          {/* Big number (S101 D2): last point backed by a real daily_pnl
+              snapshot — always matches the end of the line below. The
+              live "now" figure stays in the hero NET WORTH card. */}
+          <div class="mb-3">
+            <div class="flex items-baseline gap-2.5">
+              <span id="cumul-value"
+                    class="font-display text-[24px] font-extrabold leading-none tabular-nums text-text-muted">—</span>
+              <span id="cumul-asof"
+                    class="font-mono text-[9.5px] uppercase tracking-[0.12em] text-text-muted"></span>
+            </div>
+            <div class="mt-1 font-mono text-[10px] text-text-muted">
+              if we sold everything today · started with $600
+            </div>
           </div>
           <div class="h-[200px] relative">
             <canvas id="chart-cumul"></canvas>
           </div>
-          <div class="mt-3 flex gap-4 font-mono text-[10px] text-text-muted">
-            <span><span class="inline-block w-3 h-px align-middle bg-pos mr-1"></span>realized</span>
-            <span><span class="inline-block w-3 h-px align-middle border-t border-dashed border-pos/60 mr-1"></span>mark-to-market</span>
+          <div class="mt-3 flex flex-wrap gap-x-4 gap-y-1 font-mono text-[10px] text-text-muted">
+            <span><span class="inline-block w-3 h-0.5 align-middle bg-pos mr-1"></span>portfolio vs start</span>
+            <span><span class="inline-block w-3 align-middle border-t border-dashed border-text-dim/60 mr-1"></span>break-even · the $600 we started with</span>
+            <span><span class="inline-block w-2 h-2 align-middle mr-1" style="background:rgba(192,90,67,0.35)"></span>underwater · below start</span>
           </div>
         </div>
 
         {/* ---- Stacked bar (weekly default) ---- */}
-        <div class="rounded-2xl border border-border bg-surface shadow-sticker-sm p-5">
-          <div class="flex items-baseline justify-between mb-3">
+        <div class="relative rounded-2xl border border-border bg-surface shadow-sticker-sm p-5">
+          <CleanSlateSticker mirrored class="absolute -top-4 -right-3 z-20 origin-top-right scale-[0.8]" />
+          <div class="flex items-baseline justify-between flex-wrap gap-2 mb-3">
             <span id="bar-label"
                   class="font-mono text-[11px] uppercase tracking-[0.1em] text-text-dim">
               Weekly realized · Grid + TF stacked
