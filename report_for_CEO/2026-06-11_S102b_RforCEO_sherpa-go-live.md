@@ -67,9 +67,11 @@ kill -TERM <PID>
 sleep 8
 ps aux | grep -E "[b]ot.orchestrator|[g]rid_runner|[b]ot.sentinel|[b]ot.sherpa"   # atteso: vuoto
 
-# 4) Relaunch CON SHERPA_MODE=live (nota il flag nuovo rispetto a S81/S99b-b)
+# 4) Relaunch CON SHERPA_MODE=live + SHERPA_TELEGRAM_ENABLED=true (flag nuovi vs S81/S99b-b)
+#    SHERPA_TELEGRAM_ENABLED=true è TEMPORANEO (D5, "primi giorni") — toglilo a un restart
+#    successivo per tornare silenzioso. SHERPA_MODE=live invece resta.
 cd /Volumes/Archivio/bagholderai
-nohup caffeinate -i -s -- env ENABLE_TF=true ENABLE_SENTINEL=true ENABLE_SHERPA=true SHERPA_MODE=live \
+nohup caffeinate -i -s -- env ENABLE_TF=true ENABLE_SENTINEL=true ENABLE_SHERPA=true SHERPA_MODE=live SHERPA_TELEGRAM_ENABLED=true \
   ./venv/bin/python3.13 -m bot.orchestrator > /tmp/orchestrator_s102b.log 2>&1 &
 
 # 5) Verifica boot (atteso: 7 processi — caffeinate + 3 grid + TF + Sentinel + Sherpa)
@@ -93,6 +95,7 @@ grep -i "sherpa" /tmp/orchestrator_s102b.log | tail -5     # atteso: "mode=live"
 | Battito di liveness (D4) | `SELECT symbol,proposed_regime,proposed_stop_buy_active,created_at FROM sherpa_proposals ORDER BY created_at DESC LIMIT 6;` | ~18 righe/gg (battiti, 1/coin ogni 4h); primo battito subito dopo il restart |
 | `sherpa_proposals` cambi parametro | — | **NON ci sono** in LIVE (i cambi sono in config_changes_log; sherpa_proposals contiene solo battiti, vedi Drift 2/D4) |
 | Dashboard STOP BUY | admin.html stat-row Sherpa | si aggiorna (legge i battiti freschi); non più congelata |
+| Telegram cambi parametro (D5) | canale @BagHolderAI_report | arrivano (throttle 1/10min per coin) per i primi giorni; ondata iniziale di convergenza → alcuni messaggi nei primi ~15 min |
 | Nessun impatto altri brain | grid/tf/sentinel/newskeeper logs | invariati |
 | Cooldown override Board | cambio manuale → riga `config_changes_log` `changed_by='manual-ceo'` | Sherpa salta quel parametro per 24h (salvaguardia) |
 
@@ -103,7 +106,8 @@ grep -i "sherpa" /tmp/orchestrator_s102b.log | tail -5     # atteso: "mode=live"
 1. **DECISIONE (Max D1)**: attivazione via env flag `SHERPA_MODE=live` al restart, default codice `dry_run` invariato. **RAZIONALE**: coerente col pattern ENABLE_*; non rovescia la safety "default dry_run". **ALTERNATIVE**: cambio default in main.py (scartata: ogni restart futuro partirebbe LIVE). **FALLBACK**: rimuovere `SHERPA_MODE=live` dal comando al prossimo restart → torna dry_run.
 2. **DECISIONE (Max D2)**: i cambi parametro restano solo in config_changes_log, niente shadow-write completo delle proposte in LIVE. **RAZIONALE**: in LIVE Sherpa è attuatore (design Sprint 1); la traccia config_changes_log + bot_events_log basta al Board. **ALTERNATIVE**: shadow-write di ogni proposta (scartata: oltre scope). **FALLBACK**: aggiungere `_insert_proposal` completo nel ramo LIVE se il Board cambia idea.
 3. **DECISIONE (Max D4)**: battito di liveness in LIVE (commit `ce92ed2`). **RAZIONALE**: il monitoraggio di processo dell'orchestrator copre il crash ma non lo zombie (processo vivo, loop fermo); serve un battito periodico per distinguerli, e riaggancia anche la dashboard STOP BUY. **ALTERNATIVE**: heartbeat su `bot_events_log` (scartata: non risolve la dashboard, che legge sherpa_proposals); affidarsi solo al monitoraggio crash (scartata: lo zombie resterebbe invisibile). **FALLBACK**: rimuovere il blocco heartbeat dal ramo LIVE (reversibile, isolato).
-4. **NOTA**: il write-guard S102a (`a867179`) è inerte in LIVE per i cambi parametro (vive nel ramo dry_run). Resta valido come rete in caso di ritorno a dry_run.
+4. **DECISIONE (Max D5)**: `SHERPA_TELEGRAM_ENABLED=true` al restart, **temporaneo** ("primi giorni"). **RAZIONALE**: vedere Sherpa lavorare al primo go-live LIVE; gli alert interni sono altrimenti spenti di default. **ALTERNATIVE**: silenzioso (scartata per la fase iniziale; resta l'opzione a regime). **FALLBACK**: togliere il flag a un restart successivo → torna silenzioso (i crash arrivano comunque dall'orchestrator). NB: throttle 1/10min per coin → l'ondata di convergenza iniziale non spamma.
+5. **NOTA**: il write-guard S102a (`a867179`) è inerte in LIVE per i cambi parametro (vive nel ramo dry_run). Resta valido come rete in caso di ritorno a dry_run.
 
 ---
 
