@@ -3,7 +3,7 @@
 **Data**: 2026-06-11 · **Sessione**: S102b
 **Brief sorgente**: `config/2026-06-11_S102b_brief_sherpa-go-live.md` (SCOPE `sherpa-go-live`)
 **Report a monte**: `2026-06-11_S102_RforCEO_sherpa-coherence-audit.md`
-**Commit**: docs-only (questo report + brief; memoria `reference_orchestrator_start` aggiornata) — **nessun cambio di codice** (vedi §1). Codice rilevante al restart: write-guard S102a `a867179` (già su main).
+**Commit**: attivazione = env flag, **nessun cambio di codice** (vedi §1). Codice al restart: write-guard S102a `a867179` + **battito liveness LIVE `ce92ed2`** (D4, vedi §1). Docs: questo report + brief; memoria `reference_orchestrator_start` aggiornata.
 **Stato**: ⏳ **DEPLOY PENDING** — Sherpa passa a LIVE solo al prossimo restart orchestrator (cumulativo con il write-guard S102a `a867179`). Comandi consegnati a Max (§3).
 
 ---
@@ -26,14 +26,16 @@ Il brief assumeva (a) un "file di config" con `SHERPA_MODE` da committare e (b) 
 
 ⚠️ **Conseguenza dell'opzione env-flag**: se a un restart futuro si dimentica `SHERPA_MODE=live`, Sherpa torna **silenziosamente** a dry_run. Mitigazione: il comando canonico aggiornato è registrato in questo report (§3) e nella memoria `reference_orchestrator_start`.
 
-### Drift 2 — in LIVE `sherpa_proposals` NON si popola più
+### Drift 2 — in LIVE `sherpa_proposals` non riceve i cambi parametro (solo il battito)
 
-Il ramo LIVE di `_handle_bot` ([main.py:494+](../bot/sherpa/main.py#L494)) chiama solo `write_parameter` (scrive `bot_config` + `config_changes_log`) + `log_event(SHERPA_ADJUSTMENT)`. **Non chiama mai `_insert_proposal`** — quello vive solo nel ramo dry_run. Conseguenza: in LIVE `sherpa_proposals` riceve **0 righe nuove**.
+Il ramo LIVE di `_handle_bot` chiama `write_parameter` (scrive `bot_config` + `config_changes_log`) + `log_event(SHERPA_ADJUSTMENT)`. Per i **cambi parametro** non chiama `_insert_proposal` → quei cambi NON finiscono in `sherpa_proposals` (sono in `config_changes_log`).
 
-- La verifica del brief §3 ("sherpa_proposals ≤ 20 righe/giorno, write guard attivo") **non è eseguibile come scritta**: sarà 0, non 20. Il write-guard S102a (`a867179`) vive nel ramo dry_run e in LIVE **non viene mai eseguito** → resta inerte (utile solo come rete se Sherpa torna in dry_run, es. rollback).
-- La verifica corretta in LIVE è su `config_changes_log` (`changed_by='sherpa'`) + `bot_events_log` (evento `SHERPA_ADJUSTMENT`, con `regime`/`volatility_multiplier` nei `details`).
+- La verifica del brief §3 ("sherpa_proposals ≤ 20 righe/giorno, write guard attivo") **non è eseguibile come scritta** per i cambi parametro: la traccia delle modifiche è in `config_changes_log` (`changed_by='sherpa'`) + `bot_events_log` (`SHERPA_ADJUSTMENT`, con `regime`/`volatility_multiplier` nei `details`).
+- Il write-guard S102a (`a867179`) vive nel ramo dry_run e in LIVE **non viene eseguito** per il filtro dei cambi → resta inerte (utile come rete se Sherpa torna in dry_run, es. rollback).
 
-**Decisione Max (D2): solo config_changes_log.** Nessuno shadow-write aggiunto (l'opzione "tieni viva sherpa_proposals anche in LIVE" è stata valutata e scartata: ~5 righe ma oltre lo scope, e il Board accetta la traccia config_changes_log/bot_events_log come da design Sprint 1, dove in LIVE Sherpa è attuatore non osservatore). Verifica §3 riformulata di conseguenza (§4 qui sotto).
+**Decisione Max (D2): solo config_changes_log per i cambi parametro** — nessuno shadow-write completo delle proposte in LIVE.
+
+**Decisione Max (D4, aggiunta in sessione): battito di liveness in LIVE.** Emersa verificando l'osservabilità: in LIVE, senza scritture su `sherpa_proposals`, (a) non si distingue "Sherpa vivo ma niente da cambiare" da "Sherpa bloccato/zombie" (il monitoraggio di processo dell'orchestrator copre solo il crash, non lo zombie), e (b) la lampada **STOP BUY** della dashboard admin — che legge `sherpa_proposals` ([sherpa-live.ts:64](../web_astro/src/scripts/sherpa-live.ts#L64)) — si **congela** su un valore vecchio. Fix (commit `ce92ed2`): in LIVE Sherpa scrive **una riga di SOLO battito** per coin ogni `SHERPA_HEARTBEAT_S` (4h) col regime/stop_buy corrente. È il polso, non il diario: i cambi parametro restano in `config_changes_log` (D2 invariato). Volume battiti in LIVE: 3 coin × 6/gg = **~18 righe/gg**, tutte heartbeat. Primo tick post-restart scrive subito → conferma boot + ri-aggancia la dashboard. Suite 198/198.
 
 ---
 
@@ -88,7 +90,9 @@ grep -i "sherpa" /tmp/orchestrator_s102b.log | tail -5     # atteso: "mode=live"
 | Sherpa scrive parametri | `SELECT * FROM config_changes_log WHERE changed_by='sherpa' ORDER BY created_at DESC LIMIT 20;` | righe nuove per BTC/SOL/BONK su buy_pct/sell_pct/idle |
 | bot_config cambia | `SELECT symbol,buy_pct,sell_pct,idle_reentry_hours,updated_at FROM bot_config WHERE managed_by='grid';` | valori diversi dai statici (BTC 0.50/1.50/8 → in movimento) |
 | Eventi con contesto | `SELECT * FROM bot_events_log WHERE event='SHERPA_ADJUSTMENT' ORDER BY created_at DESC LIMIT 20;` | regime + volatility_multiplier nei details |
-| `sherpa_proposals` | — | **0 righe nuove** (atteso in LIVE; NON è la lente, vedi Drift 2) |
+| Battito di liveness (D4) | `SELECT symbol,proposed_regime,proposed_stop_buy_active,created_at FROM sherpa_proposals ORDER BY created_at DESC LIMIT 6;` | ~18 righe/gg (battiti, 1/coin ogni 4h); primo battito subito dopo il restart |
+| `sherpa_proposals` cambi parametro | — | **NON ci sono** in LIVE (i cambi sono in config_changes_log; sherpa_proposals contiene solo battiti, vedi Drift 2/D4) |
+| Dashboard STOP BUY | admin.html stat-row Sherpa | si aggiorna (legge i battiti freschi); non più congelata |
 | Nessun impatto altri brain | grid/tf/sentinel/newskeeper logs | invariati |
 | Cooldown override Board | cambio manuale → riga `config_changes_log` `changed_by='manual-ceo'` | Sherpa salta quel parametro per 24h (salvaguardia) |
 
@@ -97,8 +101,9 @@ grep -i "sherpa" /tmp/orchestrator_s102b.log | tail -5     # atteso: "mode=live"
 ## 5. Decisions (decision log)
 
 1. **DECISIONE (Max D1)**: attivazione via env flag `SHERPA_MODE=live` al restart, default codice `dry_run` invariato. **RAZIONALE**: coerente col pattern ENABLE_*; non rovescia la safety "default dry_run". **ALTERNATIVE**: cambio default in main.py (scartata: ogni restart futuro partirebbe LIVE). **FALLBACK**: rimuovere `SHERPA_MODE=live` dal comando al prossimo restart → torna dry_run.
-2. **DECISIONE (Max D2)**: solo config_changes_log, niente shadow-write in sherpa_proposals. **RAZIONALE**: in LIVE Sherpa è attuatore (design Sprint 1); la traccia config_changes_log + bot_events_log basta al Board. **ALTERNATIVE**: shadow-write ~5 righe per tenere viva la lente sherpa_proposals (scartata: oltre scope, lente non necessaria). **FALLBACK**: aggiungere `_insert_proposal` nel ramo LIVE in un brief futuro se il Board cambia idea.
-3. **NOTA**: il write-guard S102a (`a867179`) è inerte in LIVE (vive nel ramo dry_run). Resta valido come rete in caso di ritorno a dry_run.
+2. **DECISIONE (Max D2)**: i cambi parametro restano solo in config_changes_log, niente shadow-write completo delle proposte in LIVE. **RAZIONALE**: in LIVE Sherpa è attuatore (design Sprint 1); la traccia config_changes_log + bot_events_log basta al Board. **ALTERNATIVE**: shadow-write di ogni proposta (scartata: oltre scope). **FALLBACK**: aggiungere `_insert_proposal` completo nel ramo LIVE se il Board cambia idea.
+3. **DECISIONE (Max D4)**: battito di liveness in LIVE (commit `ce92ed2`). **RAZIONALE**: il monitoraggio di processo dell'orchestrator copre il crash ma non lo zombie (processo vivo, loop fermo); serve un battito periodico per distinguerli, e riaggancia anche la dashboard STOP BUY. **ALTERNATIVE**: heartbeat su `bot_events_log` (scartata: non risolve la dashboard, che legge sherpa_proposals); affidarsi solo al monitoraggio crash (scartata: lo zombie resterebbe invisibile). **FALLBACK**: rimuovere il blocco heartbeat dal ramo LIVE (reversibile, isolato).
+4. **NOTA**: il write-guard S102a (`a867179`) è inerte in LIVE per i cambi parametro (vive nel ramo dry_run). Resta valido come rete in caso di ritorno a dry_run.
 
 ---
 
