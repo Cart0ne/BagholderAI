@@ -3,7 +3,7 @@
 **Data**: 2026-06-11 · **Sessione**: S102b
 **Brief sorgente**: `config/2026-06-11_S102b_brief_sherpa-go-live.md` (SCOPE `sherpa-go-live`)
 **Report a monte**: `2026-06-11_S102_RforCEO_sherpa-coherence-audit.md`
-**Commit**: `d942fc5` (solo docs: questo report + brief; memoria comando restart aggiornata) — **nessun cambio di codice** (vedi §1)
+**Commit**: docs-only (questo report + brief; memoria `reference_orchestrator_start` aggiornata) — **nessun cambio di codice** (vedi §1). Codice rilevante al restart: write-guard S102a `a867179` (già su main).
 **Stato**: ⏳ **DEPLOY PENDING** — Sherpa passa a LIVE solo al prossimo restart orchestrator (cumulativo con il write-guard S102a `a867179`). Comandi consegnati a Max (§3).
 
 ---
