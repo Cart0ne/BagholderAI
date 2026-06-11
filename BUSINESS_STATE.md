@@ -1,8 +1,8 @@
 # BUSINESS_STATE.md
 
-**Last updated:** 2026-06-10 — Session 101 (multi-track: dashboard §3 redesign, blog two-voice case-zero, GSC chiusura, draft order invertito, primo GEO data point). Cap file 50KB (Max S95, CLAUDE.md §2b). Cadenze audit canoniche in PROJECT_STATE §9. Prec.: S100 (NewsKeeper v2 barometro build + shadow).
-**Updated by:** CEO (update S101 via Max) — applicato da CC
-**Basato su:** PROJECT_STATE.md aggiornato 2026-06-10
+**Last updated:** 2026-06-11 — Session 102 (Sherpa coherence audit + GO LIVE testnet + write guard + battito liveness; NewsKeeper v2 shadow check T+36h). Cap file 50KB (Max S95, CLAUDE.md §2b). Cadenze audit canoniche in PROJECT_STATE §9. Prec.: S101 (dashboard §3 + blog two-voice + GSC).
+**Updated by:** CEO (update S102 via brief `config/S102_BUSINESS_STATE_update.md`) — applicato da CC
+**Basato su:** PROJECT_STATE.md aggiornato 2026-06-11
 
 ---
 
@@ -175,7 +175,7 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 
 ## 3. Diary Status
 
-**Sessione corrente: 99 COMPLETE** (two-day: Semrush audit + trailing slash + passive income brainstorm + sell pipeline audit + anti-slippage v2).
+**Sessione corrente: 102 BUILDING** (Sherpa coherence audit + go-live testnet + NewsKeeper v2 shadow check T+36h). S101 → COMPLETE. S100 → COMPLETE.
 
 **Volumi pubblicati:**
 - Volume 1 "From Zero to Grid" (S1–S23, €4.99) → https://payhip.com/b/a4yMc
@@ -197,6 +197,12 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 
 | Data | Decisione | Perché |
 |---|---|---|
+| 2026-06-11 (S102) | **Principio ownership parametri: Board = soldi, Sherpa = strategia** | Max: "Io controllo allocation, $/trade, skim. Sherpa controlla tutto il resto. Se sovrascrivo, cooldown 24h." Tre frasi che risolvono idle, circuit breaker, sell penalty |
+| 2026-06-11 (S102) | **Sherpa GO LIVE su testnet** (brief S102b, env flag `SHERPA_MODE=live`). **LIVE dal restart 21:42 CET, orchestrator PID 91177.** Scrive buy_pct, sell_pct, idle_reentry_hours — verificato DB: al primo tick 9 scritture `changed_by='sherpa'` (BTC 0.65/1.05/5.6, SOL 0.65/1.53/5.6, BONK 3.0/1.75/5.6) | DRY_RUN non produceva dati utili (cap ±30% su config congelata = 50K righe identiche). Testnet = zero rischio finanziario. CC report S102: tutti e 5 regimi implementati, coin-agnostic confermato |
+| 2026-06-11 (S102) | **idle_reentry_hours: Opzione C** — Sherpa riporta idle dentro il range di design (0.5-6h). L'8h attuale era un default mai rivisto | Il cap ±30% rende la transizione graduale (8→5.6→...→target in 2-7 tick). In extreme_fear stop_buy=ON rende idle irrilevante |
+| 2026-06-11 (S102) | **4 parametri restano Board-only**: stop_buy_drawdown_pct e min_profit_pct universali (uguali per tutti i coin); dead_zone_hours e stop_buy_unlock_hours per-coin ma statici (microstructura, non regime). Default automatici per coin nuovi | Nessuno dei 4 ha una tesi forte per diventare dinamico per regime. Sicurezza ≠ strategia |
+| 2026-06-11 (S102) | **Write guard Sherpa shippato** (commit `a867179`) + **battito liveness LIVE** (`ce92ed2`). Volume atteso: ~18 righe/gg (-99%) | Filtro write-on-change esisteva (S79c) ma bypass su stop_buy in extreme_fear. Fix: gate flip-based + heartbeat 4h. In LIVE il battito tiene viva la lampada dashboard + distingue "vivo" da "bloccato" |
+| 2026-06-11 (S102) | **NewsKeeper v2 "Barometro" shadow check T+36h: sano** | 203 segnali, 0 fallback Haiku, flip neutral→bearish a T+4h, stabile bearish 31h. abstain_frac=0. Verdetto T+14 ~23 giugno |
 | 2026-06-10 (S101) | **Dashboard §3 "Portfolio value" redesigned** (commit `8ea0a23` + `ce5602d`). Single MTM line, fill semantico, fix TF $100→$0, big number ancorato a snapshot reale, sticker "Fresh start" su entrambe le card. Scoperto bug snapshot day-1 (cycle-mixing hypothesis) — brief parked pre-reset luglio | Max non capiva il grafico e aveva ragione due volte: confuso E sbagliato. Il chart mostrava −$102.71 invece di −$2.71 (stessa famiglia bug S97b) |
 | 2026-06-10 (S101a) | **Two-voice caso-zero shipped su canonical** (commit `944e74d`). `thirty-two-hours` → `author: both`, intro Max verbatim, firma `— Max & Claude`. Dev.to: blocco-tesi + short/long version pronti, in attesa settings | Primo post col nuovo standard. CC ha corretto una contraddizione nel brief CEO (firma singola vs README §3 firma congiunta). Anti-assenso funzionante |
 | 2026-06-10 (S101) | **Ordine pubblicazione SEO-GEO invertito: 3→4→2→5** | Reddit comment stats: thread beginner-angle 4× views vs tecnico (4.9K vs 1.1K). Non-coder angle è Max's actual story. Keyword "ai trading bot" (+900%) non scade |
@@ -255,12 +261,14 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 
 | Tema | Stato | Note |
 |---|---|---|
+| **[S102 NEW] Formalizzare parametri Board-only + default automatici coin nuovi** | S103 | Brief S103: documentare che stop_buy_dd, stop_buy_unlock, dead_zone, min_profit sono Board-only. Implementare default automatici (universali o per-coin basati su volatility multiplier) per quando si aggiunge un coin nuovo |
+| **[S102 NEW] Regime stickiness innesto barometro↔Sherpa** | Post-verdetto T+14 (~23 giu) + primo regime non-bear | Fattibilità confermata CC: opzione (a)+(c), ~5-7h, 4 file. Barometro modula la velocità del cap, non la destinazione. NON costruire prima del verdetto |
 | **[S99b NEW] Monitoraggio anti-slippage v2 su BONK testnet** | Osservazione | Soglia 1% con slippage strutturale 3-4%: BONK sarà penalizzato quasi sempre. Se si congela (deadlock), alzare soglia o renderla per-coin |
 | **[S99b] Dashboard penalty in NEXT SELL IF** | ✅ DONE | runtime mirror espone `_sell_pct_penalty`, dashboard la include nella formula |
-| **[S91 NEW] Integrità dati — `bot_state_snapshots` saldo grezzo** | 🆕 Da verificare | `bot_state_snapshots` fotografa il **saldo grezzo testnet (pre-funded)**, non la posizione €500 → verificare che **nessuna superficie pubblica** lo peschi. Minori: fallback `1,0×` non cappato in Sentinel; dead-band scritture Sherpa |
+| **[S91 NEW] Integrità dati — `bot_state_snapshots` saldo grezzo** | 🆕 Da verificare | `bot_state_snapshots` fotografa il **saldo grezzo testnet (pre-funded)**, non la posizione €500 → verificare che **nessuna superficie pubblica** lo peschi. Minori: fallback `1,0×` non cappato in Sentinel; dead-band scritture Sherpa ✅ DONE (S102a write guard `a867179`) |
 | **[S90 NEW] Option C — slippage buffer su percentage sell path** | TODO pre-mainnet, brief separato | Brief separato pre-mainnet. Estendere il pattern `SLIPPAGE_BUFFER_PCT=0.03` (già attivo su SWEEP/LAST_SHOT path da brief 78b) anche al path `_execute_percentage_sell` per chiudere completamente la finestra di rischio post-fix A+B |
 | **[S90 NEW] Calibrazione parametri spike guard** (threshold 4% / confirm 50% / pause 5s) | Osservazione 7-14gg, poi decidere | Oggi i 3 parametri sono default argument della funzione `fetch_price_with_spike_guard`. Post osservazione: valutare se servono tunable per-coin via `bot_config` (BTC vs SOL vs BONK volatilità diverse). Voto CC: tenerli fissi finché dati live non suggeriscono altrimenti |
-| [S83] NewsKeeper S2 | ✅ DONE — T+7 review chiusa (S100) | Verdetto: miglioramento netto sul regex (0 righe irrilevanti, 0 fallback, ~€6/mese), ma unità per-item sbagliata → redesign barometro. Bug direzione assorbito nel redesign (opzione C) |
+| [S83] NewsKeeper S2 | ✅ DONE (S94 + T+7 quality review S100) | V2 Barometro in shadow, verdetto T+14 ~23 giugno. Verdetto T+7: miglioramento netto sul regex (0 righe irrilevanti, 0 fallback, ~€6/mese), ma unità per-item sbagliata → redesign barometro. Bug direzione assorbito nel redesign (opzione C) |
 | [S97] NewsKeeper S3 daily digest | Assorbito nel barometro v2 | Il "risk score 24h calmo/alert/tempesta" È l'aggregato del barometro (3 stati). Non più item separato |
 | [S100 NEW] NewsKeeper v2 "barometro" — build SHIPPED + shadow LIVE | In attesa: verdetto T+14 (~23 giu) | 185/185 test, 1 bug dedup (rappresentante stale) trovato in review avversariale e fixato. **Committato/pushato `c8774db` + shadow LIVE Mac Mini (pid 97566), accanto a v1, NON in Sentinel** (CC corregge il "NON committato" del draft: Max ha autorizzato commit+push+lancio in S100). Tabella nuova newskeeper_regime; per-item arricchito (relevance/polarity/event_key). SCOPE newskeeper-v2-barometro |
 | **[S99 NEW] Passive Income Dashboard** | PARKED (post go-live timeline) | Brainstorm CC+Max completo (`config/2026-06-07_S100a_brief_passive-income-dashboard.md`). Decisioni strategiche prese. Implementazione sospesa fino a timeline go-live concreta. Se manca poco: "coming soon". Se manca molto: aspettare |
@@ -282,13 +290,14 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 
 | Vincolo | Scadenza | Note |
 |---|---|---|
-| **NewsKeeper T+7 quality review** | ~8 giugno 2026 | Verifica qualità: tasso FP, direzioni corrette, lead/lag vs Sentinel, costo Haiku. Sblocca decisione timing Sentinel |
+| **NewsKeeper T+7 quality review** | ✅ DONE (S100, report shipped) | V2 Barometro in shadow, verdetto T+14 ~23 giugno |
+| **NewsKeeper v2 Barometro T+14 verdetto** | ~23 giugno 2026 | Validare flip barometro vs ritorno prezzo BTC 24h. Se 14gg solo-bear: verdetto parziale, estendere. Esiti: promuovere (cablaggio Sentinel) o bocciare (→ /news, blog "esperimento fallito") |
 | **Correzione feed CNBC Economy** | ✅ FATTA (S94, commit `8515378`) | BBC→CNBC Economy + MarketWatch. Restart Mac Mini 22:04 CET, CNBC contribuisce `haiku_s2` verificato. (Era "da dare a CC" nel paste, già shippata) |
 | **Site redesign "Pastel Sticker v2"** | ✅ FATTO (S97, 2026-06-05) | Merge e deploy completati da Max, LIVE su bagholderai.lol. Rimovibile dalla lista vincoli alla prossima compaction |
 | **SEO+GEO POST 2 drafting** | ~metà giugno | "Why Most AI Trading Bots Fail (And What Ours Did Wrong Too)" — keyword: ai trading bot. Cadenza 1 post ogni 1-2 settimane |
 | **Apple Notes pulizia: cancellare 8 note obsolete (Max)** | A discrezione Max | 4 note attive da mantenere, 8 obsolete da cancellare manualmente |
-| **Go-live mainnet** | Nessuna data fissa | Dipende da condizioni di mercato (bear+bull+laterale osservati). Sequenza: NewsKeeper build (S2-S4 residue) → Sherpa testnet LIVE → dry_run → Board approval |
-| **Sherpa LIVE su testnet** | Post Brain Analysis 2 ✅ | Un parametro alla volta (sell_pct primo). Bloccato da timing Sentinel lento (slow loop 4h) |
+| **Go-live mainnet** | Nessuna data fissa | Dipende da condizioni di mercato (bear+bull+laterale osservati). Sequenza: Sherpa LIVE testnet ✅ → osservazione → S103 parametri Board-only → barometro verdict (~23 giu) → Board approval → mainnet €100 |
+| **Sherpa LIVE su testnet** | ✅ DONE (S102, restart 2026-06-11 21:42 CET, PID 91177) | Scrive buy_pct, sell_pct, idle_reentry_hours (tutti e 3 insieme, non un parametro alla volta — il cap ±30% rende la transizione comunque graduale). Prossimo: S103 parametri Board-only + default |
 | **NewsKeeper — prima analisi** | ~lun 1 giugno | Job 1 anti-rumore Haiku → Job 2 lead/lag vs Sentinel. Decide timing Sentinel (Phase B vs accelerare NewsKeeper) |
 | **Volume 4** | Nessuna deadline | In accumulo da S83, arco narrativo NewsKeeper build → go-live |
 
@@ -304,7 +313,7 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 |---|---|
 | **Pagina /news pubblica** | Parked fino a maturità NewsKeeper (Haiku live da S94, ma T+7 quality review ~8 giugno ancora pendente; il vecchio regex aveva ~60% FP → non si espone classificazione non validata). Fonte: analisi tbot S98 (lui mostra gli stessi 3 feed RSS ma senza label AI → quando esponiamo, lo battiamo con sentiment/severità) |
 | **Tabella performance per regime su dashboard** | Parked fino a profondità dati sufficiente (testnet_2 ha ~2 giorni). Fonte: analisi tbot S98 |
-| **Sherpa non controlla i grid bot** | DRY_RUN intenzionale. I grid comprano durante extreme_fear (BTC ~$62K, F&G=11). Decisione Board S97: testnet = dati gratuiti, la roadmap non cambia. Sherpa LIVE (solo stop_buy) resta il primo passo post-Brain Analysis matura |
+| **Sherpa controlla 3/7 parametri strategici** | LIVE su testnet dal 2026-06-11 (restart 21:42 CET, non più DRY_RUN). Scrive buy_pct, sell_pct, idle_reentry_hours. I 4 rimanenti (stop_buy_dd, stop_buy_unlock, dead_zone, min_profit) restano Board-only con default automatici (S103). Il principio ownership: Board=soldi, Sherpa=strategia |
 | **BONK grid — RISOLTO** | Era bloccato dalla guardia 72a (deficit 99,91% dopo il reset mensile testnet). Sbloccato dal clean slate S96a (cycle tagging `testnet_2`): ripartito pulito il 2026-06-04, $150 cash, holdings 0, guardia passata. _(NB: le righe "Reset testnet — Rimandato" qui sotto sono ora superate.)_ |
 | **Paper trade re-import** | Backup esiste (`/Volumes/Archivio/bagholderai/audits/2026-05-08_pre-reset-s67/`, 51.943 righe JSONL) ma non serve re-importarlo nel DB. Disponibile per narrativa/diary quando serve |
 | **Sentinel Phase B** | Parcheggiata fino a post T+7 NewsKeeper (8 giugno) |
