@@ -419,6 +419,16 @@ def _handle_bot(
         or (prev_stop_buy is not None and prev_stop_buy != proposed_stop_buy_active)
     last_stop_buy_active[symbol] = proposed_stop_buy_active
 
+    # S102b: heartbeat is computed for BOTH modes. last_write_ts_per_symbol
+    # tracks the last sherpa_proposals row for this symbol (in either mode),
+    # so heartbeat_due == "the proposals table has been silent for this
+    # symbol for SHERPA_HEARTBEAT_S". DRY_RUN joins it to the change gate;
+    # LIVE uses it for a periodic liveness row (see the LIVE branch).
+    now_ts = time.time()
+    heartbeat_due = (
+        now_ts - last_write_ts_per_symbol.get(symbol, 0.0)
+    ) >= SHERPA_HEARTBEAT_S
+
     if dry_run:
         # Write to sherpa_proposals only when the proposal identity moved
         # since the previous cycle. No-op cycles are pure noise for replay
@@ -435,10 +445,6 @@ def _handle_bot(
         #   write the transition, skip the steady state. The regime is
         #   part of the comparison too. Expected stable-market volume:
         #   heartbeat only, 3 coins × 6/day = 18 rows/day.
-        now_ts = time.time()
-        heartbeat_due = (
-            now_ts - last_write_ts_per_symbol.get(symbol, 0.0)
-        ) >= SHERPA_HEARTBEAT_S
         change_due = params_changed or regime_changed or stop_buy_flipped or cooldown_flipped
         if change_due or heartbeat_due:
             _insert_proposal(
@@ -536,6 +542,39 @@ def _handle_bot(
     if (would_have_changed and params_changed
             and any(p not in cooldown_locked for p in changed_params)):
         _alert_live(notifier, last_alert_ts, symbol, current, proposed)
+
+    # S102b liveness heartbeat (LIVE mode). In LIVE Sherpa writes parameters
+    # straight to bot_config (audit trail in config_changes_log) and never
+    # touches sherpa_proposals — so in a stable regime that table goes silent
+    # and we can't distinguish "alive, nothing to change" from "stuck", and
+    # the admin STOP BUY lamp (which reads sherpa_proposals) freezes on a
+    # weeks-old value. Write one row per symbol per SHERPA_HEARTBEAT_S
+    # carrying the current regime / stop_buy. This is the heartbeat ONLY —
+    # real parameter changes stay in config_changes_log (decision D2: no
+    # full shadow-write of every proposal). First tick post-restart always
+    # fires (last_write_ts default 0.0), confirming Sherpa is up.
+    if heartbeat_due:
+        _insert_proposal(
+            supabase=supabase,
+            symbol=symbol,
+            risk=risk,
+            opp=opp,
+            current=current,
+            proposed=proposed,
+            proposed_regime=proposed_regime,
+            current_stop_buy_drawdown_pct=_f(bot.get("stop_buy_drawdown_pct")),
+            proposed_stop_buy_active=proposed_stop_buy_active,
+            cooldown_active=cooldown_active,
+            cooldown_parameters=cooldown_locked,
+            would_have_changed=would_have_changed,
+            btc_price=btc_price,
+            symbol_price=symbol_price,
+        )
+        last_write_ts_per_symbol[symbol] = now_ts
+        logger.info(
+            "Sherpa LIVE heartbeat %s: alive, regime=%s, stop_buy=%s",
+            symbol, proposed_regime, proposed_stop_buy_active,
+        )
 
 
 def _insert_proposal(

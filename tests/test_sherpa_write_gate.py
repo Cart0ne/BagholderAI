@@ -34,6 +34,12 @@ sys.modules.setdefault("telegram.constants", _fake_constants)
 
 from bot.sherpa import main as sherpa_main
 
+# log_event() (db.event_logger) creates its OWN Supabase client via
+# get_client(), bypassing the FakeSupabase. The LIVE branch calls it on
+# SHERPA_ADJUSTMENT → a real network write. Stub it so these tests stay
+# hermetic (no network, no junk rows in bot_events_log).
+sherpa_main.log_event = lambda *a, **k: None
+
 
 # ----------------------------------------------------------------------
 # Fakes
@@ -41,11 +47,13 @@ from bot.sherpa import main as sherpa_main
 
 class FakeTable:
     """Generic chainable PostgREST stub: select/eq/gte/neq/order/limit
-    return self; execute() returns the canned rows; insert() captures."""
+    return self; execute() returns the canned rows; insert()/update()
+    capture their payloads."""
 
     def __init__(self, rows=None):
         self._rows = rows or []
         self.inserts = []
+        self.updates = []
 
     def select(self, *a, **k):
         return self
@@ -69,6 +77,10 @@ class FakeTable:
         self.inserts.append(payload)
         return self
 
+    def update(self, payload):
+        self.updates.append(payload)
+        return self
+
     def execute(self):
         return type("Result", (), {"data": self._rows})()
 
@@ -77,11 +89,13 @@ class FakeSupabase:
     def __init__(self, cooldown_rows=None, proposal_rows=None):
         self.proposals = FakeTable(rows=proposal_rows)
         self.changes = FakeTable(rows=cooldown_rows)
+        self.config = FakeTable()
 
     def table(self, name):
         return {
             "sherpa_proposals": self.proposals,
             "config_changes_log": self.changes,
+            "bot_config": self.config,
         }[name]
 
 
@@ -104,21 +118,21 @@ CURRENT = {"buy_pct": 0.5, "sell_pct": 1.5, "idle_reentry_hours": 8.0}
 
 
 def _tick(supabase, state, proposed=None, regime="extreme_fear",
-          stop_buy=True):
+          stop_buy=True, dry_run=True, current=None):
     sherpa_main._handle_bot(
         supabase=supabase,
         notifier=_notifier(),
         bot={"symbol": "BTC/USDT", "stop_buy_drawdown_pct": 2},
         risk=85,
         opp=15,
-        current=dict(CURRENT),
+        current=dict(current or CURRENT),
         proposed=dict(proposed or PROPOSED),
         proposed_regime=regime,
         proposed_stop_buy_active=stop_buy,
         volatility_multiplier=1.0,
         btc_price=None,
         symbol_price=None,
-        dry_run=True,
+        dry_run=dry_run,
         last_alert_ts=state["alerts"],
         last_proposed=state["proposed"],
         last_stop_buy_active=state["stop_buy"],
@@ -292,6 +306,55 @@ def test_restart_in_persistent_extreme_fear_does_not_write():
     state["ts"]["BTC/USDT"] = time.time()  # heartbeat not due
     _tick(sb, state)
     assert len(sb.proposals.inserts) == 0, "restart must not write spuriously"
+
+
+# ----------------------------------------------------------------------
+# LIVE mode — liveness heartbeat (S102b)
+# ----------------------------------------------------------------------
+
+def test_live_writes_params_to_bot_config_not_proposals():
+    """In LIVE Sherpa writes parameters straight to bot_config +
+    config_changes_log; it does NOT log the proposal in sherpa_proposals
+    (decision D2). With a fresh ts the heartbeat also fires (one liveness
+    row), but the parameter changes themselves never become proposal rows."""
+    sb = FakeSupabase(cooldown_rows=[])
+    state = _state()
+    state["ts"]["BTC/USDT"] = time.time()      # heartbeat NOT due
+    moved = dict(PROPOSED, sell_pct=1.30, buy_pct=0.65)
+    _tick(sb, state, proposed=moved, dry_run=False)
+    # parameters written to bot_config (buy_pct + sell_pct changed vs CURRENT)
+    assert len(sb.config.updates) >= 1
+    # audit rows in config_changes_log, NOT in sherpa_proposals
+    assert len(sb.changes.inserts) >= 1
+    assert len(sb.proposals.inserts) == 0
+
+
+def test_live_first_tick_writes_liveness_heartbeat():
+    """First LIVE tick post-restart (ts default 0.0 → heartbeat due) writes
+    exactly one liveness row to sherpa_proposals, confirming Sherpa is up
+    and seeding the admin STOP BUY lamp."""
+    sb = FakeSupabase(cooldown_rows=[])
+    state = _state()
+    # current == proposed so no parameter writes — isolate the heartbeat
+    _tick(sb, state, proposed=dict(CURRENT), dry_run=False)
+    assert len(sb.proposals.inserts) == 1
+    assert sb.proposals.inserts[0]["proposed_stop_buy_active"] is True
+    assert sb.proposals.inserts[0]["proposed_regime"] == "extreme_fear"
+
+
+def test_live_heartbeat_silent_between_windows():
+    """In a stable LIVE regime with nothing to change, Sherpa writes the
+    liveness row once per SHERPA_HEARTBEAT_S — not every tick."""
+    sb = FakeSupabase(cooldown_rows=[])
+    state = _state()
+    _tick(sb, state, proposed=dict(CURRENT), dry_run=False)   # first → heartbeat
+    assert len(sb.proposals.inserts) == 1
+    _tick(sb, state, proposed=dict(CURRENT), dry_run=False)   # within window → silent
+    _tick(sb, state, proposed=dict(CURRENT), dry_run=False)
+    assert len(sb.proposals.inserts) == 1
+    state["ts"]["BTC/USDT"] = time.time() - sherpa_main.SHERPA_HEARTBEAT_S - 1
+    _tick(sb, state, proposed=dict(CURRENT), dry_run=False)   # window elapsed → beat
+    assert len(sb.proposals.inserts) == 2
 
 
 if __name__ == "__main__":
