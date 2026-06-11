@@ -55,11 +55,14 @@ logger = logging.getLogger("bagholderai.sherpa")
 
 LOOP_INTERVAL_S = 120
 
-# Brief 79c (S79 2026-05-18): even when the existing on-change filter
-# (would_have_changed OR stop_buy_active OR cooldown_active) skips an
+# Brief 79c (S79 2026-05-18): even when the on-change filter skips an
 # insert, write at least one row per symbol per SHERPA_HEARTBEAT_S so
 # dashboards know Sherpa is alive.
-SHERPA_HEARTBEAT_S = 600  # 10 min
+# Brief S102 (2026-06-11): 600s -> 4h, aligned with the Sentinel slow
+# loop — the regime (the only dynamic input) can't move faster than
+# that, so a denser heartbeat adds rows without information. Floor in
+# a stable market: 3 coins × 6/day = 18 rows/day.
+SHERPA_HEARTBEAT_S = 4 * 60 * 60  # 4h
 # Brief 81a (Sprint 2): Sherpa now reads slow-loop rows, emitted every 4h.
 # Stale window is 6h = 4h cadence + 2h slack for backend hiccups.
 STALE_SCORE_S = 6 * 60 * 60
@@ -137,12 +140,22 @@ def run_sherpa() -> None:
     # spurious "first message" wave for proposals that haven't changed.
     last_proposed: dict[str, dict] = _bootstrap_last_proposed(supabase)
     # last_stop_buy_active mirrors the same logic for the boolean
-    # proposed_stop_buy_active flag — only alert when it flips.
-    last_stop_buy_active: dict[str, bool] = {}
+    # proposed_stop_buy_active flag — only alert/write when it flips.
+    # S102: seeded from the same bootstrap, otherwise every restart in a
+    # persistent extreme_fear regime would write/alert one spurious
+    # "flip" per symbol.
+    last_stop_buy_active: dict[str, bool] = {
+        s: v["stop_buy_active"]
+        for s, v in last_proposed.items()
+        if v.get("stop_buy_active") is not None
+    }
     # Brief 79c (S79): per-symbol heartbeat — write a row at least every
     # SHERPA_HEARTBEAT_S even when the existing on-change filter skips it.
     # First tick post-restart always writes (default 0.0).
     last_write_ts_per_symbol: dict[str, float] = {}
+    # S102: skipped-write counter per symbol, surfaced in the heartbeat
+    # log line so the console stays quiet between heartbeats.
+    skips_since_write: dict[str, int] = {}
 
     while not shutting_down["v"]:
         try:
@@ -223,6 +236,7 @@ def run_sherpa() -> None:
                     last_proposed=last_proposed,
                     last_stop_buy_active=last_stop_buy_active,
                     last_write_ts_per_symbol=last_write_ts_per_symbol,
+                    skips_since_write=skips_since_write,
                 )
 
         except Exception as e:
@@ -240,24 +254,29 @@ def run_sherpa() -> None:
 
 def _bootstrap_last_proposed(supabase) -> dict[str, dict]:
     """Read the latest sherpa_proposals row per active manual symbol so a
-    restart doesn't trigger a fresh Telegram wave for proposals that
-    haven't actually changed.
+    restart doesn't trigger a fresh Telegram wave (or a spurious write)
+    for proposals that haven't actually changed.
 
-    Returns a dict {symbol: {buy_pct, sell_pct, idle_reentry_hours}}.
+    Returns a dict {symbol: {buy_pct, sell_pct, idle_reentry_hours,
+    regime, stop_buy_active, cooldown_active}} — S102 extended the
+    on-change comparison beyond the 3 numeric params, so the bootstrap
+    must carry the full proposal identity.
+
     Symbols with no prior proposal are simply absent — first cycle after
-    boot will alert as a 'first proposal' for them, which is correct.
+    boot will write/alert as a 'first proposal' for them, which is correct.
     """
     out: dict[str, dict] = {}
     try:
-        # Pull a generous window (last 6 hours, ~180 rows) and pick the
-        # most recent row per symbol. PostgREST doesn't expose DISTINCT ON
-        # via the JS client; doing it client-side is fine for 6 symbols.
+        # Pull a window slightly wider than the heartbeat (4h) and pick
+        # the most recent row per symbol. PostgREST doesn't expose
+        # DISTINCT ON via the JS client; client-side is fine for 6 symbols.
         from datetime import timedelta
-        cutoff = (datetime.now(timezone.utc) - timedelta(hours=6)).isoformat()
+        cutoff = (datetime.now(timezone.utc) - timedelta(hours=8)).isoformat()
         rows = (
             supabase.table("sherpa_proposals")
             .select("symbol, proposed_buy_pct, proposed_sell_pct, "
-                    "proposed_idle_reentry_hours, created_at")
+                    "proposed_idle_reentry_hours, proposed_regime, "
+                    "proposed_stop_buy_active, cooldown_active, created_at")
             .gte("created_at", cutoff)
             .order("created_at", desc=True)
             .execute()
@@ -270,6 +289,9 @@ def _bootstrap_last_proposed(supabase) -> dict[str, dict]:
                 "buy_pct": _f(row.get("proposed_buy_pct")),
                 "sell_pct": _f(row.get("proposed_sell_pct")),
                 "idle_reentry_hours": _f(row.get("proposed_idle_reentry_hours")),
+                "regime": row.get("proposed_regime"),
+                "stop_buy_active": row.get("proposed_stop_buy_active"),
+                "cooldown_active": row.get("cooldown_active"),
             }
         logger.info(f"Bootstrapped last_proposed for {len(out)} symbols")
     except Exception as e:
@@ -352,6 +374,7 @@ def _handle_bot(
     last_proposed: dict,
     last_stop_buy_active: dict,
     last_write_ts_per_symbol: dict,
+    skips_since_write: dict,
 ) -> None:
     symbol = bot["symbol"]
 
@@ -368,10 +391,28 @@ def _handle_bot(
     # the same exact thing. The new rule: alert only on a fresh proposal,
     # then stay silent until the proposal *itself* changes again.
     prev = last_proposed.get(symbol)
-    proposal_changed = (prev is None) or any(
+    params_changed = (prev is None) or any(
         is_changed(prev.get(p), proposed[p]) for p in PROPOSED_PARAMS
     )
-    last_proposed[symbol] = dict(proposed)
+    # Brief S102: the on-change identity of a proposal covers regime and
+    # the cooldown window too, compared as transitions (flips), so a
+    # regime change that leaves the numerics identical (the ±30% cap can
+    # saturate two regimes onto the same values) still gets recorded,
+    # and the open/close of a Board-override window leaves exactly two
+    # rows instead of 720/day. None-aware: a missing prev field (pre-S102
+    # bootstrap row) never counts as a flip.
+    regime_changed = prev is not None and prev.get("regime") not in (None, proposed_regime)
+    cooldown_flipped = (
+        prev is not None
+        and prev.get("cooldown_active") is not None
+        and bool(prev.get("cooldown_active")) != cooldown_active
+    )
+    last_proposed[symbol] = {
+        **proposed,
+        "regime": proposed_regime,
+        "stop_buy_active": proposed_stop_buy_active,
+        "cooldown_active": cooldown_active,
+    }
 
     prev_stop_buy = last_stop_buy_active.get(symbol)
     stop_buy_flipped = (prev_stop_buy is None and proposed_stop_buy_active) \
@@ -379,36 +420,27 @@ def _handle_bot(
     last_stop_buy_active[symbol] = proposed_stop_buy_active
 
     if dry_run:
-        # Write to sherpa_proposals only when there's a counterfactual
-        # signal to record: would_have_changed=true OR a stop_buy
-        # would-have-activated event OR a cooldown skip. No-op cycles
-        # (proposed == current, no cooldown, no stop_buy) are pure
-        # noise for replay analysis and would 3x the write volume.
-        # Per-proposal SHERPA_PROPOSAL events also dropped — sherpa_proposals
-        # already captures the row; doubling it in bot_events_log added
-        # ~2,400 rows/day with no information gain. Lifecycle/cooldown/
-        # error events still go through log_event below.
-        # Brief 79c S79.1 (S79 same-night fix): the original guard used
-        # `would_have_changed` (proposed != current bot_config). In DRY_RUN
-        # Sherpa never writes bot_config, so `current` never moves and
-        # `would_have_changed` stays true cronicamente — 100% of cycles
-        # passed the filter, defeating 79c (verified live: 45 rows/30min
-        # vs 44 baseline, ~0% reduction).
-        #
-        # Switched to `proposal_changed` (proposed differs from previous
-        # cycle's proposed). DRY_RUN: stabile → 0 write except heartbeat.
-        # LIVE: behaves identically since on write current catches up to
-        # proposed at the next tick, and proposal stability matches
-        # bot_config stability.
-        #
-        # `proposed_stop_buy_active` and `cooldown_active` retained as
-        # "salient event" passes — these are state flips that always
-        # warrant a record. Heartbeat 600s ensures alive signal.
+        # Write to sherpa_proposals only when the proposal identity moved
+        # since the previous cycle. No-op cycles are pure noise for replay
+        # analysis. History of this gate:
+        # - Brief 79c S79.1 (2026-05-18): guard switched from
+        #   `would_have_changed` (proposed != current bot_config — in
+        #   DRY_RUN current never moves, so it was true cronicamente) to
+        #   proposal-vs-previous-cycle.
+        # - Brief S102 (2026-06-11): `proposed_stop_buy_active` and
+        #   `cooldown_active` were level-based passes ("write while
+        #   true"), which bypassed the filter on EVERY tick during the
+        #   persistent extreme_fear regime from May 29 (~2,100 rows/day,
+        #   stop_buy true on 100% of them). Now both are flip-based:
+        #   write the transition, skip the steady state. The regime is
+        #   part of the comparison too. Expected stable-market volume:
+        #   heartbeat only, 3 coins × 6/day = 18 rows/day.
         now_ts = time.time()
         heartbeat_due = (
             now_ts - last_write_ts_per_symbol.get(symbol, 0.0)
         ) >= SHERPA_HEARTBEAT_S
-        if proposal_changed or proposed_stop_buy_active or cooldown_active or heartbeat_due:
+        change_due = params_changed or regime_changed or stop_buy_flipped or cooldown_flipped
+        if change_due or heartbeat_due:
             _insert_proposal(
                 supabase=supabase,
                 symbol=symbol,
@@ -426,14 +458,36 @@ def _handle_bot(
                 symbol_price=symbol_price,
             )
             last_write_ts_per_symbol[symbol] = now_ts
+            n_skips = skips_since_write.pop(symbol, 0)
+            if change_due:
+                reasons = [r for r, flag in (
+                    ("params", params_changed),
+                    ("regime", regime_changed),
+                    ("stop_buy_flip", stop_buy_flipped),
+                    ("cooldown_flip", cooldown_flipped),
+                ) if flag]
+                logger.info(
+                    "Sherpa proposal written for %s: %s", symbol, "+".join(reasons)
+                )
+            else:
+                # S102 decision (Max 2026-06-11): the per-skip console
+                # line the brief asked for would be ~2,000 lines/day;
+                # the count inside the heartbeat carries the same
+                # information at 18 lines/day.
+                logger.info(
+                    "Sherpa heartbeat %s: proposal unchanged (%d skips since last write)",
+                    symbol, n_skips,
+                )
         else:
+            skips_since_write[symbol] = skips_since_write.get(symbol, 0) + 1
             logger.debug("sherpa write skipped for %s: no change", symbol)
         # Alert gate: would_have_changed is the precondition (no point
         # telling Max "I'd adjust" when proposed == current), AND the
-        # proposal must have moved since last cycle. Stop-buy flip is
-        # treated as its own alert reason — even if params didn't move,
-        # the risk crossing 90 is news worth surfacing.
-        if (would_have_changed and proposal_changed) or stop_buy_flipped:
+        # numeric proposal must have moved since last cycle (regime/
+        # cooldown flips with identical numbers would make a confusing
+        # "0.65→0.65" message). Stop-buy flip is its own alert reason —
+        # even if params didn't move, the lamp flipping is news.
+        if (would_have_changed and params_changed) or stop_buy_flipped:
             _alert_dry_run(notifier, last_alert_ts, symbol, current, proposed)
         return
 
@@ -479,7 +533,7 @@ def _handle_bot(
                     "volatility_multiplier": volatility_multiplier,
                 },
             )
-    if (would_have_changed and proposal_changed
+    if (would_have_changed and params_changed
             and any(p not in cooldown_locked for p in changed_params)):
         _alert_live(notifier, last_alert_ts, symbol, current, proposed)
 
