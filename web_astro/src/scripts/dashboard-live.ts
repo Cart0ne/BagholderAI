@@ -461,7 +461,9 @@ function analyzeCoin(trades: AllTrade[]): {
   };
 }
 
-(async () => {
+/* S103b: was an IIFE; now a named function so the §2 cards can be polled
+   every 5 minutes (see the brain/poll block at the end of this file). */
+async function renderInstruments() {
   try {
     const [configs, allTrades, skimRows, trendCfg] = await Promise.all([
       sbq<ConfigFull[]>(
@@ -694,14 +696,13 @@ function analyzeCoin(trades: AllTrade[]): {
     }));
     renderCashBar("tf-cash-bar", tfPerCoinTagged, TF_BUDGET - tf.skim);
 
-    /* ============ Render coin cards (Grid + TF) ============ */
+    /* ============ Render coin chips (Grid + TF) — Brief S103b ============ */
     renderTfNatives("tf-natives", tfPerCoinTagged);
-    renderSharedCards("shared-cards", []);    /* tf_grid coins, populated when allocated */
     renderGridNatives("grid-natives", gridPerCoinTagged, []);
   } catch (err) {
     console.warn("[dashboard-live] § 2 instruments failed:", err);
   }
-})();
+}
 
 /* ====================================================================
    4. § 4 RECENT ACTIVITY — last N trades.
@@ -905,90 +906,39 @@ function unrealizedPct(unrealized: number, openCost: number): number {
   return openCost > 0 ? (unrealized / openCost) * 100 : 0;
 }
 
-function renderTfNatives(
-  id: string,
-  coins: Array<{
-    symbol: string; alloc: number; mtmValue: number; avgBuy: number;
-    unrealized: number; openCost: number;
-  }>,
-) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  /* TF native: tag "tf" amber, avg buy price (consistent with Grid). */
-  const cards = coins.map(c => `
-    <div class="rounded-xl border border-border bg-surface shadow-sticker-sm p-3 h-full">
-      <div class="flex items-baseline justify-between gap-1.5 mb-1">
-        <span class="font-mono text-[11px] tracking-[0.05em]"
-              style="color:${colorFor(c.symbol)}">${shortFor(c.symbol)}</span>
-        <span class="font-mono text-[7px] uppercase tracking-[0.14em] px-1.5 py-0.5 rounded"
-              style="background:rgba(181,134,46,0.12);color:#B5862E">tf</span>
-      </div>
-      <div class="text-[16px] font-semibold text-text my-1">${fmtUsd(c.mtmValue)}</div>
-      <div class="font-mono text-[10px] text-text-muted">avg ${fmtPriceJs(c.avgBuy)}</div>
-      <div class="font-mono text-[11px] mt-1 ${c.unrealized >= 0 ? "text-pos" : "text-neg"}">
-        ${fmtSigned(c.unrealized)} (${fmtPct(unrealizedPct(c.unrealized, c.openCost))})
-      </div>
-    </div>
-  `).join("");
-  /* Pad with empty cells so single-coin TF doesn't stretch. */
-  const padding = "<div></div>".repeat(Math.max(0, 3 - coins.length));
-  el.innerHTML = cards + padding;
+/* Brief S103b: coin chip — symbol + current value (r1), avg buy + unrealized
+   change (r2). Shared by Grid "Managed coins" and TF "Open positions". */
+type ChipCoin = {
+  symbol: string; mtmValue: number; avgBuy: number;
+  unrealized: number; openCost: number;
+};
+
+function coinChip(c: ChipCoin): string {
+  const cls = c.unrealized >= 0 ? "db-pos" : "db-neg";
+  return `<div class="db-chip">` +
+    `<div class="r1"><span class="sym" style="color:${colorFor(c.symbol)}">${shortFor(c.symbol)}</span>` +
+    `<span class="px">${fmtUsd(c.mtmValue)}</span></div>` +
+    `<div class="r2"><span class="avg">avg ${fmtPriceJs(c.avgBuy)}</span>` +
+    `<span class="chg ${cls}">${fmtSigned(c.unrealized)} (${fmtPct(unrealizedPct(c.unrealized, c.openCost))})</span></div>` +
+    `</div>`;
 }
 
-function renderSharedCards(
-  id: string,
-  coins: Array<{
-    symbol: string; alloc: number; mtmValue: number; avgBuy: number;
-    unrealized: number; openCost: number;
-  }>,
-) {
+function renderTfNatives(id: string, coins: ChipCoin[]) {
   const el = document.getElementById(id);
   if (!el) return;
-  el.innerHTML = coins.map(c => `
-    <div class="rounded-lg border bg-panel p-3 shadow-[0_8px_24px_rgba(40,48,38,0.14)]"
-         style="border-color:#3F7589">
-      <div class="flex items-baseline justify-between gap-1.5 mb-1">
-        <span class="font-mono text-[11px] tracking-[0.05em]"
-              style="color:${colorFor(c.symbol)}">${shortFor(c.symbol)}</span>
-        <span class="pulse-shared font-mono text-[7px] uppercase tracking-[0.14em] px-1.5 py-0.5 rounded"
-              style="background:#E3EAEE;color:#3F7589">shared</span>
-      </div>
-      <div class="text-[15px] font-semibold text-text">${fmtUsd(c.mtmValue)}</div>
-      <div class="font-mono text-[9px] text-text-muted">avg ${fmtPriceJs(c.avgBuy)}</div>
-      <div class="font-mono text-[10px] mt-1 ${c.unrealized >= 0 ? "text-pos" : "text-neg"}">
-        ${fmtSigned(c.unrealized)} (${fmtPct(unrealizedPct(c.unrealized, c.openCost))})
-      </div>
-    </div>
-  `).join("");
+  const open = coins.filter(c => c.mtmValue > 0);
+  el.innerHTML = open.length
+    ? open.map(coinChip).join("")
+    : `<div class="db-empty"><span>None — 100% cash.<br>Scanning Tier 1-2<br>for breakouts.</span></div>`;
 }
 
-function renderGridNatives(
-  id: string,
-  coins: Array<{
-    symbol: string; alloc: number; mtmValue: number; avgBuy: number;
-    unrealized: number; openCost: number;
-  }>,
-  _shared: Array<{
-    symbol: string; alloc: number; mtmValue: number; avgBuy: number;
-    unrealized: number; openCost: number;
-  }>,
-) {
+function renderGridNatives(id: string, coins: ChipCoin[], _shared: ChipCoin[]) {
   const el = document.getElementById(id);
   if (!el) return;
-  /* Manual coins shown with their stats. Shared coins show as "from TF"
-     but financially do NOT count under Grid totals (those are tf.* above). */
-  const manualCards = coins.map(c => `
-    <div class="rounded-xl border border-border bg-surface shadow-sticker-sm p-3 h-full">
-      <span class="font-mono text-[11px] tracking-[0.05em]"
-            style="color:${colorFor(c.symbol)}">${shortFor(c.symbol)}</span>
-      <div class="text-[16px] font-semibold text-text my-1">${fmtUsd(c.mtmValue)}</div>
-      <div class="font-mono text-[10px] text-text-muted">avg ${fmtPriceJs(c.avgBuy)}</div>
-      <div class="font-mono text-[11px] mt-1 ${c.unrealized >= 0 ? "text-pos" : "text-neg"}">
-        ${fmtSigned(c.unrealized)} (${fmtPct(unrealizedPct(c.unrealized, c.openCost))})
-      </div>
-    </div>
-  `).join("");
-  el.innerHTML = manualCards;
+  const held = coins.filter(c => c.mtmValue > 0);
+  el.innerHTML = held.length
+    ? held.map(coinChip).join("")
+    : `<div class="db-empty"><span>No open positions yet.</span></div>`;
 }
 
 /* ====================================================================
@@ -1556,3 +1506,206 @@ type DailyPnlRow = {
 
   renderCharts();
 })();
+
+/* ====================================================================
+   6. § 2 BRAINS + sparklines + 5-min polling (Brief S103b 2026-06-12).
+   NewsKeeper / Sentinel / Sherpa live rails + trader net-worth sparklines,
+   polled over the whole §2 every 300s. Queries verified vs the real schema
+   (the brief's were stale):
+   - barometer  → newskeeper_regime.state (NOT newskeeper_signals.barometer_state)
+   - headlines  → newskeeper_signals.summary + polarity (smallint)
+   - regime/F&G → sentinel_scores(slow).raw_signals.{regime,fng_value}
+   - risk/opp + btc/funding → sentinel_scores(fast) columns
+   ==================================================================== */
+async function sbGet<T = any>(table: string, params: string): Promise<T[]> {
+  const r = await fetch(`${SB_URL}/rest/v1/${table}?${params}`, { headers });
+  if (!r.ok) throw new Error(`${table}: ${r.status}`);
+  return (await r.json()) as T[];
+}
+
+function setHTML(id: string, html: string) {
+  const el = document.getElementById(id);
+  if (el) el.innerHTML = html;
+}
+
+function escapeHtml(s: string): string {
+  return s.replace(/[&<>"]/g, c =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c] as string);
+}
+
+function agoStr(iso: string): string {
+  const m = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+  if (m < 1) return "just now";
+  if (m < 60) return `${m} min ago`;
+  const h = Math.round(m / 60);
+  if (h < 24) return `${h}h ago`;
+  return `${Math.round(h / 24)}d ago`;
+}
+
+/* Draw a net-worth sparkline into an existing <svg viewBox="0 0 100 30">. */
+function drawSpark(id: string, values: number[], colorVar: string) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const pts = values.filter(v => Number.isFinite(v));
+  if (pts.length < 2) {
+    el.innerHTML = `<polyline points="2,15 98,15" fill="none" stroke="${colorVar}" stroke-width="1.6" stroke-linecap="round"></polyline>`;
+    return;
+  }
+  const min = Math.min(...pts), max = Math.max(...pts);
+  const span = max - min || 1;
+  const x = (i: number) => 2 + (96 * i) / (pts.length - 1);
+  const y = (v: number) => 28 - 26 * ((v - min) / span);
+  const line = pts.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(" ");
+  const lastX = x(pts.length - 1).toFixed(1);
+  const lastY = y(pts[pts.length - 1]).toFixed(1);
+  el.innerHTML =
+    `<polygon points="2,30 ${line} ${lastX},30" fill="${colorVar}" opacity="0.12"></polygon>` +
+    `<polyline points="${line}" fill="none" stroke="${colorVar}" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"></polyline>` +
+    `<circle cx="${lastX}" cy="${lastY}" r="2.2" fill="${colorVar}"></circle>`;
+}
+
+async function renderSparklines() {
+  try {
+    const rows = await sbGet<{ date: string; total_value: number }>(
+      "daily_pnl",
+      `select=date,total_value&managed_by=eq.grid&cycle=eq.testnet_2&order=date.desc&limit=7`,
+    );
+    drawSpark("grid-spark", rows.map(r => Number(r.total_value)).reverse(), "var(--color-bot-grid)");
+    /* TF is idle this cycle (no daily_pnl history) → keep the flat default. */
+  } catch (err) {
+    console.warn("[dashboard-live] sparkline failed:", err);
+  }
+}
+
+/* Fear&Greed gauge bands, display order, with soft + solid tokens. */
+const GAUGE_BANDS = [
+  { key: "extreme_fear",  soft: "var(--color-primary-soft)", solid: "var(--color-primary)" },
+  { key: "fear",          soft: "var(--color-neu-soft)",     solid: "var(--color-neu)" },
+  { key: "neutral",       soft: "var(--color-border-soft)",  solid: "var(--color-text-muted)" },
+  { key: "greed",         soft: "var(--color-warn-soft)",    solid: "var(--color-warn)" },
+  { key: "extreme_greed", soft: "var(--color-neg-soft)",     solid: "var(--color-neg)" },
+];
+
+function regimePosture(regime: string): { label: string; soft: string; solid: string } {
+  if (regime === "extreme_fear" || regime === "fear")
+    return { label: "Defensive", soft: "var(--color-primary-soft)", solid: "var(--color-primary)" };
+  if (regime === "greed" || regime === "extreme_greed")
+    return { label: "Aggressive", soft: "var(--color-warn-soft)", solid: "var(--color-warn)" };
+  return { label: "Neutral", soft: "var(--color-neu-soft)", solid: "var(--color-neu)" };
+}
+
+const POSTURE_TEXT: Record<string, string> = {
+  extreme_fear:  "buy tight, sell fast, wait long",
+  fear:          "buy cautious, sell early, slow pace",
+  neutral:       "balanced grid, standard pace",
+  greed:         "buy often, let profits run, fast pace",
+  extreme_greed: "buy every dip, hold for pump, rapid fire",
+};
+
+async function renderBrains() {
+  /* NewsKeeper — headlines + 24h barometer. */
+  try {
+    const heads = await sbGet<{ summary: string; polarity: number | null }>(
+      "newskeeper_signals", `select=summary,polarity&order=created_at.desc&limit=4`);
+    if (heads.length) {
+      const sev = (p: number | null) =>
+        (p ?? 0) > 0 ? "var(--color-pos)" : (p ?? 0) < 0 ? "var(--color-neg)" : "var(--color-text-muted)";
+      setHTML("nk-headlines", heads.map(h =>
+        `<div class="db-headline"><span class="sev" style="background:${sev(h.polarity)}"></span><span>${escapeHtml(h.summary)}</span></div>`
+      ).join(""));
+    }
+    const baro = await sbGet<{ state: string }>(
+      "newskeeper_regime", `select=state&order=created_at.desc&limit=1`);
+    const st = baro[0]?.state;
+    const bEl = document.getElementById("nk-barometer");
+    if (st && bEl) {
+      const map: Record<string, [string, string]> = {
+        bearish: ["Bearish", "var(--color-neg)"],
+        bullish: ["Bullish", "var(--color-pos)"],
+        neutral: ["Neutral", "var(--color-text-muted)"],
+      };
+      const [label, color] = map[st] ?? ["Neutral", "var(--color-text-muted)"];
+      bEl.textContent = label;
+      bEl.style.color = color;
+    }
+  } catch (err) { console.warn("[dashboard-live] NewsKeeper rail failed:", err); }
+
+  /* Sentinel — gauge (slow regime/F&G) + risk/opp + BTC/funding strip (fast). */
+  try {
+    const [slow, fast] = await Promise.all([
+      sbGet<{ risk_score: number; opportunity_score: number; raw_signals: any }>(
+        "sentinel_scores", `select=risk_score,opportunity_score,raw_signals&score_type=eq.slow&order=created_at.desc&limit=1`),
+      sbGet<{ risk_score: number; opportunity_score: number; btc_change_1h: number; funding_rate: number }>(
+        "sentinel_scores", `select=risk_score,opportunity_score,btc_change_1h,funding_rate&score_type=eq.fast&order=created_at.desc&limit=1`),
+    ]);
+    const regime = slow[0]?.raw_signals?.regime as string | undefined;
+    const gauge = document.getElementById("sent-gauge");
+    if (gauge) {
+      let active = GAUGE_BANDS.findIndex(b => b.key === regime);
+      if (active < 0) active = 2;
+      Array.from(gauge.children).forEach((node, i) => {
+        const span = node as HTMLElement;
+        const band = GAUGE_BANDS[i];
+        if (!band) return;
+        if (i === active) { span.classList.add("on"); span.style.background = band.solid; }
+        else { span.classList.remove("on"); span.style.background = band.soft; }
+      });
+    }
+    const f = fast[0] ?? slow[0];
+    if (f) {
+      const risk = Number(f.risk_score), opp = Number(f.opportunity_score);
+      const rb = document.getElementById("sent-risk-bar"); if (rb) rb.style.width = `${risk}%`;
+      const ob = document.getElementById("sent-opp-bar");  if (ob) ob.style.width = `${opp}%`;
+      setText("sent-risk", String(risk));
+      setText("sent-opp", String(opp));
+    }
+    const fc = fast[0];
+    if (fc) {
+      const b = Number(fc.btc_change_1h), fr = Number(fc.funding_rate);
+      const bs = b >= 0 ? "+" : "−", fs = fr >= 0 ? "+" : "−";
+      setText("sent-strip",
+        `₿ BTC ${bs}${Math.abs(b).toFixed(2)}% (1h) · Funding ${fs}${Math.abs(fr * 100).toFixed(4)}%`);
+    }
+  } catch (err) { console.warn("[dashboard-live] Sentinel rail failed:", err); }
+
+  /* Sherpa — regime badge + per-coin table + last update. */
+  try {
+    const rows = await sbGet<{
+      symbol: string; proposed_buy_pct: number; proposed_sell_pct: number;
+      proposed_idle_reentry_hours: number; proposed_regime: string; created_at: string;
+    }>("sherpa_proposals",
+      `select=symbol,proposed_buy_pct,proposed_sell_pct,proposed_idle_reentry_hours,proposed_regime,created_at&order=created_at.desc&limit=30`);
+    if (rows.length) {
+      const regime = rows[0].proposed_regime;
+      const badge = document.getElementById("sherpa-regime");
+      if (badge) {
+        const p = regimePosture(regime);
+        badge.style.background = p.soft;
+        badge.style.color = p.solid;
+        badge.style.borderColor = `color-mix(in srgb, ${p.solid} 25%, transparent)`;
+        const svg = badge.querySelector("svg")?.outerHTML ?? "";
+        badge.innerHTML = `${svg} ${p.label}`;
+      }
+      const order = ["BTC/USDT", "SOL/USDT", "BONK/USDT"];
+      const latest: Record<string, any> = {};
+      for (const r of rows) if (!latest[r.symbol]) latest[r.symbol] = r;
+      const posture = POSTURE_TEXT[regime] ?? "—";
+      const coinRows = order.filter(s => latest[s]).map(s => {
+        const r = latest[s];
+        const params = `${Number(r.proposed_buy_pct)} / ${Number(r.proposed_sell_pct)} / ${Number(r.proposed_idle_reentry_hours)}h`;
+        return `<div class="db-coinrow"><span class="sym">${shortFor(s)}</span><span class="posture">${posture}</span><span class="params">${params}</span></div>`;
+      }).join("");
+      if (coinRows) setHTML("sherpa-coins", coinRows);
+      setText("sherpa-last", `Last update: ${agoStr(rows[0].created_at)}`);
+    }
+  } catch (err) { console.warn("[dashboard-live] Sherpa rail failed:", err); }
+}
+
+/* Initial render + 5-minute poll over the whole §2 (traders + brains). */
+function refreshInstruments() {
+  renderInstruments();
+  renderBrains();
+  renderSparklines();
+}
+refreshInstruments();
+setInterval(refreshInstruments, 300_000);

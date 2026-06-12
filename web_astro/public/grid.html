@@ -278,7 +278,7 @@
       margin: 10px 0 6px; padding-bottom: 4px;
       border-bottom: 1px solid var(--border);
     }
-    .param-group-label.pct-label { color: var(--teal); }
+    .param-group-label.pct-label { color: var(--red); }   /* Grid = managed by Sherpa (S103a) */
     .param-group-label.safety-label { color: var(--yellow); }
 
     /* Fixed grid fields: dim when pct mode is active */
@@ -1053,24 +1053,24 @@
           '</div>' +
           '<div class="config-section">' +
             '<div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-bottom:8px;">PARAMETERS</div>' +
-            '<div class="param-group-label">Trading Parameters</div>' +
+            '<div class="param-group-label">Trading Parameters — by Board</div>' +
             '<div class="config-grid">' +
               configField(short, 'capital_allocation', 'Allocation ($)', cfg.capital_allocation) +
               configField(short, 'capital_per_trade', '$/Trade', cfg.capital_per_trade) +
               configField(short, 'skim_pct', 'Skim % (profit reserve)', cfg.skim_pct) +
             '</div>' +
-            '<div class="param-group-label pct-label">Grid Parameters</div>' +
+            '<div class="param-group-label pct-label">Grid Parameters — by Sherpa</div>' +
             '<div class="config-grid">' +
               configField(short, 'buy_pct', 'Buy %', cfg.buy_pct) +
               configField(short, 'sell_pct', 'Sell %', cfg.sell_pct) +
-              configField(short, 'profit_target_pct', 'Min Profit %', cfg.profit_target_pct) +
               configField(short, 'idle_reentry_hours', 'Idle re-entry (hours)', cfg.idle_reentry_hours) +
             '</div>' +
-            '<div class="param-group-label safety-label">⚠️ Safety</div>' +
+            '<div class="param-group-label safety-label">⚠️ Security — by Sherpa</div>' +
             '<div class="config-grid">' +
               configField(short, 'stop_buy_drawdown_pct', 'Stop-buy drawdown %', cfg.stop_buy_drawdown_pct) +
               configField(short, 'stop_buy_unlock_hours', 'Stop-buy unlock (hours)', cfg.stop_buy_unlock_hours) +
               configField(short, 'dead_zone_hours', 'Dead-zone unblock (hours)', cfg.dead_zone_hours) +
+              configField(short, 'profit_target_pct', 'Min Profit %', cfg.profit_target_pct) +
             '</div>' +
             '<div class="save-row">' +
               '<button class="btn-save" id="save-' + short + '" onclick="saveConfig(\'' + sym + '\', \'' + short + '\')" disabled>Save changes</button>' +

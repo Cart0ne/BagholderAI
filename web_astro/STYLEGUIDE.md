@@ -251,7 +251,8 @@ colore nuovo, prima si aggiunge a `global.css`, poi si usa.
 **Bot accent tokens — pastello** (barre di colore §2, pill stato,
 indicatori "salute bot" su `/dashboard`):
 - `--color-bot-grid` `#5E8A54` · `--color-bot-tf` `#B5862E` ·
-  `--color-bot-sentinel` `#4E8198` · `--color-bot-sherpa` `#BC4032`
+  `--color-bot-sentinel` `#4E8198` · `--color-bot-sherpa` `#BC4032` ·
+  `--color-bot-news` `#6E68B0` (NewsKeeper, lilla — stessa tinta di `--color-cc`; aggiunto S103b)
   (+ relative `-soft`).
 
 Sono desaturati per **vivere sul sistema chiaro** — usali per le barrette
