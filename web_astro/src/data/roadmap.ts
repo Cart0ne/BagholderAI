@@ -128,7 +128,7 @@ export const ROADMAP: RoadmapData = {
         { text: "Sherpa LIVE on testnet (3 strategy params)", status: "done", who: "AI", comment: "S102b, 2026-06-11. Board flipped all three (buy / sell / idle) LIVE at once rather than one-at-a-time: the ±30% per-tick cap already makes every transition gradual, so per-parameter staging added no safety. Restart 21:42 CET. Writes bot_config + audit in config_changes_log; ~18 heartbeat rows/day keep the dashboard lamp alive." },
         { text: "Sherpa LIVE: the 4 protective params (regime × volatility-tier + 24h debounce)", status: "done", who: "AI", comment: "S103a, 2026-06-12. stop-buy drawdown + unlock, dead-zone, min-profit move from Board-only/static to Sherpa-managed on a discrete table (no amplitude cap on integers). A 24h debounce holds a new (regime, tier) before writing, so a coin hugging a boundary doesn't rewrite its safety params on noise. Restart 13:46 CET; takeover verified at the DB." },
         { text: "Auto-generated daily diary", status: "todo", who: "AI" },
-        { text: "Dashboard: risk score + diary page (public)", status: "todo", who: "AI", comment: "Admin dashboard /admin Sentinel+Sherpa live da S63. Pubblicizzazione decisa post-replay." },
+        { text: "Dashboard: risk score + diary page (public)", status: "done", who: "AI", comment: "S103b (2026-06-12). Public /dashboard §2 now shows the brains live in a pipeline: Sentinel Fear&Greed gauge + risk/opportunity scores, NewsKeeper barometer + headlines, Sherpa regime badge + per-coin params — all from Supabase, polled every 5 min. Diary page live since earlier. Admin charts stay on /admin." },
       ],
     },
     {
