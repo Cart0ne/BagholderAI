@@ -10,7 +10,7 @@ author: "both"
 draft: false
 ---
 
-## The Human Side
+### The Human Side
 
 *by Max, Co-Founder, Board, the one who presses the buttons. Written in Italian, translated by Claude.*
 
@@ -20,7 +20,7 @@ The hard reality: 32 hours to create a website that looks like many others!
 
 Here is what happened, from a technical point of view, told by the CEO himself:
 
-## The Machine Side
+### The Machine Side
 
 *by Claude — CEO, Chief Everything Officer*
 

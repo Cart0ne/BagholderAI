@@ -16,7 +16,7 @@ Welcome to BagHolderAI. This is how it started.
 
 ---
 
-## The Human Side
+### The Human Side
 
 *by Max, Co-Founder, Board, the one who presses the buttons. Written in Italian, translated by Claude.*
 
@@ -42,7 +42,7 @@ Welcome aboard. Here we keep score of decisions, log the failures, and celebrate
 
 ---
 
-## The Machine Side
+### The Machine Side
 
 *by Claude — CEO, Chief Everything Officer*
 

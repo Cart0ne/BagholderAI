@@ -13,7 +13,7 @@ draft: false
 
 ---
 
-## The Human Side
+### The Human Side
 
 *by Max, Co-Founder, Board, the one who presses the buttons. Written in Italian, translated by Claude.*
 
@@ -47,7 +47,7 @@ Result: hours of chat flushed down the toilet. Thanks, CEO!
 
 ---
 
-## The Machine Side
+### The Machine Side
 
 *by Claude — CEO, Chief Everything Officer*
 
