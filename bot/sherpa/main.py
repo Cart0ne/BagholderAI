@@ -44,7 +44,16 @@ from db.client import get_client
 from db.event_logger import log_event
 from utils.telegram_notifier import SyncTelegramNotifier
 
+from config.settings import HardcodedRules
+
 from bot.sentinel.inputs.binance_btc import fetch_price
+from bot.sherpa import board_debounce
+from bot.sherpa.board_parameter_rules import (
+    BOARD_PARAM_KEYS,
+    board_values_for,
+    calculate_board_parameters,
+    classify_tier,
+)
 from bot.sherpa.config_writer import write_parameter
 from bot.sherpa.cooldown_manager import latest_manual_change, parameters_in_cooldown
 from bot.sherpa.parameter_rules import calculate_parameters, is_changed
@@ -197,6 +206,11 @@ def run_sherpa() -> None:
             # once per cycle and cached 1h inside volatility module.
             symbols = [b["symbol"] for b in bots]
             multipliers = get_volatility_multipliers(symbols)
+            # Brief S103a: debounce state for the 4 protective Board params.
+            # Only read in LIVE (the dry_run path logs the instantaneous
+            # lookup and never touches the state table).
+            board_states = {} if dry_run else _fetch_board_states(supabase)
+            now_dt = datetime.now(timezone.utc)
 
             for bot in bots:
                 symbol = bot["symbol"]
@@ -212,6 +226,40 @@ def run_sherpa() -> None:
                     volatility_multiplier=vol_mult,
                 )
                 proposed_regime = breakdown.get("regime", current_regime)
+
+                # Brief S103a: resolve the 4 protective Board params on the
+                # discrete (regime x volatility-tier) table. dry_run logs the
+                # instantaneous lookup; LIVE runs the 24h debounce (so a coin
+                # hugging a tier/regime boundary doesn't rewrite its safety
+                # params on every wiggle) and writes the survivors.
+                board_current = {
+                    "stop_buy_drawdown_pct": _f(bot.get("stop_buy_drawdown_pct")),
+                    "stop_buy_unlock_hours": _f(bot.get("stop_buy_unlock_hours")),
+                    "dead_zone_hours": _f(bot.get("dead_zone_hours")),
+                    "profit_target_pct": _f(bot.get("profit_target_pct")),
+                }
+                if dry_run:
+                    board_target, board_tier = calculate_board_parameters(
+                        current_regime, vol_mult
+                    )
+                    board_cooldown_locked: list[str] = []
+                else:
+                    decision = board_debounce.decide(
+                        board_states.get(symbol),
+                        current_regime,
+                        classify_tier(vol_mult),
+                        now_dt,
+                        HardcodedRules.BOARD_DEBOUNCE_HOURS,
+                    )
+                    if decision.state_changed:
+                        _upsert_board_state(supabase, symbol, decision.new_state)
+                    board_target = board_values_for(
+                        decision.effective_regime, decision.effective_tier
+                    )
+                    board_tier = decision.effective_tier
+                    board_cooldown_locked = parameters_in_cooldown(
+                        supabase, symbol, BOARD_PARAM_KEYS
+                    )
 
                 # symbol_price is fetched per-bot from Binance spot. Best-
                 # effort: a fetch failure logs and stores None — the row
@@ -237,6 +285,10 @@ def run_sherpa() -> None:
                     last_stop_buy_active=last_stop_buy_active,
                     last_write_ts_per_symbol=last_write_ts_per_symbol,
                     skips_since_write=skips_since_write,
+                    board_current=board_current,
+                    board_target=board_target,
+                    board_tier=board_tier,
+                    board_cooldown_locked=board_cooldown_locked,
                 )
 
         except Exception as e:
@@ -334,13 +386,45 @@ def _fetch_active_manual_bots(supabase) -> list[dict]:
         supabase.table("bot_config")
         .select(
             "symbol, is_active, managed_by, buy_pct, sell_pct, "
-            "idle_reentry_hours, stop_buy_drawdown_pct"
+            "idle_reentry_hours, stop_buy_drawdown_pct, "
+            "stop_buy_unlock_hours, dead_zone_hours, profit_target_pct"
         )
         .eq("is_active", True)
         .eq("managed_by", "grid")
         .execute()
     )
     return res.data or []
+
+
+def _fetch_board_states(supabase) -> dict[str, dict]:
+    """Read all sherpa_board_state rows once per cycle, keyed by symbol.
+    Brief S103a: holds the debounce state (effective + candidate (regime,
+    tier) + candidate_since) for the 4 protective params. Empty on any
+    failure — decide() then treats every coin as a first classification."""
+    try:
+        res = supabase.table("sherpa_board_state").select("*").execute()
+        return {r["symbol"]: r for r in (res.data or [])}
+    except Exception as e:
+        logger.warning(f"sherpa_board_state fetch failed: {e}")
+        return {}
+
+
+def _upsert_board_state(supabase, symbol: str, new_state: dict) -> None:
+    try:
+        supabase.table("sherpa_board_state").upsert(
+            {
+                "symbol": symbol,
+                "effective_regime": new_state.get("effective_regime"),
+                "effective_tier": new_state.get("effective_tier"),
+                "candidate_regime": new_state.get("candidate_regime"),
+                "candidate_tier": new_state.get("candidate_tier"),
+                "candidate_since": new_state.get("candidate_since"),
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            },
+            on_conflict="symbol",
+        ).execute()
+    except Exception as e:
+        logger.error(f"sherpa_board_state upsert failed for {symbol}: {e}")
 
 
 def _fetch_symbol_price(symbol: str) -> Optional[float]:
@@ -375,6 +459,10 @@ def _handle_bot(
     last_stop_buy_active: dict,
     last_write_ts_per_symbol: dict,
     skips_since_write: dict,
+    board_current: Optional[dict] = None,
+    board_target: Optional[dict] = None,
+    board_tier: Optional[str] = None,
+    board_cooldown_locked: Optional[list] = None,
 ) -> None:
     symbol = bot["symbol"]
 
@@ -462,6 +550,9 @@ def _handle_bot(
                 would_have_changed=would_have_changed,
                 btc_price=btc_price,
                 symbol_price=symbol_price,
+                board_current=board_current,
+                board_target=board_target,
+                volatility_tier=board_tier,
             )
             last_write_ts_per_symbol[symbol] = now_ts
             n_skips = skips_since_write.pop(symbol, 0)
@@ -543,6 +634,59 @@ def _handle_bot(
             and any(p not in cooldown_locked for p in changed_params)):
         _alert_live(notifier, last_alert_ts, symbol, current, proposed)
 
+    # Brief S103a: write the 4 protective Board params (debounced upstream in
+    # the loop, so board_target is the *effective* target — a tier/regime that
+    # just flipped is still being held). Same write path as the 3 strategy
+    # params: skip a param locked by a Board override (cooldown), write the
+    # rest where they differ from bot_config. No Telegram alert for these
+    # (config_changes_log + SHERPA_ADJUSTMENT carry the audit; the channel
+    # stays for trade events — memory feedback_no_telegram_alerts).
+    if board_target is not None:
+        board_locked = set(board_cooldown_locked or [])
+        for parameter in BOARD_PARAM_KEYS:
+            new_value = board_target.get(parameter)
+            old_value = (board_current or {}).get(parameter)
+            if new_value is None or not is_changed(old_value, new_value):
+                continue
+            if parameter in board_locked:
+                mc = latest_manual_change(supabase, symbol, parameter)
+                log_event(
+                    severity="info",
+                    category="config",
+                    event="SHERPA_COOLDOWN",
+                    message=f"Skip {symbol}.{parameter}: cooldown",
+                    symbol=symbol,
+                    details={
+                        "parameter": parameter,
+                        "manual_change_at": (mc or {}).get("created_at"),
+                        "manual_changed_by": (mc or {}).get("changed_by"),
+                    },
+                )
+                continue
+            ok = write_parameter(
+                supabase,
+                symbol=symbol,
+                parameter=parameter,
+                new_value=new_value,
+                old_value=old_value,
+            )
+            if ok:
+                log_event(
+                    severity="info",
+                    category="config",
+                    event="SHERPA_ADJUSTMENT",
+                    message=f"{symbol}.{parameter} {old_value} -> {new_value}",
+                    symbol=symbol,
+                    details={
+                        "parameter": parameter,
+                        "old": old_value,
+                        "new": new_value,
+                        "regime": proposed_regime,
+                        "volatility_tier": board_tier,
+                        "board_param": True,
+                    },
+                )
+
     # S102b liveness heartbeat (LIVE mode). In LIVE Sherpa writes parameters
     # straight to bot_config (audit trail in config_changes_log) and never
     # touches sherpa_proposals — so in a stable regime that table goes silent
@@ -569,11 +713,14 @@ def _handle_bot(
             would_have_changed=would_have_changed,
             btc_price=btc_price,
             symbol_price=symbol_price,
+            board_current=board_current,
+            board_target=board_target,
+            volatility_tier=board_tier,
         )
         last_write_ts_per_symbol[symbol] = now_ts
         logger.info(
-            "Sherpa LIVE heartbeat %s: alive, regime=%s, stop_buy=%s",
-            symbol, proposed_regime, proposed_stop_buy_active,
+            "Sherpa LIVE heartbeat %s: alive, regime=%s, stop_buy=%s, tier=%s",
+            symbol, proposed_regime, proposed_stop_buy_active, board_tier,
         )
 
 
@@ -592,27 +739,50 @@ def _insert_proposal(
     would_have_changed: bool,
     btc_price,
     symbol_price,
+    board_current: Optional[dict] = None,
+    board_target: Optional[dict] = None,
+    volatility_tier: Optional[str] = None,
 ) -> None:
+    payload = {
+        "symbol": symbol,
+        "risk_score": risk,
+        "opportunity_score": opp,
+        "current_buy_pct": current["buy_pct"],
+        "current_sell_pct": current["sell_pct"],
+        "current_idle_reentry_hours": current["idle_reentry_hours"],
+        "proposed_buy_pct": proposed["buy_pct"],
+        "proposed_sell_pct": proposed["sell_pct"],
+        "proposed_idle_reentry_hours": proposed["idle_reentry_hours"],
+        "proposed_regime": proposed_regime,
+        "current_stop_buy_drawdown_pct": current_stop_buy_drawdown_pct,
+        "proposed_stop_buy_active": proposed_stop_buy_active,
+        "cooldown_active": cooldown_active,
+        "cooldown_parameters": cooldown_parameters,
+        "would_have_changed": would_have_changed,
+        "btc_price": btc_price,
+        "symbol_price": symbol_price,
+    }
+    # Brief S103a: the 4 protective Board params on the same row (the admin
+    # "Last proposals" table renders them as a second row under the strategy
+    # params). current_stop_buy_drawdown_pct is already set above; board_current
+    # fills the other three current_* columns.
+    if board_target is not None:
+        payload.update({
+            "proposed_stop_buy_dd": board_target.get("stop_buy_drawdown_pct"),
+            "proposed_stop_buy_unlock_h": board_target.get("stop_buy_unlock_hours"),
+            "proposed_dead_zone_h": board_target.get("dead_zone_hours"),
+            "proposed_profit_target": board_target.get("profit_target_pct"),
+        })
+    if board_current is not None:
+        payload.update({
+            "current_stop_buy_unlock_h": board_current.get("stop_buy_unlock_hours"),
+            "current_dead_zone_h": board_current.get("dead_zone_hours"),
+            "current_profit_target": board_current.get("profit_target_pct"),
+        })
+    if volatility_tier is not None:
+        payload["volatility_tier"] = volatility_tier
     try:
-        supabase.table("sherpa_proposals").insert({
-            "symbol": symbol,
-            "risk_score": risk,
-            "opportunity_score": opp,
-            "current_buy_pct": current["buy_pct"],
-            "current_sell_pct": current["sell_pct"],
-            "current_idle_reentry_hours": current["idle_reentry_hours"],
-            "proposed_buy_pct": proposed["buy_pct"],
-            "proposed_sell_pct": proposed["sell_pct"],
-            "proposed_idle_reentry_hours": proposed["idle_reentry_hours"],
-            "proposed_regime": proposed_regime,
-            "current_stop_buy_drawdown_pct": current_stop_buy_drawdown_pct,
-            "proposed_stop_buy_active": proposed_stop_buy_active,
-            "cooldown_active": cooldown_active,
-            "cooldown_parameters": cooldown_parameters,
-            "would_have_changed": would_have_changed,
-            "btc_price": btc_price,
-            "symbol_price": symbol_price,
-        }).execute()
+        supabase.table("sherpa_proposals").insert(payload).execute()
     except Exception as e:
         logger.error(f"sherpa_proposals insert failed for {symbol}: {e}")
 

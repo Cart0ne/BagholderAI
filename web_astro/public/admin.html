@@ -305,6 +305,12 @@
     table.proposals .badge-diff { color: var(--blue); font-size: 11px; }
     table.proposals .badge-cool { color: var(--yellow); font-size: 11px; }
     table.proposals .badge-ok   { color: var(--green); font-size: 11px; }
+    /* Board-param sub-row (Brief S103a): the 4 protective params under the
+       strategy params. Dimmer, no top border so it reads as the same bot. */
+    table.proposals tr.board-sub td { border-bottom: 1px solid var(--border); border-top: none; padding-top: 2px; font-size: 11px; color: var(--text-dim); }
+    table.proposals tr.strat-row td { border-bottom: none; padding-bottom: 2px; }
+    table.proposals .blabel { color: var(--text-dim); font-size: 10px; text-transform: uppercase; letter-spacing: 0.04em; }
+    table.proposals .tier { font-family: var(--mono); font-size: 10px; padding: 1px 5px; border-radius: 3px; background: rgba(255,255,255,0.06); color: var(--text); }
 
     /* Stacked parameter charts */
     .param-row {
@@ -546,7 +552,7 @@
       </div>
 
       <!-- ============ SHERPA ============ -->
-      <div class="section-title sherpa"><img class="section-mascot sherpa" src="sherpa.svg" alt="Sherpa"><span>Sherpa — parameter writer (loop 120s · DRY_RUN)</span></div>
+      <div class="section-title sherpa"><img class="section-mascot sherpa" src="sherpa.svg" alt="Sherpa"><span>Sherpa — parameter writer (loop 120s · LIVE)</span></div>
 
       <!-- Last Proposals: 1 row per symbol -->
       <div class="card" style="overflow-x: auto;">
@@ -569,11 +575,13 @@
           </tbody>
         </table>
         <div class="footnote">
-          Format: <code>buy / sell / idle_reentry_h</code>.
-          <strong style="color: var(--blue);">⚠ diff</strong> = proposed ≠ current (Sherpa would write if SHERPA_MODE=live).
-          <strong style="color: var(--yellow);">🔒 cooldown</strong> = parameter locked, Sherpa cannot propose changes.
+          Each bot shows two rows. <strong>Strategy</strong> (top): <code>buy / sell / idle_reentry_h</code> — continuous, amplitude-capped ±30%.
+          <strong>Safety</strong> (bottom, Brief S103a): <code>stop_buy_dd% / unlock_h / dead_zone_h / min_profit%</code> on a discrete (regime × volatility-tier) table; the
+          <span class="tier">tier</span> badge is the coin's volatility band (LOW/MID/HIGH). A tier/regime change is held for 24h (debounce) before Sherpa writes it, so a coin on a boundary doesn't flip its safety params on noise.
+          <strong style="color: var(--blue);">⚠ diff</strong> = proposed ≠ current (Sherpa writes it, unless locked).
+          <strong style="color: var(--yellow);">🔒 cooldown</strong> = a Board override locked the parameter for 24h.
           <strong style="color: var(--green);">✓ aligned</strong> = nothing to do.
-          Today everything is <em>diff</em> because we are in DRY_RUN: <code>bot_config</code> is never updated by Sherpa.
+          Sherpa is LIVE on testnet: it writes <code>bot_config</code> directly (audit in <code>config_changes_log</code>).
         </div>
       </div>
 
@@ -680,11 +688,11 @@
         <div class="footnote" style="margin-top: 6px;">
           After the regime base × volatility multiplier is computed and absolute-clamped above, an <strong>amplitude cap</strong> bounds the change vs the current <code>bot_config</code> value:
           <code>current × (1 − MAX_DELTA_PCT) ≤ proposed ≤ current × (1 + MAX_DELTA_PCT)</code>, with <code>MAX_DELTA_PCT = 0.30</code> (30%). Skipped when current is <code>None</code> or 0 (first run). Cap source: <code>config/settings.py → HardcodedRules.MAX_DELTA_PCT</code>.
-          <br>Stop-buy lamp: <code>proposed_stop_buy_active = (regime == "extreme_fear")</code> — derived from the slow loop, no longer from the fast-loop risk_score threshold. Stop-buy is Board-only (Sherpa never writes it, only logs would-have).
+          <br>Stop-buy <em>lamp</em>: <code>proposed_stop_buy_active = (regime == "extreme_fear")</code> — a derived flag (the slow loop, no longer the fast-loop risk_score threshold); it stays a flag, Sherpa doesn't write it. The stop-buy <em>threshold</em> <code>stop_buy_drawdown_pct</code> itself is now Sherpa-managed (Brief S103a, the safety sub-row above), no longer Board-only.
         </div>
 
         <div class="footnote">
-          Source: <code>bot/sherpa/parameter_rules.py</code> + <code>bot/sherpa/volatility.py</code> — parsed manually at build time. Sprint 2 active: <code>final = clamp_amplitude( clamp_range( BASE_TABLE[regime] × volatility_multiplier ), current )</code>. The Sprint-1 fast-signal ladders (drop/pump/funding/speed_of_fall) were removed in brief 81a Block 2 because they fired on fast-loop noise and produced 6-minute proposal flicker. Phase B will reintroduce fast intelligence on the Sentinel side, not here.
+          Source: strategy params <code>bot/sherpa/parameter_rules.py</code> (Sprint 2: <code>final = clamp_amplitude( clamp_range( BASE_TABLE[regime] × volatility_multiplier ), current )</code>; the Sprint-1 fast-signal ladders were removed in brief 81a Block 2 because they fired on fast-loop noise) + safety params <code>bot/sherpa/board_parameter_rules.py</code> (Brief S103a: discrete <code>BOARD_TABLE[regime][tier]</code>, no cap, debounced 24h via <code>bot/sherpa/board_debounce.py</code>) + <code>bot/sherpa/volatility.py</code>. Phase B will reintroduce fast intelligence on the Sentinel side, not here.
         </div>
       </div>
       </details>
@@ -1239,6 +1247,13 @@
       return b + ' / ' + s + ' / ' + i;
     }
 
+    // Brief S103a: the 4 protective Board params, in brief order
+    // stop_buy_dd% / unlock_h / dead_zone_h / min_profit%. Discrete integers.
+    function fmtBoard(dd, unlock, dz, mp) {
+      function n(v, suf) { return v == null ? '—' : Number(v) + suf; }
+      return n(dd, '%') + ' / ' + n(unlock, 'h') + ' / ' + n(dz, 'h') + ' / ' + n(mp, '%');
+    }
+
     function renderProposals(latestBySymbol) {
       var tbody = document.getElementById('proposals-tbody');
       tbody.innerHTML = '';
@@ -1267,6 +1282,13 @@
           status = '<span class="badge-ok">✓ aligned</span>';
         }
 
+        // Brief S103a: do the 4 protective Board params have a row? (old
+        // pre-migration proposals don't.)
+        var bProp = [row.proposed_stop_buy_dd, row.proposed_stop_buy_unlock_h, row.proposed_dead_zone_h, row.proposed_profit_target];
+        var bCur  = [row.current_stop_buy_drawdown_pct, row.current_stop_buy_unlock_h, row.current_dead_zone_h, row.current_profit_target];
+        var hasBoard = bProp.some(function(v){ return v != null; });
+
+        tr.className = hasBoard ? 'strat-row' : '';
         tr.innerHTML =
           '<td><span class="sym" style="color:' + SYMBOL_COLOR[sym] + '">' + SYMBOL_SHORT[sym] + '</span></td>' +
           '<td><span class="vals">' + cur + '</span></td>' +
@@ -1274,6 +1296,25 @@
           '<td><span style="color: var(--text-dim);">' + (row.proposed_regime || '—') + '</span></td>' +
           '<td>' + status + '</td>';
         tbody.appendChild(tr);
+
+        if (hasBoard) {
+          var bDiff = false;
+          for (var k = 0; k < 4; k++) {
+            if (bProp[k] != null && Number(bCur[k]) !== Number(bProp[k])) bDiff = true;
+          }
+          var bStatus = bDiff
+            ? '<span class="badge-diff">⚠ diff</span>'
+            : '<span class="badge-ok">✓ aligned</span>';
+          var tr2 = document.createElement('tr');
+          tr2.className = 'board-sub';
+          tr2.innerHTML =
+            '<td><span class="blabel">safety</span></td>' +
+            '<td><span class="vals">' + fmtBoard(bCur[0], bCur[1], bCur[2], bCur[3]) + '</span></td>' +
+            '<td><span class="vals">' + fmtBoard(bProp[0], bProp[1], bProp[2], bProp[3]) + '</span></td>' +
+            '<td><span class="tier">' + (row.volatility_tier || '—') + '</span></td>' +
+            '<td>' + bStatus + '</td>';
+          tbody.appendChild(tr2);
+        }
       });
       document.getElementById('sherpa-last-ts').textContent = newest ? (fmtAge(newest) + ' · ' + new Date(newest).toLocaleString()) : '—';
     }
@@ -1893,7 +1934,7 @@
         renderSpeedCounter(sentinelRows);
 
         // --- Sherpa: proposals for all symbols over the selected window ---
-        var sherpaAll = await sbFetchAll('sherpa_proposals?select=created_at,symbol,risk_score,opportunity_score,current_buy_pct,current_sell_pct,current_idle_reentry_hours,proposed_buy_pct,proposed_sell_pct,proposed_idle_reentry_hours,proposed_regime,cooldown_active,cooldown_parameters,would_have_changed&created_at=gte.' + encodeURIComponent(since) + '&order=created_at.asc', 1000, fetchCap);
+        var sherpaAll = await sbFetchAll('sherpa_proposals?select=created_at,symbol,risk_score,opportunity_score,current_buy_pct,current_sell_pct,current_idle_reentry_hours,proposed_buy_pct,proposed_sell_pct,proposed_idle_reentry_hours,proposed_regime,cooldown_active,cooldown_parameters,would_have_changed,current_stop_buy_drawdown_pct,proposed_stop_buy_dd,current_stop_buy_unlock_h,proposed_stop_buy_unlock_h,current_dead_zone_h,proposed_dead_zone_h,current_profit_target,proposed_profit_target,volatility_tier&created_at=gte.' + encodeURIComponent(since) + '&order=created_at.asc', 1000, fetchCap);
 
         var bySym = { 'BTC/USDT': [], 'SOL/USDT': [], 'BONK/USDT': [] };
         var latestBySym = {};

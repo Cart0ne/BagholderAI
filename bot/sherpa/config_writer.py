@@ -5,9 +5,11 @@ row to config_changes_log with changed_by='sherpa'. The DRY_RUN path
 never reaches this module — it INSERTs into sherpa_proposals from the
 main loop instead.
 
-stop_buy_drawdown_pct is intentionally NOT writable from here. Per CEO
-brief, it remains Board-only in Sprint 1; Sherpa logs a "would-have"
-flag in sherpa_proposals.proposed_stop_buy_active for analysis only.
+Brief S103a (S103 2026-06-12): the 4 protective Board params
+(stop_buy_drawdown_pct, stop_buy_unlock_hours, dead_zone_hours,
+profit_target_pct) became Sherpa-managed too — added to the whitelist below.
+They use the same write path as the 3 strategy params; the format of the
+existing 3 writes is unchanged (additive change only).
 """
 
 from __future__ import annotations
@@ -18,7 +20,13 @@ from typing import Optional
 logger = logging.getLogger("bagholderai.sherpa.writer")
 
 # Whitelist: only parameters Sherpa is allowed to write in LIVE mode.
-WRITABLE_PARAMETERS = {"buy_pct", "sell_pct", "idle_reentry_hours"}
+# First three = strategy params (continuous, amplitude-capped). Last four =
+# protective Board params (discrete, debounced) added in Brief S103a.
+WRITABLE_PARAMETERS = {
+    "buy_pct", "sell_pct", "idle_reentry_hours",
+    "stop_buy_drawdown_pct", "stop_buy_unlock_hours",
+    "dead_zone_hours", "profit_target_pct",
+}
 
 
 def write_parameter(

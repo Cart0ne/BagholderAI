@@ -170,6 +170,27 @@ class HardcodedRules:
     # would justify it. Set to 0.30 per brief default.
     MAX_DELTA_PCT = 0.30
 
+    # Sherpa Board-parameter tiers + debounce (Brief S103a, S103 2026-06-12).
+    # The 4 protective params (stop_buy_drawdown_pct, stop_buy_unlock_hours,
+    # dead_zone_hours, profit_target_pct) became Sherpa-managed on a discrete
+    # (regime x volatility-tier) table — see bot/sherpa/board_parameter_rules.py.
+    # A coin's tier comes from its volatility multiplier (BTC anchor = 1.0,
+    # same number as volatility.py):
+    #     mult < BOARD_TIER_LOW_MAX              -> LOW   (BTC-like ~1.0)
+    #     BOARD_TIER_LOW_MAX <= mult < HIGH_MIN  -> MID   (SOL-like ~1.53)
+    #     mult >= BOARD_TIER_HIGH_MIN            -> HIGH  (BONK-like ~1.75)
+    # Boundaries are the midpoints between the three live coins' multipliers.
+    BOARD_TIER_LOW_MAX = 1.30
+    BOARD_TIER_HIGH_MIN = 1.65
+    # Debounce (decision Board/Max 2026-06-12, added on top of the brief):
+    # these are safety params written with NO amplitude cap (discrete
+    # integers), so a (regime, tier) that sits on a boundary and flips would
+    # rewrite them sharply. A newly observed (regime, tier) must hold
+    # continuously for this many hours before Sherpa adopts it. A new coin's
+    # FIRST classification is immediate — the timer only gates later changes
+    # of a live coin. State persists in sherpa_board_state (survives restarts).
+    BOARD_DEBOUNCE_HOURS = 24
+
     # SWEEP / LAST SHOT slippage buffer (Brief 78b, S78 fase 2 2026-05-16).
     # When the bot spends all remaining cash on a market BUY, Binance executes a
     # base_order at fill_price > check_price (positive slippage). On testnet the
