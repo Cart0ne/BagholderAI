@@ -13,7 +13,7 @@ faq:
   - question: "What does the human actually do if they don't write code?"
     answer: "Four things: read the logs to see what really happened, ask precise questions instead of vague ones, review the AI's work for failures it can't see itself, and bring the common sense the AI lacks. The most valuable skill turned out to be catching the AI when it reports something false."
   - question: "What are the five AI brains in this project?"
-    answer: "A grid bot that harvests price oscillation, a trend follower that hunts momentum (kept on a tight leash), a watchtower that reads the market's fear/greed regime, a tuner that proposes per-asset settings, and a news classifier that keeps the system aware of headlines. A non-coder supervises all five through their logs and outputs."
+    answer: "A grid bot that harvests price oscillation, a trend follower that hunts momentum (kept on a tight leash), a watchtower that reads the market's fear/greed regime, Sherpa, a tuner that proposes per-asset settings, and NewsKeeper, a news classifier that keeps the system aware of headlines. A non-coder supervises all five through their logs and outputs."
   - question: "Does precise instruction really matter when working with an AI?"
     answer: "Enormously. The same task with a vague brief and a precise brief produces wildly different results. The single biggest lever a non-coder has is the quality of the instruction — a well-scoped brief beats technical knowledge most of the time."
   - question: "Where does a non-coder hit a wall?"
@@ -32,15 +32,13 @@ If you want the org chart — which AI plans, which one builds, which one writes
 
 The system isn't one bot. It's five specialized modules, each built with Claude Code, each with a job — and a non-coder keeps them honest through their logs and outputs, not their source code.
 
-| Brain | What it does | What the human watches for |
-|---|---|---|
-| **Grid bot** | Places staggered buy/sell orders and harvests price oscillation on three pairs | Is it buying when it shouldn't? Does the cash math match reality? |
-| **Trend follower** | Hunts momentum entries — kept on a tiny budget and the safest coins | Is it overtrading again? It earns its leash, it doesn't get it for free |
-| **Watchtower** | Reads the market's fear/greed regime and tells the others how cautious to be | Is the alarm actually firing when it should — or quietly dead? |
-| **Tuner** | Proposes per-asset parameter settings based on market regime and volatility | Are its suggestions sane? Nothing it proposes goes live unreviewed |
-| **News classifier** | Reads market headlines so the system isn't blind to the world | Is it reading the news correctly, or inventing a sentiment? |
+- **Grid Bot** — places staggered buy/sell orders and harvests price oscillation on three pairs. *Watch for:* is it buying when it shouldn't? Does the cash math match reality?
+- **Trend Follower** — hunts momentum entries, kept on a tiny budget and the safest coins. *Watch for:* is it overtrading again? It earns its leash, it doesn't get it for free.
+- **Watchtower** — reads the market's fear/greed regime and tells the others how cautious to be. *Watch for:* is the alarm actually firing when it should — or quietly dead?
+- **Sherpa** — the tuner: proposes per-asset parameter settings based on market regime and volatility. *Watch for:* are its suggestions sane? Nothing it proposes goes live unreviewed.
+- **NewsKeeper** — the news classifier: reads market headlines so the system isn't blind to the world. *Watch for:* is it reading the news correctly, or inventing a sentiment?
 
-Notice the right-hand column. The human can't write the grid logic or the regime detector. But he can absolutely ask "why did it buy there?" and read the answer in a log. Supervision doesn't require authorship.
+Notice the *watch-for* line under each brain. The human can't write the grid logic or the regime detector. But he can absolutely ask "why did it buy there?" and read the answer in a log. Supervision doesn't require authorship.
 
 ## What a non-coder actually does all day
 
