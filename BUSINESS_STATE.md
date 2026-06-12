@@ -1,8 +1,8 @@
 # BUSINESS_STATE.md
 
-**Last updated:** 2026-06-11 — Session 102 (Sherpa coherence audit + GO LIVE testnet + write guard + battito liveness; NewsKeeper v2 shadow check T+36h). Cap file 50KB (Max S95, CLAUDE.md §2b). Cadenze audit canoniche in PROJECT_STATE §9. Prec.: S101 (dashboard §3 + blog two-voice + GSC).
-**Updated by:** CEO (update S102 via brief `config/S102_BUSINESS_STATE_update.md`) — applicato da CC
-**Basato su:** PROJECT_STATE.md aggiornato 2026-06-11
+**Last updated:** 2026-06-12 — Session 103 (Sherpa Board params + dashboard brain pipeline + memory compaction). Cap file 50KB (Max S95, CLAUDE.md §2b). Cadenze audit canoniche in PROJECT_STATE §9. Prec.: S102 (Sherpa coherence audit + GO LIVE testnet).
+**Updated by:** CEO (update S103 via brief `config/S103_BUSINESS_STATE_update.md`) — applicato da CC
+**Basato su:** PROJECT_STATE.md aggiornato 2026-06-12
 
 ---
 
@@ -175,7 +175,7 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 
 ## 3. Diary Status
 
-**Sessione corrente: 102 BUILDING** (Sherpa coherence audit + go-live testnet + NewsKeeper v2 shadow check T+36h). S101 → COMPLETE. S100 → COMPLETE.
+**Sessione corrente: 103 BUILDING** (Sherpa Board params + dashboard brain pipeline + memory compaction). S102 → COMPLETE. S101 → COMPLETE.
 
 **Volumi pubblicati:**
 - Volume 1 "From Zero to Grid" (S1–S23, €4.99) → https://payhip.com/b/a4yMc
@@ -197,6 +197,10 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 
 | Data | Decisione | Perché |
 |---|---|---|
+| 2026-06-12 (S103) | **4 parametri protettivi → Sherpa-managed dinamici** (`BOARD_TABLE` per regime × volatility tier LOW/MID/HIGH) | Ribalta S102 "statici Board-only". Debounce 24h su coppia (regime,tier) persistito in `sherpa_board_state` (aggiunta CC, non nel brief). Cooldown 24h su override manuale invariato |
+| 2026-06-12 (S103) | **Dashboard §2 pubblica redesign: brain pipeline verticale** (NewsKeeper→Sentinel→Sherpa) | Card live full-width con connettori BAROMETER(shadow)/REGIME. Polling 5min. Anche TF/Grid trader cards ridisegnate. Token nuovo `--color-bot-news`. Sherpa pill: DRY_RUN→LIVE |
+| 2026-06-12 (S103) | **Dashboard privata grid.html: 3 sezioni per coin** | Trading by Board / Grid by Sherpa / Security by Sherpa. Min Profit spostato da Grid a Security |
+| 2026-06-12 (S103) | **Memoria CEO compattata**: da 29 a 21 voci (su 30 max) | 4 rimosse, 4 fuse, 2 aggiornate. Slot fisso #21 per agenda prossima sessione |
 | 2026-06-11 (S102) | **Principio ownership parametri: Board = soldi, Sherpa = strategia** | Max: "Io controllo allocation, $/trade, skim. Sherpa controlla tutto il resto. Se sovrascrivo, cooldown 24h." Tre frasi che risolvono idle, circuit breaker, sell penalty |
 | 2026-06-11 (S102) | **Sherpa GO LIVE su testnet** (brief S102b, env flag `SHERPA_MODE=live`). **LIVE dal restart 21:42 CET, orchestrator PID 91177.** Scrive buy_pct, sell_pct, idle_reentry_hours — verificato DB: al primo tick 9 scritture `changed_by='sherpa'` (BTC 0.65/1.05/5.6, SOL 0.65/1.53/5.6, BONK 3.0/1.75/5.6) | DRY_RUN non produceva dati utili (cap ±30% su config congelata = 50K righe identiche). Testnet = zero rischio finanziario. CC report S102: tutti e 5 regimi implementati, coin-agnostic confermato |
 | 2026-06-11 (S102) | **idle_reentry_hours: Opzione C** — Sherpa riporta idle dentro il range di design (0.5-6h). L'8h attuale era un default mai rivisto | Il cap ±30% rende la transizione graduale (8→5.6→...→target in 2-7 tick). In extreme_fear stop_buy=ON rende idle irrilevante |
@@ -297,7 +301,7 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 | **SEO+GEO POST 2 drafting** | ~metà giugno | "Why Most AI Trading Bots Fail (And What Ours Did Wrong Too)" — keyword: ai trading bot. Cadenza 1 post ogni 1-2 settimane |
 | **Apple Notes pulizia: cancellare 8 note obsolete (Max)** | A discrezione Max | 4 note attive da mantenere, 8 obsolete da cancellare manualmente |
 | **Go-live mainnet** | Nessuna data fissa | Dipende da condizioni di mercato (bear+bull+laterale osservati). Sequenza: Sherpa LIVE testnet ✅ → osservazione → S103 parametri Board-only → barometro verdict (~23 giu) → Board approval → mainnet €100 |
-| **Sherpa LIVE su testnet** | ✅ DONE (S102, restart 2026-06-11 21:42 CET, PID 91177) | Scrive buy_pct, sell_pct, idle_reentry_hours (tutti e 3 insieme, non un parametro alla volta — il cap ±30% rende la transizione comunque graduale). Prossimo: S103 parametri Board-only + default |
+| **Sherpa LIVE su testnet (7/7 parametri)** | ✅ DONE (S102+S103) | Scrive TUTTI E 7 i parametri: buy_pct, sell_pct, idle_reentry_hours + stop_buy_drawdown_pct, stop_buy_unlock_hours, dead_zone_hours, profit_target_pct. I 4 protettivi via lookup (regime × volatility tier) con debounce 24h |
 | **NewsKeeper — prima analisi** | ~lun 1 giugno | Job 1 anti-rumore Haiku → Job 2 lead/lag vs Sentinel. Decide timing Sentinel (Phase B vs accelerare NewsKeeper) |
 | **Volume 4** | Nessuna deadline | In accumulo da S83, arco narrativo NewsKeeper build → go-live |
 
@@ -313,7 +317,7 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 |---|---|
 | **Pagina /news pubblica** | Parked fino a maturità NewsKeeper (Haiku live da S94, ma T+7 quality review ~8 giugno ancora pendente; il vecchio regex aveva ~60% FP → non si espone classificazione non validata). Fonte: analisi tbot S98 (lui mostra gli stessi 3 feed RSS ma senza label AI → quando esponiamo, lo battiamo con sentiment/severità) |
 | **Tabella performance per regime su dashboard** | Parked fino a profondità dati sufficiente (testnet_2 ha ~2 giorni). Fonte: analisi tbot S98 |
-| **Sherpa controlla 3/7 parametri strategici** | LIVE su testnet dal 2026-06-11 (restart 21:42 CET, non più DRY_RUN). Scrive buy_pct, sell_pct, idle_reentry_hours. I 4 rimanenti (stop_buy_dd, stop_buy_unlock, dead_zone, min_profit) restano Board-only con default automatici (S103). Il principio ownership: Board=soldi, Sherpa=strategia |
+| **Sherpa controlla 7/7 parametri Grid** | LIVE su testnet. I 3 strategici (buy/sell/idle) scalano con volatility multiplier continuo. I 4 protettivi (stop_buy_dd/unlock, dead_zone, min_profit) usano lookup discreto per (regime × volatility tier) con debounce 24h. Board-only restano SOLO: allocation, $/trade, skim |
 | **BONK grid — RISOLTO** | Era bloccato dalla guardia 72a (deficit 99,91% dopo il reset mensile testnet). Sbloccato dal clean slate S96a (cycle tagging `testnet_2`): ripartito pulito il 2026-06-04, $150 cash, holdings 0, guardia passata. _(NB: le righe "Reset testnet — Rimandato" qui sotto sono ora superate.)_ |
 | **Paper trade re-import** | Backup esiste (`/Volumes/Archivio/bagholderai/audits/2026-05-08_pre-reset-s67/`, 51.943 righe JSONL) ma non serve re-importarlo nel DB. Disponibile per narrativa/diary quando serve |
 | **Sentinel Phase B** | Parcheggiata fino a post T+7 NewsKeeper (8 giugno) |
