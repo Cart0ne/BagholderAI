@@ -3,7 +3,7 @@
 **Brief sorgente:** `config/2026-06-12_S103a_brief_sherpa-board-params.md`
 **Commit codice:** `a1826fe` (`bot(S103a): 4 protective Board params -> Sherpa-managed...`)
 **Migration Supabase:** `s103a_sherpa_board_params` (applicata, verificata)
-**Esito:** SHIPPED — **restart NON eseguito** (Max restarta sul Mac Mini; il codice gira al prossimo restart)
+**Esito:** SHIPPED + **LIVE** — push + pull + **restart eseguito da CC 2026-06-12 13:46 CET (autorizzato da Max)**, orchestrator PID 24606, runtime `3d0bdbb`, takeover verificato a DB (vedi §7)
 **Suite:** 219/219 (198 + 21 nuovi)
 
 ---
@@ -117,10 +117,19 @@ NON toccati: `BASE_TABLE`/`RANGES` dei 3 di strategia · `volatility.py` ·
 logica Sentinel · allocation/capital_per_trade/skim_pct (restano Board puri) ·
 **nessun restart bot**.
 
-## 7. Da fare a Max
-1. **Pull + restart orchestrator sul Mac Mini** → il codice va LIVE (la tabella
-   `sherpa_board_state` si popola al primo tick, takeover §4).
-2. (Opzionale) decidere se pushare ora o al restart — multi-macchina.
+## 7. Restart eseguito — verifica LIVE (CC, 2026-06-12 13:46 CET)
+Push `3d0bdbb` → pull Mac Mini → shutdown graceful orchestrator (PID 91177) →
+relaunch identico (caffeinate + `ENABLE_TF/SENTINEL/SHERPA=true SHERPA_MODE=live
+SHERPA_TELEGRAM_ENABLED=true`) → **PID 24606 + 6 worker + caffeinate; i 2
+NewsKeeper standalone NON toccati** (verificati vivi). Primo tick Sherpa
+(13:46:22-25 CET): `config_changes_log` changed_by='sherpa' = takeover §4 esatto
+(BTC dd 2→3/unlock 2→12/dz 4→2, SOL dd 2→4/unlock 0→12, BONK dd 2→5/unlock 1→12/
+dz 4→2). `sherpa_board_state` popolata (BTC LOW / SOL MID / BONK HIGH, effective
+extreme_fear, nessun candidate). Log orchestrator pulito, 0 errori.
+
+**Per il CEO/Max (non lo tocco io):** `BUSINESS_STATE §7` dice ancora "Sherpa
+controlla 3/7... i 4 rimanenti restano Board-only" — ora stale, sono 7/7
+Sherpa-managed. Da aggiornare a tua iniziativa.
 
 ## 8. Note / follow-up
 - `grid.html` "3 fasce per moneta" = **brief separato** (S103b già in `config/`).
