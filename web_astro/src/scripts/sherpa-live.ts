@@ -84,3 +84,37 @@ type StopRow = { proposed_stop_buy_active: boolean | null };
     /* leave OFF fallback in place */
   }
 })();
+
+/* ADJUST — how many parameter changes Sherpa wrote in the last 7 days
+   (config_changes_log, changed_by='sherpa'). Sherpa went live at the
+   S102b restart (2026-06-11). Counts rows via the count=exact header;
+   on failure the dim "—/7d" placeholder stays. Bar caps at 60 changes
+   (≈ a busy week at the 4h slow loop, ~6 ticks/day × a few params). */
+(async () => {
+  try {
+    const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    const r = await fetch(
+      `${SB_URL}/rest/v1/config_changes_log` +
+        `?select=id&changed_by=eq.sherpa&created_at=gte.${since}`,
+      {
+        headers: { ...headers, Prefer: "count=exact", "Range-Unit": "items", Range: "0-0" },
+      },
+    );
+    if (!r.ok && r.status !== 206) return;
+    const cr = r.headers.get("Content-Range") || "";
+    const n = parseInt(cr.split("/")[1] || "0", 10);
+    if (!Number.isFinite(n)) return;
+
+    const val = document.getElementById("sherpa-adjust-value");
+    const bar = document.getElementById("sherpa-adjust-bar");
+    const row = document.getElementById("sherpa-adjust-row");
+    if (val) val.textContent = `${n}/7d`;
+    if (bar) {
+      bar.style.background = SHERPA_RED;
+      bar.style.width = Math.min(100, Math.round((n / 60) * 100)) + "%";
+    }
+    if (row) row.classList.remove("dim");
+  } catch {
+    /* leave the —/7d dim placeholder */
+  }
+})();

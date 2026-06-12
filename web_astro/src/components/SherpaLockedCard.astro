@@ -8,18 +8,17 @@ import SherpaMascotV2 from "./SherpaMascotV2.astro";
 const SHERPA = "#ef4444";
 ---
 
-<article class="bot-card sherpa-active dim tilt-r">
+<article class="bot-card sherpa-active tilt-r">
   <span class="bot-pill testmode-sherpa">TEST</span>
 
   <div class="bot-head">
     <span class="bot-name sherpa">SHERPA</span>
-    <span class="bot-rarity">LOCKED</span>
+    <span class="bot-rarity">ACTIVE</span>
   </div>
   <div class="bot-subtitle">Parameter Tuner</div>
 
   <div class="bot-frame sherpa sherpa-frame">
     <div class="bot-scanlines"></div>
-    <div class="sherpa-question">?</div>
     <div class="sherpa-glow"></div>
 
     <div class="sherpa-mascot-wrap">
@@ -40,39 +39,47 @@ const SHERPA = "#ef4444";
     <span class="bot-stat-value" id="sherpa-bots-count" style={`color:${SHERPA}; opacity:0.85;`}>3</span>
   </div>
 
-  {/* PARAMS: static 3 pips — Sherpa controls buy_pct · sell_pct · idle_reentry_hours.
-       Adding a 4th param (e.g. skim_pct) is a future brief that will edit this card. */}
+  {/* PARAMS: 7 pips. Sherpa now controls 3 tuning params (buy_pct ·
+       sell_pct · idle_reentry_hours) PLUS the 4 protective "board" params
+       it took over in S103a (2026-06-12): stop_buy_drawdown_pct ·
+       stop_buy_unlock_hours · dead_zone_hours · profit_target_pct.
+       Compact pip size so all 7 fit the track. */}
   <div class="bot-stat-row">
     <span class="bot-stat-label">PARAMS</span>
-    <div class="bot-stat-bar-track sherpa-pip-row">
+    <div class="bot-stat-bar-track sherpa-pip-row compact">
+      <div class="sherpa-bot-pip" style={`background:${SHERPA}`}></div>
+      <div class="sherpa-bot-pip" style={`background:${SHERPA}`}></div>
+      <div class="sherpa-bot-pip" style={`background:${SHERPA}`}></div>
+      <div class="sherpa-bot-pip" style={`background:${SHERPA}`}></div>
       <div class="sherpa-bot-pip" style={`background:${SHERPA}`}></div>
       <div class="sherpa-bot-pip" style={`background:${SHERPA}`}></div>
       <div class="sherpa-bot-pip" style={`background:${SHERPA}`}></div>
     </div>
-    <span class="bot-stat-value" style={`color:${SHERPA}; opacity:0.85;`}>3</span>
+    <span class="bot-stat-value" style={`color:${SHERPA}; opacity:0.85;`}>7</span>
   </div>
 
-  {/* MODE: 2 pips toggle — dry_run (sx) · live (dx). Today DRY_RUN is
-       active; when Sherpa flips to live (post 2nd Brain Analysis), move
-       `.active` from the dry_run pip to the live one and update value text.
-       No DB flag yet — hardcoded; live-fetch becomes a separate brief. */}
+  {/* MODE: 2 pips toggle — dry_run (sx) · live (dx). Sherpa flipped to
+       LIVE on testnet at the S102b restart (2026-06-11, SHERPA_MODE=live):
+       at the first tick it wrote real params to bot_config (verified in
+       config_changes_log, changed_by='sherpa'). Hardcoded — no DB flag for
+       the env mode; flip back if a future restart returns it to dry_run. */}
   <div class="bot-stat-row">
     <span class="bot-stat-label">MODE</span>
     <div class="bot-stat-bar-track sherpa-pip-row">
-      <div class="sherpa-mode-pip active" data-mode="dry_run" style={`background:${SHERPA}`}></div>
-      <div class="sherpa-mode-pip"        data-mode="live"    style={`background:${SHERPA}`}></div>
+      <div class="sherpa-mode-pip"        data-mode="dry_run" style={`background:${SHERPA}`}></div>
+      <div class="sherpa-mode-pip active" data-mode="live"    style={`background:${SHERPA}`}></div>
     </div>
-    <span class="bot-stat-value" style={`color:${SHERPA}; opacity:0.95; min-width:54px;`}>DRY_RUN</span>
+    <span class="bot-stat-value" style={`color:${SHERPA}; opacity:0.95; min-width:54px;`}>LIVE</span>
   </div>
 
-  {/* ADJUST: placeholder until Sprint 2 stabilizes.
-       Live count via LAG() distinct-value-changes ≈ 5-7 days post-S81
-       (current 7d window is polluted by pre-Sprint-2 behavior). Revisit
-       when slow-gate + amplitude cap have produced a clean baseline. */}
-  <div class="bot-stat-row dim">
+  {/* ADJUST: live — parameter changes Sherpa wrote in the last 7 days
+       (config_changes_log, changed_by='sherpa'). sherpa-live.ts fills the
+       count, lights the bar red, and un-dims the row. Falls back to the
+       dim —/7d placeholder if the fetch fails. */}
+  <div class="bot-stat-row dim" id="sherpa-adjust-row">
     <span class="bot-stat-label">ADJUST</span>
-    <div class="bot-stat-bar-track"><div class="bot-stat-bar-fill" style="width:0%;"></div></div>
-    <span class="bot-stat-value">—/7d</span>
+    <div class="bot-stat-bar-track"><div class="bot-stat-bar-fill" id="sherpa-adjust-bar" style="width:0%;"></div></div>
+    <span class="bot-stat-value" id="sherpa-adjust-value">—/7d</span>
   </div>
 
   {/* STOP BUY: live from sherpa_proposals.proposed_stop_buy_active.
@@ -94,18 +101,6 @@ const SHERPA = "#ef4444";
   .sherpa-frame {
     position: relative;
     overflow: hidden;
-  }
-  .sherpa-question {
-    position: absolute;
-    top: 10px;
-    left: 50%;
-    transform: translateX(-50%);
-    font-family: var(--font-mono);
-    font-size: 90px;
-    font-weight: 700;
-    line-height: 1;
-    color: rgba(239, 68, 68, 0.08);
-    pointer-events: none;
   }
   .sherpa-glow {
     position: absolute;
@@ -139,6 +134,10 @@ const SHERPA = "#ef4444";
     border-radius: 2px;
     opacity: 0.75;
   }
+  /* Compact variant for rows with many pips (PARAMS = 7): shrink each
+     pip + tighten the gap so they all fit the track on one line. */
+  .sherpa-pip-row.compact { gap: 4px; }
+  .sherpa-pip-row.compact .sherpa-bot-pip { flex: 0 0 15px; }
   /* MODE pips: same geometry as bot pips, but default dim and only the
      active one fully lit (same pattern as Watchtower's REGIME pips). */
   .sherpa-mode-pip {
