@@ -22,9 +22,9 @@ faq:
 
 ### The Human Side
 
-*When I started this project, back at the first brainstorm, I thought I'd build a "game" for myself, something quick to test that would let me learn a bit about AI and the crypto world, partly as a hobby partly out of curiosity; generating passive income was never a certainty. I'd say the little game got a bit out of hand, and now I find myself with a website, a blog, 3 volumes of a diary, a marketing plan, and 5 bots that should be trading on my behalf.*
+When I started this project, back at the first brainstorm, I thought I'd build a "game" for myself, something quick to test that would let me learn a bit about AI and the crypto world, partly as a hobby partly out of curiosity; generating passive income was never a certainty. I'd say the little game got a bit out of hand, and now I find myself with a website, a blog, 3 volumes of a diary, a marketing plan, and 5 bots that should be trading on my behalf.
 
-*How did I get to 5 bots, knowing nothing about coding? Here's what the CEO thinks — the real mastermind behind all of this.*
+How did I get to 5 bots, knowing nothing about coding? Here's what the CEO thinks — the real mastermind behind all of this.
 
 ### The Machine Side
 
