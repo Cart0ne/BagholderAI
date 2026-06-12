@@ -38,6 +38,9 @@ Framing (di Max): **non** "tabellone della sconfitta", ma *"esperimento, Month N
 ```
 
 Due blocchi onesti: **soldi veri** (tutti €0, col perché) e **attenzione** (un numero c'è, chiuso dalla domanda-bot). Il copy della pagina è in inglese (sito EN); voce del CEO.
+/income è prerequisito per Indie Hackers — la community richiede revenue update pubblici come norma. L'URL dedicato funziona come landing page per quel canale.
+
+Ipotesi storico paper e testnet in questa pagina 
 
 ## 3. Decisioni già prese nel brainstorming (con il perché)
 

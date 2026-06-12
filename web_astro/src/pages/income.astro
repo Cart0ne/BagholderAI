@@ -1,0 +1,324 @@
+---
+import Layout from "../layouts/Layout.astro";
+
+/* The Passive Income Experiment — /income (S100a).
+   BUILT, NOT PUBLISHED YET: noindex + excluded from nav/sitemap.
+   Reachable only by direct URL while we decide when to launch (Max).
+   To publish: drop noindex, add the home teaser + nav + sitemap entry.
+
+   Design note — radical-transparency constraint: every revenue figure is
+   €0, so a PIE OF INCOME is undrawable (all-zero slices) and faking equal
+   slices would be a lie. The charts therefore visualize what is NOT zero —
+   ATTENTION (visits, book views) — never invented income. Data is
+   client-fetched from `passive_income` by src/scripts/income.ts; the
+   donut data is a small constant (book views per volume) until we wire it. */
+---
+
+<Layout
+  title="The Passive Income Experiment — BagHolderAI"
+  description="Can an AI actually make passive income? Every revenue source — real money, even when it's €0 — next to the attention we've earned. No fake screenshots, just the numbers and the why."
+  current=""
+  noindex={true}
+>
+  {/* ============================================================ HERO */}
+  <section class="relative mx-auto max-w-4xl px-4 pt-10 pb-1 sm:px-6 sm:pt-12">
+    {/* Work-in-progress sticker — /income is a private scaffold (S100a),
+        not launched yet. Retire when the page goes live. */}
+    <div class="absolute right-3 top-7 z-10 rotate-[8deg] select-none rounded-full
+                border border-warn/50 bg-warn-soft px-3.5 py-1.5 shadow-sticker
+                sm:right-6 sm:top-9">
+      <span class="whitespace-nowrap font-mono text-[10px] font-bold uppercase
+                   tracking-[0.12em] text-warn">🚧 Work in progress</span>
+    </div>
+
+    <div class="inline-flex items-center gap-2 rounded-full border border-border
+                bg-surface px-3 py-1 font-mono text-[10.5px] font-bold uppercase
+                tracking-[0.16em] text-text-muted shadow-sticker-sm">
+      <span class="inline-block h-1.5 w-1.5 rounded-full bg-sand"></span>
+      <span>The experiment</span>
+      <span class="text-border">·</span>
+      <span id="income-month">Month 4</span>
+    </div>
+
+    <h1 class="mt-4 font-display text-[34px] font-extrabold leading-[1.05]
+               tracking-[-0.02em] text-text sm:text-[42px]">
+      The passive income <span class="text-sand">experiment</span>.
+    </h1>
+
+    <p class="mt-4 max-w-2xl text-[15px] leading-[1.6] text-text-dim">
+      Everyone online "makes $10k a month with AI." We made <strong
+      class="font-semibold text-text">€0</strong> — and here's exactly why.
+      Real money, shown even when it's zero, sat next to the attention we've
+      actually earned. No screenshots, no funnels, no "secret method."
+    </p>
+  </section>
+
+  {/* ===================================================== KPI BADGES
+       A real mix (not four zeros): the €0 sits next to the metrics that
+       aren't zero, so the page reads as an experiment, not a defeat board. */}
+  <section class="reveal mx-auto max-w-4xl px-4 pt-6 sm:px-6">
+    <div class="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
+      <div class="rounded-2xl border border-border bg-surface px-4 py-4 shadow-sticker-sm">
+        <div class="font-mono text-[10px] uppercase tracking-[0.12em] text-text-muted">
+          Revenue to date
+        </div>
+        <div id="kpi-revenue" class="mt-1.5 font-display text-[26px] font-extrabold leading-none text-text">€0</div>
+        <div class="mt-1 text-[11px] text-text-muted">since Mar '26</div>
+      </div>
+      <div class="rounded-2xl border border-border bg-surface px-4 py-4 shadow-sticker-sm">
+        <div class="font-mono text-[10px] uppercase tracking-[0.12em] text-text-muted">
+          Spent to date
+        </div>
+        <div id="kpi-spent" class="mt-1.5 font-display text-[26px] font-extrabold leading-none text-text">~€274</div>
+        <div class="mt-1 text-[11px] text-text-muted">to run it all</div>
+      </div>
+      <div class="rounded-2xl border border-border bg-surface px-4 py-4 shadow-sticker-sm">
+        <div class="font-mono text-[10px] uppercase tracking-[0.12em] text-text-muted">
+          Conversion
+        </div>
+        <div id="kpi-conversion" class="mt-1.5 font-display text-[26px] font-extrabold leading-none text-text">0%</div>
+        <div class="mt-1 text-[11px] text-text-muted">150 views → 0 sales</div>
+      </div>
+      <div class="rounded-2xl border border-border bg-surface px-4 py-4 shadow-sticker-sm">
+        <div class="font-mono text-[10px] uppercase tracking-[0.12em] text-text-muted">
+          Visitors / 30d
+        </div>
+        <div id="kpi-reach" class="mt-1.5 font-display text-[26px] font-extrabold leading-none text-text">~575</div>
+        <div class="mt-1 text-[11px] text-text-muted">site-wide (Umami)</div>
+      </div>
+    </div>
+  </section>
+
+  {/* ====================================== ATTENTION vs MONEY (bars)
+       The thesis as one image. NOT a shared numeric scale (visits vs
+       euros) — a rhetorical contrast, stated as such in the caption. */}
+  <section class="reveal mx-auto max-w-4xl px-4 pt-4 sm:px-6">
+    <div class="rounded-2xl border border-border bg-surface px-5 py-5
+                shadow-sticker-sm sm:px-7 sm:py-6">
+      <h2 class="mb-4 font-display text-[18px] font-extrabold tracking-[-0.01em] text-text">
+        Attention vs <span class="text-sand">money</span>
+      </h2>
+      <div class="mb-4">
+        <div class="mb-1.5 flex items-baseline justify-between gap-3">
+          <span class="text-[13.5px] font-semibold text-text">Attention</span>
+          <span id="bar-attention-label" class="font-mono text-[12px] text-text-dim">~575 site visits · 150 book views</span>
+        </div>
+        <div class="h-3.5 w-full overflow-hidden rounded-full border border-border-soft bg-panel">
+          <div class="h-full rounded-full bg-sand" style="width:90%"></div>
+        </div>
+      </div>
+      <div>
+        <div class="mb-1.5 flex items-baseline justify-between gap-3">
+          <span class="text-[13.5px] font-semibold text-text">Money</span>
+          <span id="bar-money-label" class="font-mono text-[12px] text-text-dim">€0</span>
+        </div>
+        <div class="h-3.5 w-full overflow-hidden rounded-full border border-border-soft bg-panel">
+          <div id="bar-money-fill" class="h-full rounded-full bg-text-muted" style="width:0%"></div>
+        </div>
+      </div>
+      <p class="mt-4 text-[12.5px] leading-[1.55] text-text-muted">
+        Different units — one's attention, the other's euros — so this isn't a
+        shared scale. The contrast <em>is</em> the point: the interest is real,
+        the revenue is still zero.
+      </p>
+    </div>
+  </section>
+
+  {/* ============================================= INCOME STREAMS (cards) */}
+  <section class="reveal mx-auto max-w-4xl px-4 pt-4 sm:px-6">
+    <div class="mb-3 flex items-baseline justify-between px-1">
+      <h2 class="font-display text-[20px] font-extrabold tracking-[-0.01em] text-text">
+        Income streams <span class="text-sand">(real money)</span>
+      </h2>
+      <span class="font-mono text-[11px] uppercase tracking-[0.12em] text-text-muted">
+        total <span id="income-total" class="font-bold text-text">€0</span>
+      </span>
+    </div>
+    <div id="income-streams" data-income-list
+         class="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
+      <div class="rounded-2xl border border-border bg-surface px-5 py-6 text-[13px]
+                  text-text-muted shadow-sticker-sm">Loading figures…</div>
+    </div>
+  </section>
+
+  {/* ============================================== RUNNING COSTS
+       The expense side — what it takes to run the experiment. Real data:
+       almost all of it is the Claude Max subscription. This is the
+       contrast that lands: ~€274 spent to make €0. */}
+  <section class="reveal mx-auto max-w-4xl px-4 pt-4 sm:px-6">
+    <div class="rounded-2xl border border-border bg-surface px-5 py-5
+                shadow-sticker-sm sm:px-7 sm:py-6">
+      <div class="mb-1 flex items-baseline justify-between">
+        <h2 class="font-display text-[20px] font-extrabold tracking-[-0.01em] text-text">
+          Running <span class="text-sand">costs</span>
+        </h2>
+        <span class="font-mono text-[11px] uppercase tracking-[0.12em] text-text-muted">
+          total <span id="income-cost-total" class="font-bold text-text">€274 · ~$304</span>
+        </span>
+      </div>
+      <p class="mb-4 text-[13px] leading-[1.55] text-text-dim">
+        What it takes to run the experiment. We spend
+        <strong class="font-semibold text-text">~€274</strong> to make €0 —
+        almost all of it the Claude Max subscription.
+      </p>
+      <div class="flex flex-col items-center gap-6 sm:flex-row sm:gap-8">
+        <div class="relative shrink-0">
+          <svg viewBox="0 0 36 36" class="h-36 w-36">
+            <circle cx="18" cy="18" r="15.9155" fill="none"
+                    stroke="var(--color-border-soft)" stroke-width="3.4"></circle>
+            <g id="donut-costs-segs"></g>
+          </svg>
+          <div class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+            <span id="donut-costs-center" class="font-display text-[18px] font-extrabold leading-none text-text">€274</span>
+            <span class="font-mono text-[8px] uppercase tracking-[0.1em] text-text-muted">total</span>
+          </div>
+        </div>
+        <ul id="donut-costs-legend" class="w-full flex-1 space-y-2.5 text-[12.5px]"></ul>
+      </div>
+    </div>
+  </section>
+
+  {/* ===================================== DONUTS — income + attention
+       Left: income by source — a TEMPLATE. Today every slice is €0 so it
+       renders a faint "ghost" ring (the future structure) with the legend
+       at €0; the moment a source earns, it fills with the real split.
+       Right: attention by book — real data today (Payhip product views). */}
+  <section class="reveal mx-auto max-w-4xl px-4 pt-4 sm:px-6">
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+
+      {/* Income by source (fills with real revenue) */}
+      <div class="rounded-2xl border border-border bg-surface px-5 py-5 shadow-sticker-sm sm:px-6">
+        <div class="mb-1 flex items-baseline justify-between">
+          <h2 class="font-display text-[17px] font-extrabold tracking-[-0.01em] text-text">
+            Income by <span class="text-sand">source</span>
+          </h2>
+          <span class="font-mono text-[9.5px] uppercase tracking-[0.1em] text-text-muted">by type</span>
+        </div>
+        <p class="mb-4 text-[12.5px] leading-[1.5] text-text-dim">
+          The split, when the money starts. Today it's €0 — this fills in as
+          revenue arrives.
+        </p>
+        <div class="flex items-center gap-5">
+          <div class="relative shrink-0">
+            <svg viewBox="0 0 36 36" class="h-32 w-32">
+              <circle cx="18" cy="18" r="15.9155" fill="none"
+                      stroke="var(--color-border-soft)" stroke-width="3.4"></circle>
+              <g id="donut-income-segs"></g>
+            </svg>
+            <div class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+              <span id="donut-income-center" class="font-display text-[18px] font-extrabold leading-none text-text">€0</span>
+              <span class="font-mono text-[8px] uppercase tracking-[0.1em] text-text-muted">total</span>
+            </div>
+          </div>
+          <ul id="donut-income-legend" class="flex-1 space-y-2 text-[12px]"></ul>
+        </div>
+      </div>
+
+      {/* Attention by book (real today) */}
+      <div class="rounded-2xl border border-border bg-surface px-5 py-5 shadow-sticker-sm sm:px-6">
+        <div class="mb-1 flex items-baseline justify-between">
+          <h2 class="font-display text-[17px] font-extrabold tracking-[-0.01em] text-text">
+            Attention by <span class="text-sand">book</span>
+          </h2>
+          <span class="font-mono text-[9.5px] uppercase tracking-[0.1em] text-text-muted">book views</span>
+        </div>
+        <p class="mb-4 text-[12.5px] leading-[1.5] text-text-dim">
+          Which volume pulls the eyes — even with 0 sales yet.
+        </p>
+        <div class="flex items-center gap-5">
+          <div class="relative shrink-0">
+            <svg viewBox="0 0 36 36" class="h-32 w-32">
+              <circle cx="18" cy="18" r="15.9155" fill="none"
+                      stroke="var(--color-border-soft)" stroke-width="3.4"></circle>
+              <g id="donut-views-segs"></g>
+            </svg>
+            <div class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+              <span id="donut-views-center" class="font-display text-[18px] font-extrabold leading-none text-text">91</span>
+              <span class="font-mono text-[8px] uppercase tracking-[0.1em] text-text-muted">views</span>
+            </div>
+          </div>
+          <ul id="donut-views-legend" class="flex-1 space-y-2 text-[12px]"></ul>
+        </div>
+      </div>
+    </div>
+
+    <p class="mt-3 px-1 text-[11.5px] leading-[1.5] text-text-muted">
+      Book views = Payhip product views (sum 91 across volumes); the Payhip
+      dashboard reports 150 site-wide, the gap is the store page. Manual, last
+      checked this month.
+    </p>
+  </section>
+
+  {/* ==================================================== TRACTION rows */}
+  <section class="reveal mx-auto max-w-4xl px-4 pt-4 sm:px-6">
+    <div class="rounded-2xl border border-border bg-surface px-5 py-5
+                shadow-sticker-sm sm:px-7 sm:py-6">
+      <h2 class="mb-1 font-display text-[18px] font-extrabold tracking-[-0.01em] text-text">
+        Traction <span class="text-sand">(attention)</span>
+      </h2>
+      <ul id="income-traction-list" data-income-list class="mt-1">
+        <li class="py-3.5 text-[13px] text-text-muted">Loading figures…</li>
+      </ul>
+      <div class="mt-3 rounded-xl border border-border-soft bg-panel px-4 py-4">
+        <p class="text-[14px] font-semibold leading-snug text-text">
+          ❓ How many of those are even human?
+        </p>
+        <p class="mt-1 text-[13px] leading-[1.55] text-text-muted">
+          We genuinely don't know. Every counter — Umami, Vercel, Payhip —
+          includes bots dressed up as browsers, and nobody hands you a clean
+          "real humans" number. We'd rather admit that than invent one.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  {/* ===================================== TEST HISTORY (P&L by run)
+       Why trading is still €0 + the proof: P&L across each test run.
+       Two real lines today (testnet v1, v2); a "paper" series can be
+       added once/if we have that data — see income.ts PNL_SERIES. */}
+  <section class="reveal mx-auto max-w-4xl px-4 pt-4 pb-10 sm:px-6">
+    <div class="rounded-2xl border border-border bg-surface px-5 py-5
+                shadow-sticker-sm sm:px-7 sm:py-6">
+      <div class="mb-1 flex items-baseline justify-between">
+        <h2 class="font-display text-[18px] font-extrabold tracking-[-0.01em] text-text">
+          Test history <span class="text-sand">(P&amp;L by run)</span>
+        </h2>
+        <span class="font-mono text-[10px] uppercase tracking-[0.12em] text-text-muted">
+          paper · testnet v1 · v2
+        </span>
+      </div>
+      <p class="mb-4 text-[14px] leading-[1.6] text-text-dim">
+        Trading revenue is €0 because we're not live with real money yet — the
+        bot runs on Binance <strong class="font-semibold text-text">testnet</strong>
+        (real orders, simulated funds). That €0 means <em>not started</em>, not
+        <em>not working</em>. Here's the running P&amp;L of each test run:
+      </p>
+
+      <div class="relative h-72 w-full">
+        <canvas id="income-pnl-chart"></canvas>
+        <p id="income-pnl-empty"
+           class="hidden absolute inset-x-0 top-1/2 -translate-y-1/2
+                  text-center font-mono text-[12px] text-text-muted">
+          No P&amp;L history yet.
+        </p>
+      </div>
+
+      <p class="mt-3 text-[11.5px] leading-[1.5] text-text-muted">
+        Daily portfolio P&amp;L from <code>daily_pnl</code>. The gap is the
+        monthly testnet reset (a fresh start, by design). Live values on the
+        <a href="/dashboard" class="underline decoration-border-soft hover:text-text">dashboard</a>.
+      </p>
+    </div>
+
+    <p id="income-error" class="hidden mt-5 text-center font-mono text-[12px] text-text-muted">
+      Couldn't load the live figures right now — they're in our public
+      database, just not reachable this second.
+    </p>
+  </section>
+
+  {/* Chart.js for the P&L line chart (same CDN + version as /dashboard). */}
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" is:inline></script>
+  <script>
+    import "../scripts/income.ts";
+  </script>
+</Layout>

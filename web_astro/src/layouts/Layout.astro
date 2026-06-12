@@ -16,6 +16,10 @@ interface Props {
      tag in <head>. Used for WebSite schema (home) and Article schema
      (blog posts) — see S84 SEO audit fix. */
   jsonLd?: Record<string, unknown>;
+  /* Keep the page out of search indexes. Set true on pages that are
+     built but not publicly launched yet (e.g. /income while we decide
+     when to publish — S100a). Emits robots noindex,nofollow. */
+  noindex?: boolean;
 }
 
 const {
@@ -24,6 +28,7 @@ const {
   current     = "",
   noAds       = false,
   jsonLd,
+  noindex     = false,
 } = Astro.props;
 
 const canonical = new URL(Astro.url.pathname, "https://bagholderai.lol").toString();
@@ -36,6 +41,7 @@ const canonical = new URL(Astro.url.pathname, "https://bagholderai.lol").toStrin
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="generator" content={Astro.generator} />
     <link rel="canonical" href={canonical} />
+    {noindex && <meta name="robots" content="noindex,nofollow" />}
     <link rel="alternate" type="application/rss+xml"
           title="BagHolderAI Blog" href="/rss.xml" />
 

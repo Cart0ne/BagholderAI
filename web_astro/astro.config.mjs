@@ -48,8 +48,12 @@ export default defineConfig({
     react(),
     sitemap({
       /* Exclude operative control rooms — they're for Max + the CEO,
-         not for the public. Google should not index them. */
-      filter: (page) => !page.includes('/tf') && !page.includes('/grid'),
+         not for the public. Google should not index them. Also /income:
+         built but not launched yet (S100a), noindex until we publish. */
+      filter: (page) =>
+        !page.includes('/tf') &&
+        !page.includes('/grid') &&
+        !page.includes('/income'),
       /* Honest per-page <lastmod> (2026-06-10, supersedes the S84 global
          `lastmod: new Date()`): a build timestamp on EVERY url at EVERY
          deploy is the pattern Google documents as unreliable-and-ignored.
