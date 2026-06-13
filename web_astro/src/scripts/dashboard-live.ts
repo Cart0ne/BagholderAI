@@ -1605,8 +1605,11 @@ const POSTURE_TEXT: Record<string, string> = {
 async function renderBrains() {
   /* NewsKeeper — headlines + 24h barometer. */
   try {
+    /* polarity=not.is.null → keep only NewsKeeper v2 rows (barometro Haiku);
+       v1 shadow rows have polarity NULL and would double every headline
+       during the shadow-comparison window (S105a). */
     const heads = await sbGet<{ summary: string; polarity: number | null }>(
-      "newskeeper_signals", `select=summary,polarity&order=created_at.desc&limit=4`);
+      "newskeeper_signals", `select=summary,polarity&polarity=not.is.null&order=created_at.desc&limit=4`);
     if (heads.length) {
       const sev = (p: number | null) =>
         (p ?? 0) > 0 ? "var(--color-pos)" : (p ?? 0) < 0 ? "var(--color-neg)" : "var(--color-text-muted)";
