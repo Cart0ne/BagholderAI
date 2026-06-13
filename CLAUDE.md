@@ -223,6 +223,17 @@ git pull per partire con la versione più aggiornata?"
 Il progetto viene sviluppato su 2 macchine (MacBook Air + Mac Mini), 
 quindi il repo remoto potrebbe avere commit più recenti.
 
+**RESTART DEI BOT — regola (formalizzata S105b, 2026-06-13)**: CC riavvia 
+l'orchestrator / i bot sul Mac Mini **SOLO se Max lo chiede esplicitamente**. 
+Pull e push restano autonomi di CC; il restart no — è Max a deciderne il 
+momento. Questa regola supera sia il divieto assoluto "CC non riavvia" (usato 
+in alcuni brief) sia l'autonomia piena della vecchia nota. Quando Max chiede 
+il restart: catturare prima il comando di lancio corrente (`ps -p <pid> -o 
+command=`) per replicare gli env flag esatti, fare shutdown graceful 
+(SIGTERM all'orchestrator, che propaga ai figli), NON toccare i processi 
+standalone NewsKeeper v1/v2, rilanciare daemonizzato (`nohup caffeinate … &`), 
+verificare i processi su + l'effetto a DB.
+
 ═══════════════════════════════════════════
  [6] PROJECT CONTEXT
 ═══════════════════════════════════════════
