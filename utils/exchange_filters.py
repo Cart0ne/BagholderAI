@@ -107,6 +107,61 @@ def validate_order(symbol: str, amount: float, price: float, filters: dict) -> t
     return (True, "OK")
 
 
+# Brief S105b (S105, 2026-06-13): single source of truth for "position vs dust".
+# Used to be scattered: an inline `min_sellable = max(step, min_qty,
+# min_notional/price)` in sell_pipeline.py AND a hardcoded
+# `_DUST_USDT_THRESHOLD = $0.50` in state_manager.py — the latter 10x smaller
+# than the real Binance minNotional ($1–$5), so a residual in [$0.50, $5) would
+# survive a restart yet be unsellable → silent grid freeze (the SOL incident).
+# Now every "do I hold a real, sellable position?" check routes through is_dust().
+#
+# The $0.50 survives ONLY as a fallback for the degraded case where exchange
+# filters failed to load (fetch_filters raised at boot): without filters we
+# cannot ask Binance "is this sellable?", so we fall back to the economic
+# proxy that preserved the S73 BONK restart fix. When filters ARE present they
+# always win (they dominate $0.50 for every real symbol — verified S105b
+# GATE A2: SOL/BTC minNotional $5, BONK $1, all ≥ $0.50).
+_DUST_NOTIONAL_FALLBACK = 0.50
+
+
+def min_sellable_amount(price: float, filters: dict) -> float:
+    """Smallest base-asset quantity Binance would accept as a SELL at `price`.
+
+    = max(LOT_SIZE.stepSize, LOT_SIZE.minQty, NOTIONAL.minNotional / price).
+    Returns 0.0 when filters are missing or price is non-positive (caller then
+    treats "sellable" as unknown).
+    """
+    if not filters or price <= 0:
+        return 0.0
+    step = float(filters.get("lot_step_size") or 0)
+    min_qty = float(filters.get("min_qty") or 0)
+    min_notional = float(filters.get("min_notional") or 0)
+    return max(step, min_qty, min_notional / price)
+
+
+def is_dust(holdings: float, price: float, filters: dict) -> bool:
+    """True when `holdings` is NOT a real, sellable position at `price`.
+
+    A quantity is dust if a SELL of it would be rejected by Binance — i.e. it
+    is below the smallest sellable size (LOT_SIZE / NOTIONAL). Empty (<= 0) is
+    dust by definition. When filters are unavailable, falls back to the
+    $0.50 economic notional proxy (see _DUST_NOTIONAL_FALLBACK).
+
+    This is the single predicate behind every "position vs dust" gate
+    (Brief S105b): re-entry, no-buy-above-avg, idle decision, dead-zone,
+    first-buy, sell-gate, and the boot replay write-off.
+    """
+    if holdings <= 0:
+        return True
+    msa = min_sellable_amount(price, filters)
+    if msa > 0:
+        return holdings < msa
+    # No usable filters → economic fallback (preserves the S73 BONK restart fix)
+    if price > 0:
+        return holdings * price < _DUST_NOTIONAL_FALLBACK
+    return False
+
+
 def round_to_step(amount: float, step_size: float) -> float:
     """
     Round amount DOWN to nearest valid step size.

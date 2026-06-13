@@ -153,8 +153,17 @@ def init_avg_cost_state_from_db(bot):
                 # exit so avg + ladder reset propagate, matching the
                 # runtime sell_pipeline.py fix. Without this, the BONK
                 # dust-trap reproduces on every restart from the replay.
-                _DUST_USDT_THRESHOLD = 0.50
-                if qty <= 1e-9 or qty * price < _DUST_USDT_THRESHOLD:
+                # Brief S105b (S105 2026-06-13): unify with the live-loop dust
+                # predicate. Was a hardcoded $0.50 — 10x below the real Binance
+                # minNotional ($1-$5), so a residual in [$0.50, min_sellable)
+                # survived the replay yet was unsellable → it would re-freeze the
+                # grid on the next restart. is_dust() uses the actual LOT_SIZE/
+                # NOTIONAL filters (loaded at grid_runner:314, before this
+                # replay); the $0.50 lives on only as is_dust()'s no-filters
+                # fallback. GATE A2 verified GREEN: predicate dominates $0.50 for
+                # all three coins (SOL/BTC minNotional $5, BONK $1).
+                from utils.exchange_filters import is_dust
+                if qty <= 1e-9 or is_dust(qty, price, bot._exchange_filters):
                     qty = 0.0
                     avg = 0.0  # reset on full sell-out (numeric or economic)
                     last_sell_price = 0.0  # 70a: reset ladder on full exit

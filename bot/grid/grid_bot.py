@@ -228,6 +228,19 @@ class GridBot:
     # Helpers (kept on GridBot — small + heavily used internally).
     # ------------------------------------------------------------------
 
+    def _position_is_dust(self, price: float) -> bool:
+        """True when managed_holdings is NOT a real, sellable position at `price`.
+
+        Brief S105b (S105 2026-06-13): single predicate behind every
+        "position vs dust" gate (re-entry, no-buy-above-avg, idle decision,
+        dead-zone, first-buy, sell-gate). A residual below Binance's smallest
+        sellable size (LOT_SIZE / NOTIONAL) is untradeable — counting it as a
+        position disables the idle re-entry forever (the SOL freeze). Routes
+        through the shared is_dust() so the boot replay and the live loop agree.
+        """
+        from utils.exchange_filters import is_dust
+        return is_dust(self.managed_holdings, price, self._exchange_filters)
+
     def _available_cash(self) -> float:
         """
         Available cash = capital - invested + received - reserve.
@@ -729,7 +742,7 @@ class GridBot:
                 and not self._take_profit_triggered
                 and not self._profit_lock_triggered
                 and not self._gain_saturation_triggered
-                and self.managed_holdings > 0  # S97a: economic position, not wallet
+                and not self._position_is_dust(current_price)  # S105b: real position only; dust → idle re-entry
                 and self._last_sell_price > 0
                 and self.state.avg_buy_price > 0
                 and current_price > self.state.avg_buy_price
@@ -801,7 +814,7 @@ class GridBot:
         # Force-liquidate paths (TF stop-loss / trailing / take-profit /
         # profit-lock / gain-saturation / pending_liquidation) sell
         # everything in one trade.
-        if self.managed_holdings > 0:  # S97a: economic position, not wallet (phantom excluded)
+        if not self._position_is_dust(current_price):  # S105b: skip sell for dust (unsellable); was managed_holdings > 0
             # 39a/39c/45f/45g/51b: TF override paths still fire on
             # avg-cost, but bypass the "no sell at loss" guard via
             # bot.strategy override in sell_pipeline.
@@ -927,7 +940,7 @@ class GridBot:
 
         if not buy_cooldown_active:
             if self._pct_last_buy_price == 0:
-                if self.managed_holdings > 0:
+                if not self._position_is_dust(current_price):  # S105b: dust → fall through to first buy
                     # Brief s70 FASE 2: holdings esistenti senza ref → usa avg.
                     # Path coperto dal boot replay (state_manager carica
                     # holdings + avg_buy_price), ma defensive per restart
@@ -971,7 +984,7 @@ class GridBot:
             elapsed_h = int(elapsed)
             if elapsed_h != self._idle_logged_hour:
                 self._idle_logged_hour = elapsed_h
-                mode = "RE-ENTRY" if self.managed_holdings <= 0 else "RECALIBRATE"  # S97a
+                mode = "RE-ENTRY" if self._position_is_dust(current_price) else "RECALIBRATE"  # S105b (was managed_holdings <= 0)
                 logger.info(
                     f"[{self.symbol}] IDLE {mode} CHECK: "
                     f"elapsed={elapsed:.2f}h / threshold={self.idle_reentry_hours}h "
@@ -989,10 +1002,10 @@ class GridBot:
                 # stop_buy_active suppression in idle_alerts.py.
                 available = self._available_cash()
                 if available < HardcodedRules.MIN_LAST_SHOT_USD:
-                    path_label = "re-entry" if self.managed_holdings <= 0 else "recalibrate"  # S97a
+                    path_label = "re-entry" if self._position_is_dust(current_price) else "recalibrate"  # S105b
                     event_name = (
                         "idle_reentry_suppressed_no_cash"
-                        if self.managed_holdings <= 0
+                        if self._position_is_dust(current_price)
                         else "idle_recalibrate_suppressed_no_cash"
                     )
                     logger.info(
@@ -1021,7 +1034,7 @@ class GridBot:
                     # after another full window (prevents per-cycle spam).
                     self._last_trade_time = datetime.utcnow()
                     self._idle_logged_hour = -1
-                elif self.managed_holdings <= 0:  # S97a: no managed position → re-entry
+                elif self._position_is_dust(current_price):  # S105b: dust or empty → force re-entry (was managed_holdings <= 0)
                     # --- Path A: no holdings → force re-entry buy ---
                     logger.info(
                         f"[{self.symbol}] Idle re-entry after {elapsed:.1f}h: "

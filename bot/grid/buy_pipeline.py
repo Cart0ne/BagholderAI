@@ -58,9 +58,15 @@ def execute_percentage_buy(bot, price: float) -> Optional[dict]:
     # (holdings=0) is always permitted because there is no avg to respect.
     # Applied only to manual bots (managed_by="grid"); TF rotator buys are
     # driven by external signals and bypass the guard. Strategy A only.
+    # S105b (S105 2026-06-13): a dust residual (below Binance min sellable) is
+    # NOT a position, so this guard must not apply to it — otherwise the idle
+    # re-entry buy (which fires above avg by design) is blocked and the grid
+    # stays frozen (the SOL incident). Same is_dust() predicate as the re-entry
+    # gate in grid_bot — single source of truth (Brief S105b §3 CRITICO).
+    from utils.exchange_filters import is_dust
     if (bot.strategy == "A"
             and bot.managed_by == "grid"
-            and bot.managed_holdings > 0  # S97a: economic position, not wallet (phantom excluded)
+            and not is_dust(bot.managed_holdings, price, bot._exchange_filters)  # S105b (was managed_holdings > 0)
             and bot.state.avg_buy_price > 0
             and price > bot.state.avg_buy_price):
         logger.info(
