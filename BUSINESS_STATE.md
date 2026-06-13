@@ -1,8 +1,8 @@
 # BUSINESS_STATE.md
 
-**Last updated:** 2026-06-12 — Session 103 (Sherpa Board params + dashboard brain pipeline + memory compaction). Cap file 50KB (Max S95, CLAUDE.md §2b). Cadenze audit canoniche in PROJECT_STATE §9. Prec.: S102 (Sherpa coherence audit + GO LIVE testnet).
-**Updated by:** CEO (update S103 via brief `config/S103_BUSINESS_STATE_update.md`) — applicato da CC
-**Basato su:** PROJECT_STATE.md aggiornato 2026-06-12
+**Last updated:** 2026-06-13 — Session 105 (SOL grid frozen by dust → grid re-entry logic fix, commit `87eeda9`). Cap file 50KB (Max S95, CLAUDE.md §2b). Cadenze audit canoniche in PROJECT_STATE §9. Prec.: S104 (Volume-PnL debunking + "The Experiment" income page).
+**Updated by:** CEO (update S104 via Max + update S105) — applicato da CC
+**Basato su:** PROJECT_STATE.md aggiornato 2026-06-13; report S104 (income-page, dashboard-brain-cards) + S103a (volume-pnl); diary S104/S105
 
 ---
 
@@ -24,19 +24,11 @@ BagHolderAI è un progetto sperimentale dove un'AI (Claude) gestisce un micro-bu
 
 ## 2. Marketing In-Flight
 
-### Frontend internals (S86, NUOVO)
-- **Homepage: status badge dinamico LIVE** — tabella Supabase `project_status` (1 riga, RLS anon-read, trigger `updated_at` auto), aggiornabile via plain SQL UPDATE da CEO/Max/CC. Box full-width sotto l'hero, palette teal `#5DCAA5`, formato `emoji + status_text + Session NN · Updated Xh ago`. Messaggio attuale: 📖 "Collecting brain data before going live · Volume 3 just dropped" (aggiornato CEO S87). Zero deploy per cambiarlo.
-- **Admin dashboard: regime overlay bands LIVE** — bande di sfondo colorate fear/greed/neutral sui 3 chart `admin.html` (TREND, Sentinel fast vs Sherpa, Parameters History). Palette finanziaria mirror di Widget A (S77 LIVE — extreme_fear cyan-light → extreme_greed red). Alpha bumped (0.20/0.14/0.10) per visibilità su regime uniforme (testnet "fear" da 5+ giorni). Legenda regime + bonus fix x-axis labels range-aware (HH:MM↔DD/MM).
-- **Widget B (77c, standalone regime timeline): KILLED** — regime overlay copre lo stesso bisogno con meno clutter visivo (bande sui chart esistenti invece di un quarto chart dedicato). Brief 77c archiviato in `briefresolved.md/`. Widget A (banner regime istantaneo, S77 LIVE) resta complementare.
-- **Prossimo step frontend**: portare grafici Sentinel/Sherpa su dashboard pubblica (`/dashboard` o `/sentinel`). Gated da (1) validazione regime overlay con dati live + (2) Sherpa Sprint 2 verde dopo Brain Analysis 2.
-
-### Audit & Remediation (S88, NUOVO)
-- **Audit Area 2 completato** (primo mai eseguito) — verdetto CON RISERVE. 0 CRITICAL · 6 HIGH · 12 MED · 12 LOW. Report: `audits/audit_report_20260527_area2_coherence.md`. Riserve principali: sito pubblico in drift 1-2 settimane (dashboard diceva Sentinel/Sherpa "not yet deployed", roadmap.ts ferma al 19 maggio, NewsKeeper assente), AUDIT_PROTOCOL.md era un vecchio request non un protocollo, regola cadenza Area 2 mai applicata.
-- **5 brief di remediation prodotti (88a→88e), ~5-7h CC. 4/5 SHIPPED in S88** (2026-05-27, stessa sessione — non separate come da piano iniziale): 88b public site catch-up (roadmap S80→S87 + NewsKeeper Phase 14 + dashboard Sentinel/Sherpa LIVE/DRY_RUN), 88c state files cleanup (PROJECT_STATE <40KB + 6 drift fix), 88a audit meta (AUDIT_PROTOCOL.md riscritto a protocollo vero + trigger Area 2 event-based), 88e brief hygiene (config/parked). Tracking in `audit_remediation_cover_sheet.md`.
-- **Resta solo 88d** (UI debts: botData homepage da Supabase + banner fear regime + fallback diary), sessione dedicata.
-
-### Sito (stato pubblico)
-TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live card on home + dashboard SHIPPED 2026-05-20 (Brief 80b, commit `b8bdc12`)** — "dal dottore" SVG sostituito con card stile Grid (orange accent, mirror frame), hero text aggiornato a "$500 Grid + $100 TF (Tier 1-2)", pipeline arrow "I tried, your turn" → "TF picks, Grid manages". **Homepage CTA swap SHIPPED (Brief 80b)**: "Read the blog" primario, "Read the diary" + "Live numbers →" secondari outline. **Homepage layout update SHIPPED LOCAL S82 (2026-05-23, no push)**: sezione Blog sotto hero (ultimi 3 post cliccabili), sezione Diary spostata sotto Bots. **Watchtower + Sherpa cards SHIPPED LOCAL S82**: card Sentinel→`THE WATCHTOWER` (duo Sentinel + NewsKeeper, primo cameo pubblico del 5° bot dim/locked) + card Sherpa→`SHERPA Parameter Tuner` con mascot Claude Design (flag + mappa). 3 stat-row LIVE-WIRED via Supabase REST: REGIME (5 pip, oggi `FEAR`), BOTS (3 pip rossi auto-adatta), STOP BUY (1 pip, oggi OFF). Dashboard P&L hero unificato. HWW v3 con Auditor entity. Blog infrastructure pronta (brief 75a shipped). **Push S82 deferito**: in attesa del brief newskeeper Board prima di rivelare il cameo pubblicamente.
+### S104 — web/marketing (NUOVO)
+- **Blog "How a Non-Coder Manages 5 AI Brains" PUBLISHED** (S104) — post two-voice, portabile per cross-post (tabella→lista, nomi generici→reali: Sherpa, NewsKeeper). Canonical: bagholderai.lol/blog/non-coder-5-brains. Cross-post Dev.to/Substack pendente.
+- **Dashboard pubblica §2 redesign LIVE** (S103b→S104) — 5 card statiche → righe full-width pipeline con dati live e polling 5min. THE TRADERS: TF→Grid+sparkline. THE BRAINS: NewsKeeper→Sentinel→Sherpa. Tutti brain LIVE (niente DRY_RUN). Token `--color-bot-news` in STYLEGUIDE §5.
+- **Card Sherpa homepage: ACTIVE (badge TEST)** (S104) — aggiornata da DRY_RUN. MODE LIVE, PARAMS 7 (3 strategy + 4 protective S103a), badge TEST mantenuto (opera su testnet).
+- **"/income" — The Passive Income Experiment: scaffold PRIVATO** (S104) — pagina combinata revenue+spese+attention+test history. Data-driven da tabella Supabase `passive_income`. KPI: Revenue €0, Spent ~€274, Conversion 0%, Visitors ~575/30d. Running costs breakdown (Claude Max €270 domina 98.5%). noindex, fuori da menu/sitemap. URL: bagholderai.lol/income.
 
 ### Blog
 - Post 1 LIVE 2026-05-15: "An AI That Can't Trade, a Human That Can't Say No"
@@ -78,15 +70,6 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 - **Post 1 LIVE:** "An AI That Can't Trade, a Human That Can't Say No" — canonical URL `bagholderai.lol`, UTM footer, serie "BagHolderAI". Pubblicato 2026-05-20 sera. Views/reactions: ancora ~0 (account nuovo, nessun follower, algoritmo non spinge).
 - **Post 2 LIVE:** "The Day Our Bot Ran Out of Money" — cross-posted 2026-05-22, canonical URL, UTM footer, serie "BagHolderAI".
 - **Post 3 LIVE:** "When Your AI CEO Lies About the Numbers" — cross-posted 2026-05-24, canonical URL, UTM footer, serie "BagHolderAI". Stats post-24h: **22 readers, 0 reactions** (account fresco, engagement da costruire).
-- **Engagement S81:** commento dettagliato su "AI Agent Failure Modes Beyond Hallucination" (Maxim Saplin) — 6 failure modes mappati all'esperienza BagHolderAI con link UTM al blog. Pubblicato 2026-05-22.
-- **Community engagement attivo (storico):**
-  - Commento su "Is Writing a Tech Blog Still Worth It?" (Deneth Rajapaksha) → 2 like, risposta dell'autore che chiede il link al blog → reply con link UTM + invito feedback
-  - Presentazione nel Welcome Thread v376 → risposta entusiasta di Lenard Francis (FastAPI AlertEngine) → reply dettagliato con 3 errori strategici del CEO, 3 link UTM, domanda di chiusura
-  - Reply a Lenard Francis (confidence gating, AlertEngine) + Valentin Monteiro (architect bottleneck shifting). Entrambi nel Welcome Thread v376.
-- **Strategia:** engagement first (commenti, risposte, conversazioni), contenuto secondo. L'algoritmo Dev.to premia le relazioni, non i post isolati. I commenti portano più visibilità del post stesso in fase iniziale.
-- **Engagement S85:** Rohini Gaonkar (AWS) aggiunta al giro di interazioni attive (oltre Valentin Monteiro già citato).
-- **Feed Import RSS da configurare (S85):** `https://bagholderai.lol/rss.xml` da incollare in `dev.to/dashboard/feed_imports`. Dev.to importa i nuovi post come bozze con canonical URL automatica al blog originale (no SEO duplicate penalty). Body completo via `<content:encoded>`.
-- **Prossimi passi:** Post 3 cross-post settimana prossima, continuare engagement nei commenti, monitorare se le conversazioni portano click (UTM campaign `comment_deneth` e `comment_lenard`)
 
 ### X (@BagHolderAI)
 - **Post pinnato S87**: lancio V3, link a bagholderai.lol/library. Sostituisce il post blog S78
@@ -175,7 +158,10 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 
 ## 3. Diary Status
 
-**Sessione corrente: 103 BUILDING** (Sherpa Board params + dashboard brain pipeline + memory compaction). S102 → COMPLETE. S101 → COMPLETE.
+**Sessione corrente: S105 COMPLETE** (grid-dust-reentry fix + NewsKeeper homepage dedup). S104 → COMPLETE. S103 → COMPLETE.
+- Volume corrente pubblico: V3 "From Brain to Eyes" (live). V4 in lavorazione (arc: NewsKeeper → go-live → results).
+- Ultima entry diary: **S105** "The One Where the Bot Held Out for SOL at $52,000" (dust/SOL grid freeze).
+- Prossimo check di congruenza diary: invariato.
 
 **Volumi pubblicati:**
 - Volume 1 "From Zero to Grid" (S1–S23, €4.99) → https://payhip.com/b/a4yMc
@@ -184,8 +170,8 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 
 **Volume corrente: 4** — "From Eyes to Live" (S83+, €4.99 planned). Aperto a S83. Arco narrativo: NewsKeeper build → go-live → primi risultati reali.
 
-**Blog post pubblicati: 8** (ultimo: Post 8 "Thirty-Two Hours", 5 giugno 2026)
-**Post SEO+GEO in coda: 4** (POST 2–5, cadenza 1 ogni 1-2 settimane)
+**Blog post pubblicati: 9** (ultimo: "How a Non-Coder Manages 5 AI Brains", S104; prec. "Thirty-Two Hours")
+**Post SEO+GEO in coda: 3** (POST 2,4,5 — POST 3 non-coder pubblicato S104; cadenza 1 ogni 1-2 settimane)
 
 **Sessioni pendenti di diary:** verificare su Supabase `diary_entries` se S73/S74/S77/S78/S79 hanno docx pronti. Storico sessioni V4 in PROJECT_STATE §10.
 
@@ -197,6 +183,11 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 
 | Data | Decisione | Perché |
 |---|---|---|
+| 2026-06-13 (S105) | **Dust write-off de-parcheggiato + soglia = minimo vendibile Binance** (predicato unico `is_dust`, ~6 gate griglia; `$0,50` di state_manager eliminato, tenuto solo come fallback no-filtri) | Polvere 0,000096 SOL (~$0,006) ha congelato la griglia SOL ~5gg disinnescando il re-entry forzato, in silenzio (no ERROR/alert). GATE A2 (copertura BONK del fix S73) VERDE prima di rimuovere il $0,50. Commit `87eeda9`, 228 test, reversibile. ANTI-ASSENSO: CC ha smontato il brief CEO su 3 punti (predicato già esistente / incoerenza soglie $0,50 vs $5 non vista dal CEO / ~6+6 punti non 3), CEO ha accettato tutte e 3 (addendum) |
+| 2026-06-12 (S104) | **Volume-PnL analysis: NESSUNA correlazione** — no filter volume sullo scanner | CEO ha trovato pattern apparente (basso volume → migliori ritorni) su 56 coppie paper trading. CC ha dimostrato che 32/56 erano righe sintetiche (orphan closures, PnL=0). Su 19 trade reali: Pearson 0.03. Validazione esterna (12 mesi Binance, 162 coin): confermata assenza correlazione. TF reale: WR 52.6%, PnL +1.49% (dati puliti). Anti-surge guard (p=0.09) parcheggiato post-barometro |
+| 2026-06-12 (S104) | **Spese progetto mappate: ~€274 totali** (Claude Max €270, Haiku $1.77, Grok $1.11, dominio $1.54, infra €0) | 98.5% del costo = abbonamento AI. Tutto il resto su free tier. CEO non ha accesso al billing dashboard Anthropic → gap operativo. Soluzione trovata: Anthropic Admin API (Usage & Cost endpoint). Implementazione parcheggiata |
+| 2026-06-12 (S104) | **"The Experiment" = pagina unica revenue+spese+trading journey** | Sostituisce il concept "Passive Income Dashboard". Scaffold privato (noindex). Si popola con dati reali progressivamente. Non pubblicare fino a decisione Board |
+| 2026-06-12 (S104) | **Area 2 audit: RISOLTO e automatizzato** (Cowork monthly). Rimosso da parking lot | Era flaggato "mai eseguito" da S78 — memoria CEO stale. In realtà completato e schedulato via Cowork (audit automatico mensile + email via Gmail draft + Apps Script) |
 | 2026-06-12 (S103) | **4 parametri protettivi → Sherpa-managed dinamici** (`BOARD_TABLE` per regime × volatility tier LOW/MID/HIGH) | Ribalta S102 "statici Board-only". Debounce 24h su coppia (regime,tier) persistito in `sherpa_board_state` (aggiunta CC, non nel brief). Cooldown 24h su override manuale invariato |
 | 2026-06-12 (S103) | **Dashboard §2 pubblica redesign: brain pipeline verticale** (NewsKeeper→Sentinel→Sherpa) | Card live full-width con connettori BAROMETER(shadow)/REGIME. Polling 5min. Anche TF/Grid trader cards ridisegnate. Token nuovo `--color-bot-news`. Sherpa pill: DRY_RUN→LIVE |
 | 2026-06-12 (S103) | **Dashboard privata grid.html: 3 sezioni per coin** | Trading by Board / Grid by Sherpa / Security by Sherpa. Min Profit spostato da Grid a Security |
@@ -219,7 +210,6 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 | 2026-06-08 (S99b) | **Board override: SOL sell_pct 1.0% → 1.5% (manuale)** | Max ha fatto da Sherpa umano: SOL vendeva con profitto troppo piccolo a 1.0%. `changed_by='manual-ceo'`. Conferma che il workflow Sherpa automatico serve |
 | 2026-06-08 (S99b) | **Dashboard "per-lot" text corretto** | Fossile FIFO pre-S70. Il bot usa avg_cost dal S70 FASE 2, il testo non era mai stato aggiornato. Fix cosmetico, 1 riga |
 | 2026-06-07 (S99) | **Trailing slash + llms.txt SHIPPED** (brief S99a, commit `9787aa5`). Fix SEO: Astro `trailingSlash: 'never'` + Vercel `trailingSlash: false` (308 redirect). `llms.txt` GEO creato in `public/` | Primo audit Semrush: 9 warning erano 4 pagine contate doppio. llms.txt: impatto pratico incerto ma costo ~zero e allineato a posizionamento AI-native |
-| 2026-06-07 (S99) | **Passive Income Dashboard: decisioni B+E approvate, implementazione PARKED** | B: teaser home + pagina dedicata `/income`. E: rischio €0 pubblico accettabile (target premia onestà). Obiezione CEO su timing: costruire il tabellone prima che il trading sia live rischia mesi di "€0 statico". Parked fino a post-analisi NewsKeeper/Brain + timeline go-live concreta |
 | 2026-06-06 (S98) | **Adaptive Sell Penalty SHIPPED** (brief S98a, commit `507ebd6` + `a7d644d`) — guardia post-fill: se un sell Strategy A filla sotto avg_cost, il bot alza sell_pct dell'ultimo slippage osservato; sell profittevole resetta a base | Incidente BONK: 7 sell in 6 min, tutti in perdita per slippage testnet (ticker ok, fill −4/−14%). Strategy A checkava pre-fill, non post-fill. Guardia proporzionale, adattiva, auto-guarigione |
 | 2026-06-06 (S98) | **Board override: penalty da cumulativa a ultima perdita** | Design v1 (CEO) sommava tutte le perdite → BONK congelato a 31.3%. Max ha identificato il freeze: le 7 perdite non sarebbero mai accadute con la guardia attiva, il cumulativo bootstrappava da storia non guardata. Design v2 (Board): penalty = ultimo slippage osservato. Più semplice, auto-guaribile, nessun deadlock |
 | 2026-06-06 (S98) | **tbot competitive analysis completata** (report S93b, read-only). Conferma moat: accounting onesto + multi-brain + news classificata. Tre mosse proposte: /news pubblica PARKED (serve Haiku classifier), tabella regime PARKED (serve più dati), blog accounting trap IN PIPELINE | L'analisi conferma: il competitor ha architettura più stretta (solo trend-follower), numeri rotti (nostro bug S96b), stesso slippage BONK al quadrato (−52% su microcap). Nessun contatto, nessuna modifica al sito |
@@ -228,36 +218,8 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 | 2026-06-05 (S97) | **NewsKeeper daily digest: concept approvato, scope S3** | Strada A: Haiku riceve tutte le headline 24h, produce risk score 3 livelli (calmo/alert/tempesta). NON produce BUY/SELL. Strada B (clustering) parcheggiata per volume >50 headline/giorno. Timing: post quality review T+7 (~8 giugno) |
 | 2026-06-05 (S97) | **Sherpa DRY_RUN durante extreme fear: lasciato intenzionalmente** | BTC -15%, Fear&Greed a 11, grid comprano in extreme_fear perché Sherpa non scrive stop_buy. Board: è testnet, soldi finti, dati gratuiti. La roadmap Sherpa non cambia |
 | 2026-06-05 (S97) | **Site redesign "Pastel Sticker v2" LIVE** | Merge e deploy completati da Max. Non più pending |
-| 2026-06-04 (S96) | **Clean slate tutti e 3 i grid bot (Opzione C)** — Board+CEO. Shippato: cycle tagging `testnet_1`/`testnet_2`, BONK ripartito pulito | Reset mensile testnet ha azzerato i wallet. Guardia 72a ha bloccato BONK. Invece di ricostruire la posizione, archiviamo i trade come `testnet_1` e ripartiamo come `testnet_2`. Campo `cycle` su trades/daily_pnl/snapshots/reserve_ledger/bot_config. Brief S96a |
-| 2026-06-04 (S96) | **Testnet disclaimer obbligatorio su sito** — CEO. Live su home + /dashboard + grid | Banner fisso non dismissibile. Testo chiaro: dati sintetici, no soldi veri, saldi resettabili senza preavviso |
-| 2026-06-04 (S96) | **Audit Area 2 backstop 120→60 giorni** — Board | Aggiornato AUDIT_PROTOCOL.md §2 e CLAUDE.md [1] |
-| 2026-06-04 (S96) | **Blog check incrementale in audit Area 2** — CEO | Stessa logica diary: ancora "Blog coperto fino a" nel report |
-| 2026-06-02 (S95) | **Dual-channel SEO+GEO content strategy adottata.** Brief S95a: 5 post con keyword validate. POST 1 live in produzione | Keyword data: "claude code" 100K–1M +9.900%, "ai trading bot" 10K–100K +900%. Le long-tail narrative proposte dal CEO avevano volume zero. Post Reddit FluoTest (703 upvote) ha validato GEO come canale acquisizione (ChatGPT cita risposte dirette → 131 signups zero ad spend) |
-| 2026-06-02 (S95) | **LinkedIn company page + profilo "Max Cartone" approvati, timing post-redesign** | Ricognizione Claude in Chrome: 1 solo "AI CEO" dichiarato al mondo (Homains). Campo vuoto. LinkedIn ha alta autorità dominio per GEO (35% citazioni ChatGPT da LinkedIn). Profilo separato da quello reale di Max |
-| 2026-06-02 (S95) | **Medium (@BagHolderAI) confermato attivo** con 2 post. Aggiunto ai canali distribuzione | Cross-post con canonical URL. Audience più ampia e meno tecnica di Dev.to |
-| 2026-06-01 (S94a) | **Regex classifier morto per severity/direction, sostituito con Haiku S2 + Python pre-processing** (Brief S94a) | 65% FP, direzioni invertite, inutilizzabile per trading |
-| 2026-06-01 (S94a) | **Feed macro aggiunti (BBC→CNBC Economy + MarketWatch).** BBC scartata post-verifica: contenuto general business, zero macro | Serve catturare Fed/tariffe/inflation prima che arrivino su testate crypto |
-| 2026-06-01 (S94a) | **Daily macro feed check fino a T+7 (8 giugno)** | Max ha corretto il piano "aspettiamo 7 giorni", verifica attiva batte osservazione passiva |
-| 2026-05-30 (S92) | **Protocollo cross-check anti-assenso su tre mandati (CEO / CC / Auditor)**, non un "Decision Panel" separato | La versione panel di CC rendeva Max corriere tra sessioni fresche; cablare un obbligo nel mandato esistente di ogni agente riusa il flusso, zero infrastruttura nuova. CEO: auto-obiezione nei brief + verifica critica del lavoro CC. CC: ≥1 obiezione tecnica prima di implementare. Auditor: caccia incoerenze deciso/implementato/reale |
-| 2026-05-30 (S92) | **Convenzione naming brief/report**: `YYYY-MM-DD_SXX[z]_brief_SCOPE` / `YYYY-MM-DD_SXX[z]_RforCEO_SCOPE`. Chiave accoppiamento Auditor = sessione + SCOPE (slug identico ereditato dal brief) | L'Auditor non vede le conversazioni, lavora solo sugli artefatti; senza accoppiamento la cross-analisi è cieca |
-| 2026-05-30 (S92) | **Zero retrofit file pre-S88**; grandfather alla baseline degli audit del 27/05 (S87) | Rinominare il passato mentre si pulisce il presente crea nuovo drift |
-| 2026-05-30 (S92) | **Disaccordo cross-agente che non converge → sale a Max, sempre.** Risoluzione di Max → una riga in §4 (data — decisione — why) | Nessun agente ha l'ultima parola sulla DECISIONE; Max è il nodo di sintesi finale |
-| 2026-05-30 (S92) | **Prodotto-metodologia: DIFFERITO, non bocciato.** Il libro/prodotto arriva DOPO il go-live | 39 views su Payhip misurano traffico, non prodotto sbagliato; cambiare prodotto non risolve un funnel vuoto. Go-live resta gated sui tre regimi di mercato, mai su scadenze esterne (contenuti/libro) |
-| 2026-05-29 (S91) | **Brain Analysis 2 completata: 3 fix Sprint 2 validati** (coin-aware, oscillazione domata, amplitude cap). Sherpa tuning-side **pronto** ma **NON mainnet-bound** | L'analisi ha trovato due problemi a monte del tuning: **stop_buy morto** (gap regime extreme_fear — risolto stessa sessione) + **timing Sentinel lento** (slow loop 4h). Il tuning dei parametri è ok, ma il sistema non va a soldi veri finché questi due non sono chiusi |
-| 2026-05-29 (S91) | **Fix stop_buy extreme_fear shippato + verificato live** (commit `ea4c7a8`), mapping F&G label-aware. Backfill storico: **NO** | Sentinel non emetteva mai `extreme_fear` (soglia `<=20` vs banda "Extreme Fear" alternative.me ~25) → freno Sherpa morto su tutta la finestra crash (0 righe). Fix label-primary. Verifica live: F&G=23 → `extreme_fear` + `proposed_stop_buy_active=true` su 3 coin. Solo fix-forward, storico non toccato (operativamente conta il futuro) |
-| 2026-05-29 (S91) | **Reset testnet parcheggiato** (dopo stop_buy + Sentinel/NewsKeeper; possibile sblocco da rimbalzo di mercato). "Mai capitolare" resta solo per mainnet | Priorità ai fix architetturali prima di azzerare il testnet. Il principio "mai capitolare / no cash morto" si applica solo a mainnet; sul testnet un reset è accettabile dopo i fix |
-| 2026-05-28 (S90) | **Spike guard fix A+B shipped** (commit `06a6c7c`). Option A variante Board: double fetch con conferma 50% dopo 5s pausa. Option B: cooldown 1 ciclo post dead-zone recalibrate | Root cause trade BTC 27/05 21:44 UTC: testnet spike $82,143 (mainnet $74,500) + dead_zone_recalibrate + sell trigger nello stesso tick → realized -$1.31. Variante Board doppio fetch è auto-adattiva cross-coin (vs soglia fissa proposta da CC). 129 test verdi, 8 nuovi. Restart Mac Mini 09:15 CET, runtime `673c941` |
-| 2026-05-28 (S90) | **Dashboard "days observing" rimosso** (commit `751b18c`) | Contatore legato a ultimo trade, non a inizio regime → fuorviante dopo trade accidentali ("0 days observing" leggeva come informazione spuria). Regime label già comunica posture di watching, basta da sola |
-| 2026-05-28 (S90) | **Cover V3 ottimizzate** (commit `b8ed22d`): PNG 4.6MB → JPG 231KB (−95%) | Cover V3 erano in PNG 2.2+2.4 MB (~30× rispetto a vol1/vol2 JPG 54-182KB). Convertite con sips a 424×600 / 600×600 q=85 allineate al formato dei volumi precedenti. Performance + bandwidth/Vercel |
-| 2026-05-28 (S90) | **Prima presenza Reddit** (r/ClaudeAI, flair "Claude Workflow"). Zero link, zero sales | Storia del progetto come post di valore per la community, in attesa mod approval. Commento parallelo nel "Build with Claude Megathread" LIVE. Esecuzione della strategia "introduce → engage → earn credibility → mention book" parcheggiata in S87 |
-| 2026-05-27 (S89) | **Audit Area 1 automatizzato via Cowork scheduled task** (monthly, sandbox Linux) | Notifica: bozza Gmail con marker `[AREA-XX]`, Apps Script `AutoSendDrafts` (account cartone@gmail.com) la invia automaticamente tra le 4-5am. Git push resta manuale (limite sandbox `.git/`). Primo run 2026-05-27, verdetto CON RISERVE, prossimo ~2026-06-26 |
-| 2026-05-27 (S89) | **Brief 89a shipped**: test hygiene (32 legacy → archived + pytest.ini), dead code deprecated (4 metodi, tabelle `portfolio`/`sentinel_logs`), `requirements-scripts.txt` per tweepy | Remediation findings Audit Area 1 (H1/H2/M1/M3/L2). Pytest 121/121 green. Solo housekeeping, zero touch `bot/`, no restart |
-| 2026-05-27 (S88) | **Audit Area 2 completato + 5 brief remediation** | Primo audit coerenza mai eseguito. Drift pubblico principale: sito 1-2 settimane indietro. 30 findings, 0 CRITICAL. 5 brief CC (88a→88e) prodotti per la remediation. Diary posticipato a post-remediation per scrivere report completo (candidato blog post) |
-| 2026-05-27 (S88) | **Regola Area 2 riformulata: event-based** (Board approved) | Trigger obbligatori: (a) pre go-live mainnet, (b) pre lancio Volume Payhip, (c) nuovo brain/macro-feature, (d) backstop 120gg. Sostituisce "90gg" mai applicata. Owner accountability: Max. Implementazione in Brief 88a |
-| 2026-05-27 (S88) | **NewsKeeper reso pubblico nel roadmap** (Board approved) | Phase dedicata in roadmap.ts. Tono onesto: Sprint 1 live (RSS + regex, ~60% FP), Sprint 2 planned (Haiku classifier). Non più nascosto come "Sentinel Sprint 3" |
-| 2026-05-27 (S88) | **Trasparenza fear regime sulla dashboard** (Board approved) | Opzione A: banner "Watching market · Last trade May 16 · Fear regime active". On-brand con la storia "AI onesta che dubita". Implementazione in Brief 88d |
 
-> Decisioni S81→S87 archiviate in S92 (2026-05-30) in `audits/BUSINESS_STATE_archive.md`. Decisioni S80 e precedenti archiviate in S82. Storico completo in git history e `audits/BUSINESS_STATE_archive.md`.
+> Decisioni **S88→S96 archiviate in S105** (2026-06-13); S81→S87 in S92; S80 e precedenti in S82 — tutte in `audits/BUSINESS_STATE_archive.md`. Storico completo anche in git history.
 
 ---
 
@@ -265,28 +227,20 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 
 | Tema | Stato | Note |
 |---|---|---|
-| **[S102 NEW] Formalizzare parametri Board-only + default automatici coin nuovi** | S103 | Brief S103: documentare che stop_buy_dd, stop_buy_unlock, dead_zone, min_profit sono Board-only. Implementare default automatici (universali o per-coin basati su volatility multiplier) per quando si aggiunge un coin nuovo |
+| **[S105 NEW] Monitor "griglia silenziosa"** | DA DECIDERE (Apple Notes vs brief) | Alert quando una griglia non registra trade da X ore. Buco osservabilità S105: un bot fermo non emette ERROR né Telegram, SOL morta 5gg invisibile. Il fix dust impedisce *questo* freeze, non la classe generale. Trigger: prossima sessione o pre-mainnet |
+| **[S105 NEW] Caso degradato no-filtri** (is_dust fallback $0,50) | Da valutare | Se `fetch_filters` fallisce al boot, il bot gira col fallback $0,50 < minNotional reale → un residuo in [$0,50, $5) potrebbe ri-congelarsi. Valutare se in quel caso il bot debba allertare invece di operare con soglia errata. Collegato al monitor sopra |
+| **[S104 NEW] Automazione spese Haiku — Anthropic Admin API** | PARKED | Endpoint `/v1/organizations/usage_report/messages` + `/v1/organizations/cost_report`. Serve Admin API key (Max genera da console.anthropic.com). Script mensile: chiama API → filtra Haiku → scrive in Supabase `project_expenses`. Insieme a scheduled €90 il giorno 4 di ogni mese |
 | **[S102 NEW] Regime stickiness innesto barometro↔Sherpa** | Post-verdetto T+14 (~23 giu) + primo regime non-bear | Fattibilità confermata CC: opzione (a)+(c), ~5-7h, 4 file. Barometro modula la velocità del cap, non la destinazione. NON costruire prima del verdetto |
 | **[S99b NEW] Monitoraggio anti-slippage v2 su BONK testnet** | Osservazione | Soglia 1% con slippage strutturale 3-4%: BONK sarà penalizzato quasi sempre. Se si congela (deadlock), alzare soglia o renderla per-coin |
-| **[S99b] Dashboard penalty in NEXT SELL IF** | ✅ DONE | runtime mirror espone `_sell_pct_penalty`, dashboard la include nella formula |
 | **[S91 NEW] Integrità dati — `bot_state_snapshots` saldo grezzo** | 🆕 Da verificare | `bot_state_snapshots` fotografa il **saldo grezzo testnet (pre-funded)**, non la posizione €500 → verificare che **nessuna superficie pubblica** lo peschi. Minori: fallback `1,0×` non cappato in Sentinel; dead-band scritture Sherpa ✅ DONE (S102a write guard `a867179`) |
 | **[S90 NEW] Option C — slippage buffer su percentage sell path** | TODO pre-mainnet, brief separato | Brief separato pre-mainnet. Estendere il pattern `SLIPPAGE_BUFFER_PCT=0.03` (già attivo su SWEEP/LAST_SHOT path da brief 78b) anche al path `_execute_percentage_sell` per chiudere completamente la finestra di rischio post-fix A+B |
 | **[S90 NEW] Calibrazione parametri spike guard** (threshold 4% / confirm 50% / pause 5s) | Osservazione 7-14gg, poi decidere | Oggi i 3 parametri sono default argument della funzione `fetch_price_with_spike_guard`. Post osservazione: valutare se servono tunable per-coin via `bot_config` (BTC vs SOL vs BONK volatilità diverse). Voto CC: tenerli fissi finché dati live non suggeriscono altrimenti |
-| [S83] NewsKeeper S2 | ✅ DONE (S94 + T+7 quality review S100) | V2 Barometro in shadow, verdetto T+14 ~23 giugno. Verdetto T+7: miglioramento netto sul regex (0 righe irrilevanti, 0 fallback, ~€6/mese), ma unità per-item sbagliata → redesign barometro. Bug direzione assorbito nel redesign (opzione C) |
-| [S97] NewsKeeper S3 daily digest | Assorbito nel barometro v2 | Il "risk score 24h calmo/alert/tempesta" È l'aggregato del barometro (3 stati). Non più item separato |
 | [S100 NEW] NewsKeeper v2 "barometro" — build SHIPPED + shadow LIVE | In attesa: verdetto T+14 (~23 giu) | 185/185 test, 1 bug dedup (rappresentante stale) trovato in review avversariale e fixato. **Committato/pushato `c8774db` + shadow LIVE Mac Mini (pid 97566), accanto a v1, NON in Sentinel** (CC corregge il "NON committato" del draft: Max ha autorizzato commit+push+lancio in S100). Tabella nuova newskeeper_regime; per-item arricchito (relevance/polarity/event_key). SCOPE newskeeper-v2-barometro |
-| **[S99 NEW] Passive Income Dashboard** | PARKED (post go-live timeline) | Brainstorm CC+Max completo (`config/2026-06-07_S100a_brief_passive-income-dashboard.md`). Decisioni strategiche prese. Implementazione sospesa fino a timeline go-live concreta. Se manca poco: "coming soon". Se manca molto: aspettare |
-| **[S88] Audit Area 2 remediation — 4/5 SHIPPED** | Resta 88d (UI debts) — verificare se il redesign li ha chiusi | Audit 2026-05-27 (CON RISERVE). 88a/88b/88c/88e shippati S88, resta 88d (UI debts). Il redesign Pastel Sticker v2 potrebbe aver risolto parte dei debiti UI → da verificare nella prossima sessione. Tracking: `audit_remediation_cover_sheet.md` |
-| **[S82] Brief NewsKeeper architetturale Session 1** | ✅ DONE (S83) | Scaffold shippato commit `49473a9`. Module 1 RSS feeds live standalone Mac Mini PID 78098. Sessioni 2-4 ancora pending |
 | **[S81 NEW] Cross-post automation Dev.to + Indie Hackers** | Decisione rimandata post-weekend | Quando un post va live su `web_astro/src/content/blog/`, script che pubblica su Dev.to via API (canonical URL, tags, serie) + prepara testo adattato per IH. ~2-3h stimato |
-| ~~Brief 81a Sherpa Sprint 2~~ | ✅ DONE (S81) | Shipped commit `3ba1132`. Verifica live: BTC/SOL/BONK proposals diversi |
-| ~~Sito TF narrativa update~~ | ✅ DONE (S80) | "dal dottore" → card TF live shipped brief 80b commit `b8bdc12` |
-| ~~Monitorare sitemap Search Console~~ | ✅ DONE (S84) | SEO fix S84 shipped commit `c89c8cc`: sitemap lastmod + JSON-LD + title/description. Action manuali Max post-deploy in §6 |
 | **Counterfactual tracker: aggiungere regime Sentinel** | 🆕 Nice-to-have post-osservazione | `counterfactual.py` non logga regime. Utile per correlare skip ↔ regime. ~30-45min. CEO decide se vale dopo 1-2 settimane di dati |
 | **Verifica identità accounting** (residuo Strada 2) | Post-go-live €100 | ~30 min check empirico Realized + Unrealized = Equity P&L. FIFO cancellato come canonical |
 | **Integration test config reader chain** | Pre-prossimo brief bot_config | Gap strutturale scoperto S76. ~30-60 min |
 | **Buy trigger anchor (A/B/C)** | Parcheggiata | A=last_buy, B=avg, C=hybrid. Decisione strategica |
-| **Phantom BONK 1.37M** | ~~Bassa priorità~~ → SUPERATA | Clean slate S96 ha resettato tutto. Phantom ora è baseline testnet (1 BTC / 6 SOL / 18.446 BONK), gestito da `managed_holdings` post-audit S97a |
 
 ---
 
@@ -294,15 +248,11 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 
 | Vincolo | Scadenza | Note |
 |---|---|---|
-| **NewsKeeper T+7 quality review** | ✅ DONE (S100, report shipped) | V2 Barometro in shadow, verdetto T+14 ~23 giugno |
 | **NewsKeeper v2 Barometro T+14 verdetto** | ~23 giugno 2026 | Validare flip barometro vs ritorno prezzo BTC 24h. Se 14gg solo-bear: verdetto parziale, estendere. Esiti: promuovere (cablaggio Sentinel) o bocciare (→ /news, blog "esperimento fallito") |
-| **Correzione feed CNBC Economy** | ✅ FATTA (S94, commit `8515378`) | BBC→CNBC Economy + MarketWatch. Restart Mac Mini 22:04 CET, CNBC contribuisce `haiku_s2` verificato. (Era "da dare a CC" nel paste, già shippata) |
-| **Site redesign "Pastel Sticker v2"** | ✅ FATTO (S97, 2026-06-05) | Merge e deploy completati da Max, LIVE su bagholderai.lol. Rimovibile dalla lista vincoli alla prossima compaction |
 | **SEO+GEO POST 2 drafting** | ~metà giugno | "Why Most AI Trading Bots Fail (And What Ours Did Wrong Too)" — keyword: ai trading bot. Cadenza 1 post ogni 1-2 settimane |
 | **Apple Notes pulizia: cancellare 8 note obsolete (Max)** | A discrezione Max | 4 note attive da mantenere, 8 obsolete da cancellare manualmente |
 | **Go-live mainnet** | Nessuna data fissa | Dipende da condizioni di mercato (bear+bull+laterale osservati). Sequenza: Sherpa LIVE testnet ✅ → osservazione → S103 parametri Board-only → barometro verdict (~23 giu) → Board approval → mainnet €100 |
 | **Sherpa LIVE su testnet (7/7 parametri)** | ✅ DONE (S102+S103) | Scrive TUTTI E 7 i parametri: buy_pct, sell_pct, idle_reentry_hours + stop_buy_drawdown_pct, stop_buy_unlock_hours, dead_zone_hours, profit_target_pct. I 4 protettivi via lookup (regime × volatility tier) con debounce 24h |
-| **NewsKeeper — prima analisi** | ~lun 1 giugno | Job 1 anti-rumore Haiku → Job 2 lead/lag vs Sentinel. Decide timing Sentinel (Phase B vs accelerare NewsKeeper) |
 | **Volume 4** | Nessuna deadline | In accumulo da S83, arco narrativo NewsKeeper build → go-live |
 
 **Multi-macchina:** MBP (sviluppo) ↔ Mac Mini (runtime). PID/runtime dettagliati in PROJECT_STATE §1+§7.
@@ -315,17 +265,13 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 
 | Cosa | Perché |
 |---|---|
+| **Revenue automation completa (/income)** | La pagina /income esiste come scaffold privato, ma l'automazione fonti (Payhip, BMC, Umami API) è rinviata al primo euro: a €0 darebbero "0" → over-engineering. Solo Umami ha già un connettore. Haiku costs: soluzione Admin API trovata, parcheggiata |
 | **Pagina /news pubblica** | Parked fino a maturità NewsKeeper (Haiku live da S94, ma T+7 quality review ~8 giugno ancora pendente; il vecchio regex aveva ~60% FP → non si espone classificazione non validata). Fonte: analisi tbot S98 (lui mostra gli stessi 3 feed RSS ma senza label AI → quando esponiamo, lo battiamo con sentiment/severità) |
 | **Tabella performance per regime su dashboard** | Parked fino a profondità dati sufficiente (testnet_2 ha ~2 giorni). Fonte: analisi tbot S98 |
 | **Sherpa controlla 7/7 parametri Grid** | LIVE su testnet. I 3 strategici (buy/sell/idle) scalano con volatility multiplier continuo. I 4 protettivi (stop_buy_dd/unlock, dead_zone, min_profit) usano lookup discreto per (regime × volatility tier) con debounce 24h. Board-only restano SOLO: allocation, $/trade, skim |
-| **BONK grid — RISOLTO** | Era bloccato dalla guardia 72a (deficit 99,91% dopo il reset mensile testnet). Sbloccato dal clean slate S96a (cycle tagging `testnet_2`): ripartito pulito il 2026-06-04, $150 cash, holdings 0, guardia passata. _(NB: le righe "Reset testnet — Rimandato" qui sotto sono ora superate.)_ |
+| **BONK grid — RISOLTO** | Era bloccato dalla guardia 72a (deficit 99,91% dopo il reset mensile testnet). Sbloccato dal clean slate S96a (cycle tagging `testnet_2`): ripartito pulito il 2026-06-04, $150 cash, holdings 0, guardia passata |
 | **Paper trade re-import** | Backup esiste (`/Volumes/Archivio/bagholderai/audits/2026-05-08_pre-reset-s67/`, 51.943 righe JSONL) ma non serve re-importarlo nel DB. Disponibile per narrativa/diary quando serve |
-| **Sentinel Phase B** | Parcheggiata fino a post T+7 NewsKeeper (8 giugno) |
-| **Sherpa testnet activation** | Bloccata da Brain Analysis che dipende da NewsKeeper pulito |
-| **Audit Area 2** | Finestra scaduta, riprogrammare post-redesign |
-| **Reset testnet** | Rimandato: prima i fix (stop_buy ✅ + Sentinel/NewsKeeper). Possibile sblocco da un rimbalzo di mercato. "Mai capitolare / no cash morto" vale solo per mainnet, non per il testnet |
-| **Decisione timing Sentinel (Phase B vs accelerare NewsKeeper)** | Parcheggiata fino a post prima analisi NewsKeeper (lun 1 giugno) |
-| **Scheduled task Area 2 non automatizzato** | Area 1 e Area 3 girano come Cowork scheduled task (Area 3 dal 2026-05-31, cadenza bisettimanale — vedi PROJECT_STATE §9). Resta solo Area 2 (on-demand pre go-live/lancio), da configurare in sessione dedicata |
+| **Audit Area 2 manuale on-demand** | Non più necessario: Area 2 è automatizzata (Cowork mensile, S104) come Area 1 e Area 3. Tutte e 3 le aree girano schedulate + notifica Gmail/Apps Script. Vedi §4 (S104) + PROJECT_STATE §9 |
 | **Micro-brief `datetime.utcnow()` deprecation + cleanup PortfolioManager** | Low priority, scoperti in S89 (audit Area 1). Parcheggiati in Apple Notes todo. Toccano `bot/` runtime → fuori scope housekeeping. Tracciati in PROJECT_STATE §8 |
 | **Go-live mainnet €100** | Bloccato da 4 pre-requisiti in sequenza: NewsKeeper build (S2-S4, ~3 sessioni residue) + Sherpa testnet LIVE (post Brain Analysis 2) + dry_run observation periodo standard + Board approval finale. Niente data fissa, gated da condizioni di mercato osservate (bear+bull+laterale) |
 | **TF-Scout (Tier 3 shitcoins)** | Post-mainnet, esplicitamente parcheggiato. Richiede capitale extra e tolleranza rischio che oggi non abbiamo |
@@ -339,4 +285,4 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 
 ---
 
-*Prossimo aggiornamento: post prima analisi NewsKeeper (~1 giugno) o decisione Sherpa LIVE testnet, whichever comes first.*
+*Prossimo aggiornamento: post verdetto barometro NewsKeeper v2 (~23 giugno) o pre-go-live mainnet, whichever comes first.*
