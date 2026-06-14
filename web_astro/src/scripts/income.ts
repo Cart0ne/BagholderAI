@@ -41,17 +41,17 @@ const USD_PER_EUR = 1.11;
 
 /* Brand palette (global.css tokens) keyed by source. */
 const COLOR: Record<string, string> = {
-  // revenue
-  payhip_books: "#9A7C3C", // sand
-  bmc_tips: "#B5862E", // butter
-  aads: "#4E8198", // powder
-  trading: "#5E8A54", // sage
-  // costs
-  claude_max: "#6E68B0", // lilla (Claude)
-  haiku_api: "#4E8198", // powder
-  grok_api: "#BC4032", // clay
-  domain: "#B5862E", // butter
-  infra: "#59634F", // muted
+  // revenue (Income by source)
+  payhip_books: "#B5562F", // brick / sienna
+  bmc_tips: "#5E8A54", // bot-grid (sage)
+  aads: "#4E8198", // bot-sentinel (powder)
+  trading: "#3F7589", // primary
+  // costs (Running costs) — note: grok moved OFF #BC4032 (--color-neg, reserved for losses)
+  claude_max: "#6E68B0", // cc (lilla)
+  haiku_api: "#2F7E91", // neu
+  grok_api: "#4E8198", // bot-sentinel (powder)
+  domain: "#B5562F", // brick / sienna
+  infra: "#5E8A54", // bot-grid (sage)
 };
 const SHORT: Record<string, string> = {
   payhip_books: "Books",
@@ -68,9 +68,9 @@ const SHORT: Record<string, string> = {
 /* Book views per volume — real Payhip product views (sum 91). Hardcoded
    for now; move to a table when we wire the per-volume breakdown. */
 const BOOK_VIEWS = [
-  { label: "Vol 1", value: 14, color: "#9A7C3C" },
-  { label: "Vol 2", value: 50, color: "#4E8198" },
-  { label: "Vol 3", value: 27, color: "#B5862E" },
+  { label: "Vol 1", value: 14, color: "#8A3D22" }, // brick-deep
+  { label: "Vol 2", value: 50, color: "#B5562F" }, // brick
+  { label: "Vol 3", value: 27, color: "#D58E60" }, // brick-light
 ];
 
 const SVG_NS = "http://www.w3.org/2000/svg";
@@ -115,11 +115,20 @@ function renderDonut(
   segsEl.replaceChildren();
   legEl.replaceChildren();
 
+  // White separators between segments: each arc is drawn slightly short so the
+  // card surface shows through as a thin gap. Skipped when there's a single
+  // visible slice (a full ring needs no seam). Needed for the Attention donut's
+  // monochrome brick ramp (Vol 1/2/3) to stay distinct.
+  const visibleCount = ghost
+    ? segments.length
+    : segments.filter((s) => s.value > 0).length;
+  const GAP = visibleCount > 1 ? 1.6 : 0;
   let offset = 0;
   for (const s of segments) {
     const frac = ghost ? 1 / segments.length : s.value / total;
     const pct = frac * 100;
     if (pct <= 0) continue;
+    const dash = Math.max(0.5, pct - GAP);
     const c = document.createElementNS(SVG_NS, "circle");
     c.setAttribute("cx", "18");
     c.setAttribute("cy", "18");
@@ -127,7 +136,7 @@ function renderDonut(
     c.setAttribute("fill", "none");
     c.setAttribute("stroke", s.color);
     c.setAttribute("stroke-width", "3.4");
-    c.setAttribute("stroke-dasharray", `${pct} ${100 - pct}`);
+    c.setAttribute("stroke-dasharray", `${dash} ${100 - dash}`);
     c.setAttribute("stroke-dashoffset", String(25 - offset));
     if (ghost) c.setAttribute("opacity", "0.28");
     segsEl.appendChild(c);
@@ -401,9 +410,9 @@ const PAPER: { date: string; pnl: number }[] = [
 ];
 
 const CYCLE_STYLE: Record<string, { label: string; color: string }> = {
-  paper: { label: "Paper", color: "#9A7C3C" },
-  testnet_1: { label: "Testnet v1", color: "#4E8198" },
-  testnet_2: { label: "Testnet v2 (live)", color: "#5E8A54" },
+  paper: { label: "Paper", color: "#B5562F" }, // brick
+  testnet_1: { label: "Testnet v1", color: "#4E8198" }, // bot-sentinel
+  testnet_2: { label: "Testnet v2 (live)", color: "#5E8A54" }, // bot-grid
 };
 
 function waitForChart(cb: (C: unknown) => void, tries = 0): void {
@@ -461,10 +470,10 @@ function renderPnlChart(C: any, rows: PnlRow[]): void {
       data: labels.map((d) => (d in byCycle[c] ? byCycle[c][d] : null)),
       borderColor: style.color,
       backgroundColor: style.color,
-      borderWidth: 2,
-      pointRadius: 2,
+      borderWidth: 2.5,
+      pointRadius: 2.5,
       pointHoverRadius: 4,
-      tension: 0.25,
+      tension: 0.3,
       spanGaps: false,
     };
   });
@@ -492,10 +501,12 @@ function renderPnlChart(C: any, rows: PnlRow[]): void {
       scales: {
         x: {
           grid: { color: "#DFE4D5" },
+          border: { display: false },
           ticks: { color: "#59634F", font: mono, maxRotation: 0, autoSkip: true, maxTicksLimit: 7, callback: (_v: any, i: number) => fmtDay(labels[i]) },
         },
         y: {
           grid: { color: "#DFE4D5" },
+          border: { display: false },
           ticks: { color: "#59634F", font: mono, callback: (v: any) => (v >= 0 ? "+" : "") + "$" + v },
           title: { display: true, text: "P&L ($)", color: "#59634F", font: mono },
         },

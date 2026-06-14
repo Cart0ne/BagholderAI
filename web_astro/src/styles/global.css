@@ -103,6 +103,14 @@
   --color-bot-sherpa-soft:   #F2DAD4;
   --color-bot-news-soft:     #E2E0F2;  /* NewsKeeper soft (Brief S103b) */
 
+  /* — scala mattone / terra di Siena (data-viz, /income charts) ————
+     Accento caldo per le serie dei grafici; NON usare per valori in
+     perdita (quello resta --color-neg #BC4032). Brief CD Phase 3. */
+  --color-brick:        #B5562F;  /* brick (base / sienna) */
+  --color-brick-deep:   #8A3D22;  /* sienna profonda */
+  --color-brick-light:  #D58E60;  /* terracotta chiara */
+  --color-brick-soft:   #F0DDD0;  /* fill tenue (pastiglie / inset) */
+
   /* — tipografia ———————————————————————————————— */
   /* NEW: display font for h1 / big section titles. */
   --font-display: "Bricolage Grotesque", "Inter", -apple-system,
