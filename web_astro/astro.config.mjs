@@ -53,7 +53,8 @@ export default defineConfig({
       filter: (page) =>
         !page.includes('/tf') &&
         !page.includes('/grid') &&
-        !page.includes('/income'),
+        !page.includes('/income') &&
+        !page.includes('/office'),
       /* Honest per-page <lastmod> (2026-06-10, supersedes the S84 global
          `lastmod: new Date()`): a build timestamp on EVERY url at EVERY
          deploy is the pattern Google documents as unreliable-and-ignored.
