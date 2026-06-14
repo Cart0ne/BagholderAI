@@ -592,6 +592,18 @@
           <span id="baro-cmp-text">comparing…</span>
         </div>
 
+        <!-- Barometro vs Sentinel regime over time: 2 step lines on a shared
+             directional axis + faint BTC reference (right axis). Fixed 14d
+             window, independent of the global range selector. -->
+        <div class="chart-wrap" style="margin-top: 12px;">
+          <canvas id="baro-regime-chart" style="height: 220px;"></canvas>
+          <div class="chart-legend">
+            <span class="item"><span class="swatch" style="background: #c084fc;"></span> Barometro (news)</span>
+            <span class="item"><span class="swatch" style="background: #7dd3fc;"></span> Sentinel regime (5→3)</span>
+            <span class="item"><span class="swatch" style="background: rgba(154,163,184,0.6);"></span> BTC price (right axis)</span>
+          </div>
+        </div>
+
         <div class="footnote">
           <strong>Independent signal.</strong> The barometer is built from <em>news headlines</em> classified by Haiku
           (3 states: bearish / neutral / bullish), written to <code>newskeeper_regime</code> on flip + 4h heartbeat.
@@ -602,6 +614,12 @@
           greed/extreme_greed → bullish). Colours differ on purpose: the Sentinel banner uses a fear→greed heatmap
           (fear = blue), the barometer uses directional colours (bearish = red), matching the public dashboard.
           Read the <em>direction</em>, not the colour — <strong>divergence is the interesting case</strong>.
+          <br>The chart above plots both as <strong>step lines</strong> over the last 14 days (each state holds flat until the
+          next write — no interpolation, so a diagonal would be a lie), on the shared bearish/neutral/bullish axis.
+          BTC price (snapshotted at each barometer write, <code>btc_price_at_flip</code>) is the faint grey line on the
+          right axis — it's the real validation axis (~23 Jun): watch whether a barometer flip <em>precedes</em> a BTC move.
+          The two step lines are nudged a few px apart so they stay visible when they sit on the same level.
+          Fixed 14-day window, independent of the range selector at the top.
         </div>
       </div>
 
@@ -2015,17 +2033,149 @@
       tsEl.textContent = new Date(createdMs).toLocaleString();
     }
 
+    // --- Barometro vs Sentinel regime over time (step-line chart) ---
+    var BARO_CHART_DAYS = 14;
+    function baroStateToDir(state) {
+      if (state === 'bullish') return 1;
+      if (state === 'bearish') return -1;
+      if (state === 'neutral') return 0;
+      return null;
+    }
+    function sentinelRegimeToDir(regime) {
+      var d = sentinelToDirection(regime); // 'bearish'|'neutral'|'bullish'|null
+      if (d === 'bullish') return 1;
+      if (d === 'bearish') return -1;
+      if (d === 'neutral') return 0;
+      return null;
+    }
+
+    // Two step lines (barometer news state + Sentinel regime collapsed 5→3) on a
+    // shared directional axis, plus a faint BTC reference on the right axis.
+    // Step interpolation: a state holds flat until the next write — never a
+    // diagonal ramp. Fixed 14-day window (independent of the global selector).
+    function renderBaroVsRegime(baroRows, slowRows) {
+      var canvas = document.getElementById('baro-regime-chart');
+      if (!canvas) return;
+      var ctx = canvas.getContext('2d');
+      var dpr = window.devicePixelRatio || 1;
+      var rect = canvas.getBoundingClientRect();
+      canvas.width = Math.floor(rect.width * dpr);   // resets context state
+      canvas.height = Math.floor(rect.height * dpr);
+      ctx.scale(dpr, dpr);
+      var W = rect.width, H = rect.height;
+      ctx.clearRect(0, 0, W, H);
+
+      var t1 = Date.now();
+      var t0 = t1 - BARO_CHART_DAYS * 86400000;
+      var span = t1 - t0 || 1;
+      var pad = { l: 58, r: 54, t: 14, b: 22 };
+      var plotW = W - pad.l - pad.r;
+      var plotH = H - pad.t - pad.b;
+
+      var DIM = '#9aa3b8', GREEN = '#22c55e', RED = '#ef4444';
+      var PURPLE = '#c084fc', BLUE = '#7dd3fc';
+
+      function tx(ts) { return pad.l + (Math.max(t0, Math.min(t1, ts)) - t0) / span * plotW; }
+      var yTop = pad.t + plotH * 0.14, yBot = pad.t + plotH * 0.86;
+      function tyDir(v) { return yTop + (1 - (v + 1) / 2) * (yBot - yTop); }
+
+      var haveBaro = baroRows && baroRows.length;
+      var haveSlow = slowRows && slowRows.length;
+      if (!haveBaro && !haveSlow) {
+        ctx.fillStyle = DIM; ctx.font = '12px monospace'; ctx.textAlign = 'center';
+        ctx.fillText('no data', W / 2, H / 2);
+        return;
+      }
+
+      // Directional gridlines + left labels (coloured by direction).
+      [{ v: 1, t: 'bullish', c: GREEN }, { v: 0, t: 'neutral', c: DIM }, { v: -1, t: 'bearish', c: RED }]
+        .forEach(function (lv) {
+          var y = tyDir(lv.v);
+          ctx.strokeStyle = 'rgba(255,255,255,0.05)'; ctx.lineWidth = 1;
+          ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(W - pad.r, y); ctx.stroke();
+          ctx.fillStyle = lv.c; ctx.font = '10px monospace'; ctx.textAlign = 'right';
+          ctx.fillText(lv.t, pad.l - 8, y + 3);
+        });
+
+      // x-axis date labels.
+      ctx.fillStyle = DIM; ctx.font = '9px monospace'; ctx.textAlign = 'center';
+      [0, 0.25, 0.5, 0.75, 1].forEach(function (f) {
+        var ts = t0 + f * span, d = new Date(ts);
+        ctx.fillText(d.getDate() + '/' + (d.getMonth() + 1), tx(ts), H - 7);
+      });
+
+      // BTC faint reference (right axis), drawn first/behind. Uses btc_price_at_flip.
+      var btcPts = (baroRows || []).map(function (r) {
+        return { ts: Date.parse(r.created_at), v: (r.btc_price_at_flip != null ? Number(r.btc_price_at_flip) : NaN) };
+      }).filter(function (p) { return Number.isFinite(p.v); });
+      if (btcPts.length) {
+        var bmin = Math.min.apply(null, btcPts.map(function (p) { return p.v; }));
+        var bmax = Math.max.apply(null, btcPts.map(function (p) { return p.v; }));
+        var bspan = (bmax - bmin) || 1;
+        function tyBtc(v) { return (pad.t + plotH * 0.84) - (v - bmin) / bspan * (plotH * 0.68); }
+        ctx.strokeStyle = 'rgba(154,163,184,0.40)'; ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        btcPts.forEach(function (p, i) {
+          var x = tx(p.ts), y = tyBtc(p.v);
+          if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        });
+        ctx.stroke();
+        // right-axis BTC labels (k)
+        ctx.fillStyle = 'rgba(154,163,184,0.7)'; ctx.font = '9px monospace'; ctx.textAlign = 'left';
+        ctx.fillText((bmax / 1000).toFixed(1) + 'k', W - pad.r + 6, tyBtc(bmax) + 3);
+        ctx.fillText((bmin / 1000).toFixed(1) + 'k', W - pad.r + 6, tyBtc(bmin) + 3);
+      }
+
+      // Step-line drawer: holds flat until the next point, then steps, then
+      // extends to the right edge (current state holds until "now").
+      function drawStep(pts, color, dash, jitter) {
+        if (!pts.length) return;
+        ctx.strokeStyle = color; ctx.lineWidth = 1.8; ctx.setLineDash(dash || []);
+        ctx.beginPath();
+        var prevY = tyDir(pts[0].v) + jitter;
+        ctx.moveTo(tx(pts[0].ts), prevY);
+        for (var i = 1; i < pts.length; i++) {
+          var x = tx(pts[i].ts), y = tyDir(pts[i].v) + jitter;
+          ctx.lineTo(x, prevY); ctx.lineTo(x, y); prevY = y;
+        }
+        ctx.lineTo(tx(t1), prevY);
+        ctx.stroke(); ctx.setLineDash([]);
+      }
+
+      // Sentinel regime line (dashed, blue), nudged +4px so it stays visible
+      // when it sits on the same level as the barometer.
+      var slowPts = (slowRows || []).map(function (r) {
+        var reg = (r.raw_signals && r.raw_signals.regime) || null;
+        return { ts: Date.parse(r.created_at), v: sentinelRegimeToDir(reg) };
+      }).filter(function (p) { return p.v != null; });
+      drawStep(slowPts, BLUE, [5, 3], 4);
+
+      // Barometer line (solid, purple) on the true level.
+      var baroPts = (baroRows || []).map(function (r) {
+        return { ts: Date.parse(r.created_at), v: baroStateToDir(r.state) };
+      }).filter(function (p) { return p.v != null; });
+      drawStep(baroPts, PURPLE, [], 0);
+    }
+
     async function refreshBarometer() {
       try {
+        var since = new Date(Date.now() - BARO_CHART_DAYS * 86400000).toISOString();
+        // One series fetch each: the banner reads the latest element, the chart
+        // reads the whole 14d window. Volumes are tiny (~20 barometer / ~85 slow).
         var baroRows = await sbFetch(
-          'newskeeper_regime?select=created_at,state,prev_state,net_score,abstain_frac,vote_count,raw_data&order=created_at.desc&limit=1'
+          'newskeeper_regime?select=created_at,state,prev_state,net_score,abstain_frac,vote_count,raw_data,btc_price_at_flip' +
+          '&created_at=gte.' + encodeURIComponent(since) + '&order=created_at.asc'
         );
         var slowRows = await sbFetch(
-          'sentinel_scores?select=raw_signals&score_type=eq.slow&order=created_at.desc&limit=1'
+          'sentinel_scores?select=created_at,raw_signals&score_type=eq.slow' +
+          '&created_at=gte.' + encodeURIComponent(since) + '&order=created_at.asc'
         );
-        renderBarometer(baroRows[0]);
-        var sentRegime = (slowRows[0] && slowRows[0].raw_signals) ? slowRows[0].raw_signals.regime : null;
-        renderBaroCompare(baroRows[0] ? baroRows[0].state : null, sentRegime);
+        var lastBaro = baroRows.length ? baroRows[baroRows.length - 1] : null;
+        var lastSlow = slowRows.length ? slowRows[slowRows.length - 1] : null;
+        renderBarometer(lastBaro);
+        var sentRegime = (lastSlow && lastSlow.raw_signals) ? lastSlow.raw_signals.regime : null;
+        renderBaroCompare(lastBaro ? lastBaro.state : null, sentRegime);
+        renderBaroVsRegime(baroRows, slowRows);
       } catch (e) {
         console.warn('Barometer refresh failed:', e);
       }
