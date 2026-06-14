@@ -113,6 +113,7 @@
     .section-mascot { height: 28px; width: auto; flex-shrink: 0; }
     .section-mascot.sentinel { filter: drop-shadow(0 1px 4px rgba(80,140,255,0.35)); }
     .section-mascot.sherpa   { filter: drop-shadow(0 1px 4px rgba(220,60,90,0.35)); }
+    .section-mascot.newskeeper { filter: drop-shadow(0 1px 4px rgba(252,211,77,0.30)); }
 
     section { margin-bottom: 16px; }
 
@@ -285,6 +286,16 @@
       .slow-meta { font-size: 10px; }
       .slow-regime-label { font-size: 13px; }
     }
+
+    /* NewsKeeper barometer — direct comparison line vs Sentinel slow regime */
+    .baro-compare {
+      display: flex; align-items: center; gap: 8px;
+      margin-top: 4px; padding: 8px 10px;
+      border: 1px solid var(--border); border-radius: 6px;
+      background: rgba(255,255,255,0.02);
+      font-family: var(--mono); font-size: 12px; color: var(--text);
+    }
+    .baro-compare-icon { font-size: 14px; flex-shrink: 0; }
 
     /* Sherpa proposals table */
     table.proposals {
@@ -548,6 +559,49 @@
           determines regime (one of 5: extreme_fear → extreme_greed), and writes <code>sentinel_scores</code>
           with <code>score_type='slow'</code>. Sherpa reads the regime to pick the BASE_TABLE row used in
           parameter proposals.
+        </div>
+      </div>
+
+      <!-- ============ NEWSKEEPER — BAROMETRO (S100 v2, shadow/test) ============ -->
+      <!-- News-sentiment barometer (Haiku-classified headlines), placed directly
+           under the Sentinel slow-loop regime for side-by-side comparison.
+           NOT wired into Sentinel — shadow signal under validation (forward-return
+           gate ~23 Jun 2026). Reads newskeeper_regime (anon-readable since S103b). -->
+      <div class="section-title"><img class="section-mascot newskeeper" src="newskeeper.svg" alt="NewsKeeper"><span>NewsKeeper — barometro (news sentiment · shadow/test)</span></div>
+
+      <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px;">
+          <span style="font-family: var(--mono); font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em;">News barometer</span>
+          <span id="baro-last-ts" style="font-family: var(--mono); font-size: 11px; color: var(--text-dim);">—</span>
+        </div>
+
+        <div class="slow-banner">
+          <div class="slow-regime">
+            <span class="slow-regime-dot" id="baro-dot" style="background: var(--text-dim); color: var(--text-dim);"></span>
+            <span class="slow-regime-label" id="baro-label" style="color: var(--text-dim);">—</span>
+          </div>
+          <div class="slow-meta">net score: <strong id="baro-net">—</strong></div>
+          <div class="slow-meta">votes: <strong id="baro-votes">—</strong> <span id="baro-abstain" style="color: var(--text-dim);"></span></div>
+          <div class="slow-meta">prev: <strong id="baro-prev">—</strong></div>
+          <div class="slow-meta">last write: <strong id="baro-age">—</strong> <span id="baro-kind" style="color: var(--text-dim);"></span></div>
+        </div>
+
+        <!-- Direct comparison vs Sentinel slow-loop regime (the whole point of placing it here) -->
+        <div class="baro-compare">
+          <span class="baro-compare-icon" id="baro-cmp-icon">—</span>
+          <span id="baro-cmp-text">comparing…</span>
+        </div>
+
+        <div class="footnote">
+          <strong>Independent signal.</strong> The barometer is built from <em>news headlines</em> classified by Haiku
+          (3 states: bearish / neutral / bullish), written to <code>newskeeper_regime</code> on flip + 4h heartbeat.
+          The Sentinel regime above is built from the <em>Fear &amp; Greed Index + CoinMarketCap</em> (5 states). They
+          measure different things (news mood vs price mood), and the barometer is <strong>not wired into Sentinel</strong> —
+          it's a shadow run under validation (forward-return gate ~23 Jun). The comparison collapses Sentinel's
+          5 regimes onto the barometer's 3-state axis (extreme_fear/fear → bearish, neutral → neutral,
+          greed/extreme_greed → bullish). Colours differ on purpose: the Sentinel banner uses a fear→greed heatmap
+          (fear = blue), the barometer uses directional colours (bearish = red), matching the public dashboard.
+          Read the <em>direction</em>, not the colour — <strong>divergence is the interesting case</strong>.
         </div>
       </div>
 
@@ -1874,6 +1928,109 @@
       }
     }
 
+    // === NEWSKEEPER BAROMETRO — shadow/test (S100 v2) ===
+    // Reads the latest newskeeper_regime row (news-sentiment, 3-state, written
+    // by bot/newskeeper_v2 on flip + 4h heartbeat) plus the latest Sentinel slow
+    // regime, paints the barometer banner and a direct bearish/neutral/bullish
+    // comparison. The barometer is NOT wired into Sentinel — shadow only.
+
+    var BARO_LABELS = { bearish: 'BEARISH', neutral: 'NEUTRAL', bullish: 'BULLISH' };
+    var BARO_VARS   = {
+      bearish: 'var(--red-strong)',
+      neutral: 'var(--text-dim)',
+      bullish: 'var(--green)'
+    };
+    // Collapse Sentinel's 5-state regime onto the barometer's 3-state axis.
+    function sentinelToDirection(regime) {
+      if (regime === 'extreme_fear' || regime === 'fear') return 'bearish';
+      if (regime === 'greed' || regime === 'extreme_greed') return 'bullish';
+      if (regime === 'neutral') return 'neutral';
+      return null;
+    }
+
+    function renderBaroCompare(baroState, sentinelRegime) {
+      var icon = document.getElementById('baro-cmp-icon');
+      var text = document.getElementById('baro-cmp-text');
+      if (!icon || !text) return;
+      var sentDir = sentinelToDirection(sentinelRegime);
+      if (!baroState || !sentDir) {
+        icon.textContent = '—'; icon.style.color = 'var(--text-dim)';
+        text.innerHTML = 'vs Sentinel regime: <strong style="color:var(--text-dim)">no data yet</strong>';
+        return;
+      }
+      var verdict, color, sym;
+      if (baroState === sentDir) {
+        verdict = 'Agree'; color = 'var(--green)'; sym = '✓';
+      } else if ((baroState === 'bearish' && sentDir === 'bullish') ||
+                 (baroState === 'bullish' && sentDir === 'bearish')) {
+        verdict = 'Diverge'; color = 'var(--red-strong)'; sym = '⚠';
+      } else {
+        verdict = 'Mixed'; color = 'var(--yellow)'; sym = '~';
+      }
+      icon.textContent = sym; icon.style.color = color;
+      text.innerHTML =
+        'News <strong style="color:' + BARO_VARS[baroState] + '">' + (BARO_LABELS[baroState] || baroState) + '</strong>' +
+        ' vs Sentinel <strong style="color:var(--text)">' + (BARO_LABELS[sentDir] || sentDir) + '</strong>' +
+        ' <span style="color:var(--text-dim)">(' + (sentinelRegime || '—') + ')</span>' +
+        ' &rarr; <strong style="color:' + color + '">' + verdict + '</strong>';
+    }
+
+    function renderBarometer(row) {
+      var dot = document.getElementById('baro-dot');
+      var label = document.getElementById('baro-label');
+      var net = document.getElementById('baro-net');
+      var votes = document.getElementById('baro-votes');
+      var abstain = document.getElementById('baro-abstain');
+      var prev = document.getElementById('baro-prev');
+      var ageEl = document.getElementById('baro-age');
+      var kindEl = document.getElementById('baro-kind');
+      var tsEl = document.getElementById('baro-last-ts');
+
+      if (!row) {
+        label.textContent = '— (no barometer row yet)';
+        label.style.color = 'var(--text-dim)';
+        dot.style.background = 'var(--text-dim)'; dot.style.color = 'var(--text-dim)';
+        net.textContent = '—'; votes.textContent = '—'; abstain.textContent = '';
+        prev.textContent = '—'; ageEl.textContent = '—'; kindEl.textContent = '';
+        tsEl.textContent = '—';
+        return;
+      }
+
+      var state = row.state || 'neutral';
+      var color = BARO_VARS[state] || BARO_VARS.neutral;
+      label.textContent = BARO_LABELS[state] || state.toUpperCase();
+      label.style.color = color;
+      dot.style.background = color; dot.style.color = color;
+
+      net.textContent = (row.net_score != null) ? Number(row.net_score).toFixed(3) : '—';
+      votes.textContent = (row.vote_count != null) ? row.vote_count : '—';
+      abstain.textContent = (row.abstain_frac != null)
+        ? '(' + Math.round(Number(row.abstain_frac) * 100) + '% abstain)' : '';
+      prev.textContent = row.prev_state || '—';
+
+      var createdMs = Date.parse(row.created_at);
+      ageEl.textContent = fmtAgo(Date.now() - createdMs);
+      var kind = (row.raw_data && row.raw_data.kind) ? row.raw_data.kind : '';
+      kindEl.textContent = kind ? '(' + kind + ')' : '';
+      tsEl.textContent = new Date(createdMs).toLocaleString();
+    }
+
+    async function refreshBarometer() {
+      try {
+        var baroRows = await sbFetch(
+          'newskeeper_regime?select=created_at,state,prev_state,net_score,abstain_frac,vote_count,raw_data&order=created_at.desc&limit=1'
+        );
+        var slowRows = await sbFetch(
+          'sentinel_scores?select=raw_signals&score_type=eq.slow&order=created_at.desc&limit=1'
+        );
+        renderBarometer(baroRows[0]);
+        var sentRegime = (slowRows[0] && slowRows[0].raw_signals) ? slowRows[0].raw_signals.regime : null;
+        renderBaroCompare(baroRows[0] ? baroRows[0].state : null, sentRegime);
+      } catch (e) {
+        console.warn('Barometer refresh failed:', e);
+      }
+    }
+
     // === BOOTSTRAP: fetch sentinel + sherpa + DB stats after auth ===
     async function bootstrap() {
       try {
@@ -1884,11 +2041,16 @@
         var last = await sbFetch('sentinel_scores?select=*&score_type=eq.fast&order=created_at.desc&limit=1');
         renderLastScan(last[0]);
 
-        // Sentinel slow loop banner (brief 77c widget A). Runs once at boot
-        // here and then every 30s via setInterval below.
+        // Sentinel slow loop banner (brief 77c widget A) + NewsKeeper barometer
+        // (S100 v2, shadow). Both run once at boot here and then every 30s via
+        // the shared setInterval below.
         await refreshSlowBanner();
+        await refreshBarometer();
         if (!slowBannerTimer) {
-          slowBannerTimer = setInterval(refreshSlowBanner, 30000);
+          slowBannerTimer = setInterval(function () {
+            refreshSlowBanner();
+            refreshBarometer();
+          }, 30000);
         }
 
         var since = new Date(Date.now() - currentRangeHours * 3600 * 1000).toISOString();
