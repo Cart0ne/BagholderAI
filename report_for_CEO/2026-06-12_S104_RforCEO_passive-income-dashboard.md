@@ -61,8 +61,22 @@ Tabella `passive_income` (blocchi `revenue`/`traction`/`cost`, RLS anon-read), *
 ## 8. Cosa NON fatto / parcheggiato
 
 - Automazione fonti (vedi §7.3) — al go-live.
-- Ritocchi estetici (colori, P&L assoluto $ vs % di rendimento) — rimandati al go-live, decisione Max.
+- Ritocchi estetici: **colori → FATTI in S106** (palette brick CD Phase 3 — vedi addendum in fondo); P&L assoluto $ vs % di rendimento ancora rimandato al go-live.
 - Connettori Payhip/BMC — non costruiti (a €0 inutili).
+
+## Aggiornamento S106 (2026-06-14) — ritocco colori grafici (CD Phase 3)
+
+**Brief sorgente:** Claude Design *"Phase 3 — Dashboard chart colors"* (passato da Max in chat). CD non ha accesso al repo → nomi file inventati, **tradotti da CC sui file veri**: `income.ts` (i 4 grafici) + `global.css` (`@theme`), NON `dashboard-live.ts`/`theme.css`/`bot-cards.css` come scriveva il brief.
+**Commit:** `a606a3e`.
+
+Serie dei 4 grafici portate in palette brand + nuova scala **brick / terra di Siena**:
+- **Running costs**: Claude Max `#6E68B0` · Haiku `#2F7E91` · Grok `#4E8198` · Domain brick `#B5562F` · Infra `#5E8A54`. *(Grok era su `#BC4032` = `--color-neg`, cioè il rosso delle perdite su una voce di **costo** — incoerenza corretta dal brief.)*
+- **Income by source**: Books brick `#B5562F` · Tips `#5E8A54` · Ads `#4E8198` · Trading primary `#3F7589`.
+- **Attention by book**: rampa monocromatica brick `#8A3D22` / `#B5562F` / `#D58E60`.
+- **Test history P&L**: Paper → brick `#B5562F`; Testnet v1/v2 invariati.
+- Nuovi token `--color-brick*` in `global.css` (single source, Tailwind v4 `@theme`). Ciambelle SVG: aggiunto un **gap bianco** tra i segmenti (serve alla rampa monocromatica per restare leggibile). Titolo hero "experiment" → `text-brick-deep` (richiamo al Vol 1).
+
+**Anti-assenso:** la premessa del brief ("vecchio set acceso indigo/rosso/oro") non corrispondeva al reale (colori già pastello) — segnalato; il miglioramento vero è coesione + brick + fix del neg-su-costo. **Nota preferenza:** Max ha segnalato che il marrone non è il suo colore preferito (preferenza soft; design CD approvato → tenuto). Alleggerire il brick in futuro è un ritocco rapido.
 
 ## Roadmap impact
 
