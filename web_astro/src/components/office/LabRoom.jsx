@@ -413,8 +413,11 @@ function LabRoom() {
   });
 
   // ── the company board, mounted high on the back wall ──
+  // S106a: enlarged 1.18× (origin top-center) for readability + nudged up to
+  // 124 to keep clearance from the CEO podium below. The bhBoardFlash halo
+  // (search bhBoardFlash) is scaled/positioned in lockstep so it stays framed.
   const Board = () => (
-    <div style={{ position: 'absolute', left: VP.x, top: 150, width: 300, transform: 'translateX(-50%)', zIndex: 8 }}>
+    <div style={{ position: 'absolute', left: VP.x, top: 124, width: 300, transform: 'translateX(-50%) scale(1.18)', transformOrigin: 'center top', zIndex: 8 }}>
       <div style={{ position: 'absolute', inset: '6px -6px -10px -6px', background: 'rgba(70,66,52,0.10)', filter: 'blur(8px)', borderRadius: 12 }} />
       <a className="bh-board-link" href="/dashboard" style={{ position: 'relative', display: 'block', textDecoration: 'none', background: '#FFFFFF', border: `1px solid ${BH.border}`, borderRadius: 12, boxShadow: BH.shadowSm, padding: 7 }}>
         <div style={{ background: '#FCFDFB', border: `1px solid ${BH.borderSoft}`, borderRadius: 8, overflow: 'hidden' }}>
@@ -477,7 +480,7 @@ function LabRoom() {
           <img src="/office/backpack-sky-40.svg" alt="Bag, the CEO" style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block', animation: 'bhBob 3.6s ease-in-out infinite', filter: 'drop-shadow(0 12px 14px rgba(70,66,52,0.22))' }} />
         </a>
         {/* CEO label floating above */}
-        <div style={{ position: 'absolute', left: cx, top: cy - ry - 148, transform: 'translateX(-50%)', display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: BH.mono, fontSize: 8.5, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: BH.primary, background: 'rgba(255,255,255,0.92)', border: `1px solid ${BH.primary}55`, borderRadius: 99, padding: '3px 10px', whiteSpace: 'nowrap', boxShadow: '0 3px 9px rgba(70,66,52,0.14)', zIndex: 2 }}>
+        <div style={{ position: 'absolute', left: cx, top: cy - ry - 142, transform: 'translateX(-50%)', display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: BH.mono, fontSize: 8.5, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: BH.primary, background: 'rgba(255,255,255,0.92)', border: `1px solid ${BH.primary}55`, borderRadius: 99, padding: '3px 10px', whiteSpace: 'nowrap', boxShadow: '0 3px 9px rgba(70,66,52,0.14)', zIndex: 2 }}>
           <span style={{ width: 5, height: 5, borderRadius: 99, background: BH.pos, animation: 'bhPulse 1.5s ease-in-out infinite' }} />CEO active
         </div>
       </div>
@@ -688,7 +691,7 @@ function LabRoom() {
       ))}
 
       {/* NewsKeeper event — headline flies to the board, which flashes on receipt */}
-      <div style={{ position: 'absolute', left: VP.x, top: 148, width: 304, height: 158, transform: 'translateX(-50%)', borderRadius: 13, border: `2px solid ${BH.news}`, boxShadow: `0 0 22px 3px ${BH.news}`, opacity: 0, animation: 'bhBoardFlash 22s linear infinite', zIndex: 9, pointerEvents: 'none' }} />
+      <div style={{ position: 'absolute', left: VP.x, top: 122, width: 304, height: 158, transform: 'translateX(-50%) scale(1.18)', transformOrigin: 'center top', borderRadius: 13, border: `2px solid ${BH.news}`, boxShadow: `0 0 22px 3px ${BH.news}`, opacity: 0, animation: 'bhBoardFlash 22s linear infinite', zIndex: 9, pointerEvents: 'none' }} />
       <div style={{ position: 'absolute', left: 234, top: 584, zIndex: 900, opacity: 0, animation: 'bhHeadline 22s linear infinite', pointerEvents: 'none' }}>
         <div style={{ background: '#FFFFFF', border: `1px solid ${BH.border}`, borderLeft: `3px solid ${BH.news}`, borderRadius: 7, boxShadow: '0 6px 14px rgba(70,66,52,0.18)', padding: '4px 7px', width: 96 }}>
           <div style={{ fontFamily: BH.mono, fontSize: 6.5, fontWeight: 700, letterSpacing: '0.12em', color: BH.news, marginBottom: 1 }}>NEWS</div>
