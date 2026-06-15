@@ -743,13 +743,13 @@ Fase: **bot LIVE su Binance testnet — Grid ($500 board) + TF Tier 1-2 only ($1
 
 ---
 
-## Rimosso in sessione S107 (2026-06-15) — compaction PROJECT_STATE 49→~39KB
+## Rimosso in sessione S106 (2026-06-15) — compaction PROJECT_STATE 49→~39KB
 
-Compaction richiesta da Max a fine S107. Rimossi: header verbose S106 (sostituito da header S107), voci §3 In-flight di sessioni shipped (S104 /income, S106 /office+admin), voci §4 Decisioni verbose più vecchie (S104, S103a-analisi, S103b, S103a). Sintesi restano in §10 + pointer §4.
+Compaction richiesta da Max a fine S106. Rimossi: header verbose S106 (sostituito da header S106), voci §3 In-flight di sessioni shipped (S104 /income, S106 /office+admin), voci §4 Decisioni verbose più vecchie (S104, S103a-analisi, S103b, S103a). Sintesi restano in §10 + pointer §4.
 
 ### Header verbose S106 (era riga 3)
 
-**Ultimo aggiornamento:** 2026-06-14 — **S106 SHIPPED (web/admin, no bot / no restart)**: **(1) /office** nuova pagina **privata** "The AI Lab" (commit `28949f5`) — scena React animata (port handoff Claude Design) coi 5 bot attorno a Bag-CEO; board net worth + Sentinel risk + Grid realized **cablati ai dati live canonici** (`computeCanonicalState`, non più il `$2.4M` finto del mockup); `noindex`+off-nav+off-sitemap come /income. **(2) admin barometro** (`ba256ff`+`9a0a72b`) — card NewsKeeper v2 + grafico step-line 14g barometro↔regime Sentinel + BTC tenue, strumento per il verdetto T+14. **(3) /income recolor** (`a606a3e`, brief Claude Design "Phase 3") — grafici → palette **brick/terra-di-Siena** + titolo `text-brick-deep` + token `--color-brick*` in global.css. **(4) Brief proposta** `config/2026-06-14_brief_sentinel-regime-technical-fallback.md` (idea CEO: regime tecnico anti-singola-fonte, shadow-first, da approvare). income/office NON ancora passati al CEO → BUSINESS_STATE non toccato (poi applicato in S107). Report `..._S106_RforCEO_office-page.md` + addendum S104.
+**Ultimo aggiornamento:** 2026-06-14 — **S106 SHIPPED (web/admin, no bot / no restart)**: **(1) /office** nuova pagina **privata** "The AI Lab" (commit `28949f5`) — scena React animata (port handoff Claude Design) coi 5 bot attorno a Bag-CEO; board net worth + Sentinel risk + Grid realized **cablati ai dati live canonici** (`computeCanonicalState`, non più il `$2.4M` finto del mockup); `noindex`+off-nav+off-sitemap come /income. **(2) admin barometro** (`ba256ff`+`9a0a72b`) — card NewsKeeper v2 + grafico step-line 14g barometro↔regime Sentinel + BTC tenue, strumento per il verdetto T+14. **(3) /income recolor** (`a606a3e`, brief Claude Design "Phase 3") — grafici → palette **brick/terra-di-Siena** + titolo `text-brick-deep` + token `--color-brick*` in global.css. **(4) Brief proposta** `config/2026-06-14_brief_sentinel-regime-technical-fallback.md` (idea CEO: regime tecnico anti-singola-fonte, shadow-first, da approvare). income/office NON ancora passati al CEO → BUSINESS_STATE non toccato (poi applicato in S106). Report `..._S106_RforCEO_office-page.md` + addendum S104.
 
 ### §3 In-flight — S104 /income "Passive Income Experiment" (scaffold privato, parcheggiato)
 
