@@ -1195,9 +1195,14 @@ def apply_allocations(
                 "capital_per_trade": capital_per_trade,
                 "buy_pct": buy_pct,
                 "sell_pct": sell_pct,
-                "grid_mode": "percentage",
-                # Brief s70 FASE 2: grid_levels/grid_lower/grid_upper DROPPED
-                # from bot_config DDL. Allocator no longer writes these fields.
+                # Brief s70 FASE 2: grid_mode + grid_levels/grid_lower/grid_upper
+                # were DROPPED from the bot_config DDL — the grid is always
+                # percentage-mode now, so nothing reads grid_mode anymore. The
+                # allocator was cleaned of grid_levels/lower/upper but NOT of
+                # grid_mode, so every ALLOCATE of a non-whitelisted coin hit
+                # PGRST204 "could not find the 'grid_mode' column" (ETH/USDT,
+                # 2026-06-15 — worked in paper when the column still existed,
+                # e.g. DOGE). Removed in S106a.
                 # TF does not want a min-profit gate (sell_pct is the sole
                 # sell threshold for this strategy). Force 0 explicitly so
                 # the behavior is independent of the bot_config column default.
