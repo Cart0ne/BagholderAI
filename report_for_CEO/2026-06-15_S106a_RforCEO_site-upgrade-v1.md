@@ -67,3 +67,32 @@ Vercel su push; verifica live di Max sul sito.
 Scena ufficio → hero homepage; /office eliminata + redirect 301; live snapshot strip-vs-card
 (richiede scelta visual di Max); manifesto block; pagina /news + voce nav (post-verdetto); rimozione
 sezione "The team" + banner V3; link card NewsKeeper → /news.
+
+---
+
+## Addendum (fuori brief S106a) — fix Haiku daily commentary
+
+**Segnalato da Max in sessione** (incluso qui su sua richiesta perché il CEO ne sia al corrente; è
+codice bot-side, fuori dallo SCOPE `site-upgrade-v1`).
+
+**Problema.** Il commento giornaliero "VIA HAIKU 4.5" attribuiva ancora i cambi-parametro a Max
+("Max has been tweaking sell thresholds all day, 22 config changes"), quando dal S102b è **Sherpa**
+a regolarli in autonomia. Verifica a DB: negli ultimi 36h **i 26 config changes erano TUTTI
+`changed_by='sherpa'`, zero di Max** — il commento mentiva su chi pilota i parametri.
+
+**Causa.** `commentary.py` aveva 3 punti stale pre-Sherpa-LIVE: (1) il system prompt diceva "Sentinel
+e Sherpa osservano in DRY_RUN, non agiscono"; (2) `prompt_data.system_state` marcava entrambi DRY_RUN;
+(3) `get_config_changes` non leggeva `changed_by`, quindi Haiku non sapeva chi avesse fatto le modifiche
+e di default le attribuiva a Max.
+
+**Fix** (`64087b8`). Il prompt ora afferma che Sherpa è LIVE e regola in autonomia i parametri per-coin
+del Grid; i cambi di routine sono attribuiti a Sherpa; Max è attribuito **solo** quando `changed_by`
+∈ {manual-ceo, manual} — così un override manuale vero del Board resta leggibile (niente "Max→Sherpa"
+cieco). `get_config_changes` ora seleziona `changed_by`.
+
+**Deploy** (regola §5, restart su richiesta esplicita di Max). Pull sul Mac Mini →
+`scripts/regen_commentary_now.py` (corregge subito il commento di oggi, Day-11, senza Telegram) →
+restart orchestrator (PID 43740, runtime `35fff19`, 22:15 CET, `SHERPA_MODE=live` confermato nel
+relaunch, 0 errori nei log, NewsKeeper v1/v2 standalone intoccati). Esempio reale del commento Day-11
+rigenerato col nuovo prompt: *"…Sherpa spent the day micro-tuning sell thresholds on both coins (21
+parameter shifts), hunting for exit angles in choppy water…"* — attribuzione ora corretta.
