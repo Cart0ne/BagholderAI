@@ -420,6 +420,12 @@ def execute_percentage_sell(
     # sell the avg gets reset to 0 below and the reason would log a wrong
     # value.
     sell_avg_cost = bot.state.avg_buy_price
+    # Reason-fix (2026-06-15): snapshot the sell-ladder reference BEFORE the
+    # fully_sold/partial block below overwrites bot._last_sell_price. The grid
+    # manual trigger fires sell_pct% above this rising ladder (not above avg
+    # cost), so the reason string needs the pre-sell ladder value to tell the
+    # truth instead of the old misleading "X% above avg cost".
+    ladder_ref_at_trigger = float(bot._last_sell_price or 0)
     cost_basis = amount * sell_avg_cost
     buy_fee = cost_basis * bot.FEE_RATE  # backward-compat for state.total_fees
     # Brief 72a P3 (S72): realized_pnl is netto fees. Binance scales fee
@@ -760,10 +766,26 @@ def execute_percentage_sell(
                 f"(age {age_min:.0f}min, tier {tp_pct}%)"
             )
         else:
-            reason = (
-                f"Pct sell: check {fmt_price(check_price)} is {bot.sell_pct}% "
-                f"above avg cost {fmt_price(sell_avg_cost)}"
-            )
+            # Reason-fix (2026-06-15): the grid manual trigger fires sell_pct%
+            # above the rising sell LADDER (the previous sell price), not above
+            # avg cost — except the first sell of a cycle, which uses avg cost.
+            # The old string claimed "X% above avg cost" using the sell_pct
+            # param, false on every ladder step (BONK 2026-06-15: a +1.96% step
+            # printed while the fill sat +11% above avg). Report the true
+            # reference + the actual realized % on the lot (trade_pnl_pct).
+            if ladder_ref_at_trigger > 0:
+                reason = (
+                    f"Pct sell: check {fmt_price(check_price)} cleared the "
+                    f"+{bot.sell_pct}% step above last sell "
+                    f"{fmt_price(ladder_ref_at_trigger)} (ladder) → realized "
+                    f"{trade_pnl_pct:+.1f}% on lot vs avg cost {fmt_price(sell_avg_cost)}"
+                )
+            else:
+                reason = (
+                    f"Pct sell: check {fmt_price(check_price)} cleared the "
+                    f"+{bot.sell_pct}% step above avg cost {fmt_price(sell_avg_cost)} "
+                    f"(first sell of cycle) → realized {trade_pnl_pct:+.1f}% on lot"
+                )
     reason = f"{reason}{slip_tail}"
 
     trade_data = {
