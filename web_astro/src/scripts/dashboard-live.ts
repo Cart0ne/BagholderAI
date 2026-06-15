@@ -1384,13 +1384,16 @@ type DailyPnlRow = {
             /* Single line = mark-to-market portfolio vs start (S101).
                Realized-only lives in the bars below; the old two-line
                realized+MTM combo confused more than it explained.
-               Fill is semantic: green above break-even, clay underwater. */
+               Fill is semantic: green above break-even, clay underwater.
+               tension:0 (S106a) = straight point-to-point segments. Smooth
+               splines invent intermediate values that never existed —
+               a lie on a radical-transparency dashboard. */
             { label: "Portfolio vs start", data: mtmData,
               borderColor: "#4E8A57",
               fill: { target: "origin",
                       above: "rgba(78,138,87,0.10)",
                       below: "rgba(192,90,67,0.16)" },
-              borderWidth: 2, tension: 0.3, pointRadius: 0,
+              borderWidth: 2, tension: 0, pointRadius: 0,
               pointHoverRadius: 4, pointBackgroundColor: "#4E8A57",
               pointBorderColor: "#FFFFFF", pointBorderWidth: 2 },
             { label: "Break-even", data: breakEvenData,

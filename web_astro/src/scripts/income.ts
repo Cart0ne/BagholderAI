@@ -473,7 +473,10 @@ function renderPnlChart(C: any, rows: PnlRow[]): void {
       borderWidth: 2.5,
       pointRadius: 2.5,
       pointHoverRadius: 4,
-      tension: 0.3,
+      // tension:0 (S106a) — straight point-to-point segments. Same honesty
+      // rule as the dashboard P&L chart: smooth splines invent values that
+      // never existed, a lie on a radical-transparency page.
+      tension: 0,
       spanGaps: false,
     };
   });
