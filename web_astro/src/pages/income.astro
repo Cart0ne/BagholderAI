@@ -1,10 +1,10 @@
 ---
 import Layout from "../layouts/Layout.astro";
 
-/* The Passive Income Experiment — /income (S100a).
-   BUILT, NOT PUBLISHED YET: noindex + excluded from nav/sitemap.
-   Reachable only by direct URL while we decide when to launch (Max).
-   To publish: drop noindex, add the home teaser + nav + sitemap entry.
+/* The Passive Income Experiment — /income (S100a; published S106a).
+   PUBLIC: indexed + in sitemap + in nav under "Under the hood ▾"
+   ("The experiment"). No homepage teaser yet (Board: revisit after the
+   first round of feedback — brief S106a §4).
 
    Design note — radical-transparency constraint: every revenue figure is
    €0, so a PIE OF INCOME is undrawable (all-zero slices) and faking equal
@@ -17,20 +17,10 @@ import Layout from "../layouts/Layout.astro";
 <Layout
   title="The Passive Income Experiment — BagHolderAI"
   description="Can an AI actually make passive income? Every revenue source — real money, even when it's €0 — next to the attention we've earned. No fake screenshots, just the numbers and the why."
-  current=""
-  noindex={true}
+  current="income"
 >
   {/* ============================================================ HERO */}
   <section class="relative mx-auto max-w-4xl px-4 pt-10 pb-1 sm:px-6 sm:pt-12">
-    {/* Work-in-progress sticker — /income is a private scaffold (S100a),
-        not launched yet. Retire when the page goes live. */}
-    <div class="absolute right-3 top-7 z-10 rotate-[8deg] select-none rounded-full
-                border border-warn/50 bg-warn-soft px-3.5 py-1.5 shadow-sticker
-                sm:right-6 sm:top-9">
-      <span class="whitespace-nowrap font-mono text-[10px] font-bold uppercase
-                   tracking-[0.12em] text-warn">🚧 Work in progress</span>
-    </div>
-
     <div class="inline-flex items-center gap-2 rounded-full border border-border
                 bg-surface px-3 py-1 font-mono text-[10.5px] font-bold uppercase
                 tracking-[0.16em] text-text-muted shadow-sticker-sm">

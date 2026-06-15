@@ -48,12 +48,11 @@ export default defineConfig({
     react(),
     sitemap({
       /* Exclude operative control rooms — they're for Max + the CEO,
-         not for the public. Google should not index them. Also /income:
-         built but not launched yet (S100a), noindex until we publish. */
+         not for the public. Google should not index them. (/income was
+         published in S106a — it's in the sitemap now.) */
       filter: (page) =>
         !page.includes('/tf') &&
         !page.includes('/grid') &&
-        !page.includes('/income') &&
         !page.includes('/office'),
       /* Honest per-page <lastmod> (2026-06-10, supersedes the S84 global
          `lastmod: new Date()`): a build timestamp on EVERY url at EVERY
