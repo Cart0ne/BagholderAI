@@ -96,3 +96,30 @@ restart orchestrator (PID 43740, runtime `35fff19`, 22:15 CET, `SHERPA_MODE=live
 relaunch, 0 errori nei log, NewsKeeper v1/v2 standalone intoccati). Esempio reale del commento Day-11
 rigenerato col nuovo prompt: *"…Sherpa spent the day micro-tuning sell thresholds on both coins (21
 parameter shifts), hunting for exit angles in choppy water…"* — attribuzione ora corretta.
+
+---
+
+## Addendum 2 (fuori brief S106a) — fix TF `grid_mode` + primo trade TF reale in v3
+
+**Segnalato da Max in sessione** (screenshot dev-console). Anche questo è bot-side, fuori SCOPE; incluso
+perché il CEO sappia che **il TF ha eseguito il suo primo trade reale in v3**.
+
+**Problema.** Ogni ALLOCATE del TF su una coin non-whitelisted falliva: `PGRST204 "Could not find the
+'grid_mode' column of 'bot_config'"` (ETH/USDT). L'allocator scriveva ancora `grid_mode='percentage'`,
+ma quella colonna fu **droppata in brief s70 FASE 2** (il grid è sempre percentage-mode ora). Il cleanup
+S70 tolse `grid_levels/lower/upper` ma dimenticò `grid_mode` — il suo stesso commento diceva "allocator
+no longer writes these fields". In paper funzionava (DOGE) quando la colonna esisteva.
+
+**Fix** (`f02bfb0`). Rimossa la riga `grid_mode`. Verifica avversariale: confrontato **ogni** campo di
+`row_fields` contro lo schema live di `bot_config` → `grid_mode` è l'**unica** colonna stale, quindi la
+rimozione è il fix completo (niente colonna-fantasma a valle). Affligge INSERT+UPDATE (row_fields condiviso).
+
+**Deploy + verifica** (3° restart serale, PID 45406, runtime `f02bfb0`, 23:05 CET). Allo scan successivo:
+ETH/USDT **allocato con successo** (`trend_decisions_log` action_taken='ALLOCATE', non più ALLOCATE_FAILED)
+→ INSERT in `bot_config` (`managed_by='tf_grid'`, $100, buy 2%/sell 2.5%, 23:08:32) → l'orchestrator ha
+**spawnato dinamicamente il grid ETH** (pid 45578, 23:08:59). È il **primo handoff TF→grid reale in v3**
+(finora `managed_by='tf'=0`). 4 grid ora attivi (BTC/SOL/BONK/ETH).
+
+**Follow-up aperti (PROJECT_STATE §5):** (1) la dashboard pubblica non riflette ancora ETH (TF $100/cash,
+Grid senza ETH) — Max vuole verificare domani perché la §2 non si aggiorna; (2) WARNING separato PGRST100
+"failed to log scan data" nel TF (pre-esistente, non blocca).
