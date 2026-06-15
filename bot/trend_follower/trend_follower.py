@@ -45,6 +45,7 @@ from bot.trend_follower.scanner import scan_top_coins, fmt_volume, fetch_rsi_1h
 from bot.trend_follower.classifier import classify_signal
 from bot.trend_follower.allocator import (
     decide_allocations, apply_allocations, resize_active_allocations,
+    MANUAL_WHITELIST,
 )
 from bot.trend_follower.floating import compute_tf_floating_cash
 from bot.trend_follower.counterfactual import run_counterfactual_check
@@ -359,6 +360,29 @@ def send_scan_report(notifier: SyncTelegramNotifier, coins: list[dict],
             for c in overheat[:5]:
                 sym = c["symbol"].split("/")[0]
                 distance_block_lines.append(f"  • {sym}: RSI 1h = {c['rsi_1h']:.0f}")
+
+    # Manual grids (BTC/SOL/BONK) are GRID-managed: when one turns BULLISH the
+    # TF scan sees it but never allocates it (apply_allocations + the allocator
+    # MANUAL_WHITELIST gate both refuse). Surface it honestly so the operator
+    # doesn't expect a TF position — this replaces the old misleading
+    # "🟢 ALLOCATE — SOL" bubble that fired but deployed nothing.
+    manual_bullish = [
+        c for c in coins
+        if c.get("signal") == "BULLISH" and c.get("symbol") in MANUAL_WHITELIST
+    ]
+    if manual_bullish:
+        manual_bullish.sort(key=lambda c: c.get("signal_strength", 0), reverse=True)
+        distance_block_lines.append(
+            f"\n🔒 <b>Managed by GRID — not allocated by TF</b> ({len(manual_bullish)} coin"
+            + ("s" if len(manual_bullish) != 1 else "")
+            + "):"
+        )
+        for c in manual_bullish:
+            sym = c["symbol"].split("/")[0]
+            strength = c.get("signal_strength", 0)
+            distance_block_lines.append(
+                f"  • {sym}: BULLISH ({strength:.1f}) — your manual grid handles it"
+            )
 
     # Active allocations with management mode tag (tf_grid → 🟢 GRID,
     # trend_follower → 🔵 TF). Shows at-a-glance who's in TF, how it's

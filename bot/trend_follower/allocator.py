@@ -697,6 +697,21 @@ def decide_allocations(
         if coin is None:
             continue  # active HOLD or truly empty (budget already redistributed)
 
+        # Manual whitelist gate: BTC/SOL/BONK are Max's permanent manual
+        # grids — TF must never allocate them. apply_allocations() already
+        # refuses to write them, but emitting an ALLOCATE *decision* here
+        # produced a misleading "🟢 ALLOCATE" Telegram bubble + a fake
+        # ALLOCATE row in trend_decisions_log (nothing was ever deployed).
+        # Emit a SKIP instead so the decision trail is honest; the scan
+        # report surfaces a dedicated "managed by GRID" line for the operator.
+        if coin["symbol"] in MANUAL_WHITELIST:
+            decisions.append(_make_decision(
+                scan_ts, coin["symbol"], coin, "SKIP",
+                f"Tier {tier_key}: {coin['symbol'].split('/')[0]} is GRID-managed "
+                f"(manual whitelist) — TF defers, not allocated",
+            ))
+            continue
+
         # Apply 45a SL cooldown gate (redundant with SWAP gate, but the
         # ALLOCATE path is independent — a just-stop-hunted coin must not
         # be re-picked on the same scan).
