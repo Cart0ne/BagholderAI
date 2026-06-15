@@ -189,49 +189,112 @@ const tfSubtitle   = "The breakout hunter";
       </dl>
     </section>
 
-    {/* ============ 1 — CEO LOG di oggi ============ */}
-    <hr class="mt-12 border-t border-border-soft" />
-    <section class="mt-8 reveal">
-      <h2 class="font-display text-[20px] font-extrabold tracking-[-0.01em] text-text mb-5">
-        1 · CEO observation log
-      </h2>
-      <article id="ceo-today" class="grid grid-cols-[auto_1fr] items-center gap-6
-               rounded-2xl border border-border border-l-4 border-l-pos
-               bg-surface shadow-sticker-sm p-6">
-        <div class="w-[60px] shrink-0 text-center leading-none">
-          <span class="block font-mono text-[9px] font-bold uppercase tracking-[0.18em] text-text-muted">day</span>
-          <span id="ceo-today-day" class="mt-1 block font-display text-[40px] font-extrabold leading-none text-pos">{mockCEOLog.today.dayNumber}</span>
-          <span id="ceo-today-date" class="mt-1.5 block font-mono text-[9px] uppercase tracking-[0.12em] text-text-muted">{fmtDate(mockCEOLog.today.date + "T00:00:00Z")}</span>
-        </div>
-        <div>
-          <div class="mb-2 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.16em] text-text-muted">
-            <span>latest</span>
-            <span class="text-border">·</span>
-            <span id="ceo-today-model" class="opacity-70">via {mockCEOLog.today.model}</span>
-          </div>
-          <p id="ceo-today-text" class="text-text leading-[1.7] text-[15px] italic">
-            "{mockCEOLog.today.text}"
-          </p>
-        </div>
-      </article>
-    </section>
-
-    {/* ============ 2 — INSTRUMENTS ============ */}
+    {/* ============ 1 — INSTRUMENTS ============ */}
     <hr class="mt-12 border-t border-border-soft" />
     <section class="mt-8">
       <h2 class="reveal font-display text-[20px] font-extrabold tracking-[-0.01em] text-text mb-7">
-        2 · Instruments
+        1 · Instruments
       </h2>
+
+      {/* ============ THE BRAINS — NewsKeeper → Sentinel → Sherpa (Brief S103b)
+           Shown first (S106a): the real pipeline is NEWS → RISK → PARAMETERS
+           → EXECUTION, so the brain comes before the execution. All three
+           LIVE. Right-rail widgets wired in dashboard-live.ts from
+           newskeeper_signals / newskeeper_regime / sentinel_scores /
+           sherpa_proposals. JS-rebuilt nodes (headlines, coin rows, gauge,
+           bars) styled via the <style is:global> block below. ============ */}
+      <div class="reveal db-sec-h"><span>1.1 · Instruments — the brains</span><span class="aside">news → risk → parameters</span></div>
+
+      {/* === NEWSKEEPER === */}
+      <article id="newskeeper" class="reveal db-brain scroll-mt-24" style="--ac: var(--color-bot-news)">
+        <div class="db-plate"><NewsKeeperMascot size={96} /></div>
+        <div class="db-ident">
+          <div class="nm"><span class="bar"></span><span class="name">NewsKeeper</span><span class="db-pill"><span class="dot"></span>live</span></div>
+          <div class="role">News watcher</div>
+          <p class="desc">Classifies crypto headlines by severity and signal — the macro early-warning.</p>
+          <div class="foot"><span class="dot"></span>Classifying hourly</div>
+        </div>
+        <div class="db-rail">
+          <div class="db-label">Latest classified headlines</div>
+          <div class="db-headlines" id="nk-headlines">
+            <div class="db-headline"><span class="sev" style="background:var(--color-neg)"></span><span>SEC delays spot ETH ETF decision to Q3</span></div>
+            <div class="db-headline"><span class="sev" style="background:var(--color-pos)"></span><span>BlackRock Bitcoin fund sees $274M inflows</span></div>
+            <div class="db-headline"><span class="sev" style="background:var(--color-text-muted)"></span><span>Solana DEX volume holds steady at $2.1B</span></div>
+            <div class="db-headline"><span class="sev" style="background:var(--color-neg)"></span><span>Binance faces new regulatory probe in EU</span></div>
+          </div>
+          <div class="db-baro"><span class="db-label">24h barometer</span><span class="v" id="nk-barometer" style="color:var(--color-text-muted)">Neutral</span></div>
+        </div>
+      </article>
+
+      <div class="reveal db-flow">
+        <svg width="14" height="34" viewBox="0 0 14 34"><line x1="7" y1="0" x2="7" y2="26" stroke="var(--color-border)" stroke-width="2"></line><path d="M2 25 L7 33 L12 25 Z" fill="var(--color-border)"></path></svg>
+        <span class="t">barometer</span><span class="shadow-pill">shadow</span>
+      </div>
+
+      {/* === SENTINEL === */}
+      <article id="sentinel" class="reveal db-brain scroll-mt-24" style="--ac: var(--color-bot-sentinel)">
+        <div class="db-plate"><SentinelMascot size={96} /></div>
+        <div class="db-ident">
+          <div class="nm"><span class="bar"></span><span class="name">Sentinel</span><span class="db-pill"><span class="dot"></span>live</span></div>
+          <div class="role">Risk officer</div>
+          <p class="desc">Reads risk + the macro regime from price, funding, and Fear &amp; Greed.</p>
+          <div class="foot"><span class="dot"></span>Scoring every 60s (fast) · 4h (slow)</div>
+        </div>
+        <div class="db-rail">
+          <div class="db-gauge" id="sent-gauge">
+            <span class="on" style="background:var(--color-primary)">extreme fear</span>
+            <span style="background:var(--color-neu-soft)">fear</span>
+            <span style="background:var(--color-border-soft)">neutral</span>
+            <span style="background:var(--color-warn-soft)">greed</span>
+            <span style="background:var(--color-neg-soft)">extreme greed</span>
+          </div>
+          <div class="db-scores">
+            <div class="db-score"><div class="db-label">Risk</div><div class="track"><div class="fill" id="sent-risk-bar" style="width:20%;background:var(--color-neg)"></div></div><div class="v" id="sent-risk">20</div></div>
+            <div class="db-score"><div class="db-label">Opportunity</div><div class="track"><div class="fill" id="sent-opp-bar" style="width:80%;background:var(--color-pos)"></div></div><div class="v" id="sent-opp">80</div></div>
+          </div>
+          <div class="db-strip" id="sent-strip">₿ BTC — · Funding —</div>
+        </div>
+      </article>
+
+      <div class="reveal db-flow">
+        <svg width="14" height="34" viewBox="0 0 14 34"><line x1="7" y1="0" x2="7" y2="26" stroke="var(--color-border)" stroke-width="2"></line><path d="M2 25 L7 33 L12 25 Z" fill="var(--color-border)"></path></svg>
+        <span class="t">regime</span>
+      </div>
+
+      {/* === SHERPA === */}
+      <article id="sherpa" class="reveal db-brain scroll-mt-24" style="--ac: var(--color-bot-sherpa)">
+        <div class="db-plate"><SherpaMascotV2 size={96} /></div>
+        <div class="db-ident">
+          <div class="nm"><span class="bar"></span><span class="name">Sherpa</span><span class="db-pill"><span class="dot"></span>live</span></div>
+          <div class="role">Parameter tuner</div>
+          <p class="desc">Turns Sentinel's regime reads into per-coin Grid settings.</p>
+          <div class="foot"><span class="dot"></span><span id="sherpa-last">Last adjustment: —</span></div>
+        </div>
+        <div class="db-rail">
+          <div class="db-regime-row">
+            <span class="db-regime" id="sherpa-regime" style="background:var(--color-primary-soft);border-color:color-mix(in srgb, var(--color-primary) 25%, transparent);color:var(--color-primary)">
+              <svg width="11" height="13" viewBox="0 0 11 13" fill="none"><path d="M5.5 0.8 10 2.5v3.6c0 3-1.9 5-4.5 6.1C2.9 11.1 1 9.1 1 6.1V2.5L5.5 0.8Z" fill="currentColor"></path></svg>
+              Defensive
+            </span>
+            <span class="db-label" style="font-size:9px">buy / sell / idle</span>
+          </div>
+          <div class="db-coinrows" id="sherpa-coins">
+            <div class="db-coinrow"><span class="sym">BTC</span><span class="posture">buy tight, sell fast, wait long</span><span class="params">0.65 / 1.05 / 5.6h</span></div>
+            <div class="db-coinrow"><span class="sym">SOL</span><span class="posture">buy tight, sell fast, wait long</span><span class="params">0.65 / 1.53 / 5.6h</span></div>
+            <div class="db-coinrow"><span class="sym">BONK</span><span class="posture">buy tight, sell fast, wait long</span><span class="params">3.0 / 1.75 / 5.6h</span></div>
+          </div>
+        </div>
+      </article>
 
       {/* ============ THE TRADERS — TF → Grid (Brief S103b) ============
            Live horizontal rows in data-flow order. Trader numbers reuse the
            existing computeCanonicalState wiring (ids tf-nw / grid-nw / …);
            only the presentation changed. Card grammar lives in the
            <style is:global> block at the end of this section. */}
-      <div class="reveal db-sec-h"><span>2.1 · Instruments — the traders</span><span class="aside">tf picks → grid manages</span></div>
+      <div class="reveal db-sec-h mt-14"><span>1.2 · Instruments — the traders</span><span class="aside">tf picks → grid manages</span></div>
 
       {/* === TREND FOLLOWER === */}
-      <article class="reveal db-trade" style="--ac: var(--color-bot-tf)">
+      <article id="trendfollower" class="reveal db-trade scroll-mt-24" style="--ac: var(--color-bot-tf)">
         <div class="db-plate"><BotMascot color="#f59e0b" accent="#f59e0b" build="lanky" expression="scanning" carrying="binoculars" size={86} uid="mascot-tf" /></div>
         <div class="db-ident">
           <div class="nm"><span class="bar"></span><span class="name">Trend Follower</span><span class="db-pill"><span class="dot"></span>live</span></div>
@@ -270,7 +333,7 @@ const tfSubtitle   = "The breakout hunter";
       </div>
 
       {/* === GRID BOT === */}
-      <article class="reveal db-trade" style="--ac: var(--color-bot-grid)">
+      <article id="grid" class="reveal db-trade scroll-mt-24" style="--ac: var(--color-bot-grid)">
         <div class="db-plate"><BotMascot color="#22c55e" accent="#22c55e" build="stocky" expression="focused" size={86} uid="mascot-grid" /></div>
         <div class="db-ident">
           <div class="nm"><span class="bar"></span><span class="name">Grid Bot</span><span class="db-pill"><span class="dot"></span>live</span></div>
@@ -362,94 +425,6 @@ const tfSubtitle   = "The breakout hunter";
           }
         })();
       </script>
-
-      {/* ============ THE BRAINS — NewsKeeper → Sentinel → Sherpa (Brief S103b)
-           All three LIVE. Right-rail widgets wired in dashboard-live.ts from
-           newskeeper_signals / newskeeper_regime / sentinel_scores /
-           sherpa_proposals. JS-rebuilt nodes (headlines, coin rows, gauge,
-           bars) styled via the <style is:global> block below. ============ */}
-      <div class="reveal db-sec-h mt-14"><span>2.2 · Instruments — the brains</span><span class="aside">news → risk → parameters</span></div>
-
-      {/* === NEWSKEEPER === */}
-      <article class="reveal db-brain" style="--ac: var(--color-bot-news)">
-        <div class="db-plate"><NewsKeeperMascot size={96} /></div>
-        <div class="db-ident">
-          <div class="nm"><span class="bar"></span><span class="name">NewsKeeper</span><span class="db-pill"><span class="dot"></span>live</span></div>
-          <div class="role">News watcher</div>
-          <p class="desc">Classifies crypto headlines by severity and signal — the macro early-warning.</p>
-          <div class="foot"><span class="dot"></span>Classifying hourly</div>
-        </div>
-        <div class="db-rail">
-          <div class="db-label">Latest classified headlines</div>
-          <div class="db-headlines" id="nk-headlines">
-            <div class="db-headline"><span class="sev" style="background:var(--color-neg)"></span><span>SEC delays spot ETH ETF decision to Q3</span></div>
-            <div class="db-headline"><span class="sev" style="background:var(--color-pos)"></span><span>BlackRock Bitcoin fund sees $274M inflows</span></div>
-            <div class="db-headline"><span class="sev" style="background:var(--color-text-muted)"></span><span>Solana DEX volume holds steady at $2.1B</span></div>
-            <div class="db-headline"><span class="sev" style="background:var(--color-neg)"></span><span>Binance faces new regulatory probe in EU</span></div>
-          </div>
-          <div class="db-baro"><span class="db-label">24h barometer</span><span class="v" id="nk-barometer" style="color:var(--color-text-muted)">Neutral</span></div>
-        </div>
-      </article>
-
-      <div class="reveal db-flow">
-        <svg width="14" height="34" viewBox="0 0 14 34"><line x1="7" y1="0" x2="7" y2="26" stroke="var(--color-border)" stroke-width="2"></line><path d="M2 25 L7 33 L12 25 Z" fill="var(--color-border)"></path></svg>
-        <span class="t">barometer</span><span class="shadow-pill">shadow</span>
-      </div>
-
-      {/* === SENTINEL === */}
-      <article class="reveal db-brain" style="--ac: var(--color-bot-sentinel)">
-        <div class="db-plate"><SentinelMascot size={96} /></div>
-        <div class="db-ident">
-          <div class="nm"><span class="bar"></span><span class="name">Sentinel</span><span class="db-pill"><span class="dot"></span>live</span></div>
-          <div class="role">Risk officer</div>
-          <p class="desc">Reads risk + the macro regime from price, funding, and Fear &amp; Greed.</p>
-          <div class="foot"><span class="dot"></span>Scoring every 60s (fast) · 4h (slow)</div>
-        </div>
-        <div class="db-rail">
-          <div class="db-gauge" id="sent-gauge">
-            <span class="on" style="background:var(--color-primary)">extreme fear</span>
-            <span style="background:var(--color-neu-soft)">fear</span>
-            <span style="background:var(--color-border-soft)">neutral</span>
-            <span style="background:var(--color-warn-soft)">greed</span>
-            <span style="background:var(--color-neg-soft)">extreme greed</span>
-          </div>
-          <div class="db-scores">
-            <div class="db-score"><div class="db-label">Risk</div><div class="track"><div class="fill" id="sent-risk-bar" style="width:20%;background:var(--color-neg)"></div></div><div class="v" id="sent-risk">20</div></div>
-            <div class="db-score"><div class="db-label">Opportunity</div><div class="track"><div class="fill" id="sent-opp-bar" style="width:80%;background:var(--color-pos)"></div></div><div class="v" id="sent-opp">80</div></div>
-          </div>
-          <div class="db-strip" id="sent-strip">₿ BTC — · Funding —</div>
-        </div>
-      </article>
-
-      <div class="reveal db-flow">
-        <svg width="14" height="34" viewBox="0 0 14 34"><line x1="7" y1="0" x2="7" y2="26" stroke="var(--color-border)" stroke-width="2"></line><path d="M2 25 L7 33 L12 25 Z" fill="var(--color-border)"></path></svg>
-        <span class="t">regime</span>
-      </div>
-
-      {/* === SHERPA === */}
-      <article class="reveal db-brain" style="--ac: var(--color-bot-sherpa)">
-        <div class="db-plate"><SherpaMascotV2 size={96} /></div>
-        <div class="db-ident">
-          <div class="nm"><span class="bar"></span><span class="name">Sherpa</span><span class="db-pill"><span class="dot"></span>live</span></div>
-          <div class="role">Parameter tuner</div>
-          <p class="desc">Turns Sentinel's regime reads into per-coin Grid settings.</p>
-          <div class="foot"><span class="dot"></span><span id="sherpa-last">Last adjustment: —</span></div>
-        </div>
-        <div class="db-rail">
-          <div class="db-regime-row">
-            <span class="db-regime" id="sherpa-regime" style="background:var(--color-primary-soft);border-color:color-mix(in srgb, var(--color-primary) 25%, transparent);color:var(--color-primary)">
-              <svg width="11" height="13" viewBox="0 0 11 13" fill="none"><path d="M5.5 0.8 10 2.5v3.6c0 3-1.9 5-4.5 6.1C2.9 11.1 1 9.1 1 6.1V2.5L5.5 0.8Z" fill="currentColor"></path></svg>
-              Defensive
-            </span>
-            <span class="db-label" style="font-size:9px">buy / sell / idle</span>
-          </div>
-          <div class="db-coinrows" id="sherpa-coins">
-            <div class="db-coinrow"><span class="sym">BTC</span><span class="posture">buy tight, sell fast, wait long</span><span class="params">0.65 / 1.05 / 5.6h</span></div>
-            <div class="db-coinrow"><span class="sym">SOL</span><span class="posture">buy tight, sell fast, wait long</span><span class="params">0.65 / 1.53 / 5.6h</span></div>
-            <div class="db-coinrow"><span class="sym">BONK</span><span class="posture">buy tight, sell fast, wait long</span><span class="params">3.0 / 1.75 / 5.6h</span></div>
-          </div>
-        </div>
-      </article>
 
       {/* Card grammar for §2 bot pipeline (Brief S103b). is:global because
          several children (headlines, coin rows/chips, cash bar, sparkline,
@@ -564,7 +539,7 @@ const tfSubtitle   = "The breakout hunter";
       </style>
     </section>
 
-    {/* ============ 3 — CHARTS (full-width, stacked) ============
+    {/* ============ 2 — CHARTS (full-width, stacked) ============
          One range selector controls both charts: line cumulative P&L on
          top, stacked weekly/monthly bar chart below. Net labels for the
          bar chart are rendered as an HTML row absolutely positioned over
@@ -573,7 +548,7 @@ const tfSubtitle   = "The breakout hunter";
     <section class="mt-8 reveal">
       <div class="flex items-baseline justify-between flex-wrap gap-3 mb-5">
         <h2 class="font-display text-[20px] font-extrabold tracking-[-0.01em] text-text">
-          3 · Performance · time series
+          2 · Performance · time series
         </h2>
         <div id="range-selector"
              class="inline-flex gap-1 p-1 rounded-md bg-surface border border-border">
@@ -685,7 +660,7 @@ const tfSubtitle   = "The breakout hunter";
       .net-row .net-inprog { opacity: 0.55; }
     </style>
 
-    {/* ============ 4 — RECENT TRADES — 2 tabelle: Grid + TF ============
+    {/* ============ 3 — RECENT TRADES — 2 tabelle: Grid + TF ============
          Grid = managed_by='manual' only.
          TF   = managed_by IN ('trend_follower', 'tf_grid') (tf_grid stays
                 under TF for coherence with brief 46b: TF capital). */}
@@ -693,7 +668,7 @@ const tfSubtitle   = "The breakout hunter";
     <section class="mt-8 reveal">
       <div class="flex items-baseline justify-between flex-wrap gap-3 mb-5">
         <h2 class="font-display text-[20px] font-extrabold tracking-[-0.01em] text-text">
-          4 · Recent activity
+          3 · Recent activity
         </h2>
         <span class="font-mono text-[11px] text-text-muted">last 6 per bot</span>
       </div>
@@ -772,15 +747,41 @@ const tfSubtitle   = "The breakout hunter";
       </div>
     </section>
 
-    {/* ============ 5 — CEO LOG ARCHIVE ============ */}
+    {/* ============ 4 — THE CEO'S LOG (today + earlier) ============
+         Moved here from the top (S106a): the CEO's voice is narration, not
+         operational data — a new visitor sees the numbers first, then the
+         commentary. Today's entry + the scrollable archive, sequential. */}
     <hr class="mt-12 border-t border-border-soft" />
     <section class="mt-8 reveal">
-      <h2 class="font-display text-[20px] font-extrabold tracking-[-0.01em] text-text mb-6">
-        5 · Earlier from the log
+      <h2 class="font-display text-[20px] font-extrabold tracking-[-0.01em] text-text mb-5">
+        4 · The CEO's log
       </h2>
-      {/* Scrollable archive window — pattern from web/dashboard.html
-          (.commentary-history): fixed max-height with overflow scroll,
-          smaller font for the entries since they're ancillary. */}
+      <article id="ceo-today" class="grid grid-cols-[auto_1fr] items-center gap-6
+               rounded-2xl border border-border border-l-4 border-l-pos
+               bg-surface shadow-sticker-sm p-6">
+        <div class="w-[60px] shrink-0 text-center leading-none">
+          <span class="block font-mono text-[9px] font-bold uppercase tracking-[0.18em] text-text-muted">day</span>
+          <span id="ceo-today-day" class="mt-1 block font-display text-[40px] font-extrabold leading-none text-pos">{mockCEOLog.today.dayNumber}</span>
+          <span id="ceo-today-date" class="mt-1.5 block font-mono text-[9px] uppercase tracking-[0.12em] text-text-muted">{fmtDate(mockCEOLog.today.date + "T00:00:00Z")}</span>
+        </div>
+        <div>
+          <div class="mb-2 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.16em] text-text-muted">
+            <span>latest</span>
+            <span class="text-border">·</span>
+            <span id="ceo-today-model" class="opacity-70">via {mockCEOLog.today.model}</span>
+          </div>
+          <p id="ceo-today-text" class="text-text leading-[1.7] text-[15px] italic">
+            "{mockCEOLog.today.text}"
+          </p>
+        </div>
+      </article>
+
+      {/* Earlier entries — scrollable archive window (pattern from
+          web/dashboard.html .commentary-history): fixed max-height,
+          smaller font since they're ancillary. */}
+      <div class="mt-7 mb-2 font-mono text-[11px] uppercase tracking-[0.16em] text-text-muted">
+        Earlier from the log
+      </div>
       <div id="ceo-archive"
            class="rounded-2xl border border-border bg-surface shadow-sticker-sm
                   max-h-[320px] overflow-y-auto
@@ -805,7 +806,7 @@ const tfSubtitle   = "The breakout hunter";
     <section class="reveal mt-10 sm:mt-12">
       <div class="mb-3 flex items-baseline gap-3">
         <h2 class="font-display text-[20px] sm:text-[22px] font-extrabold tracking-[-0.01em] text-text">
-          6 · Reconciliation
+          5 · Reconciliation
         </h2>
         <span class="font-mono text-[12px] uppercase tracking-[0.16em] text-text-muted">
           binance ↔ db
