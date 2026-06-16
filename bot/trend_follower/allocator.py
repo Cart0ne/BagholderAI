@@ -1125,6 +1125,32 @@ def apply_allocations(
     Never touches symbols in MANUAL_WHITELIST.
     """
     coin_lookup = coin_lookup or {}
+
+    # S107: row_fields below does NOT set `cycle`, so an INSERT inherits the
+    # bot_config column DEFAULT, which is still 'testnet_1' — stale since the
+    # S96a clean slate bumped the 3 grid rows to 'testnet_2' via UPDATE but
+    # left the column default behind. The public dashboard filters trades and
+    # config by cycle, so a freshly-allocated coin is born invisible (ETH/USDT,
+    # 2026-06-15: first real TF→grid handoff, absent from both cards). Read the
+    # live cycle from an active grid row instead of hardcoding it: data-driven,
+    # so it survives the next monthly testnet reset without a code change.
+    # Best-effort — if the read fails we fall back to the prior behavior
+    # (INSERT keeps the DB default, UPDATE leaves the existing value).
+    current_cycle = None
+    try:
+        _cyc = (
+            supabase.table("bot_config")
+            .select("cycle")
+            .eq("managed_by", "grid")
+            .eq("is_active", True)
+            .limit(1)
+            .execute()
+        )
+        if _cyc.data:
+            current_cycle = _cyc.data[0].get("cycle")
+    except Exception as e:
+        logger.warning(f"[ALLOCATOR] could not read live cycle from grid rows — {e}")
+
     for d in decisions:
         symbol = d["symbol"]
         action = d["action_taken"]
@@ -1230,6 +1256,13 @@ def apply_allocations(
                 # ALLOCATE/UPDATE cycles. INSERT path leaves it as DB default
                 # (NULL); UPDATE path leaves whatever value the CEO set.
             }
+
+            # S107: tag the row with the live cycle (read once above). Applied
+            # to both INSERT (else it would default to stale 'testnet_1') and
+            # UPDATE (re-aligns a coin that re-allocated under an old cycle).
+            # Omitted entirely if the read failed → prior behavior preserved.
+            if current_cycle:
+                row_fields["cycle"] = current_cycle
 
             try:
                 existing = supabase.table("bot_config").select("symbol").eq("symbol", symbol).execute()
