@@ -631,16 +631,16 @@ function LabRoom() {
 
       {/* STEP 4 — the five workstations around the CEO (horseshoe) */}
       {/* back row — small & far */}
-      <LabStation x={300} baseY={510} scale={0.62} accent={BH.pos} name="GRID" task="Executing range orders" href="#"
+      <LabStation x={300} baseY={510} scale={0.62} accent={BH.pos} name="GRID" task="Executing range orders" href="/dashboard#grid"
         botSrc="/office/grid-bot.svg" bubbleScale={1.35} bubbleAnim="bhBubGRID" bubbleDur={13} flash="bhFlashRecv" screens={[<ScrCandles />, <ScrLadder />, <ScrEquity accent={BH.pos} value={live.gridRealizedStr} />]} />
-      <LabStation x={744} baseY={510} scale={0.62} mirror accent={BH.warn} name="TRENDFOLLOWER" task="Scanning the market…" href="#"
+      <LabStation x={744} baseY={510} scale={0.62} mirror accent={BH.warn} name="TRENDFOLLOWER" task="Scanning the market…" href="/dashboard#trendfollower"
         botSrc="/office/trend-follower.svg" bubbleScale={1.35} roamTo={318} bubbleAnim="bhBubTF" bubbleDur={13} screens={[<ScrRadar accent={BH.warn} />, <ScrTrend accent={BH.warn} />]} />
       {/* front row — large & near */}
-      <LabStation x={186} baseY={666} scale={0.9} accent={BH.news} name="NEWSKEEPER" task="Reading the latest news" href="#"
+      <LabStation x={186} baseY={666} scale={0.9} accent={BH.news} name="NEWSKEEPER" task="Reading the latest news" href="/dashboard#newskeeper"
         botSrc="/office/newskeeper.svg" screens={[<ScrNews />]} deskAngle roamTo={430} roamAnim="bhRoamNK" roamFlip="bhFlipNK" roamDur={22} bubbleAnim="bhBubNK" />
-      <LabStation x={520} baseY={678} scale={0.9} accent={BH.sentinel} name="SENTINEL" task="Monitoring risk levels" href="#"
+      <LabStation x={520} baseY={678} scale={0.9} accent={BH.sentinel} name="SENTINEL" task="Monitoring risk levels" href="/dashboard#sentinel"
         botSrc="/office/sentinel.svg" screens={[<ScrShield accent={BH.sentinel} value={live.risk} />]} roamTo={800} roamAnim="bhRoamSEN" roamFlip="bhFlipSEN" roamDur={22} bubbleAnim="bhBubSEN" />
-      <LabStation x={854} baseY={666} scale={0.9} mirror accent={BH.sherpa} name="SHERPA" task="Optimizing parameters" href="#"
+      <LabStation x={854} baseY={666} scale={0.9} mirror accent={BH.sherpa} name="SHERPA" task="Optimizing parameters" href="/dashboard#sherpa"
         botSrc="/office/sherpa.svg" screens={[<ScrParams />]} deskAngle alarm bubbleAnim="bhBubSHE" flash="bhFlashSend" />
 
       {/* ── STEP 6 (start) — environment props, my taste ── */}
