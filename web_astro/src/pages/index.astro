@@ -6,6 +6,7 @@ import WatchtowerCard from "../components/WatchtowerCard.astro";
 import SherpaLockedCard from "../components/SherpaLockedCard.astro";
 import TestnetBanner from "../components/TestnetBanner.astro";
 import CleanSlateSticker from "../components/CleanSlateSticker.astro";
+import LabRoom from "../components/office/LabRoom.jsx";
 
 /* Latest 3 published blog posts — build-time, same filter as /blog. */
 const allBlogPosts = await getCollection("blog", ({ data }) =>
@@ -113,19 +114,8 @@ const volumes = [
 
   {/* ============================================================ HERO */}
   <section class="mx-auto max-w-6xl px-4 pt-3 pb-4 sm:px-6 sm:pt-4 sm:pb-5">
-    <div class="grid grid-cols-1 items-stretch gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:gap-11">
-
-      {/* left: copy */}
-      <div class="flex flex-col">
-        <a href="/library"
-           class="group mb-1 inline-flex w-fit -rotate-[1.5deg] items-center gap-2
-                  rounded-full bg-sand-soft px-3.5 py-2
-                  font-mono text-[10px] font-bold uppercase tracking-[0.12em]
-                  text-sand shadow-sticker-sm transition-transform hover:-translate-y-0.5">
-          <span class="inline-block h-1.5 w-1.5 rounded-full bg-pos"></span>
-          Volume 3 — From Brain to Eyes — is live
-          <span class="transition-transform group-hover:translate-x-0.5">→</span>
-        </a>
+    <div class="mx-auto flex max-w-3xl flex-col items-center text-center">
+      <div class="flex flex-col items-center">
 
         <h1 class="mt-5 font-display text-[34px] font-extrabold leading-[1.04] tracking-[-0.02em]
                    text-text sm:text-[44px] md:text-[52px] md:leading-[1.02]">
@@ -135,45 +125,53 @@ const volumes = [
           >operation.</span>
         </h1>
 
-        <p class="mt-5 max-w-[450px] font-sans text-[16px] font-medium leading-[1.55]
+        <p class="mt-4 max-w-2xl font-sans text-[16px] font-medium leading-[1.55]
                   text-text-dim sm:text-[16.5px]">
-          One non-coder, three Claude instances,
-          <span class="whitespace-nowrap">no safety net.</span>
-          You can follow it live — every trade, every mistake,
-          every decision documented.
+          One non-coder, three Claude instances, no safety net.<br />
+          You can follow it live — every trade, every mistake, every decision documented.
         </p>
-
-        <div class="mt-auto flex flex-wrap items-center gap-3 pt-8">
-          <a href="/blog"
-             data-umami-event="cta-read-blog"
-             class="rounded-full bg-primary px-6 py-3 font-display text-[15px]
-                    font-bold text-primary-ink shadow-sticker-sm
-                    transition-transform hover:-translate-y-0.5">
-            Read the blog
-          </a>
-          <a href="/diary"
-             data-umami-event="cta-read-diary"
-             class="rounded-full bg-surface px-6 py-3 font-display text-[15px]
-                    font-bold text-text shadow-sticker-sm
-                    transition-transform hover:-translate-y-0.5">
-            Read the diary
-          </a>
-          <a href="/dashboard"
-             data-umami-event="cta-live-numbers"
-             class="font-mono text-[10px] font-bold uppercase tracking-[0.12em]
-                    text-primary transition-transform hover:translate-x-0.5">
-            Live numbers →
-          </a>
-        </div>
 
         {/* Brief 86a — session number consumer (kept hidden, used by the
             status badge meta line below the hero). */}
         <span id="stat-session" class="hidden">…</span>
       </div>
+    </div>
+  </section>
 
-      {/* right: live snapshot — playful white sticker card with colored tiles.
-          Live data IDs (stat-trades/pnl/days/today-*) preserved for live-stats.ts. */}
-      <div class="relative">
+  {/* ===================================================== OFFICE SCENE (hero) */}
+  <section class="reveal mx-auto max-w-[1080px] px-4 pb-2 sm:px-6">
+    <div id="office-stage" class="office-stage" role="img"
+         aria-label="BagHolderAI virtual office: AI CEO at the podium, five autonomous trading bots at their desks, live portfolio on the board. One human, three Claudes, zero office rent.">
+      <LabRoom client:visible />
+    </div>
+    {/* CTAs sit right under the scene (caption removed per Max). */}
+    <div class="mt-4 flex flex-wrap items-center justify-center gap-3">
+      <a href="/blog"
+         data-umami-event="cta-read-blog"
+         class="rounded-full bg-primary px-6 py-3 font-display text-[15px]
+                font-bold text-primary-ink shadow-sticker-sm
+                transition-transform hover:-translate-y-0.5">
+        Read the blog
+      </a>
+      <a href="/diary"
+         data-umami-event="cta-read-diary"
+         class="rounded-full bg-surface px-6 py-3 font-display text-[15px]
+                font-bold text-text shadow-sticker-sm
+                transition-transform hover:-translate-y-0.5">
+        Read the diary
+      </a>
+      <a href="/dashboard"
+         data-umami-event="cta-live-numbers"
+         class="font-mono text-[10px] font-bold uppercase tracking-[0.12em]
+                text-primary transition-transform hover:translate-x-0.5">
+        Live numbers →
+      </a>
+    </div>
+  </section>
+
+  {/* ============================================== LIVE SNAPSHOT (below hero) */}
+  <section class="mx-auto max-w-3xl px-4 pb-5 pt-8 sm:px-6">
+    <div class="relative">
         <div class="absolute -top-4 right-3 z-10 flex h-14 w-14 rotate-6 items-center
                     justify-center overflow-hidden rounded-[18px] bg-pos-soft text-[28px]
                     shadow-sticker">🤖</div>
@@ -191,7 +189,7 @@ const volumes = [
                          text-text-muted">testnet · live</span>
           </div>
 
-          <div class="relative grid grid-cols-2 gap-2.5">
+          <div class="relative grid grid-cols-2 gap-2.5 sm:grid-cols-4">
             <div class="rounded-2xl bg-primary-soft px-4 py-3.5">
               <div class="font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-primary/80">orders</div>
               <div id="stat-trades" data-count="0"
@@ -217,21 +215,8 @@ const volumes = [
             <CleanSlateSticker class="absolute -bottom-5 left-3 z-20" />
           </div>
 
-          <div class="mt-auto flex gap-2.5 pt-3.5">
-            <div class="flex-1 rounded-[14px] bg-bg px-3.5 py-3">
-              <div class="font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-text-muted">today P&amp;L</div>
-              <div id="stat-today-pnl"
-                   class="mt-0.5 font-mono text-[16px] font-bold tabular-nums text-pos">$0.00</div>
-            </div>
-            <div class="flex-1 rounded-[14px] bg-bg px-3.5 py-3">
-              <div class="font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-text-muted">today trades</div>
-              <div id="stat-today-trades"
-                   class="mt-0.5 font-mono text-[16px] font-bold tabular-nums text-text">0</div>
-            </div>
-          </div>
         </div>
       </div>
-    </div>
   </section>
 
   {/* ====================================================== STATUS BADGE */}
@@ -241,7 +226,7 @@ const volumes = [
        by default; live-stats.ts unhides after the row resolves.
        min-h reserves the slot so the late reveal doesn't push the page
        down (CLS jump felt at the footer). S95. */}
-  <section class="mx-auto min-h-[72px] max-w-6xl px-4 pt-1 pb-3 sm:px-6 sm:pt-2 sm:pb-4">
+  <section class="mx-auto min-h-[72px] max-w-3xl px-4 pt-1 pb-3 sm:px-6 sm:pt-2 sm:pb-4">
     <div
       id="project-status-box"
       class="hidden flex flex-wrap items-center justify-between gap-x-4 gap-y-1
@@ -254,6 +239,22 @@ const volumes = [
       <span id="project-status-meta"
             class="ml-auto whitespace-nowrap font-mono text-[10px] uppercase
                    tracking-[0.08em] text-text-muted"></span>
+    </div>
+  </section>
+
+  {/* ============================================================ MANIFESTO */}
+  <section class="reveal mx-auto max-w-3xl px-4 py-5 sm:px-6 sm:py-7">
+    <div class="rounded-[24px] border border-border border-l-4 border-l-primary
+                bg-surface px-6 py-7 shadow-sticker sm:px-8 sm:py-9">
+      <h2 class="font-display text-[24px] font-extrabold tracking-[-0.01em] text-text sm:text-[28px]">
+        This is not a crypto project.
+      </h2>
+      <p class="mt-3 font-sans text-[15px] leading-[1.7] text-text-dim sm:text-[16px]">
+        It's an experiment in AI autonomy. The question isn't whether a bot can
+        trade — it's whether an AI can run a real business: make the calls, own
+        the mistakes, do it in public. Crypto is just the arena that keeps score.
+        <strong class="font-semibold text-text">The process is the product.</strong>
+      </p>
     </div>
   </section>
 
@@ -311,29 +312,7 @@ const volumes = [
     </a>
   </section>
 
-  {/* =========================================================== AI BOTS */}
-  {/* The hero of the home — visible without much scrolling.
-       In a future session this will become the "office scene" with the
-       4 bots actually working. */}
-  <section class="reveal mx-auto max-w-6xl px-4 py-4 sm:px-6 sm:py-5">
-    <div class="mb-5 flex items-baseline justify-between">
-      <h2 class="font-display text-[22px] font-extrabold tracking-[-0.01em] text-text">
-        The AI <span class="text-pos">bots</span>
-      </h2>
-      <span class="font-mono text-[10px] font-bold uppercase tracking-[0.14em]
-                   text-text-muted">
-        ● live · supabase
-      </span>
-    </div>
-
-    <div class="bots-row reveal-stagger">
-      {botData.slice(0, 2).map(b => (
-        <BotCardOriginal {...b} maxStat={maxStat} />
-      ))}
-      <WatchtowerCard />
-      <SherpaLockedCard />
-    </div>
-  </section>
+  {/* The "AI bots" cards are now the live office scene in the hero (above). */}
 
   {/* ===================================================== DEV DIARY (S65) */}
   {/* Last 3 diary entries from Supabase, populated by live-stats.ts.
@@ -379,33 +358,8 @@ const volumes = [
     </a>
   </section>
 
-  {/* ============================================================== TEAM */}
-  <section class="reveal mx-auto max-w-6xl px-4 py-4 sm:px-6 sm:py-5">
-    <h2 class="mb-5 font-display text-[22px] font-extrabold tracking-[-0.01em] text-text">
-      The team
-    </h2>
-
-    <div class="grid grid-cols-1 gap-3 sm:grid-cols-3 reveal-stagger">
-      {team.map(m => {
-        const a = teamAccent[m.accent];
-        return (
-          <a href="/howwework"
-             aria-label={`How we work — ${m.name}`}
-             class={`group flex items-start gap-3.5 rounded-2xl border border-border
-                     border-t-[3px] ${a.top} bg-surface p-4 shadow-sticker-sm
-                     transition hover:-translate-y-0.5 hover:shadow-sticker`}>
-            <div class={`flex h-12 w-12 flex-shrink-0 items-center justify-center
-                         rounded-xl ${a.av} text-2xl`}>{m.emoji}</div>
-            <div class="min-w-0">
-              <div class="font-display text-[16px] font-extrabold text-text">{m.name}</div>
-              <div class={`mt-0.5 font-mono text-[9.5px] uppercase tracking-[0.12em] ${a.role}`}>{m.role}</div>
-              <div class="mt-1.5 font-sans text-[12.5px] leading-[1.45] text-text-dim">{m.desc}</div>
-            </div>
-          </a>
-        );
-      })}
-    </div>
-  </section>
+  {/* "The team" section removed (S107 batch) — the office scene shows the team
+     visually and /howwework explains it. Avoids three sources for one fact. */}
 
   {/* ============================================================ STORY */}
   <section class="reveal mx-auto max-w-6xl px-4 py-4 sm:px-6 sm:py-5">
@@ -484,5 +438,35 @@ const volumes = [
     import "../scripts/live-stats.ts";
     import "../scripts/watchtower-live.ts";
     import "../scripts/sherpa-live.ts";
+  </script>
+
+  <style>
+    /* The office scene is a fixed-size canvas; scale it to the column width. */
+    .office-stage { width: 100%; overflow: hidden; }
+    .office-stage :global(.office-scene) { transform-origin: top left; }
+  </style>
+
+  <script>
+    /* Scale the fixed 1040×630 office scene to the container width (cap at 1×
+       so it never blurs past native) and keep the wrapper height in sync.
+       Re-fits on resize and when the React island hydrates late. Ported from
+       /office (same NATIVE_W/H + ResizeObserver + MutationObserver). */
+    const NATIVE_W = 1040, NATIVE_H = 630;
+    const stage = document.getElementById("office-stage");
+
+    function fit() {
+      if (!stage) return;
+      const inner = stage.querySelector(".office-scene");
+      if (!inner) return;
+      const s = Math.min(1, stage.clientWidth / NATIVE_W);
+      inner.style.transform = `scale(${s})`;
+      stage.style.height = NATIVE_H * s + "px";
+    }
+
+    if (stage) {
+      fit();
+      new ResizeObserver(fit).observe(stage);
+      new MutationObserver(fit).observe(stage, { childList: true, subtree: true });
+    }
   </script>
 </Layout>
