@@ -120,8 +120,10 @@ function useOfficeData() {
         const netWorth = grid.netWorth + tf.netWorth;
         const totalPnl = grid.totalPnL + tf.totalPnL;
         const totalPct = (totalPnl / TOTAL_INITIAL) * 100;
-        const order = { 'BTC/USDT': 0, 'SOL/USDT': 1, 'BONK/USDT': 2 };
-        const coins = (grid.perCoin || [])
+        const order = { 'BTC/USDT': 0, 'SOL/USDT': 1, 'BONK/USDT': 2, 'ETH/USDT': 3 };
+        /* S107: list TF-managed coins (tf_grid, e.g. ETH) too, not just Grid,
+           so every open position shows — ETH was missing from the board before. */
+        const coins = [...(grid.perCoin || []), ...(tf.perCoin || [])]
           .slice()
           .sort((a, b) => (order[a.symbol] ?? 9) - (order[b.symbol] ?? 9))
           .map((c) => ({ sym: c.symbol.replace('/USDT', ''), pct: c.unrealizedPct }));
@@ -419,13 +421,16 @@ function LabRoom() {
   const Board = () => (
     <div style={{ position: 'absolute', left: VP.x, top: 124, width: 300, transform: 'translateX(-50%) scale(1.18)', transformOrigin: 'center top', zIndex: 8 }}>
       <div style={{ position: 'absolute', inset: '6px -6px -10px -6px', background: 'rgba(70,66,52,0.10)', filter: 'blur(8px)', borderRadius: 12 }} />
+      {/* flash halo — INSIDE the board wrapper so it tracks the board's height
+          automatically (S107): was a fixed 304×158 box that no longer matched. */}
+      <div style={{ position: 'absolute', inset: -2, borderRadius: 13, border: `2px solid ${BH.news}`, boxShadow: `0 0 22px 3px ${BH.news}`, opacity: 0, animation: 'bhBoardFlash 22s linear infinite', zIndex: 9, pointerEvents: 'none' }} />
       <a className="bh-board-link" href="/dashboard" style={{ position: 'relative', display: 'block', textDecoration: 'none', background: '#FFFFFF', border: `1px solid ${BH.border}`, borderRadius: 12, boxShadow: BH.shadowSm, padding: 7 }}>
         <div style={{ background: '#FCFDFB', border: `1px solid ${BH.borderSoft}`, borderRadius: 8, overflow: 'hidden' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 10px', borderBottom: `1px solid ${BH.borderSoft}`, background: BH.hover }}>
             <span style={{ fontFamily: BH.mono, fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: BH.primary }}>Portfolio Overview</span>
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontFamily: BH.mono, fontSize: 7, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: BH.pos }}><span style={{ width: 5, height: 5, borderRadius: 99, background: live.ready ? BH.pos : BH.muted, animation: 'bhPulse 1.8s ease-in-out infinite' }} />live</span>
           </div>
-          <div style={{ display: 'flex', gap: 10, padding: '8px 11px 4px' }}>
+          <div style={{ display: 'flex', gap: 10, padding: '8px 11px 10px' }}>
             <div style={{ flex: 1 }}>
               <div style={{ fontFamily: BH.mono, fontSize: 6.5, letterSpacing: '0.12em', textTransform: 'uppercase', color: BH.muted, marginBottom: 4 }}>Net worth · live</div>
               {(() => {
@@ -438,11 +443,16 @@ function LabRoom() {
                   </svg>
                 );
               })()}
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginTop: 5 }}>
+                <span style={{ fontFamily: BH.display, fontWeight: 800, fontSize: 19, color: BH.text }}>{live.netWorthStr}</span>
+                <span style={{ fontFamily: BH.mono, fontSize: 8.5, fontWeight: 700, color: live.pctColor }}>{live.pctStr}</span>
+              </div>
             </div>
             <div style={{ width: 86, display: 'flex', flexDirection: 'column', gap: 4, paddingTop: 2 }}>
+              <div style={{ fontFamily: BH.mono, fontSize: 6.5, letterSpacing: '0.12em', textTransform: 'uppercase', color: BH.muted }}>unrealized</div>
               {[
                 ...live.coins.map((c) => ({ k: c.sym, v: fmtPct(c.pct), color: c.pct >= 0 ? BH.pos : BH.neg })),
-                { k: 'TOTAL', v: live.pctStr, color: live.pctColor, total: true },
+                { k: 'TOTAL P&L', v: live.pctStr, color: live.pctColor, total: true },
               ].map((row) => (
                 <div key={row.k} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: row.total ? `1px solid ${BH.borderSoft}` : 'none', paddingTop: row.total ? 4 : 0 }}>
                   <span style={{ fontFamily: BH.mono, fontSize: 7.5, fontWeight: row.total ? 700 : 500, color: row.total ? BH.text : BH.muted }}>{row.k}</span>
@@ -450,10 +460,6 @@ function LabRoom() {
                 </div>
               ))}
             </div>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 7, padding: '0 11px 9px' }}>
-            <span style={{ fontFamily: BH.display, fontWeight: 800, fontSize: 19, color: BH.text }}>{live.netWorthStr}</span>
-            <span style={{ fontFamily: BH.mono, fontSize: 8.5, fontWeight: 700, color: live.pctColor }}>{live.pctStr}</span>
           </div>
         </div>
       </a>
@@ -691,7 +697,6 @@ function LabRoom() {
       ))}
 
       {/* NewsKeeper event — headline flies to the board, which flashes on receipt */}
-      <div style={{ position: 'absolute', left: VP.x, top: 122, width: 304, height: 158, transform: 'translateX(-50%) scale(1.18)', transformOrigin: 'center top', borderRadius: 13, border: `2px solid ${BH.news}`, boxShadow: `0 0 22px 3px ${BH.news}`, opacity: 0, animation: 'bhBoardFlash 22s linear infinite', zIndex: 9, pointerEvents: 'none' }} />
       <div style={{ position: 'absolute', left: 234, top: 584, zIndex: 900, opacity: 0, animation: 'bhHeadline 22s linear infinite', pointerEvents: 'none' }}>
         <div style={{ background: '#FFFFFF', border: `1px solid ${BH.border}`, borderLeft: `3px solid ${BH.news}`, borderRadius: 7, boxShadow: '0 6px 14px rgba(70,66,52,0.18)', padding: '4px 7px', width: 96 }}>
           <div style={{ fontFamily: BH.mono, fontSize: 6.5, fontWeight: 700, letterSpacing: '0.12em', color: BH.news, marginBottom: 1 }}>NEWS</div>

@@ -895,7 +895,8 @@ function fmtPriceJs(p: number): string {
   if (p >= 1)        return `$${p.toFixed(2)}`;
   if (p >= 0.01)     return `$${p.toFixed(4)}`;
   if (p >= 0.0001)   return `$${p.toFixed(6)}`;
-  return `$${p.toFixed(8)}`;
+  /* micro-prices (e.g. BONK ~$0.0000049) → scientific, not a long decimal: $4.89e-6 (S107). */
+  return `$${p.toExponential(2)}`;
 }
 
 /* Unrealized % is computed against the cost basis of the open lots

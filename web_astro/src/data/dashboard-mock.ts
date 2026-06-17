@@ -296,7 +296,7 @@ export function fmtPrice(p: number): string {
   if (p >= 1)        return "$" + p.toFixed(2);
   if (p >= 0.01)     return "$" + p.toFixed(4);
   if (p >= 0.0001)   return "$" + p.toFixed(6);
-  return "$" + p.toFixed(8);
+  return "$" + p.toExponential(2);  // micro-price → scientific, e.g. $4.89e-6 (S107)
 }
 export function fmtTime(iso: string): string {
   const d = new Date(iso);
