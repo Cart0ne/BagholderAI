@@ -76,14 +76,14 @@
   /* — CC (Claude Code, intern) — indigo → pastel lilac —————————— */
   --color-cc:             #6E68B0;
 
-  /* — identità prodotto: i 4 bot (⚠ pastel override) ——————————
-     Erano saturi (green/amber/blue/red); ora pastello e tokenizzati,
-     così non driftano più. */
-  --color-bot-grid:       #5E8A54;  /* Grid Bot — sage */
-  --color-bot-tf:         #B5862E;  /* Trend Follower — butter */
-  --color-bot-sentinel:   #4E8198;  /* Sentinel/Watchtower — powder */
-  --color-bot-sherpa:     #BC4032;  /* Sherpa — clay/red */
-  --color-bot-news:       #6E68B0;  /* NewsKeeper — lilla (same hue as --color-cc), Brief S103b */
+  /* — identità prodotto: i 5 bot — FULL COLOR (S107, Max) ——————————
+     Ripristinati ai colori vivaci della scena/card homepage (era un
+     "pastel override" S103b; ora dashboard ↔ scena ↔ card coincidono). */
+  --color-bot-grid:       #22c55e;  /* Grid Bot — green */
+  --color-bot-tf:         #f59e0b;  /* Trend Follower — amber */
+  --color-bot-sentinel:   #3b82f6;  /* Sentinel — blue */
+  --color-bot-sherpa:     #ef4444;  /* Sherpa — red */
+  --color-bot-news:       #a855f7;  /* NewsKeeper — violet */
 
   /* — tinte SOLIDE morbide ————————————————————————————
      Use these instead of the old dark-tuned translucencies
