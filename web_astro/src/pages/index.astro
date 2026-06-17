@@ -170,53 +170,76 @@ const volumes = [
   </section>
 
   {/* ============================================== LIVE SNAPSHOT (below hero) */}
-  <section class="mx-auto max-w-3xl px-4 pb-5 pt-8 sm:px-6">
-    <div class="relative">
+  <section class="mx-auto max-w-[1080px] px-4 pb-5 pt-6 sm:px-6">
+    <div class="flex flex-col gap-4 lg:flex-row lg:items-stretch">
+
+      {/* Badge 1 — totale (live snapshot): 4 colored labels */}
+      <div class="relative flex-[3] rounded-[24px] border border-border bg-surface
+                  p-5 shadow-sticker sm:p-[22px]">
         <div class="absolute -top-4 right-3 z-10 flex h-14 w-14 rotate-6 items-center
                     justify-center overflow-hidden rounded-[18px] bg-pos-soft text-[28px]
                     shadow-sticker">🤖</div>
 
-        <div class="flex h-full flex-col rounded-[24px] border border-border bg-surface
-                    p-5 shadow-sticker sm:p-[22px]">
+        <div class="mb-4 flex items-center justify-between">
+          <span class="flex items-center gap-2 font-mono text-[10px] font-bold
+                       uppercase tracking-[0.12em] text-text">
+            <span class="inline-block h-1.5 w-1.5 rounded-full bg-pos"></span>
+            live snapshot
+          </span>
+          <span class="font-mono text-[9px] font-bold uppercase tracking-[0.12em]
+                       text-text-muted">testnet · live</span>
+        </div>
 
-          <div class="mb-4 flex items-center justify-between">
-            <span class="flex items-center gap-2 font-mono text-[10px] font-bold
-                         uppercase tracking-[0.12em] text-text">
-              <span class="inline-block h-1.5 w-1.5 rounded-full bg-pos"></span>
-              live snapshot
-            </span>
-            <span class="font-mono text-[9px] font-bold uppercase tracking-[0.12em]
-                         text-text-muted">testnet · live</span>
+        <div class="relative grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+          <div class="rounded-2xl bg-primary-soft px-4 py-3.5">
+            <div class="font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-primary/80">orders</div>
+            <div id="stat-trades" data-count="0"
+                 class="mt-0.5 font-mono text-[28px] font-bold tabular-nums text-text">0</div>
           </div>
-
-          <div class="relative grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-            <div class="rounded-2xl bg-primary-soft px-4 py-3.5">
-              <div class="font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-primary/80">orders</div>
-              <div id="stat-trades" data-count="0"
-                   class="mt-0.5 font-mono text-[28px] font-bold tabular-nums text-text">0</div>
-            </div>
-            <div class="rounded-2xl bg-pos-soft px-4 py-3.5">
-              <div class="font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-pos/90">total P&amp;L</div>
-              <div id="stat-pnl" data-count="0"
-                   class="mt-0.5 font-mono text-[28px] font-bold tabular-nums text-neg">$0.00</div>
-            </div>
-            <div class="rounded-2xl bg-sand-soft px-4 py-3.5">
-              <div class="font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-sand">days running</div>
-              <div id="stat-days" data-count="0"
-                   class="mt-0.5 font-mono text-[28px] font-bold tabular-nums text-text">0</div>
-            </div>
-            <div class="rounded-2xl bg-primary-soft px-4 py-3.5">
-              <div class="font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-primary/80">budget</div>
-              <div class="mt-0.5 flex items-baseline gap-1.5 font-mono font-bold tabular-nums text-text">
-                <span class="text-[28px]">$600</span>
-                <span class="text-[11px] font-bold uppercase tracking-[0.1em] text-text-muted">testnet</span>
-              </div>
-            </div>
-            <CleanSlateSticker class="absolute -bottom-5 left-3 z-20" />
+          <div class="rounded-2xl bg-pos-soft px-4 py-3.5">
+            <div class="font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-pos/90">total P&amp;L</div>
+            <div id="stat-pnl" data-count="0"
+                 class="mt-0.5 font-mono text-[28px] font-bold tabular-nums text-neg">$0.00</div>
           </div>
-
+          <div class="rounded-2xl bg-sand-soft px-4 py-3.5">
+            <div class="font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-sand">days running</div>
+            <div id="stat-days" data-count="0"
+                 class="mt-0.5 font-mono text-[28px] font-bold tabular-nums text-text">0</div>
+          </div>
+          <div class="rounded-2xl bg-primary-soft px-4 py-3.5">
+            <div class="font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-primary/80">budget</div>
+            <div class="mt-0.5 flex items-baseline gap-1.5 font-mono font-bold tabular-nums text-text">
+              <span class="text-[28px]">$600</span>
+              <span class="text-[11px] font-bold uppercase tracking-[0.1em] text-text-muted">testnet</span>
+            </div>
+          </div>
+          <CleanSlateSticker class="absolute -bottom-5 left-3 z-20" />
         </div>
       </div>
+
+      {/* Badge 2 — today (own island): 2 colored labels */}
+      <div class="flex flex-col rounded-[24px] border border-border bg-surface
+                  p-5 shadow-sticker sm:p-[22px] lg:w-[320px]">
+        <div class="mb-4 flex items-center gap-2 font-mono text-[10px] font-bold
+                    uppercase tracking-[0.12em] text-text">
+          <span class="inline-block h-1.5 w-1.5 rounded-full bg-sand"></span>
+          today
+        </div>
+        <div class="grid flex-1 grid-cols-2 gap-2.5">
+          <div class="rounded-2xl bg-pos-soft px-4 py-3.5">
+            <div class="font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-pos/90">today P&amp;L</div>
+            <div id="stat-today-pnl"
+                 class="mt-0.5 font-mono text-[24px] font-bold tabular-nums text-pos">$0.00</div>
+          </div>
+          <div class="rounded-2xl bg-sand-soft px-4 py-3.5">
+            <div class="font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-sand">today trades</div>
+            <div id="stat-today-trades"
+                 class="mt-0.5 font-mono text-[24px] font-bold tabular-nums text-text">0</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
   </section>
 
   {/* ====================================================== STATUS BADGE */}
@@ -226,7 +249,7 @@ const volumes = [
        by default; live-stats.ts unhides after the row resolves.
        min-h reserves the slot so the late reveal doesn't push the page
        down (CLS jump felt at the footer). S95. */}
-  <section class="mx-auto min-h-[72px] max-w-3xl px-4 pt-1 pb-3 sm:px-6 sm:pt-2 sm:pb-4">
+  <section class="mx-auto min-h-[72px] max-w-[1080px] px-4 pt-1 pb-3 sm:px-6 sm:pt-2 sm:pb-4">
     <div
       id="project-status-box"
       class="hidden flex flex-wrap items-center justify-between gap-x-4 gap-y-1
@@ -239,6 +262,30 @@ const volumes = [
       <span id="project-status-meta"
             class="ml-auto whitespace-nowrap font-mono text-[10px] uppercase
                    tracking-[0.08em] text-text-muted"></span>
+    </div>
+  </section>
+
+  {/* ============================================== THE BOTS (what they do) */}
+  {/* Reinstated (CEO S107): the office SVG shows the bots but can't tell a
+     crawler what they DO. These cards are the text — autonomous trading,
+     market regime, parameter tuning — and bridge snapshot → manifesto. */}
+  <section class="reveal mx-auto max-w-6xl px-4 py-4 sm:px-6 sm:py-5">
+    <div class="mb-5 flex items-baseline justify-between">
+      <h2 class="font-display text-[22px] font-extrabold tracking-[-0.01em] text-text">
+        The AI <span class="text-pos">bots</span>
+      </h2>
+      <span class="font-mono text-[10px] font-bold uppercase tracking-[0.14em]
+                   text-text-muted">
+        ● live · supabase
+      </span>
+    </div>
+
+    <div class="bots-row reveal-stagger">
+      {botData.slice(0, 2).map(b => (
+        <BotCardOriginal {...b} maxStat={maxStat} />
+      ))}
+      <WatchtowerCard />
+      <SherpaLockedCard />
     </div>
   </section>
 
@@ -312,7 +359,6 @@ const volumes = [
     </a>
   </section>
 
-  {/* The "AI bots" cards are now the live office scene in the hero (above). */}
 
   {/* ===================================================== DEV DIARY (S65) */}
   {/* Last 3 diary entries from Supabase, populated by live-stats.ts.
