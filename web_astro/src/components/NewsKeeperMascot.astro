@@ -1,8 +1,8 @@
 ---
 /* NewsKeeper mascot — locked/dim variant.
    Paths extracted verbatim from `team-cards-locked-2.svg` (Claude Design,
-   2026-05-23). Palette is the "shaded -0.55" version of #a855f7:
-       #2a153d (dark) · #4c266f (mid) · #82679a (light).
+   2026-05-23). Palette: full-color scene values (S107 unification):
+       #5c2f88 (dark) · #a855f7 (mid) · #c288f9 (light).
    Original full-color rendering lives in `bots-newskeeper.jsx`
    (kept as reference for future variants: read/flash/brief/stack).
    ViewBox 200×260 (same family as TF/Sherpa, "lanky" build). */
@@ -13,13 +13,13 @@ const { size = 120 } = Astro.props;
 <svg width={size} height={size * (260 / 200)} viewBox="0 0 200 260">
   <defs>
     <linearGradient id="newskeeper-body" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#82679a"></stop>
-      <stop offset="0.45" stop-color="#4c266f"></stop>
-      <stop offset="1" stop-color="#2a153d"></stop>
+      <stop offset="0" stop-color="#c288f9"></stop>
+      <stop offset="0.45" stop-color="#a855f7"></stop>
+      <stop offset="1" stop-color="#5c2f88"></stop>
     </linearGradient>
     <linearGradient id="newskeeper-flap" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#957ea9"></stop>
-      <stop offset="1" stop-color="#5a377b"></stop>
+      <stop offset="0" stop-color="#cb9afa"></stop>
+      <stop offset="1" stop-color="#af63f8"></stop>
     </linearGradient>
     <linearGradient id="newskeeper-pock" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="rgba(0,0,0,0.5)"></stop>
@@ -30,39 +30,39 @@ const { size = 120 } = Astro.props;
   {/* Body shell (legs, feet, shoulder loops, gradient body, flap) */}
   <g>
     <ellipse cx="100" cy="228" rx="46" ry="4" fill="rgba(0,0,0,0.45)"></ellipse>
-    <rect x="68" y="182" width="14" height="38" rx="3" fill="#2a153d"></rect>
-    <rect x="118" y="182" width="14" height="38" rx="3" fill="#2a153d"></rect>
-    <rect x="69" y="184" width="3" height="32" rx="1.5" fill="#82679a" opacity="0.4"></rect>
-    <rect x="119" y="184" width="3" height="32" rx="1.5" fill="#82679a" opacity="0.4"></rect>
+    <rect x="68" y="182" width="14" height="38" rx="3" fill="#5c2f88"></rect>
+    <rect x="118" y="182" width="14" height="38" rx="3" fill="#5c2f88"></rect>
+    <rect x="69" y="184" width="3" height="32" rx="1.5" fill="#c288f9" opacity="0.4"></rect>
+    <rect x="119" y="184" width="3" height="32" rx="1.5" fill="#c288f9" opacity="0.4"></rect>
     <g>
       <ellipse cx="75" cy="224" rx="14" ry="5" fill="#0a0e17"></ellipse>
       <ellipse cx="75" cy="223" rx="14" ry="3" fill="#1a2030"></ellipse>
       <ellipse cx="72" cy="222" rx="6" ry="1.5" fill="rgba(255,255,255,0.25)"></ellipse>
-      <line x1="67" y1="221" x2="83" y2="221" stroke="#4c266f" stroke-width="1.5"></line>
+      <line x1="67" y1="221" x2="83" y2="221" stroke="#a855f7" stroke-width="1.5"></line>
     </g>
     <g>
       <ellipse cx="125" cy="224" rx="14" ry="5" fill="#0a0e17"></ellipse>
       <ellipse cx="125" cy="223" rx="14" ry="3" fill="#1a2030"></ellipse>
       <ellipse cx="122" cy="222" rx="6" ry="1.5" fill="rgba(255,255,255,0.25)"></ellipse>
-      <line x1="117" y1="221" x2="133" y2="221" stroke="#4c266f" stroke-width="1.5"></line>
+      <line x1="117" y1="221" x2="133" y2="221" stroke="#a855f7" stroke-width="1.5"></line>
     </g>
-    <ellipse cx="76" cy="52" rx="9" ry="12" fill="none" stroke="#2a153d" stroke-width="6" stroke-linecap="round"></ellipse>
-    <ellipse cx="124" cy="52" rx="9" ry="12" fill="none" stroke="#2a153d" stroke-width="6" stroke-linecap="round"></ellipse>
-    <ellipse cx="74" cy="50" rx="10" ry="13" fill="none" stroke="#82679a" stroke-width="1.5" stroke-linecap="round" opacity="0.5" stroke-dasharray="3 30"></ellipse>
-    <ellipse cx="122" cy="50" rx="10" ry="13" fill="none" stroke="#82679a" stroke-width="1.5" stroke-linecap="round" opacity="0.5" stroke-dasharray="3 30"></ellipse>
+    <ellipse cx="76" cy="52" rx="9" ry="12" fill="none" stroke="#5c2f88" stroke-width="6" stroke-linecap="round"></ellipse>
+    <ellipse cx="124" cy="52" rx="9" ry="12" fill="none" stroke="#5c2f88" stroke-width="6" stroke-linecap="round"></ellipse>
+    <ellipse cx="74" cy="50" rx="10" ry="13" fill="none" stroke="#c288f9" stroke-width="1.5" stroke-linecap="round" opacity="0.5" stroke-dasharray="3 30"></ellipse>
+    <ellipse cx="122" cy="50" rx="10" ry="13" fill="none" stroke="#c288f9" stroke-width="1.5" stroke-linecap="round" opacity="0.5" stroke-dasharray="3 30"></ellipse>
     <path d="M 56 62 Q 56 47 72 47 L 128 47 Q 144 47 144 62 L 144 182 Q 144 196 130 196 L 70 196 Q 56 196 56 182 Z" fill="url(#newskeeper-body)"></path>
     <path d="M 144 67 L 144 177" stroke="rgba(255,255,255,0.18)" stroke-width="1.5"></path>
-    <line x1="68" y1="102" x2="68" y2="182" stroke="#2a153d" stroke-width="2" opacity="0.45"></line>
-    <line x1="132" y1="102" x2="132" y2="182" stroke="#2a153d" stroke-width="2" opacity="0.45"></line>
+    <line x1="68" y1="102" x2="68" y2="182" stroke="#5c2f88" stroke-width="2" opacity="0.45"></line>
+    <line x1="132" y1="102" x2="132" y2="182" stroke="#5c2f88" stroke-width="2" opacity="0.45"></line>
     <path d="M 56 62 Q 56 47 72 47 L 128 47 Q 144 47 144 62 L 144 92 Q 144 100 134 100 L 66 100 Q 56 100 56 92 Z" fill="url(#newskeeper-flap)"></path>
     <ellipse cx="82" cy="57" rx="22" ry="6" fill="rgba(255,255,255,0.25)"></ellipse>
   </g>
 
   {/* Buckle on flap */}
   <g>
-    <rect x="92" y="84" width="16" height="10" rx="2" fill="#2a153d"></rect>
+    <rect x="92" y="84" width="16" height="10" rx="2" fill="#5c2f88"></rect>
     <rect x="92" y="84" width="16" height="3" rx="1" fill="rgba(255,255,255,0.3)"></rect>
-    <rect x="95" y="87" width="10" height="4" rx="1" fill="#5a377b" opacity="0.5"></rect>
+    <rect x="95" y="87" width="10" height="4" rx="1" fill="#af63f8" opacity="0.5"></rect>
   </g>
 
   {/* Eyes — open behind the glasses */}
@@ -118,7 +118,7 @@ const { size = 120 } = Astro.props;
     <line x1="106" y1="202" x2="176" y2="202" stroke="#0a0e17" stroke-width="0.45" opacity="0.45"></line>
     <line x1="106" y1="205" x2="176" y2="205" stroke="#0a0e17" stroke-width="0.45" opacity="0.45"></line>
     <line x1="106" y1="208" x2="176" y2="208" stroke="#0a0e17" stroke-width="0.45" opacity="0.45"></line>
-    <circle cx="19" cy="154" r="6" fill="#2a153d"></circle>
-    <circle cx="181" cy="154" r="6" fill="#2a153d"></circle>
+    <circle cx="19" cy="154" r="6" fill="#5c2f88"></circle>
+    <circle cx="181" cy="154" r="6" fill="#5c2f88"></circle>
   </g>
 </svg>
