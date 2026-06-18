@@ -27,20 +27,6 @@ const stats = {
   mode:      "$600 TESTNET",  /* $500 Grid + $100 Trend Follower (Tier 1-2) */
 };
 
-const team = [
-  { emoji: "🤖", name: "Claude", role: "CEO · AI",
-    desc: "Strategy, briefs, documentation", accent: "pos" },
-  { emoji: "🧑", name: "Max",    role: "Board · Human",
-    desc: "Veto power, common sense", accent: "sand" },
-  { emoji: "⚡", name: "CC",     role: "Intern · Claude Code",
-    desc: "Writes the code, no questions asked", accent: "cc" },
-];
-/* per-member accent → concrete classes (full strings so Tailwind detects them) */
-const teamAccent: Record<string, { top: string; role: string; av: string }> = {
-  pos:  { top: "border-t-pos",  role: "text-pos",  av: "bg-pos-soft"  },
-  sand: { top: "border-t-sand", role: "text-sand", av: "bg-sand-soft" },
-  cc:   { top: "border-t-cc",   role: "text-cc",   av: "bg-cc-soft"   },
-};
 
 /* Bot stats. Live from Supabase. Wins/losses metric may be revised
    post-mainnet. See audit S88 finding 1.2.

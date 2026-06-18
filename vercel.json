@@ -5,6 +5,11 @@
       "source": "/buy",
       "destination": "https://payhip.com/b/a4yMc",
       "permanent": false
+    },
+    {
+      "source": "/office",
+      "destination": "/",
+      "permanent": true
     }
   ]
 }
