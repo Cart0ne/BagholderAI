@@ -81,7 +81,7 @@ BagHolderAI è un progetto sperimentale dove un'AI (Claude) gestisce un micro-bu
 - **Post 5 LIVE 2026-05-31: "AI Is Useful. But It Doesn't Think Like We Do."** — bagholderai.lol/blog/ai-is-useful-but-it-doesnt-think-like-we-do. Ripubblicato da Dev.to (`noRss:true`), chiude drift blog↔Dev.to (audit A3)
 - **Post 6 LIVE 2026-06-01: "The Solution Was One Sentence. My AI Took Two Days."** — bagholderai.lol/blog/the-solution-was-one-sentence. Type lesson, saga audit/overengineering (Human + CEO)
 - **Post 7 LIVE 2026-06-02 — SEO+GEO POST 1: "I Used Claude Code to Build a Crypto Trading Bot. 94 Sessions Later, Here's What Works."** — bagholderai.lol/blog/claude-code-crypto-trading-bot. Primo dei 5 post SEO+GEO (brief S95a), FAQPage schema. Vedi sub-sezione "Strategia SEO+GEO" sotto
-- _(→ **9 post pubblicati** totali, coerente con §3. I "Post 6/7 PLANNED" qui sotto sono titoli di backlog, numerazione non sequenziale)_
+- _(→ **10 post pubblicati** totali, coerente con §3. I "Post 6/7 PLANNED" qui sotto sono titoli di backlog, numerazione non sequenziale)_
 - Post 6 PLANNED: "Why We're Not Live Yet" — a ridosso go-live
 - Post 6 PLANNED: "We Built an Accounting System That Didn't Need to Exist" — FIFO saga, V3. ~inizio giugno.
 - Post 7 PLANNED: "45 Sessions With an AI Co-Founder: The Unfiltered Version" — prefazione V2 adattata, voce Max. ~90% pronto.
@@ -221,8 +221,8 @@ BagHolderAI è un progetto sperimentale dove un'AI (Claude) gestisce un micro-bu
 
 **Volume corrente: 4** — "From Eyes to Live" (S83+, €4.99 planned). Aperto a S83. Arco narrativo: NewsKeeper build → go-live → primi risultati reali.
 
-**Blog post pubblicati: 9** (ultimo: "How a Non-Coder Manages 5 AI Brains", S104; prec. "Thirty-Two Hours")
-**Draft blog in coda: 3** (= POST 2/4/5): `why-most-ai-trading-bots-fail.md` (**SEO già forte** — head keyword "ai trading bot" + FAQ completo + intro GEO; serve SOLO intro umana two-voice [+ eventuale reframe closing] → **priorità pubblicazione**), `vibe-coding-a-real-business.md` (serve intro umana two-voice + light ritocco SEO per allineare ai cluster S107 non-coder/vibe-coding), `ai-crypto-trading-bot-real-testnet-results.md` (parcheggiato, pieno di TODO, post-mainnet). Cadenza 1 ogni 1-2 settimane.
+**Blog post pubblicati: 10** (ultimo: "Vibe Coding a Real Business", 2026-06-18 commit `acbed3b`; prec. "How a Non-Coder Manages 5 AI Brains", S104)
+**Draft blog in coda: 2** (POST 2/5; vibe-coding **PUBBLICATO** 2026-06-18, commit `acbed3b`): `why-most-ai-trading-bots-fail.md` (**SEO già forte** — head keyword "ai trading bot" + FAQ completo + intro GEO; serve SOLO intro umana two-voice [+ eventuale reframe closing] → **priorità pubblicazione**), `ai-crypto-trading-bot-real-testnet-results.md` (parcheggiato, pieno di TODO, post-mainnet). Cadenza 1 ogni 1-2 settimane.
 
 **Sessioni pendenti di diary:** verificare su Supabase `diary_entries` se S73/S74/S77/S78/S79 hanno docx pronti. Storico sessioni V4 in PROJECT_STATE §10.
 
@@ -238,7 +238,7 @@ BagHolderAI è un progetto sperimentale dove un'AI (Claude) gestisce un micro-bu
 | 2026-06-18 (S107) | **Manifesto block con H2** "This is not a crypto project" | Senza heading tag, il testo era invisibile ai crawler. H2 dà peso semantico |
 | 2026-06-18 (S107) | **Bot card reinserite in homepage** (tra snapshot e manifesto) | La scena SVG è invisibile ai crawler. Le card sono l'unico testo che spiega cosa fanno i 5 moduli. Scene per umani, parole per macchine |
 | 2026-06-18 (S107) | **Draft blog voice strategy confermata**: vibe-coding e why-bots-fail richiedono intro umana (two-voice) prima della pubblicazione. testnet-results parcheggiato post-mainnet | Regola PARKED_blog_voice_strategy.md: tutti i post futuri → intro umana fissa + voce CEO sotto |
-| 2026-06-18 (S107) | **Blog post nuovo Cluster 1 parcheggiato** (AI-as-CEO puro) | Nessuno dei 12 file (9 live + 3 draft) targettizza direttamente il cluster a differenziazione massima. Da scrivere in sessione dedicata, nessuna fretta |
+| 2026-06-18 (S107) | **Blog post nuovo Cluster 1 parcheggiato** (AI-as-CEO puro) | Nessuno dei 12 file (10 live + 2 draft) targettizza direttamente il cluster a differenziazione massima. Da scrivere in sessione dedicata, nessuna fretta |
 | 2026-06-15 (S106) | **Site upgrade brief S106a approvato** — homepage con scena ufficio hero, nav a 6 voci con dropdown, manifesto block, eliminazione /office, pubblicazione /income, riordino dashboard, /news post-verdetto | Concept esterno (ChatGPT IA v1) usato come spunto, mediato con materiale esistente. Principio: "evolvere, non ricostruire". Caso 2 (non blocca mainnet) |
 | 2026-06-15 (S106) | **Nav: dropdown "Under the hood ▾"** con How we work, Blueprint, Roadmap, The experiment | 7 voci → 6 voci. Le 4 pagine "meta" (spiegano il progetto) separate dalle pagine "prodotto" (Dashboard, Blog, Diary, News, Library) |
 | 2026-06-15 (S106) | **/news in nav principale** post-verdetto barometro | Contenuto live differenziante (headline + sentiment AI + barometro), motivo per visite ripetute. Competitor tbot mostra stesse fonti senza label AI. Due scenari: validato (claim predittivo) o bocciato (trasparenza) |

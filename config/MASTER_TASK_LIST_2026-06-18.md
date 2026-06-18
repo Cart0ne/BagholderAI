@@ -44,12 +44,12 @@ Questi possono avanzare tra una sessione tecnica e l'altra.
 | # | Cosa | Stato | Chi | Note |
 |---|---|---|---|---|
 | 2.1 | **Cross-post "non-coder-5-brains" → Substack** | Pronto, solo da fare | Max | 15min, copia+adatta |
-| 2.2 | **Pubblicare "vibe-coding-a-real-business.md"** | Draft, serve intro umana + light ritocco SEO (cluster S107 non-coder) | Max scrive intro → CEO traduce → CC pubblica | Applicare standard two-voice |
+| 2.2 | **Pubblicare "vibe-coding-a-real-business.md"** | ✅ **PUBBLICATO 18-giu** (commit `acbed3b`) | CC | two-voice, /blog/vibe-coding-a-real-business |
 | 2.3 | **Pubblicare "why-most-ai-trading-bots-fail.md"** ⭐ **priorità** | SEO già forte (head keyword "ai trading bot" + FAQ + intro GEO); serve SOLO intro umana | CEO rivede → Max intro → CC pubblica | Applicare standard two-voice |
 | 2.4 | **"ai-crypto-trading-bot-real-testnet-results.md"** | PARKED — placeholder data | Nessuno finché non ci sono dati reali | Sblocca dopo go-live |
 | 2.5 | **"Thirty-Two Hours" Dev.to cross-post** | Draft su Dev.to, primo del nuovo standard | Max intro + lezione tecnica in cima | Da PARKED_blog_voice_strategy |
 
-**Ordine consigliato:** 2.1 (5min) → **2.3** (più pronto: SEO già fatto, serve solo la tua intro) → 2.2 → 2.5 (2.4 aspetta dati).
+**Ordine consigliato:** 2.1 (5min) → **2.3** (più pronto: serve solo la tua intro) → 2.5 (2.2 ✅ pubblicato 18-giu; 2.4 aspetta dati).
 
 ---
 
