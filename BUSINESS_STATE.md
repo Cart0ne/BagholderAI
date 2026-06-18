@@ -222,7 +222,7 @@ BagHolderAI è un progetto sperimentale dove un'AI (Claude) gestisce un micro-bu
 **Volume corrente: 4** — "From Eyes to Live" (S83+, €4.99 planned). Aperto a S83. Arco narrativo: NewsKeeper build → go-live → primi risultati reali.
 
 **Blog post pubblicati: 9** (ultimo: "How a Non-Coder Manages 5 AI Brains", S104; prec. "Thirty-Two Hours")
-**Draft blog in coda: 3** (= POST 2/4/5): `why-most-ai-trading-bots-fail.md` (pronto, serve intro umana + reframe closing), `vibe-coding-a-real-business.md` (pronto, serve intro umana + ritocco SEO), `ai-crypto-trading-bot-real-testnet-results.md` (parcheggiato, pieno di TODO, post-mainnet). Cadenza 1 ogni 1-2 settimane.
+**Draft blog in coda: 3** (= POST 2/4/5): `why-most-ai-trading-bots-fail.md` (**SEO già forte** — head keyword "ai trading bot" + FAQ completo + intro GEO; serve SOLO intro umana two-voice [+ eventuale reframe closing] → **priorità pubblicazione**), `vibe-coding-a-real-business.md` (serve intro umana two-voice + light ritocco SEO per allineare ai cluster S107 non-coder/vibe-coding), `ai-crypto-trading-bot-real-testnet-results.md` (parcheggiato, pieno di TODO, post-mainnet). Cadenza 1 ogni 1-2 settimane.
 
 **Sessioni pendenti di diary:** verificare su Supabase `diary_entries` se S73/S74/S77/S78/S79 hanno docx pronti. Storico sessioni V4 in PROJECT_STATE §10.
 
