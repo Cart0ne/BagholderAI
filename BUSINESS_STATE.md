@@ -1,7 +1,7 @@
 # BUSINESS_STATE.md
 
-**Last updated:** 2026-06-15 — Session 106 (CEO + Board: site upgrade planning, brief S106a). Cap file 50KB (Max S95, CLAUDE.md §2b). Cadenze audit canoniche in PROJECT_STATE §9. Prec.: S105 (SOL grid frozen by dust → grid re-entry logic fix).
-**Updated by:** CEO (sessione di lavoro con Max, site review + planning)
+**Last updated:** 2026-06-18 — Session 107 (SEO keyword repositioning + site v2 redesign). Cap file 50KB (Max S95, CLAUDE.md §2b). Cadenze audit canoniche in PROJECT_STATE §9. Prec.: S106 (site upgrade planning, brief S106a).
+**Updated by:** CEO (update S107; applicato da CC)
 **Basato su:** PROJECT_STATE.md aggiornato 2026-06-14; report S104 (income-page) + S106 (office-page); screenshot live homepage/dashboard/office/income; document `bagholderai_website_architecture_v1.docx` (concept esterno)
 
 ---
@@ -36,6 +36,37 @@ BagHolderAI è un progetto sperimentale dove un'AI (Claude) gestisce un micro-bu
   - **/news pianificata** (nav principale) — costruzione post-verdetto barometro ~23 giugno. Due scenari (validato/bocciato) documentati nel brief. Link anche dalla card NewsKeeper in homepage
   - CC produce piano italiano per Max prima di codare (task > 1h)
 
+### Site v2 (S106a batch 1 + S107) — SHIPPED & ONLINE
+
+**Homepage v2 (S107, online 18 giugno):**
+- Scena ufficio (`LabRoom.jsx`) come hero — sostituisce il vecchio text hero
+- Bot cliccabili nella scena: click → sezione dashboard corrispondente (anchor ID)
+- Live snapshot (4 label) + Today (2 label) sotto la scena
+- Manifesto block con H2: "This is not a crypto project."
+- Bot card reinserite tra snapshot e manifesto (testo leggibile dai crawler)
+- Rimossi: pill "Volume 3 is live", sezione "The team"
+- /office eliminata come pagina standalone (redirect 301 → /)
+
+**Dashboard v2 (S107):**
+- Plate per-bot vestiti con colori e scenografie (Grid=mixer, TF=radar, NK=?, Sentinel=pulse, Sherpa=gear)
+- Bordi tratteggiati + tint soft per-bot
+- Colori bot ripristinati ai vivaci della scena (annullato pastel override S103b)
+- Unrealized/fees/skim da 3 colonne → 3 righe; micro-prezzi in notazione scientifica
+
+**Board scena ufficio (S107):**
+- Include coin TF (ETH visibile)
+- Label "unrealized" sulle coin + "TOTAL P&L"
+- Net worth sotto il grafico
+- Cornice flash adattiva
+
+**Batch 1 S106a (15 giugno, online):**
+- Grafici onesti `tension:0` (dashboard + /income)
+- /income pubblicata (noindex off, sitemap, dropdown "The experiment")
+- Nav dropdown "Under the hood ▾" (7→5 voci)
+- Dashboard riordinata (Brains prima di Traders, CEO log in fondo)
+- Anchor ID dashboard (#grid, #trendfollower, #sentinel, #sherpa, #newskeeper)
+- Fix H1 diary "Development diary"
+
 ### S104 — web/marketing (NUOVO)
 - **Blog "How a Non-Coder Manages 5 AI Brains" PUBLISHED** (S104) — post two-voice, portabile per cross-post (tabella→lista, nomi generici→reali: Sherpa, NewsKeeper). Canonical: bagholderai.lol/blog/non-coder-5-brains. Cross-post Dev.to/Substack pendente.
 - **Dashboard pubblica §2 redesign LIVE** (S103b→S104) — 5 card statiche → righe full-width pipeline con dati live e polling 5min. THE TRADERS: TF→Grid+sparkline. THE BRAINS: NewsKeeper→Sentinel→Sherpa. Tutti brain LIVE (niente DRY_RUN). Token `--color-bot-news` in STYLEGUIDE §5.
@@ -50,7 +81,7 @@ BagHolderAI è un progetto sperimentale dove un'AI (Claude) gestisce un micro-bu
 - **Post 5 LIVE 2026-05-31: "AI Is Useful. But It Doesn't Think Like We Do."** — bagholderai.lol/blog/ai-is-useful-but-it-doesnt-think-like-we-do. Ripubblicato da Dev.to (`noRss:true`), chiude drift blog↔Dev.to (audit A3)
 - **Post 6 LIVE 2026-06-01: "The Solution Was One Sentence. My AI Took Two Days."** — bagholderai.lol/blog/the-solution-was-one-sentence. Type lesson, saga audit/overengineering (Human + CEO)
 - **Post 7 LIVE 2026-06-02 — SEO+GEO POST 1: "I Used Claude Code to Build a Crypto Trading Bot. 94 Sessions Later, Here's What Works."** — bagholderai.lol/blog/claude-code-crypto-trading-bot. Primo dei 5 post SEO+GEO (brief S95a), FAQPage schema. Vedi sub-sezione "Strategia SEO+GEO" sotto
-- _(→ **7 post pubblicati** totali, coerente con §3. I "Post 6/7 PLANNED" qui sotto sono titoli di backlog, numerazione non sequenziale)_
+- _(→ **9 post pubblicati** totali, coerente con §3. I "Post 6/7 PLANNED" qui sotto sono titoli di backlog, numerazione non sequenziale)_
 - Post 6 PLANNED: "Why We're Not Live Yet" — a ridosso go-live
 - Post 6 PLANNED: "We Built an Accounting System That Didn't Need to Exist" — FIFO saga, V3. ~inizio giugno.
 - Post 7 PLANNED: "45 Sessions With an AI Co-Founder: The Unfiltered Version" — prefazione V2 adattata, voce Max. ~90% pronto.
@@ -163,6 +194,13 @@ BagHolderAI è un progetto sperimentale dove un'AI (Claude) gestisce un micro-bu
 - **Semrush account attivo** su bagholderai.lol (free tier, piano gratuito). Crawl su 44/100 pagine. Prossimo crawl: schedulato automaticamente.
 - **A-ADS banner verificato funzionante** (S99): ad-request regolari (30-400/giorno), fill rate 0% — problema lato network, non lato sito. Nessuna azione.
 
+### SEO — Keyword Repositioning (S107)
+- **Bing Webmaster Tools audit S107** (16 giugno 2026): 13 impression in 3 mesi, 0 click, 7 keyword — TUTTE varianti "crypto trading bot with Claude." Zero keyword su AI autonomy, AI CEO, one-person company, non-coder.
+- **Gap identificato:** sito classificato dai motori come "crypto trading bot project." L'angolo differenziante (AI-as-CEO, autonomous AI, non-coder) viveva nei meta tag di alcune pagine ma non aveva massa critica di contenuto.
+- **4 cluster keyword mappati:** (1) AI-as-CEO / AI running a business — differenziazione massima, (2) one-person company / solo founder + AI agents — topic caldo 2026, (3) non-coder / vibe coding — volume alto, (4) Claude + crypto trading bot — già rankiamo qui.
+- **Brief S107 SEO** (brief `c1ee2df`, implementato `593c5fa`→`f2a20aa`, 16 giu): meta tag + micro-contenuto aggiornati su 7 pagine (Homepage, Blog, Diary, Dashboard, Blueprint, Roadmap, Library). Principio: nessuna keyword nel meta che il contenuto della pagina non supporti — per ogni meta tag modificato, aggiunta una riga di contenuto visibile.
+- **Invariate:** How We Work (già allineata cluster 1), Income/The Experiment (appena pubblicata, meta già forte).
+
 ### Favicon
 - **Favicon SVG brand** (S87, commit `eed66f0`): sostituito emoji 🎒 con SVG zaino blu sleepy (mascot brand). Apple-touch-icon 180×180 (bg dark `#0a0e17` + padding 15px) + favicon-32.png fallback per browser legacy.
 
@@ -170,9 +208,10 @@ BagHolderAI è un progetto sperimentale dove un'AI (Claude) gestisce un micro-bu
 
 ## 3. Diary Status
 
-**Sessione corrente: S106 BUILDING** (site upgrade planning CEO + Board, brief S106a scritto). Nessun diary per questa sessione — interludio sito pianificato post-completamento upgrade.
+**Sessione corrente: S107 COMPLETE** (SEO keyword analysis + meta+content su 7 pagine + site v2 redesign).
+**Interludio scritto:** "Thirteen Impressions" (copre S106-S107: visual identity per umani + SEO identity per macchine).
 - Volume corrente pubblico: V3 "From Brain to Eyes" (live). V4 in lavorazione (arc: NewsKeeper → go-live → results).
-- Ultima entry diary: **S105** "The One Where the Bot Held Out for SOL at $52,000" (dust/SOL grid freeze).
+- Ultima entry diary: **S107** "The One Where Thirteen Strangers Said Who We Are".
 - Prossimo check di congruenza diary: invariato.
 
 **Volumi pubblicati:**
@@ -183,11 +222,11 @@ BagHolderAI è un progetto sperimentale dove un'AI (Claude) gestisce un micro-bu
 **Volume corrente: 4** — "From Eyes to Live" (S83+, €4.99 planned). Aperto a S83. Arco narrativo: NewsKeeper build → go-live → primi risultati reali.
 
 **Blog post pubblicati: 9** (ultimo: "How a Non-Coder Manages 5 AI Brains", S104; prec. "Thirty-Two Hours")
-**Post SEO+GEO in coda: 3** (POST 2,4,5 — POST 3 non-coder pubblicato S104; cadenza 1 ogni 1-2 settimane)
+**Draft blog in coda: 3** (= POST 2/4/5): `why-most-ai-trading-bots-fail.md` (pronto, serve intro umana + reframe closing), `vibe-coding-a-real-business.md` (pronto, serve intro umana + ritocco SEO), `ai-crypto-trading-bot-real-testnet-results.md` (parcheggiato, pieno di TODO, post-mainnet). Cadenza 1 ogni 1-2 settimane.
 
 **Sessioni pendenti di diary:** verificare su Supabase `diary_entries` se S73/S74/S77/S78/S79 hanno docx pronti. Storico sessioni V4 in PROJECT_STATE §10.
 
-**Draft in coda:** nessuno (seed V3 rimosso a S87).
+**Draft diary seed in coda:** nessuno (seed V3 rimosso a S87).
 
 ---
 
@@ -195,6 +234,11 @@ BagHolderAI è un progetto sperimentale dove un'AI (Claude) gestisce un micro-bu
 
 | Data | Decisione | Perché |
 |---|---|---|
+| 2026-06-18 (S107) | **SEO meta + content su 7 pagine** — shift da "crypto bot" a "AI runs a business, crypto is the context" | 13 impression Bing tutte crypto. Principio: niente keyword senza contenuto che la supporti → per ogni meta tag, aggiunta riga contenuto visibile |
+| 2026-06-18 (S107) | **Manifesto block con H2** "This is not a crypto project" | Senza heading tag, il testo era invisibile ai crawler. H2 dà peso semantico |
+| 2026-06-18 (S107) | **Bot card reinserite in homepage** (tra snapshot e manifesto) | La scena SVG è invisibile ai crawler. Le card sono l'unico testo che spiega cosa fanno i 5 moduli. Scene per umani, parole per macchine |
+| 2026-06-18 (S107) | **Draft blog voice strategy confermata**: vibe-coding e why-bots-fail richiedono intro umana (two-voice) prima della pubblicazione. testnet-results parcheggiato post-mainnet | Regola PARKED_blog_voice_strategy.md: tutti i post futuri → intro umana fissa + voce CEO sotto |
+| 2026-06-18 (S107) | **Blog post nuovo Cluster 1 parcheggiato** (AI-as-CEO puro) | Nessuno dei 12 file (9 live + 3 draft) targettizza direttamente il cluster a differenziazione massima. Da scrivere in sessione dedicata, nessuna fretta |
 | 2026-06-15 (S106) | **Site upgrade brief S106a approvato** — homepage con scena ufficio hero, nav a 6 voci con dropdown, manifesto block, eliminazione /office, pubblicazione /income, riordino dashboard, /news post-verdetto | Concept esterno (ChatGPT IA v1) usato come spunto, mediato con materiale esistente. Principio: "evolvere, non ricostruire". Caso 2 (non blocca mainnet) |
 | 2026-06-15 (S106) | **Nav: dropdown "Under the hood ▾"** con How we work, Blueprint, Roadmap, The experiment | 7 voci → 6 voci. Le 4 pagine "meta" (spiegano il progetto) separate dalle pagine "prodotto" (Dashboard, Blog, Diary, News, Library) |
 | 2026-06-15 (S106) | **/news in nav principale** post-verdetto barometro | Contenuto live differenziante (headline + sentiment AI + barometro), motivo per visite ripetute. Competitor tbot mostra stesse fonti senza label AI. Due scenari: validato (claim predittivo) o bocciato (trasparenza) |
@@ -249,6 +293,8 @@ BagHolderAI è un progetto sperimentale dove un'AI (Claude) gestisce un micro-bu
 
 | Tema | Stato | Note |
 |---|---|---|
+| **[S107 NEW] Blog post Cluster 1 "AI as CEO"** | PARCHEGGIATO | Il differenziatore massimo non ha ancora un post dedicato. Da scrivere quando il sistema ha risultati reali da raccontare (post-mainnet?) |
+| **[S107 NEW] Meta tag blog post esistenti** | BASSA PRIORITÀ | Retrofit title/tags dei 9 post live per includere keyword cluster 1-3. Impatto modesto, rischio reset ranking |
 | **[S105 NEW] Monitor "griglia silenziosa"** | DA DECIDERE (Apple Notes vs brief) | Alert quando una griglia non registra trade da X ore. Buco osservabilità S105: un bot fermo non emette ERROR né Telegram, SOL morta 5gg invisibile. Il fix dust impedisce *questo* freeze, non la classe generale. Trigger: prossima sessione o pre-mainnet |
 | **[S105 NEW] Caso degradato no-filtri** (is_dust fallback $0,50) | Da valutare | Se `fetch_filters` fallisce al boot, il bot gira col fallback $0,50 < minNotional reale → un residuo in [$0,50, $5) potrebbe ri-congelarsi. Valutare se in quel caso il bot debba allertare invece di operare con soglia errata. Collegato al monitor sopra |
 | **[S104 NEW] Automazione spese Haiku — Anthropic Admin API** | PARKED | Endpoint `/v1/organizations/usage_report/messages` + `/v1/organizations/cost_report`. Serve Admin API key (Max genera da console.anthropic.com). Script mensile: chiama API → filtra Haiku → scrive in Supabase `project_expenses`. Insieme a scheduled €90 il giorno 4 di ogni mese |
