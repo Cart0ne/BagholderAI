@@ -38,10 +38,11 @@ const botData = [
     description: "buys dips, sells rallies, in a fixed range" },
   { variant: "tf"       as const, mode: "live"     as const, patience: 25, speed: 90, capital: 100, wins: 0, losses: 0,
     description: "Scanning Tier 1-2 assets. Shitcoins excluded." },
-  { variant: "sentinel" as const, mode: "testmode" as const, patience:  0, speed:  0, capital:   0, wins:   0, losses:  0,
-    description: "monitors positions, observing in DRY_RUN" },
-  { variant: "sherpa"   as const, mode: "testmode" as const, patience:  0, speed:  0, capital:   0, wins:   0, losses:  0,
-    description: "coordinates all active bots, observing in DRY_RUN" },
+  /* Only grid + tf are rendered as BotCardOriginal (see slice(0,2) below);
+     Sentinel/NewsKeeper use WatchtowerCard and Sherpa uses SherpaLockedCard.
+     The old vestigial sentinel/sherpa entries (mode 'testmode', "observing in
+     DRY_RUN") were removed S108 — dead data, not rendered, stale since Sherpa
+     went LIVE (S102b). */
 ];
 
 const maxStat = Math.max(50, ...botData.map(b => Math.max(b.wins, b.losses))) * 1.2;
