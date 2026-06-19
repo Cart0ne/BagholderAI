@@ -83,7 +83,7 @@ sbqCount("trades", "select=id&config_version=eq.v3" + CQ)
    questions ("how much have I banked today" vs "how much would I have
    if I closed everything now"). */
 
-type TradeFull = CanonicalTrade & { fee?: string | number | null };
+type TradeFull = CanonicalTrade & { fee?: string | number | null; managed_by?: string | null };
 
 type SkimRow = { symbol: string; amount: string | number };
 
@@ -96,7 +96,6 @@ const todayStartUtcIso = new Date(
   ),
 ).toISOString();
 
-const GRID_SYMBOLS = new Set(["BTC/USDT", "SOL/USDT", "BONK/USDT"]);
 const GRID_BUDGET = 500;
 const TF_BUDGET   = 100;
 
@@ -105,7 +104,7 @@ Promise.all([
     /* Brief 72a (S72): fee_asset added so the canonical replay can detect
        BUY rows where Binance scaled the fee from the base coin (live live
        testnet) and apply P2 (qty_acquired = filled − fee_native). */
-    "trades?select=symbol,side,amount,cost,fee,fee_asset,realized_pnl,created_at" +
+    "trades?select=symbol,side,amount,cost,fee,fee_asset,realized_pnl,created_at,managed_by" +
     "&config_version=eq.v3" + CQ + "&order=created_at.asc",
   ),
   sbFetchAll<SkimRow>(
@@ -126,28 +125,33 @@ Promise.all([
     if (Number.isFinite(p)) todayPnl += p;
   }
 
-  /* Partition trades + skim into Grid (BTC/SOL/BONK) and TF (everything
-     else). Brief 71a: canonical state via lib/pnl-canonical.ts. */
-  const gridTrades = trades.filter(t => GRID_SYMBOLS.has(t.symbol));
-  const tfTrades   = trades.filter(t => !GRID_SYMBOLS.has(t.symbol));
+  /* Partition trades + skim by managed_by — NOT by symbol — so coins handed
+     off by TF to the grid (managed_by='tf_grid', e.g. ETH) land in the TF
+     fund instead of being dropped. Mirrors LabRoom.jsx / dashboard-live.ts
+     (the S107 board fix). Brief 71a: canonical state via lib/pnl-canonical.ts. */
+  const gridTrades = trades.filter(t => t.managed_by === "grid");
+  const tfTrades   = trades.filter(t => t.managed_by === "tf" || t.managed_by === "tf_grid");
+  const gridSyms = new Set(gridTrades.map(t => t.symbol));
+  const tfSyms   = new Set(tfTrades.map(t => t.symbol));
   let skimGrid = 0, skimTf = 0;
   for (const r of skimRows) {
     const amt = Number(r.amount || 0);
-    if (GRID_SYMBOLS.has(r.symbol)) skimGrid += amt;
-    else                            skimTf   += amt;
+    if (gridSyms.has(r.symbol))    skimGrid += amt;
+    else if (tfSyms.has(r.symbol)) skimTf   += amt;
   }
 
   /* Fetch live prices for every held symbol across both funds. */
   const allSymbols = Array.from(new Set(trades.map(t => t.symbol)));
   const prices = await fetchLivePrices(allSymbols);
 
-  /* Brief 72a S72 (Max audit 2026-05-11): only Grid contributes to public
-     totals. TF is paused since S70 ("dal dottore"); including it inflated
-     the hero with stale state. tfState computed but NOT added — kept as
-     reference for the day TF restarts. */
+  /* S108 (Max audit 2026-06-19): both funds contribute, $600 basis
+     (Grid $500 + TF $100), matching the scene board. The old S72 Grid-only
+     $500 rule dropped the live TF→grid handoff (ETH, managed_by='tf_grid'),
+     showing a fake-positive Total P&L. computeCanonicalState is the SAME
+     formula; we just stop discarding the TF fund. */
   const gridState = computeCanonicalState(gridTrades, skimGrid, prices, GRID_BUDGET);
-  void tfTrades; void skimTf; void TF_BUDGET; // intentionally unused (TF off)
-  const totalPnl = gridState.totalPnL;
+  const tfState   = computeCanonicalState(tfTrades, skimTf, prices, TF_BUDGET);
+  const totalPnl = gridState.totalPnL + tfState.totalPnL;
 
   const sign = totalPnl >= 0 ? "+" : "-";
   setText("stat-pnl", `${sign}$${Math.abs(totalPnl).toFixed(2)}`);
