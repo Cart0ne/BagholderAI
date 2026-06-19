@@ -30,7 +30,7 @@ L'audit **Area 2** è obbligatorio PRIMA di:
 **Backstop temporale:** 60 giorni se nessun trigger sopra è scattato.
 
 - **Area 1**: dopo ogni feature significativa, oppure mensile. Backstop 30gg.
-- **Area 3**: **ogni 2 settimane** (cadenza fissa) + pre-lancio prodotto. Backstop 14gg. La cadenza è frequente perché il marketing è ad alta varianza e l'audit a 2 strati (cruscotto + strategia) resta leggero da ripetere; vedi `audits/requests/audit_request_A3.md`.
+- **Area 3**: **mensile** (~30 giorni) + pre-lancio prodotto. Backstop 30gg. (Era bisettimanale/14gg fino al 2026-06-01; portata a mensile per allinearla al task schedulato Cowork — skip-guard 27gg. L'audit a 2 strati resta leggero da ripetere, ma il segnale utile è il movimento mese-su-mese.) Vedi `audits/requests/audit_request_A3.md`.
 
 Razionale del passaggio da temporale a event-based (Area 2): la regola "ogni
 90gg o fine-volume" non è mai stata applicata in pratica (6 settimane di inerzia
@@ -101,6 +101,7 @@ resta a una sessione fresh separata, vedi §3).
 | 2026-05-27 | 2 | Coerenza narrazione pubblica ↔ codice LIVE ↔ state files (A2-S87, primo audit Area 2 mai eseguito) | **CON RISERVE** (0 CRITICAL, 6 HIGH, 12 MED) | `audits/reports/20260527_audit[A2].md` |
 | 2026-05-27 | 1 | Monthly automated technical integrity (codebase + DB + bot health + code patterns) | **CON RISERVE** (0 CRITICAL, 2 HIGH, 3 MED) | `audits/reports/20260527_audit[A1].md` |
 | 2026-05-31 | 3 | Cruscotto bisettimanale tutti i canali (X/Dev.to/Umami+funnel/GSC/Bing/blog/Payhip/Reddit) — Cowork scheduled automatico; refresh 5/5 OK dalla sandbox | **CON RISERVE** (0 CRITICAL, 3 HIGH, 4 MED, 2 LOW) | `audits/reports/20260531_audit[A3].md` |
+| 2026-06-01 | 1 | Monthly automated technical integrity (codebase + DB + bot health + code patterns) | **APPROVED** (0 CRITICAL, 0 HIGH, 3 MED, 2 LOW) | `audits/reports/20260601_audit[A1].md` |
 
 ---
 
@@ -137,4 +138,4 @@ L'Auditor gestisce entrambi i formati.
 
 ---
 
-*Last updated: 2026-06-01 (S96) — Area 2 backstop 120→60 giorni; Area 3 cadenza bisettimanale→mensile.*
+*Last updated: 2026-06-19 (S108) — §2 Area 3 cadenza mensile allineata anche nel corpo (il changelog 2026-06-01 era avanti rispetto al testo §2); §7 +riga A1 2026-06-01. Prec.: 2026-06-01 (S96) — Area 2 backstop 120→60 giorni; Area 3 cadenza bisettimanale→mensile.*

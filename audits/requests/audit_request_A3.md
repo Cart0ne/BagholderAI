@@ -1,7 +1,7 @@
 # Audit Request — Area 3 (Strategia & Marketing) — TEMPLATE EVERGREEN
 
 > Questo è il **template fisso** dell'audit Area 3, valido sempre. L'Auditor lo
-> riceve come brief. Cadenza: **ogni 2 settimane**. Per un audit specifico, Max
+> riceve come brief. Cadenza: **mensile (~30 giorni)**, backstop 30gg. Per un audit specifico, Max
 > può duplicarlo in `audits/requests/YYYYMMDD_audit[A3].md` e aggiungere note;
 > altrimenti questo file è sufficiente così com'è.
 >
@@ -18,7 +18,7 @@ crescita/decrescita, e produce **diagnosi + strategia** (target e interventi a
 breve/medio/lungo periodo). Non è solo una fotografia: deve proporre la rotta.
 
 Il formato è a **2 strati** (vedi §4) per restare sostenibile a cadenza
-bisettimanale: un *cruscotto* diagnostico ripetibile + una *strategia* che si
+mensile: un *cruscotto* diagnostico ripetibile + una *strategia* che si
 aggiorna invece di riscriversi da zero.
 
 ---
@@ -86,7 +86,7 @@ ciò che hai e marca quella piattaforma "dati non disponibili" nel report.
 
 Leggi l'ultimo `audits/reports/*audit[A3]*.md` e calcola i **delta** sulle
 metriche chiave (traffico, follower/engagement per canale, SEO, vendite). Il
-valore dell'audit bisettimanale è nel **movimento**, non nel valore assoluto.
+valore dell'audit mensile è nel **movimento**, non nel valore assoluto.
 
 ---
 
