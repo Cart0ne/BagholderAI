@@ -1,7 +1,7 @@
 # BUSINESS_STATE.md
 
-**Last updated:** 2026-06-18 — Session 107 (SEO keyword repositioning + site v2 redesign). Cap file 50KB (Max S95, CLAUDE.md §2b). Cadenze audit canoniche in PROJECT_STATE §9. Prec.: S106 (site upgrade planning, brief S106a).
-**Updated by:** CEO (update S107; applicato da CC)
+**Last updated:** 2026-06-19 — Session 108 (audit A2 remediation + site fixes). Cap file 50KB (Max S95, CLAUDE.md §2b). Cadenze audit canoniche in PROJECT_STATE §9. Prec.: S107 (SEO keyword repositioning + site v2 redesign).
+**Updated by:** CEO (update S108 via Max, istruzioni in chat)
 **Basato su:** PROJECT_STATE.md aggiornato 2026-06-14; report S104 (income-page) + S106 (office-page); screenshot live homepage/dashboard/office/income; document `bagholderai_website_architecture_v1.docx` (concept esterno)
 
 ---
@@ -16,7 +16,7 @@ BagHolderAI è un progetto sperimentale dove un'AI (Claude) gestisce un micro-bu
 
 **Target audience:** tech-curious readers, AI enthusiasts, indie hackers. Non crypto traders professionisti.
 
-**Domain:** bagholderai.lol (Porkbun). Sito Astro su Vercel. 10 pagine live (home, diary, dashboard, library, howwework, roadmap, blueprint, terms, privacy, blog infrastruttura pronta).
+**Domain:** bagholderai.lol (Porkbun). Sito Astro su Vercel. 11 pagine live (home, diary, dashboard, library, howwework, roadmap, blueprint, blog, income, terms, privacy).
 
 **Social:** X @BagHolderAI (22+ post, posting organico non schedulato). Telegram @BagHolderAI_report (canale pubblico, report giornalieri).
 
@@ -26,14 +26,14 @@ BagHolderAI è un progetto sperimentale dove un'AI (Claude) gestisce un micro-bu
 
 ### S106 — site upgrade planning (NUOVO)
 - **Brief S106a `site-upgrade-v1`** scritto e approvato da Board. Caso 2 (non blocca mainnet). Contenuto:
-  - **Nav ristrutturata**: `Dashboard · Diary · Blog · News · Under the hood ▾ · Library`. Dropdown "Under the hood" contiene: How we work, Blueprint, Roadmap, The experiment (/income)
+  - **Nav ristrutturata**: `Dashboard · Diary · Blog · Under the hood ▾ · Library` (5 voci + dropdown). /news pianificata come 6ª voce post-verdetto barometro (~23 giugno) — non ancora costruita né in nav. Dropdown "Under the hood" contiene: How we work, Blueprint, Roadmap, The experiment (/income)
   - **Homepage nuova**: hero = scena ufficio animata (componente da /office), status bar, bot cards (NewsKeeper linka a /news), manifesto block nuovo ("This is not a crypto project"), latest posts, diary, volumi. Eliminate: sezione "The team", banner V3
   - **Bot nella scena linkano a pagine reali**: Bag→/howwework, Board→/dashboard, NewsKeeper→/news, Grid/TF/Sentinel/Sherpa→/dashboard#anchor
   - **Live snapshot sotto hero**: formato TBD — CC prepara strip compatta vs card ridotta, Max sceglie su visual
   - **/office eliminata** come pagina standalone → redirect 301 a /. Componente scena spostato in homepage
   - **/income pubblicata**: noindex rimosso, aggiunta a sitemap + dropdown, adesivo WIP rimosso
   - **/dashboard riordinata**: Brains prima di Traders (pipeline logica), CEO observation log spostato dopo Recent activity, chart `type="linear"` (fix curva smooth)
-  - **/news pianificata** (nav principale) — costruzione post-verdetto barometro ~23 giugno. Due scenari (validato/bocciato) documentati nel brief. Link anche dalla card NewsKeeper in homepage
+  - **/news pianificata** (non ancora costruita) — costruzione post-verdetto barometro (~23 giugno). Due scenari (validato/bocciato) documentati nel brief S106a. Sarà aggiunta alla nav e linkata dalla card NewsKeeper quando costruita
   - CC produce piano italiano per Max prima di codare (task > 1h)
 
 ### Site v2 (S106a batch 1 + S107) — SHIPPED & ONLINE
