@@ -337,3 +337,31 @@ Promise.all([
   }
   box.classList.remove("hidden");
 });
+
+/* ---------- Mixer coins on the GRID card: live from bot_config ----------
+   The GRID card's decorative mixer (MixerSVG.astro) shows coin labels,
+   server-rendered to the grid-core default (BTC/SOL/BONK). Refresh them from
+   the live config so they never drift. managed_by='grid' ONLY — ETH
+   (managed_by='tf_grid') belongs to the TF fund, not the Grid card.
+   Best-effort: on failure / empty result, keep the server-rendered default. */
+type GridCfgRow = { symbol: string };
+const MIXER_COIN_ORDER: Record<string, number> = { BTC: 0, SOL: 1, BONK: 2 };
+sbq<GridCfgRow[]>(
+  "bot_config",
+  "select=symbol&managed_by=eq.grid&is_active=eq.true",
+)
+  .then(rows => {
+    const coins = (rows ?? [])
+      .map(r => r.symbol.replace("/USDT", ""))
+      .sort((a, b) => (MIXER_COIN_ORDER[a] ?? 9) - (MIXER_COIN_ORDER[b] ?? 9))
+      .slice(0, 3);
+    if (!coins.length) return; // keep server-rendered default
+    const labels = document.querySelectorAll<SVGTextElement>(
+      ".bot-mixer [data-mixer-coin]",
+    );
+    coins.forEach((c, i) => {
+      const el = labels[i];
+      if (el) el.textContent = c;
+    });
+  })
+  .catch(() => { /* keep server-rendered default */ });
