@@ -1,6 +1,8 @@
 ---
 /* CleanSlateSticker.astro — S96b
-   Rotated pastel "sticker" marking the 2026-06-04 testnet clean slate.
+   Rotated pastel "sticker" marking the testnet fresh start. The reset (clean
+   slate) landed 2026-06-04, but Day 1 / first testnet_2 trade was Jun 5, so the
+   public date is Jun 5 — aligned with DAYS RUNNING (audit A2 L1, S108).
    Positive / transparent tone — the reset is a fresh start, not a problem.
    Place inside a `relative` parent and position via the `class` prop
    (e.g. "absolute -top-3 -left-3 z-20"). Also pinned bottom-right
@@ -12,6 +14,6 @@ const { class: cls = "" } = Astro.props;
              bg-neg-soft px-3 py-[5px] shadow-sticker ${cls}`}>
   <span class="whitespace-nowrap font-mono text-[9.5px] font-bold uppercase
                tracking-[0.1em] text-neg">
-    ✨ Fresh start · Jun 4
+    ✨ Fresh start · Jun 5
   </span>
 </div>

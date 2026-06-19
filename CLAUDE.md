@@ -33,6 +33,15 @@ A FINE ogni sessione, prima di chiudere:
 Questa è la regola n.1: NON chiudere una sessione senza aggiornare 
 PROJECT_STATE.md. È più importante del report finale per il CEO.
 
+ROADMAP CHECK (formalizzato S108, audit A2 recidiva H1):
+A fine sessione, PRIMA di committare PROJECT_STATE.md, verifica:
+- Hai shippato qualcosa che tocca una Phase della roadmap?
+- Se sì: aggiorna `web_astro/src/data/roadmap.ts` (version bump + lastUpdated + task done).
+- Se non sei sicuro: `git diff --name-only` della sessione e controlla se qualche 
+  file tocca funzionalità tracciate in roadmap.
+- Questo check è AGGIUNTIVO rispetto alla sezione "Roadmap impact" nei brief CEO. 
+  Il brief può dimenticarsi di listare l'impatto; tu no.
+
 Inoltre, quando rigeneri PROJECT_STATE.md, controlla la cadenza degli 
 audit esterni. Per ciascuna area, se l'ultimo audit chiuso è più 
 vecchio della cadenza suggerita, segnalalo a Max nel report finale 

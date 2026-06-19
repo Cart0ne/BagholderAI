@@ -41,8 +41,8 @@ export interface RoadmapData {
 }
 
 export const ROADMAP: RoadmapData = {
-  version: "Versione 1.48 — Maggio 2026",
-  lastUpdated: "2026-05-27",
+  version: "Versione 1.49 — Giugno 2026",
+  lastUpdated: "2026-06-19",
   phases: [
     {
       id: 0,
@@ -105,6 +105,7 @@ export const ROADMAP: RoadmapData = {
         { text: "Dashboard: Trend Follower status", status: "done", who: "AI", comment: "Session 36b. /tf control room — budget, deployed, decisions log, TF-only view." },
         { text: "Parameter calibration from data", status: "done", who: "BOTH", comment: "Brief 36c: ATR-based buy_pct/sell_pct + full tf_budget deployment. Extended in 36e (rotation + ATR clamps) and 36g (compound via floating cash)." },
         { text: "TF reactivation Tier 1-2 only (brief 79b)", status: "done", who: "AI", comment: "2026-05-18 commit 2abd72e. After TF was switched off on 2026-05-13 following a real-money loss on a Tier-3 coin, reactivated with Tier 3 excluded. No-code change: DB UPDATE trend_config SET tf_tier3_weight = 0 (was 25). Allocator already robust to weight_sum<=0 (falls back to 100% on remaining tiers). 7 processes live on Mac Mini, first scan post-restart returned regime=fear, 50 coins scanned, 2 BULLISH, 0 allocations (distance filter 12% + RSI 75 blocking entries — expected behavior in fear regime)." },
+        { text: "First TF→Grid handoff live: ETH allocated by the Trend Follower, grid-traded as a 4th instance (managed_by='tf_grid')", status: "done", who: "AI", comment: "S106/S108 (2026-06-15/18). After the grid_mode fix (f02bfb0) + the allocator cycle-tag fix (8afa1b5), the TF promoted ETH/USDT into a grid-managed position on testnet_2 — the first time a TF-selected coin runs on the grid engine. Visible on /dashboard + the homepage scene board. Grid core stays BTC/SOL/BONK ($500); ETH runs on the TF $100 fund." },
         { text: "Auto-clean policy for trend_decisions_log (90 days)", status: "todo", who: "AI" },
       ],
     },
@@ -580,7 +581,8 @@ export const ROADMAP: RoadmapData = {
       description: "The fifth brain, and the only one that reads words instead of prices. NewsKeeper watches crypto news the way Sentinel watches the order book — to spot trouble before it hits the chart. Crash analysis of May 18-22 showed Sentinel's signals are reactive (it sees the crash while it happens) while news signals are predictive (days of warning). Board decision S82 (2026-05-23): the system does not go live with real money until it reads the news. It runs as its own process (not orchestrator-managed), with its own Supabase table and its own loop — deliberately separate from Sentinel.",
       tasks: [
         { text: "NewsKeeper Sprint 1: RSS feed collection + regex classifier", status: "done", who: "AI", comment: "S83, 2026-05-24 (commit 49473a9). 3 feeds (CoinDesk, CoinTelegraph, Decrypt), 15-min loop, standalone process on the Mac Mini. Pivot from CryptoPanic (free tier discontinued 2026-04-01) to zero-auth RSS. Classifier is regex-based with a known ~60% false-positive rate — shipped as-is for a 7-day observation window (data-first, calibrate later)." },
-        { text: "NewsKeeper Sprint 2: Haiku-based classification (replace regex)", status: "planned", who: "AI", comment: "After the 7-day observation window. Haiku reads each headline and assigns sentiment/severity instead of keyword matching. Estimated < €1/month." },
+        { text: "NewsKeeper Sprint 2: Haiku-based classification (replace regex)", status: "done", who: "AI", comment: "S94a (2026-06-01). Haiku assigns sentiment/severity per headline instead of keyword matching (~€1/month). The T+7 review then showed per-item severity was the wrong unit → it evolved into the v2 'barometer' (below)." },
+        { text: "NewsKeeper v2 'barometer': 3-state aggregate regime (bear / neutral / bull) — shadow LIVE", status: "active", who: "AI", comment: "S100 (2026-06-09, commit c8774db). Architecture C: Haiku decides each item's polarity, event-level dedup, confidence-weighted vote → one daily climate reading instead of per-item alerts. Runs shadow alongside v1 on the Mac Mini (not yet wired into Sentinel). Falsifiable gate: validate the regime flips against BTC's 24h forward price (NOT Fear & Greed — circular), verdict at T+14 (~2026-06-23) → promote (wire to Sentinel) or retire (→ /news + 'failed experiment' post)." },
         { text: "Strategy Orchestrator: unified Sentinel + NewsKeeper recommendations via Haiku", status: "planned", who: "AI", comment: "~4 CC sessions estimated. A Haiku layer that fuses the macro signals (regime + news) into a single recommendation stream the Board can read." },
       ],
     },
