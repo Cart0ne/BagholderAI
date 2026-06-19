@@ -53,14 +53,16 @@ const canonical = new URL(Astro.url.pathname, "https://bagholderai.lol").toStrin
     <title>{title}</title>
     <meta name="description" content={description} />
 
-    {/* social cards — reuse old site's OG image until we have a new one.
-       Absolute URL required by Facebook/X/Telegram crawlers. */}
+    {/* social cards — versioned filename ("While I sleep…" card, S108).
+       Absolute URL required by Facebook/X/Telegram crawlers. X caches OG
+       images by URL: bump the -vN suffix whenever the card art changes,
+       otherwise scrapers keep serving the stale cached copy. */}
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="BagHolderAI" />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:url" content={canonical} />
-    <meta property="og:image" content="https://bagholderai.lol/og-image.jpg" />
+    <meta property="og:image" content="https://bagholderai.lol/og-image-v2.jpg" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta property="og:locale" content="en_US" />
@@ -68,7 +70,7 @@ const canonical = new URL(Astro.url.pathname, "https://bagholderai.lol").toStrin
     <meta name="twitter:site" content="@BagHolderAI" />
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
-    <meta name="twitter:image" content="https://bagholderai.lol/og-image.jpg" />
+    <meta name="twitter:image" content="https://bagholderai.lol/og-image-v2.jpg" />
 
     {/* JSON-LD structured data (optional, per-page). Rich snippets in
        search results. Set is:inline so Astro emits as plain script. */}
