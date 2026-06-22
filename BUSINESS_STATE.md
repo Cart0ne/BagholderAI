@@ -1,7 +1,7 @@
 # BUSINESS_STATE.md
 
-**Last updated:** 2026-06-19 — Session 108 (audit A2 remediation + site fixes). Cap file 50KB (Max S95, CLAUDE.md §2b). Cadenze audit canoniche in PROJECT_STATE §9. Prec.: S107 (SEO keyword repositioning + site v2 redesign).
-**Updated by:** CEO (update S108 via Max, istruzioni in chat)
+**Last updated:** 2026-06-22 — Session 108 (barometro verdict prep + haiku fix + TF architecture check + audit A2 remediation). Cap file 50KB (Max S95, CLAUDE.md §2b). Cadenze audit canoniche in PROJECT_STATE §9. Prec.: S107 (SEO keyword repositioning + site v2 redesign).
+**Updated by:** CEO (update S108 via Max)
 **Basato su:** PROJECT_STATE.md aggiornato 2026-06-14; report S104 (income-page) + S106 (office-page); screenshot live homepage/dashboard/office/income; document `bagholderai_website_architecture_v1.docx` (concept esterno)
 
 ---
@@ -234,6 +234,8 @@ BagHolderAI è un progetto sperimentale dove un'AI (Claude) gestisce un micro-bu
 
 | Data | Decisione | Perché |
 |---|---|---|
+| 2026-06-22 (S108) | **Verdetto barometro v2: PASS qualità, INCONCLUSIVE come indicatore di trading** | N=2 flip in 13gg è insufficiente per validare il gate "flip vs BTC 24h forward return" (S100). Il barometro ha cross-validato con Tier B breadth (flash neutral 15-giu coincide con 19.6% bullish Tier B). NON blocca go-live grid. Sentinel wiring rimandato a dopo regime change sostenuto. Alternativa scartata: dichiarare PASS completo su dati insufficienti |
+| 2026-06-22 (S108) | **Dashboard label: "Net realized profit" → "Realized profit from sells (post-fees)"** | Disambigua margine realizzato dal Total P&L. Shipped da CC (commit `c2598df`) |
 | 2026-06-18 (S107) | **SEO meta + content su 7 pagine** — shift da "crypto bot" a "AI runs a business, crypto is the context" | 13 impression Bing tutte crypto. Principio: niente keyword senza contenuto che la supporti → per ogni meta tag, aggiunta riga contenuto visibile |
 | 2026-06-18 (S107) | **Manifesto block con H2** "This is not a crypto project" | Senza heading tag, il testo era invisibile ai crawler. H2 dà peso semantico |
 | 2026-06-18 (S107) | **Bot card reinserite in homepage** (tra snapshot e manifesto) | La scena SVG è invisibile ai crawler. Le card sono l'unico testo che spiega cosa fanno i 5 moduli. Scene per umani, parole per macchine |
@@ -293,6 +295,7 @@ BagHolderAI è un progetto sperimentale dove un'AI (Claude) gestisce un micro-bu
 
 | Tema | Stato | Note |
 |---|---|---|
+| **[S108 NEW] CMC Fear & Greed come seconda fonte Sentinel** | Brief futuro | Nuovo file `cmc_fng.py` accanto a `alternative_fng.py`. Usa API key CMC già in `.env` (endpoint `v3/fear-and-greed/historical`). Logga valore in `sentinel_scores.raw_signals`, nessuna modifica a `regime_analyzer`. Osservare e confrontare con Alternative.me per settimane prima di decidere. Binance F&G non ha API pubblica; CMC (Binance-owned dal 2020) è il proxy più vicino |
 | **[S107 NEW] Blog post Cluster 1 "AI as CEO"** | PARCHEGGIATO | Il differenziatore massimo non ha ancora un post dedicato. Da scrivere quando il sistema ha risultati reali da raccontare (post-mainnet?) |
 | **[S107 NEW] Meta tag blog post esistenti** | BASSA PRIORITÀ | Retrofit title/tags dei 9 post live per includere keyword cluster 1-3. Impatto modesto, rischio reset ranking |
 | **[S105 NEW] Monitor "griglia silenziosa"** | DA DECIDERE (Apple Notes vs brief) | Alert quando una griglia non registra trade da X ore. Buco osservabilità S105: un bot fermo non emette ERROR né Telegram, SOL morta 5gg invisibile. Il fix dust impedisce *questo* freeze, non la classe generale. Trigger: prossima sessione o pre-mainnet |
@@ -316,7 +319,7 @@ BagHolderAI è un progetto sperimentale dove un'AI (Claude) gestisce un micro-bu
 
 | Vincolo | Scadenza | Note |
 |---|---|---|
-| **NewsKeeper v2 Barometro T+14 verdetto** | ~23 giugno 2026 | Validare flip barometro vs ritorno prezzo BTC 24h. Se 14gg solo-bear: verdetto parziale, estendere. Esiti: promuovere (cablaggio Sentinel) o bocciare (→ /news, blog "esperimento fallito") |
+| **NewsKeeper v2 Barometro verdetto** | Nessuna data fissa (era ~23 giu) | T+14 raggiunto, esito: PASS qualità / INCONCLUSIVE prezzo (N=2 flip insufficiente). Esteso fino a regime change sostenuto (neutral/bullish >24h). Non blocca go-live grid. Dettagli in diary S108 |
 | **SEO+GEO POST 2 drafting** | ~metà giugno | "Why Most AI Trading Bots Fail (And What Ours Did Wrong Too)" — keyword: ai trading bot. Cadenza 1 post ogni 1-2 settimane |
 | **Apple Notes pulizia: cancellare 8 note obsolete (Max)** | A discrezione Max | 4 note attive da mantenere, 8 obsolete da cancellare manualmente |
 | **Go-live mainnet** | Nessuna data fissa | Dipende da condizioni di mercato (bear+bull+laterale osservati). Sequenza: Sherpa LIVE testnet ✅ → osservazione → S103 parametri Board-only → barometro verdict (~23 giu) → Board approval → mainnet €100 |
