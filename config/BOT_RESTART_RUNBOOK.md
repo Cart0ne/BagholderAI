@@ -87,8 +87,10 @@ Atteso nel log orchestrator: `Brain flags: TF=True SENTINEL=True SHERPA=True`, 4
 Qui i NewsKeeper standalone **NON si toccano** (non c'entrano col codice dei brain). Si riavvia solo l'orchestrator.
 
 ```bash
-# 1) CATTURA i flag esatti dal processo LIVE (non fidarti dei valori pinnati: potrebbero essere cambiati)
-ssh max@Mac-mini-di-Max.local "ps -p \$(pgrep -f 'caffeinate.*bot.orchestrator') -o command="
+# 1) CATTURA gli env flag esatti dal processo LIVE. ⚠️ `ps -o command=` NON li mostra:
+#    gli ENABLE_*/SHERPA_* stanno nell'AMBIENTE, non in argv → serve `ps eww`.
+#    (Verificato 22-giu: ps eww funziona sul Mac Mini per il pid python orchestrator.)
+ssh max@Mac-mini-di-Max.local "ps eww -p \$(pgrep -f '[-]m bot.orchestrator') | tr ' ' '\n' | grep -E 'ENABLE_|SHERPA_|BINANCE_TESTNET'"
 
 # 2) Shutdown graceful: SIGTERM all'orchestrator → propaga ai 7 figli
 ssh max@Mac-mini-di-Max.local "pkill -TERM -f '[-]m bot.orchestrator'"
