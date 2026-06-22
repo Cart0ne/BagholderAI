@@ -105,6 +105,17 @@ def maybe_send_daily_report(
         # any DB error.
         tf_state = get_tf_state(trade_logger.client)
 
+        # Brief S108a Task 3: surface the real trading mode so the daily
+        # reports (public + private) stop hardcoding "PAPER MODE".
+        # Mirror of bot/exchange.py:78-82.
+        from config.settings import TradingMode, ExchangeConfig
+        if TradingMode.is_paper():
+            mode_label = "PAPER"
+        elif ExchangeConfig.TESTNET:
+            mode_label = "LIVE TESTNET"
+        else:
+            mode_label = "LIVE MAINNET"
+
         # Bundle all report data
         report_data = {
             **portfolio_summary,
@@ -116,6 +127,7 @@ def maybe_send_daily_report(
             "today_realized": day_realized,
             "reserves": reserves,
             "tf": tf_state,  # 47e: TF section in daily reports
+            "mode": mode_label,  # S108a: dynamic mode for report footers
         }
 
         # Atomic write: INSERT ON CONFLICT DO NOTHING.

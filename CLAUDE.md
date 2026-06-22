@@ -77,6 +77,16 @@ va in §10 "Sessioni shipped". Solo un Auditor (CC fresh con brief
 ha titolo per aggiungere riga §9, e solo dopo aver depositato il file 
 `audits/reports/*.md` corrispondente.
 
+### Numerazione sessioni (formalizzata S108, 2026-06-20)
+
+- **Sessioni di lavoro** (CEO + Board): prendono numero progressivo
+  (S108, S109...). Hanno diary, summary Supabase, possono avere brief.
+- **Sessioni marketing**: niente numero, niente diary, niente brief.
+  Solo aggiornamento marketing tracker.
+- **Audit automatici** (Cowork): niente numero sessione. Se producono
+  brief, naming: `YYYY-MM-DD_audit[Area]_brief_SCOPE.md`.
+  Esempio: `2026-06-18_auditA2_brief_remediation.md`.
+
 ═══════════════════════════════════════════
  [2] PROJECT_STATE.md — formato fisso
 ═══════════════════════════════════════════

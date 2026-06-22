@@ -246,7 +246,7 @@ class TelegramNotifier:
 
         47e/v2: layout aggregato. Cima = Total Portfolio (Grid + TF combinati).
         Sotto = sezioni separate Grid e TF, ciascuna con il proprio P&L vs il
-        proprio capitale di partenza ($500 + $100 = $600 in paper mode).
+        proprio capitale di partenza ($500 + $100 = $600).
         """
         today = date.today().strftime("%d/%m/%Y")
         day_num = data.get("day_number", "?")
@@ -277,7 +277,7 @@ class TelegramNotifier:
 
         text = (
             f"📊 <b>BagHolderAI — Daily Report</b>\n"
-            f"📅 {today} · Day {day_num} · Paper mode\n"
+            f"📅 {today} · Day {day_num} · {data.get('mode', 'PAPER')}\n"
             f"\n"
             f"💼 <b>Total Portfolio: ${total_val:.2f}</b>\n"
             f"Started with ${total_initial:.0f} · P&L: {total_pnl_emoji} ${total_pnl:+.2f} ({total_pnl_pct:+.1f}%)\n"
@@ -469,7 +469,7 @@ class TelegramNotifier:
 
         text = (
             f"📊 <b>BagHolderAI — Daily Report</b>\n"
-            f"📅 {today} · Day {day_num} of paper trading\n"
+            f"📅 {today} · Day {day_num} · {data.get('mode', 'PAPER')}\n"
             f"\n"
             f"<b>Total Portfolio: ${total_val:.2f}</b>\n"
             f"Started with ${total_initial:.0f} · P&L: {total_pnl_emoji} "
@@ -540,7 +540,7 @@ class TelegramNotifier:
             else:
                 text += f"  No active positions.\n"
 
-        text += f"\n🤖 <i>PAPER MODE · <a href=\"https://bagholderai.lol/?utm_source=telegram&amp;utm_medium=social&amp;utm_campaign=daily_report\">bagholderai.lol</a></i>"
+        text += f"\n🤖 <i>{data.get('mode', 'PAPER')} · <a href=\"https://bagholderai.lol/?utm_source=telegram&amp;utm_medium=social&amp;utm_campaign=daily_report\">bagholderai.lol</a></i>"
 
         # Send via public bot
         try:
