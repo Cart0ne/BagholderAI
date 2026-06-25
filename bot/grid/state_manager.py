@@ -181,7 +181,7 @@ def init_avg_cost_state_from_db(bot):
         )
 
     # Restore last trade time so idle re-entry countdown is correct.
-    # Convert to UTC-naive so comparison with datetime.utcnow() is always correct
+    # Convert to UTC-naive so comparison with utcnow() (utils.timeutils) is always correct
     # regardless of the timezone offset stored in the DB timestamp.
     if trades:
         try:

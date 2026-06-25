@@ -11,6 +11,7 @@ import logging
 from typing import Optional
 from datetime import datetime
 from utils.formatting import fmt_price
+from utils.timeutils import utcnow
 from config.settings import HardcodedRules, TradingMode
 
 logger = logging.getLogger("bagholderai.grid")
@@ -271,7 +272,7 @@ def execute_percentage_buy(bot, price: float) -> Optional[dict]:
     # Brief s70 FASE 2: avg-cost trading — no FIFO queue to populate.
     bot._daily_trade_count += 1
     bot._last_buy_time = time.time()
-    bot._last_trade_time = datetime.utcnow()
+    bot._last_trade_time = utcnow()
 
     # 51b fix (2026-05-04): reset trailing peak on every confirmed TF buy.
     # Without this, a peak from an earlier lot survives a last-shot buy at a

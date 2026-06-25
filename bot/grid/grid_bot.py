@@ -24,6 +24,7 @@ from typing import Optional
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from utils.formatting import fmt_price
+from utils.timeutils import utcnow
 from db.event_logger import log_event
 from config.settings import HardcodedRules
 
@@ -161,8 +162,8 @@ class GridBot:
         self._exchange_filters: dict = {}  # populated at startup via set_exchange_filters()
         self.state: Optional[GridState] = None
         self._daily_trade_count = 0
-        self._daily_date = datetime.utcnow().date()
-        self._daily_pnl_date = datetime.utcnow().date()
+        self._daily_date = utcnow().date()
+        self._daily_pnl_date = utcnow().date()
         self._last_buy_time: float = 0.0  # Task 5: timestamp of last buy
         self._last_trade_time: Optional[datetime] = None  # UTC datetime of last executed trade
         self.skipped_buys: list = []     # filled each cycle with insufficient-cash skips
@@ -303,7 +304,7 @@ class GridBot:
             strategy=self.strategy,
             center_price=round(current_price, decimals),
             last_price=current_price,
-            created_at=datetime.utcnow().isoformat(),
+            created_at=utcnow().isoformat(),
         )
 
         # On reset: restore accounting from old state
@@ -361,7 +362,7 @@ class GridBot:
         # BUY:  price dropped buy_pct% below last buy price → buy capital_per_trade USDT
         #       Se nessun buy precedente, primo buy immediato per stabilire il reference.
         # SELL: price rose sell_pct% above avg_buy_price → sell capital_per_trade / price.
-        today = datetime.utcnow().date()
+        today = utcnow().date()
         if today != self._daily_date:
             self._daily_trade_count = 0
             self._daily_date = today
@@ -664,7 +665,7 @@ class GridBot:
                     f"New buys blocked until profitable sell or 75b unlock."
                 )
                 self._stop_buy_active = True
-                self._stop_buy_activated_at = datetime.utcnow()  # 75b: arm unlock timer
+                self._stop_buy_activated_at = utcnow()  # 75b: arm unlock timer
                 log_event(
                     severity="warn",
                     category="safety",
@@ -689,7 +690,7 @@ class GridBot:
         if (self._stop_buy_active
                 and self.stop_buy_unlock_hours > 0
                 and self._stop_buy_activated_at is not None):
-            elapsed_sb = (datetime.utcnow() - self._stop_buy_activated_at).total_seconds() / 3600
+            elapsed_sb = (utcnow() - self._stop_buy_activated_at).total_seconds() / 3600
             if elapsed_sb >= self.stop_buy_unlock_hours:
                 # 75c (S76 2026-05-14): step the drawdown baseline down to
                 # the current price at unlock. The next 39b check measures
@@ -747,7 +748,7 @@ class GridBot:
                 and self.state.avg_buy_price > 0
                 and current_price > self.state.avg_buy_price
                 and self._last_trade_time is not None):
-            elapsed_dz = (datetime.utcnow() - self._last_trade_time).total_seconds() / 3600
+            elapsed_dz = (utcnow() - self._last_trade_time).total_seconds() / 3600
             if elapsed_dz >= DEAD_ZONE_HOURS:
                 previous_last_sell = self._last_sell_price
                 previous_ref = self._pct_last_buy_price
@@ -761,7 +762,7 @@ class GridBot:
                 )
                 self._last_sell_price = 0.0
                 self._pct_last_buy_price = current_price
-                self._last_trade_time = datetime.utcnow()
+                self._last_trade_time = utcnow()
                 self._idle_logged_hour = -1
                 # Brief fix_slippage_AB (S90, 2026-05-28): arm cooldown so the
                 # very next tick re-fetches a fresh price before deciding on
@@ -979,7 +980,7 @@ class GridBot:
                 and self._pct_last_buy_price > 0
                 and self._last_trade_time is not None
                 and self.idle_reentry_hours > 0):
-            elapsed = (datetime.utcnow() - self._last_trade_time).total_seconds() / 3600
+            elapsed = (utcnow() - self._last_trade_time).total_seconds() / 3600
             # Log once per elapsed-hour boundary so progress is always visible in logs
             elapsed_h = int(elapsed)
             if elapsed_h != self._idle_logged_hour:
@@ -1032,7 +1033,7 @@ class GridBot:
                     )
                     # Advance last_trade_time so the next idle check fires
                     # after another full window (prevents per-cycle spam).
-                    self._last_trade_time = datetime.utcnow()
+                    self._last_trade_time = utcnow()
                     self._idle_logged_hour = -1
                 elif self._position_is_dust(current_price):  # S105b: dust or empty → force re-entry (was managed_holdings <= 0)
                     # --- Path A: no holdings → force re-entry buy ---
@@ -1102,7 +1103,7 @@ class GridBot:
                         self._pct_last_buy_price = current_price
                     # Always advance _last_trade_time so the next idle check
                     # fires after another window (avoids per-cycle log spam).
-                    self._last_trade_time = datetime.utcnow()
+                    self._last_trade_time = utcnow()
                     self._idle_logged_hour = -1
 
         return trades

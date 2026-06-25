@@ -36,6 +36,7 @@ import logging
 from collections import defaultdict
 from datetime import datetime
 from typing import Any
+from utils.timeutils import utcnow
 
 from db.client import get_client
 
@@ -192,7 +193,7 @@ def main() -> int:
 
     print("=" * 76)
     print("  S66 — Step 0d — Formula Verification (strict-FIFO vs DB realized_pnl)")
-    print(f"  Run: {datetime.utcnow().isoformat()}Z")
+    print(f"  Run: {utcnow().isoformat()}Z")
     print("=" * 76)
 
     symbols = list_v3_symbols(client)

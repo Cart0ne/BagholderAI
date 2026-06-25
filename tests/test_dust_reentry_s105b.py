@@ -22,6 +22,7 @@ from datetime import datetime, timedelta
 
 from tests.test_accounting_avg_cost import make_bot
 from utils.exchange_filters import is_dust, min_sellable_amount
+from utils.timeutils import utcnow
 
 SOL_FILTERS = {"lot_step_size": 0.001, "min_qty": 0.001, "min_notional": 5.0}
 BONK_FILTERS = {"lot_step_size": 1.0, "min_qty": 1.0, "min_notional": 1.0}
@@ -91,7 +92,7 @@ def test_reentry_fires_on_dust_above_avg_the_sol_freeze():
     bot._last_sell_price = 67.9         # ladder active → dead-zone must still skip (dust)
     bot.state.total_invested = 0.0064
     bot.state.total_received = 0.0
-    bot._last_trade_time = datetime.utcnow() - timedelta(hours=5)  # idle > 4h
+    bot._last_trade_time = utcnow() - timedelta(hours=5)  # idle > 4h
 
     assert bot._position_is_dust(68.1) is True, "precondition: SOL position is dust"
     trades_before = len(bot.trade_logger.trades)
@@ -121,7 +122,7 @@ def test_real_position_above_avg_does_not_reenter():
     bot._pct_last_buy_price = 68.1
     bot._last_sell_price = 0.0         # ladder inactive → dead-zone skipped, clean idle path
     bot.state.total_invested = 20.0
-    bot._last_trade_time = datetime.utcnow() - timedelta(hours=5)
+    bot._last_trade_time = utcnow() - timedelta(hours=5)
 
     assert bot._position_is_dust(68.1) is False, "precondition: real position"
     trades_before = len(bot.trade_logger.trades)

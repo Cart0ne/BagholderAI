@@ -25,6 +25,8 @@ import random
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from utils.timeutils import utcnow
+
 
 # ----------------------------------------------------------------------
 # Test scaffolding (mirrors tests/test_pct_sell_fifo.py)
@@ -606,7 +608,7 @@ def test_j_idle_recalibrate_skipped_above_avg():
     print(f"  initial: ref=${initial_ref:.2f}, avg=${initial_avg:.2f}")
 
     # Set _last_trade_time to 5h ago → elapsed > idle_reentry_hours (4h)
-    bot._last_trade_time = datetime.utcnow() - timedelta(hours=5)
+    bot._last_trade_time = utcnow() - timedelta(hours=5)
 
     # --- CASE 1: current > avg ($105 vs avg $100) → recalibrate must SKIP
     bot.check_price_and_execute(current_price=105.0)
@@ -625,7 +627,7 @@ def test_j_idle_recalibrate_skipped_above_avg():
 
     # --- CASE 2: current <= avg ($95 vs avg $100) → recalibrate FIRES
     # Reset _last_trade_time to 5h ago again (advanced by previous skip path)
-    bot._last_trade_time = datetime.utcnow() - timedelta(hours=5)
+    bot._last_trade_time = utcnow() - timedelta(hours=5)
     bot.idle_reentry_alerts.clear()
     ref_before = bot._pct_last_buy_price
     bot.check_price_and_execute(current_price=95.0)
@@ -1082,7 +1084,7 @@ def test_s_dead_zone_recalibrate_fires_when_ladder_active_and_idle():
           f"_last_sell_price=${bot._last_sell_price:.2f}")
 
     # 5h ago → exceeds DEAD_ZONE_HOURS (4.0) but below idle_reentry_hours (24h)
-    bot._last_trade_time = datetime.utcnow() - timedelta(hours=5)
+    bot._last_trade_time = utcnow() - timedelta(hours=5)
 
     # current=$102: above avg ($100) but below pre-reset sell trigger
     bot.check_price_and_execute(current_price=102.0)
@@ -1123,7 +1125,7 @@ def test_t_dead_zone_does_not_fire_under_4h_idle():
     initial_ref = bot._pct_last_buy_price
 
     # Only 2h idle → below DEAD_ZONE_HOURS=4
-    bot._last_trade_time = datetime.utcnow() - timedelta(hours=2)
+    bot._last_trade_time = utcnow() - timedelta(hours=2)
 
     bot.check_price_and_execute(current_price=102.0)
 
@@ -1425,7 +1427,7 @@ def test_z_stop_buy_unlock_fires_after_timeout():
     # skipped (already active → branch guarded by `not _stop_buy_active`).
     bot._execute_percentage_buy(price=100.0)
     bot._stop_buy_active = True
-    bot._stop_buy_activated_at = datetime.utcnow() - timedelta(hours=25)
+    bot._stop_buy_activated_at = utcnow() - timedelta(hours=25)
     bot.stop_buy_unlock_hours = 24.0
     bot.stop_buy_drawdown_pct = 2.0  # 39b path armed but won't re-trigger (already active)
 
@@ -1458,7 +1460,7 @@ def test_aa_stop_buy_unlock_holds_under_timeout():
 
     bot._execute_percentage_buy(price=100.0)
     bot._stop_buy_active = True
-    bot._stop_buy_activated_at = datetime.utcnow() - timedelta(hours=23)
+    bot._stop_buy_activated_at = utcnow() - timedelta(hours=23)
     bot.stop_buy_unlock_hours = 24.0
     bot.stop_buy_drawdown_pct = 2.0
 
@@ -1549,7 +1551,7 @@ def test_bb_profitable_sell_clears_unlock_timestamp():
     bot._execute_percentage_buy(price=100.0)
     initial_holdings = bot.state.holdings
     bot._stop_buy_active = True
-    bot._stop_buy_activated_at = datetime.utcnow()
+    bot._stop_buy_activated_at = utcnow()
     bot.stop_buy_unlock_hours = 24.0  # timer would fire in 24h, but profitable sell clears first
 
     # Profitable sell at $110 — sell_pipeline branch in _execute_percentage_sell.
@@ -1617,7 +1619,7 @@ def test_dd_baseline_stops_immediate_re_arm_after_75b_unlock():
     # check would re-arm in the same tick because drawdown vs avg is
     # unchanged. With 75c the baseline jumps to current and unrealized
     # = 0 → no re-arm.
-    bot._stop_buy_activated_at = datetime.utcnow() - timedelta(hours=1, minutes=1)
+    bot._stop_buy_activated_at = utcnow() - timedelta(hours=1, minutes=1)
     bot.check_price_and_execute(current_price=0.00000673)
     assert bot._stop_buy_active is False, (
         f"75b unlock must clear the flag; got {bot._stop_buy_active}"
@@ -1706,7 +1708,7 @@ def test_ee_idle_suppressed_when_capital_exhausted():
     print(f"  CASE 1 setup: holdings>0, available=${available_before:.2f} < floor ${HardcodedRules.MIN_LAST_SHOT_USD:.2f}")
 
     # Trigger idle window
-    bot._last_trade_time = datetime.utcnow() - timedelta(hours=5)
+    bot._last_trade_time = utcnow() - timedelta(hours=5)
     bot.idle_reentry_alerts.clear()
     last_trade_before = bot._last_trade_time
 
@@ -1743,7 +1745,7 @@ def test_ee_idle_suppressed_when_capital_exhausted():
     assert available_before2 < HardcodedRules.MIN_LAST_SHOT_USD
     print(f"  CASE 2 setup: holdings=0, available=${available_before2:.2f} < floor")
 
-    bot2._last_trade_time = datetime.utcnow() - timedelta(hours=5)
+    bot2._last_trade_time = utcnow() - timedelta(hours=5)
     bot2.idle_reentry_alerts.clear()
     last_trade_before2 = bot2._last_trade_time
 
@@ -1768,7 +1770,7 @@ def test_ee_idle_suppressed_when_capital_exhausted():
     assert available3 >= HardcodedRules.MIN_LAST_SHOT_USD, (
         f"setup: cash must be healthy, got ${available3:.2f}"
     )
-    bot3._last_trade_time = datetime.utcnow() - timedelta(hours=5)
+    bot3._last_trade_time = utcnow() - timedelta(hours=5)
     bot3.idle_reentry_alerts.clear()
 
     # Current $95 < avg $100 → recalibrate must fire (not skipped by 70a guard, not suppressed by 79a)

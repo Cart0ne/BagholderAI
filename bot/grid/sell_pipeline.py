@@ -31,6 +31,7 @@ import logging
 from typing import Optional
 from datetime import datetime, timezone
 from utils.formatting import fmt_price
+from utils.timeutils import utcnow
 from db.event_logger import log_event
 from config.settings import TradingMode
 
@@ -709,7 +710,7 @@ def execute_percentage_sell(
         bot._last_sell_price = price
 
     bot._daily_trade_count += 1
-    bot._last_trade_time = datetime.utcnow()
+    bot._last_trade_time = utcnow()
 
     trade_pnl_pct = (realized_pnl / cost_basis * 100) if cost_basis > 0 else 0
 

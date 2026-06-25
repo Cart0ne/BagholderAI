@@ -18,6 +18,8 @@ import time
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from utils.timeutils import utcnow
+
 
 # ----------------------------------------------------------------------
 # Mocks
@@ -184,7 +186,7 @@ def _make_grid_bot_for_dead_zone():
     bot.state.last_price = 78000.0  # tick precedente
     bot._pct_last_buy_price = 78009.34
     bot._last_sell_price = 81853.66  # ladder ancora attivo
-    bot._last_trade_time = datetime.utcnow() - timedelta(hours=6.2)  # idle 6.2h
+    bot._last_trade_time = utcnow() - timedelta(hours=6.2)  # idle 6.2h
     bot._stop_buy_active = False
     bot._gain_saturation_triggered = False
     bot._trailing_stop_triggered = False
@@ -255,7 +257,7 @@ def test_b3_third_tick_normal_behavior():
     from datetime import datetime
     bot._pct_last_buy_price = 82143.07
     bot._last_sell_price = 0.0
-    bot._last_trade_time = datetime.utcnow()  # appena resettato dal recalibrate
+    bot._last_trade_time = utcnow()  # appena resettato dal recalibrate
     bot._skip_next_decision = False
     bot.state.last_price = 74500.0  # ultimo tick "normale"
 
