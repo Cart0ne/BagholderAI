@@ -212,59 +212,6 @@ class TradeLogger:
         }
 
 
-class PortfolioManager:
-    """Manages current holdings."""
-    
-    def __init__(self):
-        self.client = get_client()
-    
-    # DEPRECATED — 'portfolio' table does not exist, legacy from pre-S59
-    def get_portfolio(self) -> list:
-        """Get all current holdings."""
-        return None  # DEPRECATED: 'portfolio' table removed pre-S59 — no-op guard
-        result = self.client.table("portfolio").select("*").gt("amount", 0).execute()
-        return result.data or []
-    
-    # DEPRECATED — 'portfolio' table does not exist, legacy from pre-S59
-    def update_position(
-        self,
-        symbol: str,
-        strategy: str,
-        amount: float,
-        avg_buy_price: float,
-        current_price: Optional[float] = None,
-    ) -> dict:
-        """Update or create a portfolio position."""
-        return None  # DEPRECATED: 'portfolio' table removed pre-S59 — no-op guard
-        unrealized_pnl = None
-        if current_price and avg_buy_price > 0:
-            unrealized_pnl = round((current_price - avg_buy_price) * amount, 8)
-        
-        data = {
-            "symbol": symbol,
-            "strategy": strategy,
-            "amount": amount,
-            "avg_buy_price": avg_buy_price,
-            "current_price": current_price,
-            "unrealized_pnl": unrealized_pnl,
-            "updated_at": datetime.utcnow().isoformat(),
-        }
-        
-        result = (
-            self.client.table("portfolio")
-            .upsert(data, on_conflict="symbol")
-            .execute()
-        )
-        return result.data[0] if result.data else {}
-    
-    # DEPRECATED — 'portfolio' table does not exist, legacy from pre-S59
-    def get_total_allocation(self) -> float:
-        """Get total capital currently allocated (for limit checks)."""
-        return None  # DEPRECATED: 'portfolio' table removed pre-S59 — no-op guard
-        portfolio = self.get_portfolio()
-        return sum(p.get("amount", 0) * p.get("avg_buy_price", 0) for p in portfolio)
-
-
 class DailyPnLTracker:
     """Tracks daily performance snapshots for dashboard."""
 

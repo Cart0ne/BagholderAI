@@ -50,7 +50,7 @@ from config.settings import (
 from config.supabase_config import SupabaseConfigReader
 from bot.exchange import create_exchange
 from bot.grid.grid_bot import GridBot
-from db.client import TradeLogger, PortfolioManager, DailyPnLTracker, ReserveLedger
+from db.client import TradeLogger, DailyPnLTracker, ReserveLedger
 from db.event_logger import log_event
 from db.snapshot_writer import write_state_snapshot
 
@@ -153,7 +153,7 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
         logger.info("DRY RUN — trades will NOT be logged to database")
     else:
         trade_logger = TradeLogger()
-        portfolio_manager = PortfolioManager()
+        portfolio_manager = None  # S109: PortfolioManager removed — was dead (all methods no-op, 'portfolio' table gone pre-S59). GridBot stores it but never reads it.
         pnl_tracker = DailyPnLTracker()
         reserve_ledger = ReserveLedger()
 
