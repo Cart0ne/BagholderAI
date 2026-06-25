@@ -29,9 +29,9 @@ Senza questi non si va live. Sequenza logica, non parallelo.
 | 1.2 | **Verdetto Sherpa** — analisi 7gg parametri, decidere se il flicker serve fix (A/B/C) | 0.2 | CEO + Max | parte della stessa sessione |
 | 1.2b | **Verifica breadth tier → Sentinel** — i bullish (tier 1/2/3) che partono *prima* che Sentinel cambi regime: anticipano il cambio di stato? Read-only, brief `config/2026-06-18_brief_tier-breadth-regime-signal.md` | dati ~23 giu (stessa sessione 1.1/1.2) | CEO + Max | parte della sessione |
 | 1.3 | **Sessione go-live experiment** — formalizzare rampa/rabbocco/verdetto/Victory Lap | 1.1 + 1.2 | CEO + Max | 1 sessione dedicata (da PARKED_golive_experiment_design.md) |
-| 1.4 | **DUST write-off** — convert-to-BNB + reconciliation wallet↔DB | Pre-mainnet | CC (brief esistente in parked) | ~2h CC |
-| 1.5 | **sell_pct + slippage_buffer parametrico per coin** | Pre-mainnet | CC (estensione brief 70a) | ~2-3h CC |
-| 1.6 | **Integration test config reader chain** | Pre-mainnet (gap da S76) | CC | ~30-60min CC |
+| 1.4 | **DUST write-off** — ✅ **EVENTO+STUB done S109** (write-off ora evento persistito `DUST_WRITEOFF` + `convert_dust_to_bnb` guarded mainnet-only); reconcile wallet↔DB → go-live | Pre-mainnet | CC | ✅ S109 (parziale) |
+| 1.5 | **sell_pct + slippage_buffer parametrico per coin** — ✅ **INFRA done S109** (colonna `bot_config.slippage_buffer_pct` + hot-reload + default 0.03 = identico a oggi); taratura per-coin → mainnet (dati reali) | Pre-mainnet | CC | ✅ S109 |
+| 1.6 | **Integration test config reader chain** — ✅ **DONE S109** (8 test end-to-end, gap S76 chiuso) | Pre-mainnet (gap da S76) | CC | ✅ S109 |
 | 1.7 | **Mobile smoke test** | 1.4-1.6 completati | Max (telefono) | 30min |
 | 1.8 | **Board approval call** | Tutto sopra OK | Max | 15min |
 
@@ -111,12 +111,12 @@ Roba che esiste ma NON entra in pipeline fino a nuova decisione Board.
 
 ## BUG APERTI (questi entrano sempre, unica eccezione alla regola)
 
-| Bug | Priorità | Chi |
-|---|---|---|
-| Fix exchange_order_id null su sell OP/USDT | Cosmetico | CC |
-| DeprecationWarning datetime.utcnow() | Low | CC |
-| PortfolioManager istanziato ma mai usato | Low | CC |
-| Aggiornare validation_and_control_system.md §2 | Low | CC |
+| Bug | Priorità | Chi | Stato |
+|---|---|---|---|
+| Fix exchange_order_id null su sell OP/USDT | Cosmetico | CC | ✅ S109 (fallback info.orderId + warning) |
+| DeprecationWarning datetime.utcnow() | Low | CC | ✅ S109 (helper naive-UTC, 409→0 warning) |
+| PortfolioManager istanziato ma mai usato | Low | CC | ✅ S109 (rimosso + classe orfana) |
+| Aggiornare validation_and_control_system.md §2 | Low | CC | ✅ S109 |
 
 ---
 
@@ -138,3 +138,11 @@ fino a chiusura Fase 1.*
 e 3.4 (/library) risolti; aggiunto 1.2b (verifica breadth tier → Sentinel,
 read-only, sessione del ~23). 1.2b è misura/analisi per decidere, non nuovo
 scope di build — coerente con la regola "solo bug fix".*
+
+*Aggiornato: CC, 25 giugno 2026 (S109) — chiusi tutti i task CC-only eseguibili
+senza dati mainnet: 1.6 (config-chain test), 1.5 (slippage infra), 1.4 parziale
+(dust evento persistito + stub convert-to-BNB; reconcile→go-live) + i 4 bug
+aperti (exchange_order_id, datetime.utcnow, PortfolioManager, validation §2).
+T8/monitor griglia silenziosa parcheggiato (Max decide la soglia). I fix che
+toccano `bot/` sono committati ma diventano LIVE solo al prossimo restart.
+250/250 test verdi.*
