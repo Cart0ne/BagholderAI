@@ -107,11 +107,11 @@ def execute_percentage_buy(bot, price: float) -> Optional[dict]:
     if cash_before >= standard_cost:
         remaining_after = cash_before - standard_cost
         if 0 < remaining_after < standard_cost:
-            cost = cash_before * (1 - HardcodedRules.SLIPPAGE_BUFFER_PCT)
+            cost = cash_before * (1 - bot.slippage_buffer_pct)
             last_shot = True
             logger.info(
                 f"SWEEP BUY: spending ${cost:.2f} (cash ${cash_before:.2f} − "
-                f"{HardcodedRules.SLIPPAGE_BUFFER_PCT*100:.1f}% slippage buffer, "
+                f"{bot.slippage_buffer_pct*100:.1f}% slippage buffer, "
                 f"remaining ${remaining_after:.2f} < trade size ${standard_cost:.2f}) "
                 f"for {bot.symbol}"
             )
@@ -119,11 +119,11 @@ def execute_percentage_buy(bot, price: float) -> Optional[dict]:
             cost = standard_cost
             last_shot = False
     elif cash_before >= HardcodedRules.MIN_LAST_SHOT_USD:
-        cost = cash_before * (1 - HardcodedRules.SLIPPAGE_BUFFER_PCT)
+        cost = cash_before * (1 - bot.slippage_buffer_pct)
         last_shot = True
         logger.info(
             f"LAST SHOT: buying ${cost:.2f} (cash ${cash_before:.2f} − "
-            f"{HardcodedRules.SLIPPAGE_BUFFER_PCT*100:.1f}% slippage buffer, "
+            f"{bot.slippage_buffer_pct*100:.1f}% slippage buffer, "
             f"reduced from standard ${standard_cost:.2f}) for {bot.symbol}"
         )
     else:

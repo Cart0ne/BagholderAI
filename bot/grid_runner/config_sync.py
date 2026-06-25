@@ -55,6 +55,11 @@ def _sync_config_to_bot(reader: "SupabaseConfigReader", bot: "GridBot", symbol: 
         # 74b (S74b): per-coin dead-zone recalibrate threshold (hot-reload).
         # Read fresh on every tick via self.dead_zone_hours.
         bot.dead_zone_hours = float(sb_cfg["dead_zone_hours"])
+    if "slippage_buffer_pct" in sb_cfg and sb_cfg["slippage_buffer_pct"] is not None:
+        # S109 (MASTER 1.5): per-coin slippage buffer (SWEEP/LAST_SHOT buy).
+        # Board-only static; FRACTION (0.03 = 3%). NULL in DB -> keep the
+        # grid_bot default (HardcodedRules.SLIPPAGE_BUFFER_PCT) untouched.
+        bot.slippage_buffer_pct = float(sb_cfg["slippage_buffer_pct"])
     if "is_active" in sb_cfg:
         bot.is_active = bool(sb_cfg["is_active"])
     if "pending_liquidation" in sb_cfg:

@@ -231,6 +231,36 @@ def test_tf_params_applied_for_tf_grid_bot():
 
 
 # ----------------------------------------------------------------------
+# 7. per-coin slippage buffer (S109, MASTER 1.5) — SWEEP/LAST_SHOT param
+# ----------------------------------------------------------------------
+
+def test_slippage_buffer_propagates():
+    bot = make_bot()
+    reader = FakeConfigReader({"slippage_buffer_pct": 0.05})
+    _sync_config_to_bot(reader, bot, SYMBOL)
+    assert bot.slippage_buffer_pct == 0.05
+
+
+def test_slippage_buffer_default_when_absent():
+    # Non-empty config that simply omits slippage_buffer_pct must leave the
+    # grid_bot default (HardcodedRules.SLIPPAGE_BUFFER_PCT) untouched.
+    bot = make_bot()
+    default = bot.slippage_buffer_pct
+    reader = FakeConfigReader({"buy_pct": 0.7})
+    _sync_config_to_bot(reader, bot, SYMBOL)
+    assert bot.slippage_buffer_pct == default
+
+
+def test_slippage_buffer_none_ignored():
+    # NULL in the DB (None) must not override the default to a bad value.
+    bot = make_bot()
+    default = bot.slippage_buffer_pct
+    reader = FakeConfigReader({"slippage_buffer_pct": None})
+    _sync_config_to_bot(reader, bot, SYMBOL)
+    assert bot.slippage_buffer_pct == default
+
+
+# ----------------------------------------------------------------------
 # Standalone runner
 # ----------------------------------------------------------------------
 

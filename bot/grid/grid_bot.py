@@ -137,6 +137,11 @@ class GridBot:
         self.stop_buy_drawdown_pct = stop_buy_drawdown_pct
         self.stop_buy_unlock_hours = stop_buy_unlock_hours  # 75b
         self.dead_zone_hours = dead_zone_hours
+        # S109 (MASTER 1.5): per-coin slippage buffer for the SWEEP/LAST_SHOT
+        # buy cost (brief 78b). Default = global constant; bot_config
+        # .slippage_buffer_pct overrides per coin via config_sync hot-reload.
+        # FRACTION (0.03 = 3%). Board-only static (microstructure, not Sherpa).
+        self.slippage_buffer_pct = HardcodedRules.SLIPPAGE_BUFFER_PCT
         self.tf_take_profit_pct = tf_take_profit_pct
         self.tf_profit_lock_enabled = tf_profit_lock_enabled
         self.tf_profit_lock_pct = tf_profit_lock_pct

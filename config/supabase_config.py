@@ -38,7 +38,12 @@ _CONFIG_FIELDS = (
     # Without this column in the SELECT the hot-reload in config_sync silently
     # no-ops (sb_cfg.get returns None), so the timer never fires live even
     # though it was tested green in pytest.
-    "stop_buy_unlock_hours"
+    "stop_buy_unlock_hours,"
+    # S109 (MASTER 1.5): per-coin slippage buffer for the SWEEP/LAST_SHOT buy
+    # cost. FRACTION (0.03 = 3%). NULL -> grid_bot keeps its constant default.
+    # Same gotcha as stop_buy_unlock_hours: must be in this SELECT or the
+    # config_sync hot-reload silently no-ops.
+    "slippage_buffer_pct"
 )
 
 # 39j: global TF params polled from trend_config alongside bot_config.
