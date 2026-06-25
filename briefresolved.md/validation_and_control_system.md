@@ -46,10 +46,12 @@ Da session 59 in poi, ogni brief del CEO contiene una sezione "Roadmap impact" i
 
 | Check | Tipo | Frequenza | Stato |
 |---|---|---|---|
-| Homepage P&L = Dashboard P&L = DB FIFO P&L | 🔲 Da definire | — | 🔲 TODO |
-| Telegram trade notification P&L = DB realized_pnl | 🔲 Da definire | — | 🔲 TODO |
-| tf.html config values = trend_config DB values | 🔲 Da definire | — | 🔲 TODO |
-| grid.html config values = bot_config DB values | 🔲 Da definire | — | 🔲 TODO |
+| Homepage P&L = Dashboard P&L = DB canonical P&L (avg-cost equity) | Audit Area 2 (coherence) | Mensile (Cowork) | ✅ PRESIDIATO (S87→S108) |
+| Telegram trade notification P&L = DB realized_pnl (netto fee) | Audit Area 2 + fee unification S72 | Mensile | ✅ PRESIDIATO |
+| tf.html config values = trend_config DB values | Audit Area 2 + integration test config-chain | Mensile + ogni push | ✅ PRESIDIATO |
+| grid.html config values = bot_config DB values | Audit Area 2 (M2 data-driven) + integration test config-chain | Mensile + ogni push | ✅ PRESIDIATO |
+
+> **Nota (S109):** la coerenza tra le superfici è presidiata dall'**Audit Area 2** (coherence check sito pubblico ↔ codice LIVE ↔ DB ↔ state files, automatizzato via Cowork mensile — vedi PROJECT_STATE §9) **più** l'**integration test della catena config** (`tests/test_config_sync_chain_s109.py`, verifica che i valori `bot_config`/`trend_config` raggiungano davvero il bot, ad ogni push). È una verifica periodica + test in CI, non un check automatico in-bot continuo. «FIFO P&L» era terminologia superata: dal brief 70 il P&L canonico è **avg-cost equity** (cash + holdings × spot), one source of truth — il bot non ragiona FIFO.
 
 ---
 
@@ -143,3 +145,4 @@ Da session 59 in poi, ogni brief del CEO contiene una sezione "Roadmap impact" i
 | 2026-05-05 | 59 | Correzione attribuzione: i check FIFO/health sono brief **57a** (non 59a). Frequenza health check: cambiata da "ogni 30 min" a "giornaliero" (eliminato spam Telegram, baseline statico non richiede polling più frequente). |
 | 2026-05-05 | 59 | Aggiunte sezione **7. Post-Go-Live Monitoring** (validation continua dopo il go-live) e sezione **8. Process & Log Hygiene** (file system + processi + credenziali — scoperto perché un log da 23 MB con token Telegram in chiaro non era stato individuato da nessun check esistente). Sezione 6 rinominata da "Live validation" a "Pre-live gates" per chiarire che non chiude la validazione. |
 | 2026-05-06 | 61 | Sentinel + Sherpa Sprint 1 shipped (DRY_RUN default). Nuove tabelle `sentinel_scores` e `sherpa_proposals` (counterfactual tracker). Sentinel pubblica risk/opportunity score ogni 60s; Sherpa propone parametri Grid (buy_pct/sell_pct/idle_reentry_hours) ogni 120s loggando in `sherpa_proposals`. `stop_buy_drawdown_pct` resta Board-only (Sherpa logga solo `proposed_stop_buy_active` quando risk>90). `bot_config` non viene mai toccato in DRY_RUN. Switch a LIVE solo via `SHERPA_MODE=live` + Board approval. |
+| 2026-06-25 | 109 | §2 «Coerenza superfici»: i 4 check passano da 🔲 TODO a ✅ PRESIDIATO — coperti dall'Audit Area 2 (coherence automatizzato Cowork mensile, S87→S108) + integration test catena config (S109, `tests/test_config_sync_chain_s109.py`, verifica DB→bot). Terminologia «FIFO P&L» → «avg-cost equity» (FIFO superato dal brief 70). NB: §1/§7 contengono ancora «FIFO» (nomi storici dei check) — fuori scope §2, da rivedere con CEO+Board. |
