@@ -304,8 +304,25 @@ def _normalize_order_response(order: dict, symbol: str, side: str) -> Optional[d
         f"fee_base={fee_base}) id={order.get('id')}"
     )
 
+    # order_id: ccxt normalizes Binance's orderId into `id`, but on some
+    # responses (partial-fill / testnet quirks — the historical OP/USDT
+    # sell case) `id` is missing. Fall back to the raw `info.orderId`
+    # before giving up: an empty id forces reconciliation onto the
+    # timestamp heuristic, which is weaker than a real broker id.
+    order_id = str(
+        order.get("id")
+        or (order.get("info") or {}).get("orderId")
+        or ""
+    )
+    if not order_id:
+        logger.warning(
+            f"[orders] {side.upper()} {symbol}: response carries no order id "
+            f"(id={order.get('id')!r}); DB exchange_order_id will be null, "
+            f"reconciliation falls back to timestamp."
+        )
+
     return {
-        "order_id": str(order.get("id") or ""),
+        "order_id": order_id,
         "filled_amount": filled,
         "avg_price": avg_price,
         "cost": cost,
