@@ -11,11 +11,10 @@ Queste cose girano da sole. Non toccare, non aggiungere scope.
 
 | # | Cosa | Scadenza / trigger | Chi |
 |---|---|---|---|
-| 0.1 | Barometro v2 shadow validation | Verdetto ~23 giugno | Automatico |
-| 0.2 | Sherpa 7-day observation (tutti i 7 parametri + debounce) | 7gg da S102b (11 giugno) → già maturi | Automatico |
+| 0.1 | Barometro v2 shadow validation | ✅ **CHIUSO (S108)** — PASS qualità, INCONCLUSIVE prezzo | Automatico |
+| 0.2 | Sherpa observation (7 parametri + debounce) | ✅ **CHIUSO (S109)** — PASS per go-live dopo 15gg | Automatico |
 
-**Nota:** Sherpa ha già superato i 7 giorni (live dal 11 giugno). Se non
-l'abbiamo ancora guardato, è il PRIMO task attivo da fare.
+**Nota:** entrambi i verdetti dati (barometro S108, Sherpa S109). **FASE 0 chiusa.**
 
 ---
 
@@ -25,15 +24,15 @@ Senza questi non si va live. Sequenza logica, non parallelo.
 
 | # | Cosa | Dipende da | Chi | Stima |
 |---|---|---|---|---|
-| 1.1 | **Verdetto barometro** — analizzare dati shadow, decidere se cablare Sentinel | 0.1 (dati ~23 giugno) | CEO + Max | 1 sessione |
-| 1.2 | **Verdetto Sherpa** — analisi 7gg parametri, decidere se il flicker serve fix (A/B/C) | 0.2 | CEO + Max | parte della stessa sessione |
-| 1.2b | **Verifica breadth tier → Sentinel** — i bullish (tier 1/2/3) che partono *prima* che Sentinel cambi regime: anticipano il cambio di stato? Read-only, brief `config/2026-06-18_brief_tier-breadth-regime-signal.md` | dati ~23 giu (stessa sessione 1.1/1.2) | CEO + Max | parte della sessione |
-| 1.3 | **Sessione go-live experiment** — formalizzare rampa/rabbocco/verdetto/Victory Lap | 1.1 + 1.2 | CEO + Max | 1 sessione dedicata (da PARKED_golive_experiment_design.md) |
+| 1.1 | **Verdetto barometro** | 0.1 | CEO + Max | ✅ **CHIUSO (S108)** |
+| 1.2 | **Verdetto Sherpa** | 0.2 | CEO + Max | ✅ **CHIUSO (S109)** — PASS, flicker cosmetico (fix A/B/C → post regime change) |
+| 1.2b | **Verifica breadth tier → Sentinel** (read-only) | dati S109 | CEO + Max | ✅ **CHIUSO (S109)** — PARCHEGGIATO, dati insufficienti per risk-on (report `..._tier-breadth-regime-signal.md`) |
+| 1.3 | **Sessione go-live experiment** — formalizzare rampa/rabbocco/verdetto/Victory Lap (da `PARKED_golive_experiment_design.md`) | 1.1 + 1.2 ✅ | CEO + Max | **PROSSIMO** — unico task CEO+Board rimasto |
 | 1.4 | **DUST write-off** — ✅ **EVENTO+STUB done S109** (write-off ora evento persistito `DUST_WRITEOFF` + `convert_dust_to_bnb` guarded mainnet-only); reconcile wallet↔DB → go-live | Pre-mainnet | CC | ✅ S109 (parziale) |
 | 1.5 | **sell_pct + slippage_buffer parametrico per coin** — ✅ **INFRA done S109** (colonna `bot_config.slippage_buffer_pct` + hot-reload + default 0.03 = identico a oggi); taratura per-coin → mainnet (dati reali) | Pre-mainnet | CC | ✅ S109 |
 | 1.6 | **Integration test config reader chain** — ✅ **DONE S109** (8 test end-to-end, gap S76 chiuso) | Pre-mainnet (gap da S76) | CC | ✅ S109 |
-| 1.7 | **Mobile smoke test** | 1.4-1.6 completati | Max (telefono) | 30min |
-| 1.8 | **Board approval call** | Tutto sopra OK | Max | 15min |
+| 1.7 | **Mobile smoke test** | — | Max | ❌ **ELIMINATO (S109)** — Max lo fa già quotidianamente |
+| 1.8 | **Board approval call** | dopo 1.3 + annuncio Binance MiCA | Max | **PENDING** |
 
 ---
 
@@ -96,7 +95,7 @@ Roba che esiste ma NON entra in pipeline fino a nuova decisione Board.
 | IG/Canva | Post risultati cambio tono Haiku X (2-3 sett) |
 | Anthropic Admin API (costi Haiku) | Parked |
 | Security audit (headers, CSP, RLS) | Parked |
-| Sentinel market breadth da TF scanner | Phase B/C |
+| Breadth Tier 3 come segnale Sentinel | PARCHEGGIATO (S109). Analisi 6 mesi negativa in regime fear (contrarian debole, ridondante con F&G). Re-test dopo risk-on sostenuto. Script `scripts/breadth_analysis_s109.py` riutilizzabile |
 | Newsletter/mailing list blog | Post-lancio V3, valutare |
 | Reddit r/ClaudeAI post | Serve 50 karma, Max karma building |
 | HN | Account shadowbannato, serve nuovo account |
@@ -125,6 +124,7 @@ Roba che esiste ma NON entra in pipeline fino a nuova decisione Board.
 - Volume 4 "From Eyes to Live" (S83+): in corso, arco narrativo
   NewsKeeper → go-live → primi risultati. Nessun task — si scrive
   sessione per sessione.
+- **S109 inserita in Supabase (COMPLETE). Docx prodotto.** (update CEO)
 - S106 risulta BUILDING in Supabase. S107 menzionata in memoria
   ma non presente in DB — da verificare con Max.
 

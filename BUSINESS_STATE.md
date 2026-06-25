@@ -1,7 +1,7 @@
 # BUSINESS_STATE.md
 
-**Last updated:** 2026-06-22 — Session 108 (barometro verdict prep + haiku fix + TF architecture check + audit A2 remediation). Cap file 50KB (Max S95, CLAUDE.md §2b). Cadenze audit canoniche in PROJECT_STATE §9. Prec.: S107 (SEO keyword repositioning + site v2 redesign).
-**Updated by:** CEO (update S108 via Max)
+**Last updated:** 2026-06-25 — Session 109 (Sherpa verdict + breadth signal analysis + bug cleanup + pre-mainnet infra). Cap file 50KB (Max S95, CLAUDE.md §2b). Cadenze audit canoniche in PROJECT_STATE §9. Prec.: S108 (barometro verdict + haiku fix + audit A2 remediation).
+**Updated by:** CEO (update S109 via Max)
 **Basato su:** PROJECT_STATE.md aggiornato 2026-06-14; report S104 (income-page) + S106 (office-page); screenshot live homepage/dashboard/office/income; document `bagholderai_website_architecture_v1.docx` (concept esterno)
 
 ---
@@ -234,6 +234,10 @@ BagHolderAI è un progetto sperimentale dove un'AI (Claude) gestisce un micro-bu
 
 | Data | Decisione | Perché |
 |---|---|---|
+| 2026-06-25 (S109) | **Verdetto Sherpa 15gg: PASS per go-live** | Parametri protettivi stabili entro 24h. sell_pct flicker cosmetico (1-2bp/tick, 80-101 cambi in 14gg su SOL/BONK). Fix A/B/C rimandato a dopo osservazione regime change reale. Zero transizioni di regime nel periodo (extreme_fear continuo). Non blocca mainnet |
+| 2026-06-25 (S109) | **Breadth signal Tier 3 → Tier 1/2: PARCHEGGIATO** | Analisi 6 mesi mainnet (422 coin, survivorship-safe): T3 NON anticipa rimbalzi T1/2 — semmai contrarian debole. F&G domina (corr -0.29 vs forward T1 7g), T3 correla 0.395 con F&G (ridondante). Soglia $2M filtra rumore ma non produce segnale. Ri-testare dopo regime risk-on sostenuto. Gamba 2 del volume framework CHIUSA (esito negativo) |
+| 2026-06-25 (S109) | **Bug backlog azzerato + infra pre-mainnet shipped** | 4 bug chiusi (PortfolioManager rimosso, datetime deprecation 409→0 warning, exchange_order_id null fixato, validation_system aggiornato). Infra: slippage_buffer_pct colonna in bot_config (migration applicata), dust write-off come evento persistito, config chain 8 test e2e. Tutto committato + **restart Mac Mini FATTO** (runtime `7df7cca`, 22:03 CET) → fix LIVE |
+| 2026-06-25 (S109) | **Mobile smoke test eliminato da Fase 1** | Max lo fa già quotidianamente. Eliminato come gate formale |
 | 2026-06-22 (S108) | **Verdetto barometro v2: PASS qualità, INCONCLUSIVE come indicatore di trading** | N=2 flip in 13gg è insufficiente per validare il gate "flip vs BTC 24h forward return" (S100). Il barometro ha cross-validato con Tier B breadth (flash neutral 15-giu coincide con 19.6% bullish Tier B). NON blocca go-live grid. Sentinel wiring rimandato a dopo regime change sostenuto. Alternativa scartata: dichiarare PASS completo su dati insufficienti |
 | 2026-06-22 (S108) | **Dashboard label: "Net realized profit" → "Realized profit from sells (post-fees)"** | Disambigua margine realizzato dal Total P&L. Shipped da CC (commit `c2598df`) |
 | 2026-06-18 (S107) | **SEO meta + content su 7 pagine** — shift da "crypto bot" a "AI runs a business, crypto is the context" | 13 impression Bing tutte crypto. Principio: niente keyword senza contenuto che la supporti → per ogni meta tag, aggiunta riga contenuto visibile |
@@ -310,7 +314,6 @@ BagHolderAI è un progetto sperimentale dove un'AI (Claude) gestisce un micro-bu
 | **[S81 NEW] Cross-post automation Dev.to + Indie Hackers** | Decisione rimandata post-weekend | Quando un post va live su `web_astro/src/content/blog/`, script che pubblica su Dev.to via API (canonical URL, tags, serie) + prepara testo adattato per IH. ~2-3h stimato |
 | **Counterfactual tracker: aggiungere regime Sentinel** | 🆕 Nice-to-have post-osservazione | `counterfactual.py` non logga regime. Utile per correlare skip ↔ regime. ~30-45min. CEO decide se vale dopo 1-2 settimane di dati |
 | **Verifica identità accounting** (residuo Strada 2) | Post-go-live €100 | ~30 min check empirico Realized + Unrealized = Equity P&L. FIFO cancellato come canonical |
-| **Integration test config reader chain** | Pre-prossimo brief bot_config | Gap strutturale scoperto S76. ~30-60 min |
 | **Buy trigger anchor (A/B/C)** | Parcheggiata | A=last_buy, B=avg, C=hybrid. Decisione strategica |
 
 ---
@@ -322,7 +325,7 @@ BagHolderAI è un progetto sperimentale dove un'AI (Claude) gestisce un micro-bu
 | **NewsKeeper v2 Barometro verdetto** | Nessuna data fissa (era ~23 giu) | T+14 raggiunto, esito: PASS qualità / INCONCLUSIVE prezzo (N=2 flip insufficiente). Esteso fino a regime change sostenuto (neutral/bullish >24h). Non blocca go-live grid. Dettagli in diary S108 |
 | **SEO+GEO POST 2 drafting** | ~metà giugno | "Why Most AI Trading Bots Fail (And What Ours Did Wrong Too)" — keyword: ai trading bot. Cadenza 1 post ogni 1-2 settimane |
 | **Apple Notes pulizia: cancellare 8 note obsolete (Max)** | A discrezione Max | 4 note attive da mantenere, 8 obsolete da cancellare manualmente |
-| **Go-live mainnet** | Nessuna data fissa | Dipende da condizioni di mercato (bear+bull+laterale osservati). Sequenza: Sherpa LIVE testnet ✅ → osservazione → S103 parametri Board-only → barometro verdict (~23 giu) → Board approval → mainnet €100 |
+| **Go-live mainnet** | Nessuna data fissa | Fase 1 quasi vuota: restano solo 1.3 (sessione go-live experiment) e 1.8 (Board approval). Bug backlog azzerato. Infra pre-mainnet shipped, **restart FATTO S109** (fix LIVE). Gate esterno: annuncio Binance MiCA (atteso entro 30 giugno) |
 | **Sherpa LIVE su testnet (7/7 parametri)** | ✅ DONE (S102+S103) | Scrive TUTTI E 7 i parametri: buy_pct, sell_pct, idle_reentry_hours + stop_buy_drawdown_pct, stop_buy_unlock_hours, dead_zone_hours, profit_target_pct. I 4 protettivi via lookup (regime × volatility tier) con debounce 24h |
 | **Volume 4** | Nessuna deadline | In accumulo da S83, arco narrativo NewsKeeper build → go-live |
 
@@ -354,6 +357,7 @@ BagHolderAI è un progetto sperimentale dove un'AI (Claude) gestisce un micro-bu
 | **HN come canale** | Shadowban Cart0ne. Nuovo account non urgente — altri canali prioritari |
 | **Futures/hedging** | Parcheggiato S90+. Capitale >€100, stack separato, KYC aggiuntivo. Post-mainnet |
 | **Partnership / sponsorship** | Pre-traction |
+| **Breadth Tier 3 come segnale Sentinel** | PARCHEGGIATO (S109). Analisi 6 mesi non supporta l'ipotesi (contrarian debole, ridondante con F&G). Ri-test dopo regime risk-on sostenuto. Script deterministico riutilizzabile (`scripts/breadth_analysis_s109.py`) |
 
 ---
 
