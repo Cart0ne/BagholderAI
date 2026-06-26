@@ -82,6 +82,7 @@ Non toccare fino a che Fase 1-3 non sono chiuse.
 | 4.10 | Decidere TRUNCATE tabelle Sentinel/Sherpa/TF paper-era | Quando si ricollega brain |
 | 4.11 | Investigare recalibrate-on-restart (buy_pct cambia al boot) | CEO |
 | 4.12 | **Last-shot floor per-coin (BONK)** — `MIN_LAST_SHOT_USD=$5` fisso vs `min_notional` reale Binance: coincide per BTC/SOL/ETH ($5), diverge su **BONK ($1)** → oggi BONK lascia $1–5 di cassa non spendibili che Binance accetterebbe. Decidere: convertire il trigger a `max($5, min_notional)` per-coin **oppure** tenere $5 come floor anti-micro-buy (book BONK sottile, slippage 2-3%). Bot oggi è corretto, è una scelta di design. | CEO decision · intervento bot |
+| 4.13 | **TF dashboard — card per-coin mode-aware (Path 2)** — oggi tutte le coin sulla pagina TF sono `tf_grid` (TF le sceglie, grid le gestisce) → la card di grid basta (Path 1, fatto S110). Quando/se TF traderà una coin **direttamente** (`managed_by='tf'` > 0) serve una card TF dedicata: trailing stop / SL / TP / status (SCANNING · IN POSITION · TRAILING), **senza** buy/sell %, stop-buy, sell-ladder. | TF trada diretto (`managed_by='tf'` > 0) |
 
 ---
 
@@ -152,4 +153,6 @@ toccano `bot/` sono committati ma diventano LIVE solo al prossimo restart.
 verifica emersa rivedendo grid.html: il `min_notional` reale Binance è $5 per
 BTC/SOL/ETH ma $1 per BONK, mentre il bot usa il floor fisso $5 → su BONK restano
 $1-5 di cassa non spendibili. Verifica/decisione CEO, non bug. Max (S110): "per ora
-non modifichiamo", solo tracciare.*
+non modifichiamo", solo tracciare. Aggiunto anche 4.13 (TF dashboard card mode-aware,
+Path 2): la pagina TF viene uniformata a grid in S110 (Path 1, valido finché tutte le
+coin sono `tf_grid`); la card TF dedicata si fa solo quando TF traderà diretto.*
