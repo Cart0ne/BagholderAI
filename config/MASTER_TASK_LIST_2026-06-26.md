@@ -81,6 +81,7 @@ Non toccare fino a che Fase 1-3 non sono chiuse.
 | 4.9 | Script replay counterfactual Sherpa | Da brief 80a |
 | 4.10 | Decidere TRUNCATE tabelle Sentinel/Sherpa/TF paper-era | Quando si ricollega brain |
 | 4.11 | Investigare recalibrate-on-restart (buy_pct cambia al boot) | CEO |
+| 4.12 | **Last-shot floor per-coin (BONK)** — `MIN_LAST_SHOT_USD=$5` fisso vs `min_notional` reale Binance: coincide per BTC/SOL/ETH ($5), diverge su **BONK ($1)** → oggi BONK lascia $1–5 di cassa non spendibili che Binance accetterebbe. Decidere: convertire il trigger a `max($5, min_notional)` per-coin **oppure** tenere $5 come floor anti-micro-buy (book BONK sottile, slippage 2-3%). Bot oggi è corretto, è una scelta di design. | CEO decision · intervento bot |
 
 ---
 
@@ -146,3 +147,9 @@ aperti (exchange_order_id, datetime.utcnow, PortfolioManager, validation §2).
 T8/monitor griglia silenziosa parcheggiato (Max decide la soglia). I fix che
 toccano `bot/` sono committati ma diventano LIVE solo al prossimo restart.
 250/250 test verdi.*
+
+*Aggiornato: CC, 26 giugno 2026 (S110) — aggiunto 4.12 (last-shot floor per-coin),
+verifica emersa rivedendo grid.html: il `min_notional` reale Binance è $5 per
+BTC/SOL/ETH ma $1 per BONK, mentre il bot usa il floor fisso $5 → su BONK restano
+$1-5 di cassa non spendibili. Verifica/decisione CEO, non bug. Max (S110): "per ora
+non modifichiamo", solo tracciare.*
