@@ -364,6 +364,8 @@
       font-weight: 600;
     }
   </style>
+  <!-- Brief 72a S72: shared canonical P&L (mirror dashboard, home, /grid, /tf). A1 (S110b): top snapshot. -->
+  <script src="/lib/pnl-canonical.js"></script>
 </head>
 <body>
   <div class="container">
@@ -392,6 +394,36 @@
         <span id="last-update">—</span>
       </div>
       <h1><img class="h1-mascot sentinel" src="sentinel.svg" alt="Sentinel"><img class="h1-mascot sherpa" src="sherpa.svg" alt="Sherpa"><span>BagHolder<span class="ai">AI</span> <span class="badge">ADMIN</span></span></h1>
+
+      <!-- ===== A1 (S110b): TOP AGGREGATED SNAPSHOT — same canonical P&L as the homepage ===== -->
+      <div class="card" style="margin-top: 8px;">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px;">
+          <span style="font-family:var(--mono);font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.05em;">Live snapshot · Grid + TF ($600 basis)</span>
+          <span id="snap-ts" style="font-family:var(--mono);font-size:11px;color:var(--text-dim);">—</span>
+        </div>
+        <div class="last-scan">
+          <div class="scan-cell">
+            <div class="scan-label">Total P&amp;L</div>
+            <div class="scan-value" id="snap-pnl">—</div>
+            <div class="scan-sub">net of fees</div>
+          </div>
+          <div class="scan-cell">
+            <div class="scan-label">Today P&amp;L</div>
+            <div class="scan-value" id="snap-today-pnl">—</div>
+            <div class="scan-sub"><span id="snap-today-trades">—</span> trades today</div>
+          </div>
+          <div class="scan-cell">
+            <div class="scan-label">Trades (v3)</div>
+            <div class="scan-value" id="snap-trades">—</div>
+            <div class="scan-sub">testnet_2</div>
+          </div>
+          <div class="scan-cell">
+            <div class="scan-label">Grid / TF split</div>
+            <div class="scan-value" id="snap-split" style="font-size:13px;">—</div>
+            <div class="scan-sub">P&amp;L per fund</div>
+          </div>
+        </div>
+      </div>
 
       <!-- Global time-range selector — synced across Sentinel trend, Reaction
            chart, and the 3 Parameters history charts. -->
@@ -1025,6 +1057,62 @@
       if (diff < 60) return diff + 's ago';
       if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
       return Math.floor(diff / 3600) + 'h ago';
+    }
+    // A1 (S110b): always sign + 2dp, matches the homepage P&L format.
+    function fmtSignedUSD(v) {
+      if (v == null || !isFinite(v)) return '—';
+      var n = Number(v);
+      return (n >= 0 ? '+' : '-') + '$' + Math.abs(n).toFixed(2);
+    }
+
+    // A1 (S110b): top aggregated snapshot — SAME canonical formula as the homepage
+    // live-stats (GRID_BUDGET 500 + TF_BUDGET 100), reusing window.PnL (loaded in <head>).
+    // cycle=testnet_2 must be bumped on the next Binance testnet reset (same as grid/home).
+    async function renderTopSnapshot() {
+      if (!window.PnL) return;
+      try {
+        var CQ = '&config_version=eq.v3&cycle=eq.testnet_2';
+        var trades = await sbFetchAll('trades?select=symbol,side,amount,cost,fee,fee_asset,realized_pnl,created_at,managed_by' + CQ + '&order=created_at.asc');
+        var skimRows = await sbFetch('reserve_ledger?select=symbol,amount' + CQ);
+        trades = trades || []; skimRows = skimRows || [];
+        var GRID_BUDGET = 500, TF_BUDGET = 100;
+        var now = new Date();
+        var todayIso = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())).toISOString();
+        var todayPnl = 0, todayTrades = 0;
+        for (var i = 0; i < trades.length; i++) {
+          var t = trades[i];
+          if (t.created_at < todayIso) continue;
+          todayTrades++;
+          if (t.side !== 'sell') continue;
+          var p = Number(t.realized_pnl);
+          if (isFinite(p)) todayPnl += p;
+        }
+        var gridTrades = trades.filter(function (t) { return t.managed_by === 'grid'; });
+        var tfTrades = trades.filter(function (t) { return t.managed_by === 'tf' || t.managed_by === 'tf_grid'; });
+        var gridSyms = {}; gridTrades.forEach(function (t) { gridSyms[t.symbol] = 1; });
+        var tfSyms = {}; tfTrades.forEach(function (t) { tfSyms[t.symbol] = 1; });
+        var skimGrid = 0, skimTf = 0;
+        skimRows.forEach(function (r) {
+          var a = Number(r.amount || 0);
+          if (gridSyms[r.symbol]) skimGrid += a;
+          else if (tfSyms[r.symbol]) skimTf += a;
+        });
+        var allSymbols = Object.keys(gridSyms).concat(Object.keys(tfSyms)).filter(function (v, i, arr) { return arr.indexOf(v) === i; });
+        var prices = await window.PnL.fetchLivePrices(allSymbols);
+        var gridState = window.PnL.computeCanonicalState(gridTrades, skimGrid, prices, GRID_BUDGET);
+        var tfState = window.PnL.computeCanonicalState(tfTrades, skimTf, prices, TF_BUDGET);
+        var totalPnl = gridState.totalPnL + tfState.totalPnL;
+        var pnlEl = document.getElementById('snap-pnl');
+        pnlEl.textContent = fmtSignedUSD(totalPnl);
+        pnlEl.classList.toggle('pos', totalPnl >= 0); pnlEl.classList.toggle('neg', totalPnl < 0);
+        var tEl = document.getElementById('snap-today-pnl');
+        tEl.textContent = fmtSignedUSD(todayPnl);
+        tEl.classList.toggle('pos', todayPnl >= 0); tEl.classList.toggle('neg', todayPnl < 0);
+        document.getElementById('snap-today-trades').textContent = String(todayTrades);
+        document.getElementById('snap-trades').textContent = String(trades.length);
+        document.getElementById('snap-split').textContent = fmtSignedUSD(gridState.totalPnL) + ' / ' + fmtSignedUSD(tfState.totalPnL);
+        document.getElementById('snap-ts').textContent = 'updated ' + new Date().toLocaleTimeString();
+      } catch (e) { console.warn('top snapshot failed:', e); }
     }
 
     // === RENDER: LAST SCAN BOX ===
@@ -2190,6 +2278,9 @@
         // which would skew "Last scan" and the trend chart's Y-axis if included.
         var last = await sbFetch('sentinel_scores?select=*&score_type=eq.fast&order=created_at.desc&limit=1');
         renderLastScan(last[0]);
+
+        // A1 (S110b): top aggregated snapshot — range-independent, same canonical P&L as homepage.
+        renderTopSnapshot();
 
         // Sentinel slow loop banner (brief 77c widget A) + NewsKeeper barometer
         // (S100 v2, shadow). Both run once at boot here and then every 30s via
