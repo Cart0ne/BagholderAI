@@ -226,13 +226,18 @@ def log_full_scan(supabase, coins: list[dict]):
         logger.warning(f"Failed to log scan data: {e}")
 
 
-def cleanup_old_trend_scans(supabase, retention_days: int = 14) -> int:
+def cleanup_old_trend_scans(supabase, retention_days: int = 90) -> int:
     """Delete trend_scans rows older than retention_days. Returns rows deleted.
 
     47c: trend_scans is "temporary for debugging" (see log_full_scan) and is
     the largest contributor to DB growth — ~50 rows per scan. With scan_interval
     halved (1h → 30min) we double the daily volume, so a periodic prune keeps
     the Supabase Free tier (500 MB) viable for the foreseeable future.
+
+    S110e (2026-06-27): raised 14d → 90d to accumulate a Tier-3 track record
+    (tier C = ~203 small-cap symbols logged here) for the future TF Tier-3 clone.
+    At ~2.3K rows/day, 90d ≈ 206K rows ≈ 59 MB — DB stays ~28% of the 500 MB tier.
+    Kept in sync with db_maintenance.RETENTION_POLICY["trend_scans"].
 
     Best-effort: never raises. Failure logs a warning and the loop proceeds.
     """
@@ -732,11 +737,11 @@ def run_trend_follower():
 
             # 47c: prune old trend_scans rows once per day. trend_scans is the
             # largest table by row count (~50/scan); without a TTL it would
-            # eat the Supabase Free 500 MB allowance over time. 14 days is
-            # enough to investigate any "what happened on day X?" question.
+            # eat the Supabase Free 500 MB allowance over time.
+            # S110e (2026-06-27): 14d → 90d to build a Tier-3 track record.
             now = datetime.now(timezone.utc)
             if last_cleanup_at is None or (now - last_cleanup_at).total_seconds() >= 86400:
-                cleanup_old_trend_scans(supabase, retention_days=14)
+                cleanup_old_trend_scans(supabase, retention_days=90)
                 last_cleanup_at = now
 
             # Report to Telegram (TF-only view: active/deployed count reflects TF's universe)

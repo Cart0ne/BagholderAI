@@ -27,8 +27,14 @@ logger = logging.getLogger("bagholderai.maintenance")
 # Retention policy: table → window in days, with the timestamp column to filter on.
 # Tightening the windows is safe (deletes more); loosening means re-introducing IO.
 RETENTION_POLICY: dict[str, dict] = {
-    "trend_scans":         {"days": 14, "date_column": "created_at"},
-    "trend_decisions_log": {"days": 14, "date_column": "created_at"},
+    # S110e (2026-06-27): trend_scans + trend_decisions_log raised 14d -> 90d to
+    # accumulate a track record for the future TF Tier-3 clone (CASO 2). Storage
+    # is fine - at ~2.3K scan rows/day, 90d ~= 206K rows ~= 59 MB; the DB stays
+    # ~28% of the 500 MB free tier. Neither table is read on the trading hot path
+    # (trend_scans is a debug log; trend_decisions_log is audit). The trend_scans
+    # window is kept in sync with trend_follower.cleanup_old_trend_scans.
+    "trend_scans":         {"days": 90, "date_column": "created_at"},
+    "trend_decisions_log": {"days": 90, "date_column": "created_at"},
     "bot_state_snapshots": {"days":  7, "date_column": "created_at"},
     "bot_events_log":      {"days":  7, "date_column": "created_at"},
     "counterfactual_log":  {"days": 14, "date_column": "created_at"},
