@@ -496,6 +496,8 @@
           <div class="change" id="sentinel-overlay-change">—</div>
         </div>
         <canvas id="sentinel-chart"></canvas>
+        <!-- A4 (S110b): hover tooltip (day/time, BTC, risk, opp) -->
+        <div id="sentinel-tooltip" style="position:absolute; pointer-events:none; display:none; background:rgba(10,12,20,0.96); border:1px solid rgba(255,255,255,0.14); border-radius:6px; padding:6px 8px; font-family:var(--mono); font-size:10px; line-height:1.5; color:var(--text); white-space:nowrap; z-index:6; transform:translate(-50%, calc(-100% - 14px));"></div>
         <div class="chart-legend">
           <span class="item"><span class="swatch" style="background: var(--red-strong); height: 2px;"></span> Risk score (0-100)</span>
           <span class="item"><span class="swatch" style="background: var(--green); height: 2px;"></span> Opportunity score (0-100)</span>
@@ -1251,6 +1253,43 @@
     }
 
     // === RENDER: 24H CHART (risk + opp + BTC overlay + speed markers) ===
+    // === A4 (S110b): hover tooltip for the Sentinel × BTC chart ===
+    var sentinelPoints = [];          // {x, created_at, btc, risk, opp} captured on each render
+    var sentinelTooltipBound = false;
+    function fmtDateTime(iso) {
+      var d = new Date(iso);
+      return d.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ' ' +
+             d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+    function bindSentinelTooltip() {
+      if (sentinelTooltipBound) return;
+      var canvas = document.getElementById('sentinel-chart');
+      var wrap = canvas ? canvas.parentElement : null;
+      var tip = document.getElementById('sentinel-tooltip');
+      if (!canvas || !wrap || !tip) return;
+      sentinelTooltipBound = true;
+      canvas.addEventListener('mousemove', function (e) {
+        if (!sentinelPoints.length) { tip.style.display = 'none'; return; }
+        var cRect = canvas.getBoundingClientRect();
+        var mx = e.clientX - cRect.left;
+        var best = sentinelPoints[0], bestD = Math.abs(best.x - mx);
+        for (var i = 1; i < sentinelPoints.length; i++) {
+          var d = Math.abs(sentinelPoints[i].x - mx);
+          if (d < bestD) { bestD = d; best = sentinelPoints[i]; }
+        }
+        var wRect = wrap.getBoundingClientRect();
+        tip.innerHTML =
+          '<div style="color:var(--text-dim);margin-bottom:2px;">' + fmtDateTime(best.created_at) + '</div>' +
+          '<div><span style="color:#7dd3fc;">BTC</span> ' + (isFinite(best.btc) ? '$' + Math.round(best.btc).toLocaleString('en-US') : '—') + '</div>' +
+          '<div><span style="color:#ef4444;">Risk</span> ' + (isFinite(best.risk) ? best.risk.toFixed(0) : '—') +
+          ' &nbsp;<span style="color:#22c55e;">Opp</span> ' + (isFinite(best.opp) ? best.opp.toFixed(0) : '—') + '</div>';
+        tip.style.left = (best.x + (cRect.left - wRect.left)) + 'px';
+        tip.style.top = (e.clientY - wRect.top) + 'px';
+        tip.style.display = 'block';
+      });
+      canvas.addEventListener('mouseleave', function () { tip.style.display = 'none'; });
+    }
+
     function renderChart(rows) {
       var canvas = document.getElementById('sentinel-chart');
       var ctx = canvas.getContext('2d');
@@ -1302,6 +1341,13 @@
       function tx(ts) { return pad.l + (ts - t0) / span * plotW; }
       function tyScore(v) { return pad.t + plotH - (v / 100) * plotH; }
       function tyBtc(v) { return pad.t + plotH - (v - btcMin) / btcRange * plotH; }
+
+      // A4 (S110b): capture point x-pixels + values for the hover tooltip, then bind once.
+      sentinelPoints = rows.map(function (rr) {
+        return { x: tx(new Date(rr.created_at).getTime()), created_at: rr.created_at,
+                 btc: Number(rr.btc_price), risk: Number(rr.risk_score), opp: Number(rr.opportunity_score) };
+      });
+      bindSentinelTooltip();
 
       // Brief 86b — regime bands behind everything else.
       drawRegimeBands(ctx, t0, t1, span, tx, pad, plotH);
