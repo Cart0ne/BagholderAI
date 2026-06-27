@@ -660,6 +660,11 @@
       renderTrades();
     }
 
+    // G1 (S110): floor di acquisto del bot — rispecchia config/settings.py MIN_LAST_SHOT_USD ($5).
+    // Sotto questa cassa nessun buy parte (nemmeno un last-shot), quindi il dashboard azzera
+    // i buys-left ("TAPPED OUT") invece di mostrare un conteggio negativo da drift SWEEP.
+    var MIN_LAST_SHOT = 5;
+
     function renderAlerts() {
       var el = document.getElementById('alerts');
       var alerts = [];
@@ -675,12 +680,13 @@
       configData.forEach(function(cfg) {
         var sym = cfg.symbol;
         var analysis = analyzeCoin(sym, cfg);
-        if (analysis.buysLeft < 0) {
+        if (analysis.cashLeft < 0) {
           // Brief 78b (S78 fase 2): SWEEP/LAST SHOT con slippage positivo lascia cashLeft<0;
           // fisiologico, non bug. cashLeft è già negativo, mostriamo |cashLeft| come "over".
+          // G1 (S110): condizione su cashLeft<0 (buysLeft ora è sempre ≥0 per il guard).
           alerts.push({ type: 'red', text: SHORT[sym] + ' is tapped out (swept) — $' + fmt(Math.abs(analysis.cashLeft)) + ' over by slippage' });
         } else if (analysis.buysLeft === 0) {
-          alerts.push({ type: 'red', text: SHORT[sym] + ' is tapped out — $' + fmt(analysis.cashLeft) + ' cash, needs $' + fmt(Number(cfg.capital_per_trade)) + '/buy' });
+          alerts.push({ type: 'red', text: SHORT[sym] + ' is tapped out — $' + fmt(analysis.cashLeft) + ' cash, below $' + fmt(MIN_LAST_SHOT) + ' min buy' });
         } else if (analysis.buysLeft === 1) {
           alerts.push({ type: 'yellow', text: SHORT[sym] + ' has only 1 buy left ($' + fmt(analysis.cashLeft) + ' remaining)' });
         }
@@ -711,7 +717,22 @@
       // 52a: unified USDT-flow formula for both open AND closed positions.
       // alloc − invested + received − reserve = cash operativo del bot per coin.
       var cashLeft = alloc - netSpent - skimForCoin;
-      var buysLeft = costPerTrade > 0 ? Math.floor(cashLeft / costPerTrade) : 0;
+      // G1 (S110): buys-left con last-shot + guard. Il bot compra a lotti pieni
+      // (costPerTrade) finché cassa ≥ costPerTrade, poi UN last-shot ridotto se la
+      // cassa residua è ≥ MIN_LAST_SHOT ($5). Sotto $5 nessun buy → 0 ("TAPPED OUT"),
+      // niente più "−1" dal drift SWEEP/LAST SHOT (cashLeft leggermente negativo).
+      var fullBuys = costPerTrade > 0 ? Math.floor(Math.max(0, cashLeft) / costPerTrade) : 0;
+      var lotRemainder = Math.max(0, cashLeft) - fullBuys * costPerTrade;
+      var lastShotBuy = (cashLeft >= MIN_LAST_SHOT && lotRemainder >= MIN_LAST_SHOT) ? 1 : 0;
+      var buysLeft = cashLeft < MIN_LAST_SHOT ? 0 : fullBuys + lastShotBuy;
+      // Taglia del PROSSIMO buy: lotto pieno se la cassa lo copre, altrimenti il
+      // last-shot ridotto (cassa residua), 0 se sotto il floor.
+      var nextBuySize = cashLeft >= costPerTrade ? costPerTrade : (cashLeft >= MIN_LAST_SHOT ? cashLeft : 0);
+      // Cassa mancante per sbloccare il PROSSIMO lotto pieno (compounding grumoso, MASTER 4.14).
+      // Da negativo si risale fino a un lotto intero.
+      var toNextLot = costPerTrade > 0
+        ? (cashLeft < 0 ? costPerTrade - cashLeft : costPerTrade - (cashLeft % costPerTrade))
+        : 0;
       // Capacity bar = % del budget allocation impegnato in posizione aperta.
       var capacityPct = alloc > 0 ? (openCost / alloc) * 100 : 0;
       var maxCapacity = costPerTrade > 0 ? Math.floor(alloc / costPerTrade) : 0;
@@ -754,7 +775,8 @@
         sellCount: coinTrades.filter(function(t) { return t.side === 'sell'; }).length,
         netSpent: netSpent, openCost: openCost,
         cashLeft: cashLeft,
-        buysLeft: buysLeft, capacityPct: Math.min(capacityPct, 100),
+        buysLeft: buysLeft, nextBuySize: nextBuySize, toNextLot: toNextLot,
+        capacityPct: Math.min(capacityPct, 100),
         maxCapacity: maxCapacity, lastTrade: lastTrade,
         lastBuyPrice: lastBuyPrice,
         lastSellPrice: lastSellPrice
@@ -916,7 +938,14 @@
 
         var positionClosed = a.netHoldings <= 0.000001;
         var statusClass = positionClosed ? 'status-ok' : a.buysLeft === 0 ? 'status-dead' : a.buysLeft <= 1 ? 'status-low' : 'status-ok';
-        var statusText = positionClosed ? 'CLOSED — awaiting re-entry' : a.buysLeft === 0 ? 'TAPPED OUT' : a.buysLeft + ' buys left';
+        // G1 (S110): badge "buys left" + taglia del prossimo buy (adattiva: lotto pieno o last-shot).
+        var buyWord = a.buysLeft === 1 ? ' buy left' : ' buys left';
+        var sizeNote = a.nextBuySize >= a.costPerTrade
+          ? ' · $' + fmt(a.nextBuySize, 0) + '/buy'
+          : ' · $' + fmt(a.nextBuySize, 0) + ' last shot';
+        var statusText = positionClosed ? 'CLOSED — awaiting re-entry'
+          : a.buysLeft === 0 ? 'TAPPED OUT'
+          : a.buysLeft + buyWord + sizeNote;
 
         var barColor = a.buysLeft === 0 ? 'var(--red)' : a.buysLeft <= 1 ? 'var(--yellow)' : color;
 
@@ -1019,6 +1048,9 @@
         var nextSellColor = (nextSellDistance === null) ? 'var(--text-dim)'
           : (nextSellDistance < 0 ? '#5fb3ff' : 'var(--green)');  // cyan = waiting; green = already above
         var lastBuyStr = a.lastBuyPrice > 0 ? fmtPrice(a.lastBuyPrice) : '—';
+        // G1 (S110): lordo necessario al prossimo lotto, al netto dello skim (MASTER 4.14).
+        var skimPct = Number(cfg.skim_pct) || 0;
+        var grossToNextLot = (skimPct > 0 && skimPct < 100) ? a.toNextLot / (1 - skimPct / 100) : a.toNextLot;
 
         return '<div class="coin-card" id="card-' + short + '">' +
           '<div class="coin-header">' +
@@ -1051,6 +1083,8 @@
             '<div class="cap-bar-label"><span>Capital usage</span><span>' + fmt(a.capacityPct, 0) + '%</span></div>' +
             '<div class="cap-bar"><div class="cap-bar-fill" style="width:' + a.capacityPct + '%; background:' + barColor + ';"></div></div>' +
           '</div>' +
+          // G1 (S110): "To next lot" — cassa mancante al prossimo lotto pieno (compounding grumoso, MASTER 4.14).
+          '<div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-top:6px;" title="Cash still needed to unlock one more full $' + fmt(a.costPerTrade, 0) + ' buy. Buying capacity grows in whole-lot steps — see MASTER 4.14.">To next lot: <span style="color:var(--text);">+$' + fmt(a.toNextLot, 0) + '</span> · ≈$' + fmt(grossToNextLot, 0) + ' gross profit (' + fmt(skimPct, 0) + '% skim)</div>' +
           '<div class="config-section">' +
             '<div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-bottom:8px;">PARAMETERS</div>' +
             '<div class="param-group-label">Trading Parameters — by Board</div>' +
