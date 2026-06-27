@@ -940,9 +940,10 @@
         var statusClass = positionClosed ? 'status-ok' : a.buysLeft === 0 ? 'status-dead' : a.buysLeft <= 1 ? 'status-low' : 'status-ok';
         // G1 (S110): badge "buys left" + taglia del prossimo buy (adattiva: lotto pieno o last-shot).
         var buyWord = a.buysLeft === 1 ? ' buy left' : ' buys left';
+        var sizeDec = Number.isInteger(a.nextBuySize) ? 0 : 2;  // S110: importo esatto se il lotto non è tondo (es. ETH $15.56)
         var sizeNote = a.nextBuySize >= a.costPerTrade
-          ? ' · $' + fmt(a.nextBuySize, 0) + '/buy'
-          : ' · $' + fmt(a.nextBuySize, 0) + ' last shot';
+          ? ' · $' + fmt(a.nextBuySize, sizeDec) + '/buy'
+          : ' · $' + fmt(a.nextBuySize, sizeDec) + ' last shot';
         var statusText = positionClosed ? 'CLOSED — awaiting re-entry'
           : a.buysLeft === 0 ? 'TAPPED OUT'
           : a.buysLeft + buyWord + sizeNote;

@@ -190,10 +190,26 @@
     .status-ok { background: rgba(34,197,94,0.15); color: var(--green); }
 
     .coin-grid {
-      display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 12px;
+      display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+      column-gap: 8px; row-gap: 6px; margin-bottom: 14px;
     }
-    .coin-stat .cs-label { font-family: var(--mono); font-size: 10px; color: var(--text-dim); }
-    .coin-stat .cs-value { font-size: 14px; font-weight: 600; color: var(--text); }
+    /* S110 (T1): section labels Price/Cash flow/Activity/Triggers — portate da grid.html */
+    .coin-section-label {
+      grid-column: 1 / -1;
+      font-family: var(--mono); font-size: 9px; color: var(--text-dim);
+      text-transform: uppercase; letter-spacing: 0.12em;
+      padding-bottom: 2px; margin-top: 6px;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .coin-section-label:first-child { margin-top: 0; }
+    .coin-stat .cs-label {
+      font-family: var(--mono); font-size: 9px; color: var(--text-dim);
+      text-transform: uppercase; letter-spacing: 0.04em;
+    }
+    .coin-stat .cs-value {
+      font-size: 15px; font-weight: 700; color: #fff; margin-top: 2px;
+      line-height: 1.2;
+    }
 
     /* Capacity bar */
     .cap-bar-wrap { margin-bottom: 4px; }
@@ -585,6 +601,9 @@
     var skimReserveTotal = 0;
     var skimBySymbol = {};  // symbol -> total skim amount
     var livePrices = {};  // symbol -> price
+    var runtimeStateBySymbol = {};  // symbol -> bot_runtime_state row (S110 T1: trigger live, mirror di grid.html)
+    // S110 (G1/T1): floor di acquisto del bot — config/settings.py MIN_LAST_SHOT_USD ($5).
+    var MIN_LAST_SHOT = 5;
     // S69: avg-cost replay (running weighted average), canonical post-S66 e
     // come Binance scrive realized_pnl. Sostituisce il vecchio FIFO replay.
     // avg_buy_price si aggiorna SOLO sui buy; resta invariato sui sell e si
@@ -643,7 +662,10 @@
         sbGet('bot_config', 'managed_by=in.(tf,tf_grid)&order=symbol'),
         sbGet('trades', 'select=id,symbol,side,amount,price,cost,fee,fee_asset,realized_pnl,created_at,managed_by&config_version=eq.v3&managed_by=in.(tf,tf_grid)&order=created_at.desc'),
         sbGet('daily_pnl', 'order=date.desc&limit=10'),
-        sbGet('reserve_ledger', 'select=symbol,amount&config_version=eq.v3')
+        sbGet('reserve_ledger', 'select=symbol,amount&config_version=eq.v3'),
+        // S110 (T1): runtime-state mirror (1 riga/symbol, UPSERT ogni tick dal bot).
+        // Stessa fonte di grid.html per i trigger live "Next buy/sell if" + stop-buy.
+        sbGet('bot_runtime_state', 'select=*')
       ]);
 
       var failed = settled.filter(function(r) { return r.status === 'rejected'; });
@@ -660,6 +682,10 @@
       tradesData = settled[1].value;
       pnlData = settled[2].value;
       var skimRows = settled[3].value;
+      // S110 (T1): runtime-state per-symbol, con fallback se una riga manca (bot non ancora partito).
+      var runtimeStateRows = settled[4].value || [];
+      runtimeStateBySymbol = {};
+      runtimeStateRows.forEach(function(r) { runtimeStateBySymbol[r.symbol] = r; });
 
       // Build dynamic color/short/decimals maps for the current TF-managed set
       buildMaps(configData);
@@ -1135,10 +1161,37 @@
       // S69: cost basis posizione aperta = avg_buy × holdings (avg-cost canonico).
       var openCost = s.avg_buy_price * s.holdings;
       var cashLeft = alloc - netSpent - skimForCoin;
-      var buysLeft = costPerTrade > 0 ? Math.floor(cashLeft / costPerTrade) : 0;
+      // S110 (T1/G1): allineato a grid.html — buys-left con last-shot + guard,
+      // taglia del prossimo buy e "to next lot" (MIN_LAST_SHOT = floor bot $5).
+      var fullBuys = costPerTrade > 0 ? Math.floor(Math.max(0, cashLeft) / costPerTrade) : 0;
+      var lotRemainder = Math.max(0, cashLeft) - fullBuys * costPerTrade;
+      var lastShotBuy = (cashLeft >= MIN_LAST_SHOT && lotRemainder >= MIN_LAST_SHOT) ? 1 : 0;
+      var buysLeft = cashLeft < MIN_LAST_SHOT ? 0 : fullBuys + lastShotBuy;
+      var nextBuySize = cashLeft >= costPerTrade ? costPerTrade : (cashLeft >= MIN_LAST_SHOT ? cashLeft : 0);
+      var toNextLot = costPerTrade > 0
+        ? (cashLeft < 0 ? costPerTrade - cashLeft : costPerTrade - (cashLeft % costPerTrade))
+        : 0;
       var capacityPct = alloc > 0 ? (openCost / alloc) * 100 : 0;
       var maxCapacity = costPerTrade > 0 ? Math.floor(alloc / costPerTrade) : 0;
       var lastTrade = coinTrades.length > 0 ? coinTrades[0] : null;
+      // S110 (T1): ladder replay per i trigger "Next buy/sell if" (mirror di grid.html).
+      var lastBuyTrade = coinTrades.find(function(t) { return t.side === 'buy'; });
+      var lastBuyPrice = lastBuyTrade ? Number(lastBuyTrade.price) : 0;
+      var ascTrades = coinTrades.slice().reverse();
+      var ladderQty = 0, lastSellPrice = 0;
+      for (var li = 0; li < ascTrades.length; li++) {
+        var ltr = ascTrades[li];
+        var lamt = Number(ltr.amount);
+        if (ltr.side === 'buy') {
+          ladderQty += lamt;
+        } else if (ltr.side === 'sell') {
+          if (ladderQty > 1e-12) {
+            ladderQty -= lamt;
+            if (ladderQty <= 1e-9) { ladderQty = 0; lastSellPrice = 0; }
+            else { lastSellPrice = Number(ltr.price); }
+          }
+        }
+      }
 
       return {
         alloc: alloc, costPerTrade: costPerTrade,
@@ -1147,8 +1200,10 @@
         buyCount: buyCount, sellCount: sellCount,
         netSpent: netSpent, openCost: openCost,
         cashLeft: cashLeft,
-        buysLeft: buysLeft, capacityPct: Math.min(capacityPct, 100),
-        maxCapacity: maxCapacity, lastTrade: lastTrade
+        buysLeft: buysLeft, nextBuySize: nextBuySize, toNextLot: toNextLot,
+        capacityPct: Math.min(capacityPct, 100),
+        maxCapacity: maxCapacity, lastTrade: lastTrade,
+        lastBuyPrice: lastBuyPrice, lastSellPrice: lastSellPrice
       };
     }
 
@@ -1309,20 +1364,16 @@
         var a = analyzeCoin(sym, cfg);
 
         var positionClosed = a.netHoldings <= 0.000001;
-        var statusClass, statusText;
-        if (positionClosed) {
-          statusClass = 'status-ok';
-          statusText = 'CLOSED — awaiting re-entry';
-        } else if (a.buysLeft === 0) {
-          statusClass = 'status-dead';
-          statusText = 'TAPPED OUT';
-        } else if (a.buysLeft <= 1) {
-          statusClass = 'status-low';
-          statusText = a.buysLeft + ' buys left';
-        } else {
-          statusClass = 'status-ok';
-          statusText = a.buysLeft + ' buys left';
-        }
+        // S110 (T1/G1): badge "buys left" + taglia prossimo buy (lotto pieno o last-shot), come grid.html.
+        var buyWord = a.buysLeft === 1 ? ' buy left' : ' buys left';
+        var sizeDec = Number.isInteger(a.nextBuySize) ? 0 : 2;  // S110: importo esatto se il lotto non è tondo (es. ETH $15.56)
+        var sizeNote = a.nextBuySize >= a.costPerTrade
+          ? ' · $' + fmt(a.nextBuySize, sizeDec) + '/buy'
+          : ' · $' + fmt(a.nextBuySize, sizeDec) + ' last shot';
+        var statusClass = positionClosed ? 'status-ok' : a.buysLeft === 0 ? 'status-dead' : a.buysLeft <= 1 ? 'status-low' : 'status-ok';
+        var statusText = positionClosed ? 'CLOSED — awaiting re-entry'
+          : a.buysLeft === 0 ? 'TAPPED OUT'
+          : a.buysLeft + buyWord + sizeNote;
 
         var barColor = a.buysLeft === 0 ? 'var(--red)' : a.buysLeft <= 1 ? 'var(--yellow)' : color;
 
@@ -1364,23 +1415,109 @@
           ? '<span style="background:#2ecc71;color:#fff;padding:2px 6px;border-radius:4px;font-size:10px;font-family:var(--mono);margin-left:8px;vertical-align:middle;" title="Tier 1-2 GRID-managed: no stop-loss, no BEARISH exit, profit lock only">GRID</span>'
           : '';
 
+        // S110 (T1): trigger live — mirror di grid.html (livePrice, diff%, next buy/sell, stop-buy).
+        var livePrice = livePrices[sym];
+        var hasLive = !positionClosed && livePrice > 0 && a.avgBuyPrice > 0;
+        var diffPct = hasLive ? ((livePrice - a.avgBuyPrice) / a.avgBuyPrice * 100) : null;
+        var diffColor = !hasLive ? 'var(--text-dim)' : (diffPct >= 0 ? 'var(--green)' : 'var(--red)');
+        var diffStr = !hasLive ? '—' : (diffPct >= 0 ? '+' : '') + diffPct.toFixed(2) + '%';
+        var FEE_RATE = 0.001;
+        var buyPct = Number(cfg.buy_pct) || 0;
+        var sellPct = Number(cfg.sell_pct) || 0;
+        var rtState = runtimeStateBySymbol[sym] || {};
+        var botBuyRef = Number(rtState.buy_reference_price) || 0;
+        var botSellRef = Number(rtState.last_sell_price) || 0;
+        var buyRefForTrigger = botBuyRef > 0 ? botBuyRef : a.lastBuyPrice;
+        var hasBuyRef = buyRefForTrigger > 0 && buyPct > 0;
+        var hasSellRef = a.avgBuyPrice > 0 && sellPct > 0 && !positionClosed;
+        var nextBuyTrigger = hasBuyRef ? buyRefForTrigger * (1 - buyPct / 100) : 0;
+        var ladderSellRef = botSellRef > 0 ? botSellRef : a.lastSellPrice;
+        var sellRef = ladderSellRef > 0 ? ladderSellRef : a.avgBuyPrice;
+        var penaltyPct = Number(rtState.sell_pct_penalty) || 0;
+        var effectiveSellPct = sellPct + penaltyPct;
+        var nextSellTrigger = hasSellRef
+          ? sellRef * (1 + effectiveSellPct / 100 + FEE_RATE) / (1 - FEE_RATE)
+          : 0;
+        var nextBuyStr = hasBuyRef ? fmtPrice(nextBuyTrigger) : '—';
+        var nextSellStr = hasSellRef ? fmtPrice(nextSellTrigger) : '—';
+        var buySellPctStr = (buyPct > 0 || sellPct > 0)
+          ? (buyPct > 0 ? '−' + buyPct.toFixed(1) + '%' : '—') + ' / ' + (sellPct > 0 ? '+' + sellPct.toFixed(1) + '%' : '—')
+          : '—';
+        var nextBuyDistance = (hasBuyRef && livePrice > 0)
+          ? ((livePrice - nextBuyTrigger) / nextBuyTrigger * 100) : null;
+        var nextBuyColor = (nextBuyDistance === null) ? 'var(--text-dim)'
+          : (nextBuyDistance > 0 ? '#5fb3ff' : 'var(--green)');
+        var stopBuyPct = Number(cfg.stop_buy_drawdown_pct) || 0;
+        var isStopBuyActive = !!rtState.stop_buy_active && stopBuyPct > 0;
+        var unlockHours = Number(cfg.stop_buy_unlock_hours) || 0;
+        var activatedAtIso = rtState.stop_buy_activated_at || null;
+        var unlockCountdownStr = '';
+        var unlockTooltipExtra = '';
+        if (isStopBuyActive && unlockHours > 0 && activatedAtIso) {
+          var activatedMs = Date.parse(activatedAtIso);
+          if (!Number.isNaN(activatedMs)) {
+            var unlockMs = activatedMs + unlockHours * 3600 * 1000;
+            var remainingMs = unlockMs - Date.now();
+            if (remainingMs <= 0) {
+              unlockCountdownStr = ' · unlock pending';
+              unlockTooltipExtra = ' Auto-unlock condition met — bot will clear the flag at next tick.';
+            } else {
+              var remMin = Math.floor(remainingMs / 60000);
+              var remH = Math.floor(remMin / 60);
+              var remMinRem = remMin % 60;
+              var humanRem = remH > 0 ? (remH + 'h ' + remMinRem + 'm') : (remMinRem + 'm');
+              unlockCountdownStr = ' · resets in ' + humanRem;
+              unlockTooltipExtra = ' Auto-unlock armed: resets in ' + humanRem + ' (after ' + unlockHours + 'h since activation).';
+            }
+          }
+        } else if (isStopBuyActive && unlockHours === 0) {
+          unlockTooltipExtra = ' Auto-unlock disabled (stop_buy_unlock_hours=0) — only a profitable sell will clear the guard.';
+        }
+        var nextBuyCellHtml = isStopBuyActive
+          ? '<div class="coin-stat" title="Bot drawdown exceeded ' + stopBuyPct.toFixed(0) +
+            '% of allocation. New buys are blocked. Existing holdings unaffected (Strategy A still applies). Reset mechanisms: profitable sell (always), OR auto-unlock timer (if enabled).' + unlockTooltipExtra + '">' +
+            '<div class="cs-label" style="color:var(--red);">Stop-buy active</div>' +
+            '<div class="cs-value" style="color:var(--red);font-size:11px;">BLOCKED · drawdown &gt; ' + stopBuyPct.toFixed(0) + '%' + unlockCountdownStr + '</div></div>'
+          : '<div class="coin-stat"><div class="cs-label">Next buy if ↓</div>' +
+            '<div class="cs-value" style="color:' + nextBuyColor + ';">' + nextBuyStr + '</div></div>';
+        var nextSellDistance = (hasSellRef && livePrice > 0)
+          ? ((livePrice - nextSellTrigger) / nextSellTrigger * 100) : null;
+        var nextSellColor = (nextSellDistance === null) ? 'var(--text-dim)'
+          : (nextSellDistance < 0 ? '#5fb3ff' : 'var(--green)');
+        var lastBuyStr = a.lastBuyPrice > 0 ? fmtPrice(a.lastBuyPrice) : '—';
+        // S110 (G1): "to next lot" — lordo necessario al netto dello skim (MASTER 4.14).
+        var skimPct = Number(cfg.skim_pct) || 0;
+        var grossToNextLot = (skimPct > 0 && skimPct < 100) ? a.toNextLot / (1 - skimPct / 100) : a.toNextLot;
+
         return '<div class="coin-card" id="card-' + short + '">' +
           '<div class="coin-header">' +
             '<span class="coin-name" style="color:' + color + ';">' + short + modeBadge + '</span>' +
             '<span class="coin-status ' + statusClass + '">' + statusText + '</span>' +
           '</div>' +
           '<div class="coin-grid">' +
+            '<div class="coin-section-label">Price</div>' +
+            '<div class="coin-stat"><div class="cs-label">Avg buy</div><div class="cs-value">' + (positionClosed ? '—' : fmtPrice(a.avgBuyPrice)) + '</div></div>' +
+            '<div class="coin-stat"><div class="cs-label">Current price</div><div class="cs-value">' + ((positionClosed || !livePrice) ? '—' : fmtPrice(livePrice)) + '</div></div>' +
+            '<div class="coin-stat"><div class="cs-label">Diff %</div><div class="cs-value" style="color:' + diffColor + ';">' + diffStr + '</div></div>' +
+            '<div class="coin-section-label">Cash flow</div>' +
             '<div class="coin-stat"><div class="cs-label">Cash</div><div class="cs-value">' + fmtUsd(a.cashLeft) + '</div></div>' +
             '<div class="coin-stat"><div class="cs-label">Open cost basis</div><div class="cs-value">' + fmtUsd(a.openCost) + '</div></div>' +
             '<div class="coin-stat"><div class="cs-label">Realized</div><div class="cs-value" style="color:' + (a.realizedPnl >= 0 ? 'var(--green)' : 'var(--red)') + ';">' + (a.realizedPnl >= 0 ? '+' : '') + fmtUsd(a.realizedPnl) + '</div></div>' +
+            '<div class="coin-section-label">Activity</div>' +
             '<div class="coin-stat"><div class="cs-label">Trades</div><div class="cs-value">' + a.buyCount + 'B / ' + a.sellCount + 'S</div></div>' +
-            '<div class="coin-stat"><div class="cs-label">Avg buy</div><div class="cs-value">' + (positionClosed ? '—' : fmtPrice(a.avgBuyPrice)) + '</div></div>' +
             '<div class="coin-stat"><div class="cs-label">Last trade</div><div class="cs-value">' + (a.lastTrade ? timeAgo(a.lastTrade.created_at) : '—') + '</div></div>' +
+            '<div class="coin-stat"><div class="cs-label">Last buy</div><div class="cs-value">' + lastBuyStr + '</div></div>' +
+            '<div class="coin-section-label">Triggers</div>' +
+            '<div class="coin-stat"><div class="cs-label">Buy / Sell %</div><div class="cs-value">' + buySellPctStr + '</div></div>' +
+            nextBuyCellHtml +
+            '<div class="coin-stat"><div class="cs-label">Next sell if ↑</div><div class="cs-value" style="color:' + nextSellColor + ';">' + nextSellStr + '</div></div>' +
           '</div>' +
           '<div class="cap-bar-wrap">' +
             '<div class="cap-bar-label"><span>Capital usage</span><span>' + fmt(a.capacityPct, 0) + '%</span></div>' +
             '<div class="cap-bar"><div class="cap-bar-fill" style="width:' + a.capacityPct + '%; background:' + barColor + ';"></div></div>' +
           '</div>' +
+          // S110 (G1): "To next lot" — cassa mancante al prossimo lotto pieno (compounding grumoso, MASTER 4.14).
+          '<div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-top:6px;" title="Cash still needed to unlock one more full $' + fmt(a.costPerTrade, 0) + ' buy. Buying capacity grows in whole-lot steps — see MASTER 4.14.">To next lot: <span style="color:var(--text);">+$' + fmt(a.toNextLot, 0) + '</span> · ≈$' + fmt(grossToNextLot, 0) + ' gross profit (' + fmt(skimPct, 0) + '% skim)</div>' +
           configBlock +
         '</div>';
       }).join('');
