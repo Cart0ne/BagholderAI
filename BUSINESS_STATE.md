@@ -1,7 +1,7 @@
 # BUSINESS_STATE.md
 
-**Last updated:** 2026-06-25 — Session 109 (Sherpa verdict + breadth signal analysis + bug cleanup + pre-mainnet infra). Cap file 50KB (Max S95, CLAUDE.md §2b). Cadenze audit canoniche in PROJECT_STATE §9. Prec.: S108 (barometro verdict + haiku fix + audit A2 remediation).
-**Updated by:** CEO (update S109 via Max)
+**Last updated:** 2026-06-27 — Session 110 (go-live experiment approvato + 3 brief CC [USDC, exit thresholds, NK cleanup] + dashboard private fixes S110a/b). Cap file 50KB (Max S95, CLAUDE.md §2b). Cadenze audit canoniche in PROJECT_STATE §9. Prec.: S109 (Sherpa verdict + breadth signal analysis + bug cleanup + pre-mainnet infra).
+**Updated by:** Max (update S110)
 **Basato su:** PROJECT_STATE.md aggiornato 2026-06-14; report S104 (income-page) + S106 (office-page); screenshot live homepage/dashboard/office/income; document `bagholderai_website_architecture_v1.docx` (concept esterno)
 
 ---
@@ -234,6 +234,9 @@ BagHolderAI è un progetto sperimentale dove un'AI (Claude) gestisce un micro-bu
 
 | Data | Decisione | Perché |
 |---|---|---|
+| 2026-06-27 (S110) | **Go-live experiment approvato** | Collaudo €100 sequenziale BTC→SOL→BONK (solo grid, stesso €100 riciclato). Allocazione €600 post-collaudo: BTC €250 fisso + SOL €150 fisso + 2 slot TF €100+€100 (Tier 1-2, con exit thresholds). TF = grid-selector, niente fondo shitcoin separato. Clone TF Tier 3 in paper post-mainnet = CASO 2. Cancelli rampa: a intuito di Max. Bug vs perdita: divergenza da spec = bug (rabbocco), regola eseguita = perdita (resta). Verdetto: -50% scrive capitolo, ciclo completo = verdetto vero. Victory Lap: C→B→A |
+| 2026-06-27 (S110) | **3 brief CC prodotti** | S110c (USDT→USDC), S110d (tf-grid exit thresholds), S110e (NewsKeeper v1 shutdown + trend_scans retention) |
+| 2026-06-27 (S110) | **Dashboard private fixate da CC (S110a/b)** | grid.html, tf.html, admin.html — tutto frontend, zero bot. Due decisioni CEO pendenti: 4.12 floor BONK (racc. tenere $5), 4.14 compounding (racc. Opzione A lotto fisso) |
 | 2026-06-25 (S109) | **Verdetto Sherpa 15gg: PASS per go-live** | Parametri protettivi stabili entro 24h. sell_pct flicker cosmetico (1-2bp/tick, 80-101 cambi in 14gg su SOL/BONK). Fix A/B/C rimandato a dopo osservazione regime change reale. Zero transizioni di regime nel periodo (extreme_fear continuo). Non blocca mainnet |
 | 2026-06-25 (S109) | **Breadth signal Tier 3 → Tier 1/2: PARCHEGGIATO** | Analisi 6 mesi mainnet (422 coin, survivorship-safe): T3 NON anticipa rimbalzi T1/2 — semmai contrarian debole. F&G domina (corr -0.29 vs forward T1 7g), T3 correla 0.395 con F&G (ridondante). Soglia $2M filtra rumore ma non produce segnale. Ri-testare dopo regime risk-on sostenuto. Gamba 2 del volume framework CHIUSA (esito negativo) |
 | 2026-06-25 (S109) | **Bug backlog azzerato + infra pre-mainnet shipped** | 4 bug chiusi (PortfolioManager rimosso, datetime deprecation 409→0 warning, exchange_order_id null fixato, validation_system aggiornato). Infra: slippage_buffer_pct colonna in bot_config (migration applicata), dust write-off come evento persistito, config chain 8 test e2e. Tutto committato + **restart Mac Mini FATTO** (runtime `7df7cca`, 22:03 CET) → fix LIVE |
@@ -325,7 +328,7 @@ BagHolderAI è un progetto sperimentale dove un'AI (Claude) gestisce un micro-bu
 | **NewsKeeper v2 Barometro verdetto** | Nessuna data fissa (era ~23 giu) | T+14 raggiunto, esito: PASS qualità / INCONCLUSIVE prezzo (N=2 flip insufficiente). Esteso fino a regime change sostenuto (neutral/bullish >24h). Non blocca go-live grid. Dettagli in diary S108 |
 | **SEO+GEO POST 2 drafting** | ~metà giugno | "Why Most AI Trading Bots Fail (And What Ours Did Wrong Too)" — keyword: ai trading bot. Cadenza 1 post ogni 1-2 settimane |
 | **Apple Notes pulizia: cancellare 8 note obsolete (Max)** | A discrezione Max | 4 note attive da mantenere, 8 obsolete da cancellare manualmente |
-| **Go-live mainnet** | Nessuna data fissa | Fase 1 quasi vuota: restano solo 1.3 (sessione go-live experiment) e 1.8 (Board approval). Bug backlog azzerato. Infra pre-mainnet shipped, **restart FATTO S109** (fix LIVE). Gate esterno: annuncio Binance MiCA (atteso entro 30 giugno) |
+| **Go-live mainnet** | Nessuna data fissa | Fase 1 chiusa: tutte le 9 domande esperimento risposte. Restano: 3 brief CC (USDC, exit thresholds, NK cleanup) + annuncio Binance MiCA (entro 30 giugno) + Board approval |
 | **Sherpa LIVE su testnet (7/7 parametri)** | ✅ DONE (S102+S103) | Scrive TUTTI E 7 i parametri: buy_pct, sell_pct, idle_reentry_hours + stop_buy_drawdown_pct, stop_buy_unlock_hours, dead_zone_hours, profit_target_pct. I 4 protettivi via lookup (regime × volatility tier) con debounce 24h |
 | **Volume 4** | Nessuna deadline | In accumulo da S83, arco narrativo NewsKeeper build → go-live |
 
@@ -348,8 +351,9 @@ BagHolderAI è un progetto sperimentale dove un'AI (Claude) gestisce un micro-bu
 | **Paper trade re-import** | Backup esiste (`/Volumes/Archivio/bagholderai/audits/2026-05-08_pre-reset-s67/`, 51.943 righe JSONL) ma non serve re-importarlo nel DB. Disponibile per narrativa/diary quando serve |
 | **Audit Area 2 manuale on-demand** | Non più necessario: Area 2 è automatizzata (Cowork mensile, S104) come Area 1 e Area 3. Tutte e 3 le aree girano schedulate + notifica Gmail/Apps Script. Vedi §4 (S104) + PROJECT_STATE §9 |
 | **Micro-brief `datetime.utcnow()` deprecation + cleanup PortfolioManager** | Low priority, scoperti in S89 (audit Area 1). Parcheggiati in Apple Notes todo. Toccano `bot/` runtime → fuori scope housekeeping. Tracciati in PROJECT_STATE §8 |
-| **Go-live mainnet €100** | Bloccato da 4 pre-requisiti in sequenza: NewsKeeper build (S2-S4, ~3 sessioni residue) + Sherpa testnet LIVE (post Brain Analysis 2) + dry_run observation periodo standard + Board approval finale. Niente data fissa, gated da condizioni di mercato osservate (bear+bull+laterale) |
-| **TF-Scout (Tier 3 shitcoins)** | Post-mainnet, esplicitamente parcheggiato. Richiede capitale extra e tolleranza rischio che oggi non abbiamo |
+| **Go-live mainnet €100** | Task 1.3 CHIUSO (S110). Restano solo i 3 brief CC + decisione exchange + Board approval |
+| **NewsKeeper v1** | Probabilmente ridondante (v2 PASS). V1 scrive 3.175 righe che nulla legge. Brief S110e chiede a CC di verificare prima di spegnere |
+| **TF-Scout (Tier 3 shitcoins)** | Post-mainnet. TF clone in paper/testnet (CASO 2). trend_scans ha solo 14gg di retention — brief S110e chiede fix |
 | **Grok/X scanner module** | Post-mainnet. Richiede API X premium (~$200/mese), giustificabile solo con MRR positivo |
 | **NewsKeeper Sessions 2-4** | Session 1 live (RSS + regex, standalone Mac Mini). S2 priorità: Haiku classifier (RSS non ha sentiment nativo) |
 | **Nessuna nuova fonte dati per NewsKeeper** | API news gratuite morte (CryptoPanic, CoinDesk). RSS + Haiku resta il piano. Niente budget per news API paid pre-mainnet |
