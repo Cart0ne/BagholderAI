@@ -875,6 +875,16 @@
       </div>
       </details>
 
+      <!-- ============ MARKET PRICES (Binance public klines) — A3 (S110b) ============ -->
+      <div class="section-title" style="color: var(--amber);">📈 Market prices</div>
+      <div id="market-prices-grid"></div>
+      <div class="footnote">
+        One line per actively-traded coin (<code>bot_config.is_active = true</code>, any bot). Price from Binance public spot
+        klines (<code>api.binance.com/api/v3/klines</code>, no key) — real market context, not the bot's testnet fills.
+        Charts appear/disappear as the active coin set changes; the window follows the range selector above. Coins not on
+        Binance spot show "not on Binance spot".
+      </div>
+
       <!-- ============ DB MONITOR ============ -->
       <div class="section-title db">💾 DB monitor</div>
       <div class="card">
@@ -2269,6 +2279,96 @@
       }
     }
 
+    // === A3 (S110b): MARKET PRICES (Binance public spot klines) ===
+    // One line chart per actively-traded coin (bot_config.is_active, any manager).
+    // Dynamic: wraps are reconciled to the active set on every bootstrap.
+    function mpPrice(v) {
+      if (v == null || !isFinite(v)) return '—';
+      if (v >= 1000) return '$' + (v / 1000).toFixed(2) + 'k';
+      if (v >= 1) return '$' + v.toFixed(2);
+      return '$' + Number(v).toPrecision(3);
+    }
+    function mpKlineParams(h) {
+      if (h <= 12) return { interval: '5m', limit: Math.min(200, Math.ceil(h * 12)) };
+      if (h <= 48) return { interval: '15m', limit: Math.min(200, Math.ceil(h * 4)) };
+      if (h <= 168) return { interval: '1h', limit: Math.min(200, h) };
+      return { interval: '4h', limit: Math.min(200, Math.ceil(h / 4)) };
+    }
+    function drawPriceChart(canvasId, candles, symbol) {
+      var canvas = document.getElementById(canvasId);
+      if (!canvas) return;
+      var ctx = canvas.getContext('2d');
+      var dpr = window.devicePixelRatio || 1, rect = canvas.getBoundingClientRect();
+      canvas.width = Math.floor(rect.width * dpr); canvas.height = Math.floor(rect.height * dpr); ctx.scale(dpr, dpr);
+      var W = rect.width, H = rect.height; ctx.clearRect(0, 0, W, H);
+      var color = SYMBOL_COLOR[symbol] || '#a78bfa';
+      if (!candles || !candles.length) {
+        ctx.fillStyle = '#9aa3b8'; ctx.font = '12px monospace'; ctx.textAlign = 'center';
+        ctx.fillText(candles ? 'no data' : 'not on Binance spot', W / 2, H / 2);
+        return;
+      }
+      var pad = { l: 58, r: 12, t: 12, b: 22 }, plotW = W - pad.l - pad.r, plotH = H - pad.t - pad.b;
+      var t0 = candles[0].t, t1 = candles[candles.length - 1].t, span = (t1 - t0) || 1;
+      var mn = Infinity, mx = -Infinity;
+      candles.forEach(function (c) { if (c.close < mn) mn = c.close; if (c.close > mx) mx = c.close; });
+      var r = (mx - mn) || (mx || 1); mn -= r * 0.05; mx += r * 0.05; var rng = (mx - mn) || 1;
+      function tx(t) { return pad.l + (t - t0) / span * plotW; }
+      function ty(v) { return pad.t + plotH - (v - mn) / rng * plotH; }
+      ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+      [0, 0.5, 1].forEach(function (f) { var y = pad.t + plotH * f; ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(W - pad.r, y); ctx.stroke(); });
+      ctx.strokeStyle = color; ctx.lineWidth = 1.5; ctx.beginPath();
+      candles.forEach(function (c, i) { var x = tx(c.t), y = ty(c.close); if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y); });
+      ctx.stroke();
+      ctx.fillStyle = '#9aa3b8'; ctx.font = '10px monospace'; ctx.textAlign = 'right';
+      [mn, (mn + mx) / 2, mx].forEach(function (v) { ctx.fillText(mpPrice(v), pad.l - 6, ty(v) + 3); });
+      ctx.textAlign = 'center';
+      [0, 0.5, 1].forEach(function (f) { ctx.fillText(formatTimeLabel(new Date(t0 + span * f), currentRangeHours), pad.l + plotW * f, H - 6); });
+      var first = candles[0].close, lastC = candles[candles.length - 1].close, pct = first ? (lastC - first) / first * 100 : 0;
+      var pe = document.getElementById(canvasId + '-price'), ce = document.getElementById(canvasId + '-chg');
+      if (pe) pe.textContent = mpPrice(lastC);
+      if (ce) { ce.textContent = (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%'; ce.className = 'change ' + (pct >= 0 ? 'pos' : 'neg'); }
+    }
+    async function renderMarketPrices() {
+      var grid = document.getElementById('market-prices-grid');
+      if (!grid) return;
+      var cfg;
+      try { cfg = await sbFetch('bot_config?select=symbol,is_active,managed_by&is_active=eq.true&order=managed_by,symbol'); }
+      catch (e) { console.error('market-prices bot_config fetch failed:', e); return; }
+      var symbols = [];
+      (cfg || []).forEach(function (r) { if (r.symbol && symbols.indexOf(r.symbol) === -1) symbols.push(r.symbol); });
+      // Reconcile DOM: drop wraps for coins no longer active, add wraps for new ones.
+      Array.prototype.slice.call(grid.children).forEach(function (ch) {
+        if (symbols.indexOf(ch.getAttribute('data-symbol')) === -1) grid.removeChild(ch);
+      });
+      if (!symbols.length) { grid.innerHTML = '<div class="footnote">No active coins.</div>'; return; }
+      symbols.forEach(function (sym) {
+        if (grid.querySelector('[data-symbol="' + sym + '"]')) return;
+        var color = SYMBOL_COLOR[sym] || '#a78bfa';
+        var short = SYMBOL_SHORT[sym] || sym.replace('/USDT', '');
+        var id = 'mp-canvas-' + sym.replace('/', '-');
+        var w = document.createElement('div');
+        w.className = 'chart-wrap'; w.setAttribute('data-symbol', sym); w.style.marginBottom = '10px';
+        w.innerHTML = '<div style="font-family:var(--mono);font-size:11px;color:' + color + ';margin-bottom:6px;">' + short + ' · ' + sym + '</div>' +
+          '<div class="chart-overlay"><div class="price" id="' + id + '-price">—</div><div class="change" id="' + id + '-chg"></div></div>' +
+          '<canvas id="' + id + '" style="height:180px;"></canvas>';
+        grid.appendChild(w);
+      });
+      var kp = mpKlineParams(currentRangeHours);
+      await Promise.all(symbols.map(async function (sym) {
+        var id = 'mp-canvas-' + sym.replace('/', '-');
+        var bnSym = sym.replace('/', '');
+        try {
+          var res = await fetch('https://api.binance.com/api/v3/klines?symbol=' + bnSym + '&interval=' + kp.interval + '&limit=' + kp.limit);
+          if (!res.ok) throw new Error('binance ' + res.status);
+          var raw = await res.json();
+          var candles = raw.map(function (k) { return { t: k[0], close: Number(k[4]) }; });
+          drawPriceChart(id, candles, sym);
+        } catch (e) {
+          drawPriceChart(id, null, sym);
+        }
+      }));
+    }
+
     // === BOOTSTRAP: fetch sentinel + sherpa + DB stats after auth ===
     async function bootstrap() {
       try {
@@ -2354,6 +2454,10 @@
         renderParamChart('param-buy-chart', bySym, 'proposed_buy_pct', 3, '');
         renderParamChart('param-sell-chart', bySym, 'proposed_sell_pct', 4, '');
         renderParamChart('param-idle-chart', bySym, 'proposed_idle_reentry_hours', 6, 'h', true);
+
+        // A3 (S110b): per-coin market price charts (Binance public klines). Own try/catch
+        // so a Binance/bot_config hiccup can't break Reconciliation / DB-monitor below.
+        try { await renderMarketPrices(); } catch (e) { console.error('market prices render failed:', e); }
 
         // --- Reconciliation Binance (Step B, S70b) ---
         // Reads reconciliation_runs (S70 Step A schema). Empty until reconcile_binance.py
