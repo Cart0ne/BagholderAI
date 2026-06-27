@@ -398,6 +398,7 @@
       <div id="overview-row1" class="stats-row"></div>
       <div id="overview-row2" class="stats-row"></div>
       <div id="overview-row3" class="stats-row"></div>
+      <div id="net-realized-row" class="stats-row" style="margin-top:12px;"></div>
 
       <!-- Per-Coin Status -->
       <div class="section-title">Grid status per coin</div>
@@ -480,7 +481,7 @@
     // Order: stop-loss + take-profit together (the exit pair), scan cadence last.
     var TF_SAFETY_FIELDS = [
       { key: 'tf_stop_loss_pct', label: 'TF stop-loss %', sub: 'TF bots force-sell when unrealized loss exceeds this % of allocation. Applies only to TF-managed bots, never to manual.' },
-      { key: 'tf_stop_loss_cooldown_hours', label: 'SL cooldown (ore)', sub: '45a: ore minime tra uno stop-loss e la riallocazione della stessa coin (anche come swap target). 0 = disattivato (TF può riallocare subito). Applicata solo ai candidati TF.' },
+      { key: 'tf_stop_loss_cooldown_hours', label: 'SL cooldown (hours)', sub: '45a: minimum hours between a stop-loss and re-allocating the same coin (including as a swap target). 0 = disabled (TF can re-allocate immediately). Applies only to TF candidates.' },
       { key: 'tf_take_profit_pct', label: 'TF take-profit %', sub: 'Takes profit on the full position when unrealized P&L exceeds this % of capital_allocation. Only applies to TF-managed bots. Set 0 to disable.' },
       { key: 'tf_initial_lots', label: 'Initial lots on entry', sub: '42a: number of market-buy lots fired immediately on the first cycle after ALLOCATE. 0 disables multi-lot entry; TF then waits for normal grid dips. Recommended 1-4.' },
       { key: 'min_allocate_strength', label: 'Min ALLOCATE strength', sub: '44c: candidates with signal_strength below this value are SKIPped. Prevents "desperate ALLOCATE" when the bullish pool is weak. Default 15.0; set 0 to disable the gate.' },
@@ -671,7 +672,7 @@
       var failed = settled.filter(function(r) { return r.status === 'rejected'; });
       if (failed.length > 0) {
         console.error('Load partial failure:', failed.map(function(r) { return r.reason; }));
-        document.getElementById('refresh-status').textContent = '⚠ errore caricamento — riprovo';
+        document.getElementById('refresh-status').textContent = '⚠ load error — retrying';
         document.getElementById('refresh-status').style.color = 'var(--red, #e74c3c)';
         // Retry after 5s if there were failures
         setTimeout(loadAll, 5000);
@@ -1273,38 +1274,40 @@
 
       var unrColor = totalUnrealized >= 0 ? 'var(--green)' : 'var(--red)';
 
+      // ROW 1 — Budget · Current state · Total P&L (allineato a grid.html, S110a)
       document.getElementById('overview-row1').innerHTML =
         '<div class="stat-box">' +
-          '<div class="stat-label">Net Worth</div>' +
+          '<div class="stat-label">Project budget</div>' +
+          '<div class="stat-value">$' + fmt(TF_BUDGET) + '</div>' +
+          '<div class="stat-sub">starting capital (internal convention)</div>' +
+        '</div>' +
+        '<div class="stat-box">' +
+          '<div class="stat-label">Current state</div>' +
           '<div class="stat-value">$' + fmt(netWorth) + '</div>' +
-          '<div class="stat-sub">cash + holdings + skim reserve</div>' +
+          '<div class="stat-sub">= cash + holdings + skim − fees</div>' +
         '</div>' +
         '<div class="stat-box">' +
           '<div class="stat-label">Total P&L</div>' +
           '<div class="stat-value" style="color:' + pnlColor + ';">' + (totalPnl >= 0 ? '+' : '') + '$' + fmt(totalPnl) + '</div>' +
-          '<div class="stat-sub">= Net Worth − $' + fmt(TF_BUDGET) + ' starting budget</div>' +
-        '</div>' +
-        '<div class="stat-box">' +
-          '<div class="stat-label">Skim Reserve</div>' +
-          '<div class="stat-value" style="color:var(--green);">+$' + skimReserveTotal.toFixed(4) + '</div>' +
-          '<div class="stat-sub">set aside from profits · ' + (netWorth > 0 ? (skimReserveTotal / netWorth * 100).toFixed(2) + '% of net worth' : '—') + '</div>' +
+          '<div class="stat-sub">= Current state − Budget</div>' +
         '</div>';
 
+      // ROW 2 — Cash to reinvest · Deployed · Skim (allineato a grid.html, S110a)
       document.getElementById('overview-row2').innerHTML =
         '<div class="stat-box">' +
           '<div class="stat-label">Cash to reinvest</div>' +
           '<div class="stat-value">$' + fmt(totalCash + unalloc) + '</div>' +
-          '<div class="stat-sub">operational, ready for trading</div>' +
+          '<div class="stat-sub">= cash bot + unallocated</div>' +
         '</div>' +
         '<div class="stat-box">' +
           '<div class="stat-label">Deployed</div>' +
           '<div class="stat-value">$' + fmt(holdingsValue) + '</div>' +
-          '<div class="stat-sub">market value · cost $' + fmt(totalDeployed) + ' ' + (totalUnrealized >= 0 ? '+' : '') + '$' + fmt(totalUnrealized) + ' unrealized</div>' +
+          '<div class="stat-sub">= holdings × live price · cost basis $' + fmt(totalDeployed) + '</div>' +
         '</div>' +
         '<div class="stat-box">' +
-          '<div class="stat-label">Unrealized P&L</div>' +
-          '<div class="stat-value" style="color:' + unrColor + ';">' + unrSign + '$' + fmt(totalUnrealized) + '</div>' +
-          '<div class="stat-sub">' + (unrBreakdown || '—') + '</div>' +
+          '<div class="stat-label">Skim</div>' +
+          '<div class="stat-value" style="color:var(--green);">+$' + skimReserveTotal.toFixed(4) + '</div>' +
+          '<div class="stat-sub">= Σ skim_pct % of realized set aside</div>' +
         '</div>';
 
       // Dust v3 monitor: net residual per symbol that is NOT sellable on
@@ -1327,20 +1330,37 @@
         dustParts.push(short + ': ' + a.netHoldings.toFixed(decimals));
       });
       var dustBreakdown = dustParts.length ? dustParts.join(' · ') : '—';
-      var dustColor = dustTotalUsd > 1 ? 'var(--yellow)' : 'var(--muted)';
+      var dustColor = dustTotalUsd > 1 ? 'var(--yellow)' : 'var(--text-dim)';
 
-      // Two side-by-side cards in row 3: Fees Paid (cumulative, already
-      // inside Total P&L) + Dust v3 (sub-min_notional residuals).
+      // ROW 3 — Unrealized · Fees · Dust (allineato a grid.html, S110a)
       document.getElementById('overview-row3').innerHTML =
         '<div class="stat-box">' +
-          '<div class="stat-label">Fees Paid</div>' +
-          '<div class="stat-value" style="color:var(--muted);">-$' + fmt(totalFees) + '</div>' +
-          '<div class="stat-sub">Binance + BNB discount on every buy/sell — tracked for reference · not deducted in paper mode</div>' +
+          '<div class="stat-label">Unrealized</div>' +
+          '<div class="stat-value" style="color:' + unrColor + ';">' + unrSign + '$' + fmt(totalUnrealized) + '</div>' +
+          '<div class="stat-sub">= (live price − avg buy) × holdings · ' + (unrBreakdown || '—') + '</div>' +
         '</div>' +
-        '<div class="stat-box" style="grid-column: 2 / -1;">' +
-          '<div class="stat-label">Dust v3</div>' +
+        '<div class="stat-box">' +
+          '<div class="stat-label">Fees</div>' +
+          '<div class="stat-value" style="color:var(--text-dim);">−$' + fmt(totalFees) + '</div>' +
+          '<div class="stat-sub">= Σ trades.fee · already deducted from Current state</div>' +
+        '</div>' +
+        '<div class="stat-box">' +
+          '<div class="stat-label">Dust</div>' +
           '<div class="stat-value" style="color:' + dustColor + ';">$' + dustTotalUsd.toFixed(4) + '</div>' +
-          '<div class="stat-sub">' + dustBreakdown + '</div>' +
+          '<div class="stat-sub">residuals below $5 min_notional · ' + dustBreakdown + '</div>' +
+        '</div>';
+
+      // ROW 4 — Net realized profit (post-fees), allineato a grid.html (S110a).
+      var netRealized = canonical.netRealized;
+      var netRealSign = netRealized >= 0 ? '+' : '−';
+      var netRealColor = netRealized >= 0 ? 'var(--green)' : 'var(--red)';
+      document.getElementById('net-realized-row').innerHTML =
+        '<div class="stat-box" style="grid-column: 1 / -1;">' +
+          '<div class="stat-label">Net realized profit (post-fees)</div>' +
+          '<div class="stat-value" style="color:' + netRealColor + ';">' +
+            netRealSign + '$' + fmt(Math.abs(netRealized)) +
+          '</div>' +
+          '<div class="stat-sub">= Σ realized_pnl − Σ fees · excludes unrealized · twin of the value on /dashboard</div>' +
         '</div>';
     }
 

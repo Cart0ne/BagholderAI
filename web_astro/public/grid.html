@@ -561,7 +561,7 @@
       var failed = settled.filter(function(r) { return r.status === 'rejected'; });
       if (failed.length > 0) {
         console.error('Load partial failure:', failed.map(function(r) { return r.reason; }));
-        document.getElementById('refresh-status').textContent = '⚠ errore caricamento — riprovo';
+        document.getElementById('refresh-status').textContent = '⚠ load error — retrying';
         document.getElementById('refresh-status').style.color = 'var(--red, #e74c3c)';
         // Retry after 5s if there were failures
         setTimeout(loadAll, 5000);

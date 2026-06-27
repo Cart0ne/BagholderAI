@@ -525,9 +525,9 @@
         <div class="footnote">
           Drop ladder and pump ladder are mutually exclusive (only the strongest match fires).
           Funding ladders fire independently. Both scores clamp to 0-100.
-          Brief 70b (S70 2026-05-10): aggiunta granularità intermedia (drop −2/−1/−0.5, pump
-          +2/+1/+0.5, funding ±0.02/0.01/0.005/0.002) per dataset testnet con BTC range ±1%
-          e funding ±0.00007. Speed-of-fall ha precondizione 1h ≤ −0.5% (floor anti-rumore).
+          Brief 70b (S70 2026-05-10): added intermediate granularity (drop −2/−1/−0.5, pump
+          +2/+1/+0.5, funding ±0.02/0.01/0.005/0.002) for the testnet dataset with BTC range ±1%
+          and funding ±0.00007. Speed-of-fall has a precondition of 1h ≤ −0.5% (anti-noise floor).
           Source: <code>bot/sentinel/score_engine.py</code> + <code>bot/sentinel/price_monitor.py</code>
           — parsed manually at build time.
         </div>
@@ -636,7 +636,7 @@
           <thead>
             <tr>
               <th>Bot</th>
-              <th>Tu (current)</th>
+              <th>You (current)</th>
               <th>Sherpa (proposed)</th>
               <th>Regime</th>
               <th>Status</th>
@@ -670,7 +670,7 @@
           <span class="item"><span class="swatch" style="background: var(--text-dim);"></span> right axis: buy_pct (0.3-3.0)</span>
         </div>
         <div class="footnote">
-          <strong>By design (brief 81a Block 2): the 3 Sherpa lines should look mostly flat against the rumoroso Sentinel risk + opp lines.</strong>
+          <strong>By design (brief 81a Block 2): the 3 Sherpa lines should look mostly flat against the noisy Sentinel risk + opp lines.</strong>
           Sprint 1 had Sherpa reading fast-loop scores → 449 risk_score flips ≥20pp in 16 days produced 6-minute proposal flicker (Brain Analysis 2026-05-22). Sprint 2 decouples Sherpa from the fast loop: Sherpa now reads only the slow-loop regime (4h cadence), so proposals change at most every few hours when regime transitions. Per-coin volatility scaling makes the 3 lines diverge in <em>level</em> (BONK higher band, BTC lower) but their <em>shape</em> follows the regime, not the second-by-second risk_score.
           <br>What to look for: (a) Sherpa lines clearly separated by coin (per-coin scaling working), (b) Sherpa lines stable between regime transitions, (c) noisy red/green still allowed — that's Sentinel doing its job, the decoupling is intentional.
           <br>Risk + Opp are vertically offset by ±2px so they stay visible when they coincide. The 3 buy_pct lines are offset by ±3px (BTC up, SOL center, BONK down). Exact values are in the proposals table above.
