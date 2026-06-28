@@ -1,7 +1,7 @@
 # BUSINESS_STATE.md
 
-**Last updated:** 2026-06-27 — Session 110 (go-live experiment approvato + 3 brief CC [USDC, exit thresholds, NK cleanup] + dashboard private fixes S110a/b). Cap file 50KB (Max S95, CLAUDE.md §2b). Cadenze audit canoniche in PROJECT_STATE §9. Prec.: S109 (Sherpa verdict + breadth signal analysis + bug cleanup + pre-mainnet infra).
-**Updated by:** Max (update S110)
+**Last updated:** 2026-06-28 (estemporanea) — §4 Board ratification 4.12/4.14 + grid-regime-backtest (Caso 2) approvato; §5 brief S111 in coda post-S110d. Cap file 50KB (Max S95, CLAUDE.md §2b). Cadenze audit canoniche in PROJECT_STATE §9. Prec.: 2026-06-27 Session 110 (go-live experiment approvato + 3 brief CC [USDC, exit thresholds, NK cleanup] + dashboard private fixes S110a/b).
+**Updated by:** Max (estemporanea 2026-06-28), applicato da CC
 **Basato su:** PROJECT_STATE.md aggiornato 2026-06-14; report S104 (income-page) + S106 (office-page); screenshot live homepage/dashboard/office/income; document `bagholderai_website_architecture_v1.docx` (concept esterno)
 
 ---
@@ -234,6 +234,9 @@ BagHolderAI è un progetto sperimentale dove un'AI (Claude) gestisce un micro-bu
 
 | Data | Decisione | Perché |
 |---|---|---|
+| 2026-06-28 (estemporanea) | **Decision 4.12 — BONK floor $5 confermato** | Anti-micro-buy. Revisione post-mainnet se `min_notional` cambia. Board-approved |
+| 2026-06-28 (estemporanea) | **Decision 4.14 — Compounding: Opzione A (lotto fisso)** | Rischio costante e prevedibile a €100 di capitale. Board-approved |
+| 2026-06-28 (estemporanea) | **Grid regime backtest approvato (Caso 2)** | Simulazione grid su 3 regimi storici BTC (bear giu-2022, bull nov-2024, laterale ago/set-2023), parametri congelati vs hold. Benchmark pre-deployment + base per contenuto pubblico. Brief `S111_grid-regime-backtest` pronto, CC lo riceve dopo S110d |
 | 2026-06-27 (S110) | **Go-live experiment approvato** | Collaudo €100 sequenziale BTC→SOL→BONK (solo grid, stesso €100 riciclato). Allocazione €600 post-collaudo: BTC €250 fisso + SOL €150 fisso + 2 slot TF €100+€100 (Tier 1-2, con exit thresholds). TF = grid-selector, niente fondo shitcoin separato. Clone TF Tier 3 in paper post-mainnet = CASO 2. Cancelli rampa: a intuito di Max. Bug vs perdita: divergenza da spec = bug (rabbocco), regola eseguita = perdita (resta). Verdetto: -50% scrive capitolo, ciclo completo = verdetto vero. Victory Lap: C→B→A |
 | 2026-06-27 (S110) | **3 brief CC prodotti** | S110c (USDT→USDC), S110d (tf-grid exit thresholds), S110e (NewsKeeper v1 shutdown + trend_scans retention) |
 | 2026-06-27 (S110) | **Dashboard private fixate da CC (S110a/b)** | grid.html, tf.html, admin.html — tutto frontend, zero bot. Due decisioni Board **CHIUSE** (27-giu, racc. CEO confermate da Max, zero-codice): 4.12 floor BONK = **$5 fisso** (anti-rumore micro-buy; rivedere su mainnet), 4.14 compounding = **Opzione A lotto fisso** (rischio/trade costante) |
@@ -302,6 +305,7 @@ BagHolderAI è un progetto sperimentale dove un'AI (Claude) gestisce un micro-bu
 
 | Tema | Stato | Note |
 |---|---|---|
+| **Brief `2026-06-28_S111_grid-regime-backtest`** | Da assegnare dopo completamento S110d | Non gate per mainnet |
 | **[S108 NEW] CMC Fear & Greed come seconda fonte Sentinel** | Brief futuro | Nuovo file `cmc_fng.py` accanto a `alternative_fng.py`. Usa API key CMC già in `.env` (endpoint `v3/fear-and-greed/historical`). Logga valore in `sentinel_scores.raw_signals`, nessuna modifica a `regime_analyzer`. Osservare e confrontare con Alternative.me per settimane prima di decidere. Binance F&G non ha API pubblica; CMC (Binance-owned dal 2020) è il proxy più vicino |
 | **[S107 NEW] Blog post Cluster 1 "AI as CEO"** | PARCHEGGIATO | Il differenziatore massimo non ha ancora un post dedicato. Da scrivere quando il sistema ha risultati reali da raccontare (post-mainnet?) |
 | **[S107 NEW] Meta tag blog post esistenti** | BASSA PRIORITÀ | Retrofit title/tags dei 9 post live per includere keyword cluster 1-3. Impatto modesto, rischio reset ranking |
