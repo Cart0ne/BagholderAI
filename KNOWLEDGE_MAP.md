@@ -81,8 +81,7 @@
 |---|---|
 | [config/2026-06-14_brief_sentinel-regime-technical-fallback.md](config/2026-06-14_brief_sentinel-regime-technical-fallback.md) | Proposta CC, attende CEO/Board |
 | [config/2026-06-27_S110c_brief_usdt-to-usdc.md](config/2026-06-27_S110c_brief_usdt-to-usdc.md) | USDT→USDC (MiCA), rimandato |
-| [config/2026-06-27_S110d_brief_tf-grid-exit-thresholds.md](config/2026-06-27_S110d_brief_tf-grid-exit-thresholds.md) | Exit thresholds, esecuzione rimandata |
-| [config/2026-06-28_S111_brief_grid-regime-backtest.md](config/2026-06-28_S111_brief_grid-regime-backtest.md) | Backtest grid vs hold, in coda dopo S110d |
+| [config/2026-06-28_S111_brief_grid-regime-backtest.md](config/2026-06-28_S111_brief_grid-regime-backtest.md) | Backtest grid vs hold, in coda (S110d implementato 28-giu → `briefresolved.md/`) |
 
 > A brief chiuso → spostare in `briefresolved.md/` (memoria *completed-briefs*).
 

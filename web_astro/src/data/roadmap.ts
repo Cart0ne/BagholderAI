@@ -41,8 +41,8 @@ export interface RoadmapData {
 }
 
 export const ROADMAP: RoadmapData = {
-  version: "Versione 1.49 — Giugno 2026",
-  lastUpdated: "2026-06-19",
+  version: "Versione 1.50 — Giugno 2026",
+  lastUpdated: "2026-06-28",
   phases: [
     {
       id: 0,
@@ -354,6 +354,8 @@ export const ROADMAP: RoadmapData = {
         { text: "TF 51a — RSI 1h overheat filter (pre-ALLOCATE/SWAP gate)", status: "done", who: "AI", comment: "Brief 51a (2026-04-29). DOGE allocated 29/04 at near-30-day-high stop-lossed same day. New gate: RSI(14) on 1h candles, fetched only for BULLISH candidates. Skip if RSI > tf_rsi_1h_max (default 75)." },
         { text: "TF 51b — Trailing stop (protect unrealized gains)", status: "done", who: "AI", comment: "Brief 51b (2026-04-29). Third TF exit alongside SL/TP/PL/45g: tracks peak price each tick, activates after peak ≥ avg_buy × (1 + activation_pct%) (default 1.5%), fires when price drops trailing_pct% from peak (default 2.0%)." },
         { text: "TF exit protection holes — peak reset on buy + SL/TP on open value", status: "done", who: "AI", comment: "Diagnosed + fixed 2026-05-04 commit 6dcc56f. Two related bugs found: (1) `_trailing_peak_price` was global per coin, never reset on a new buy → when a last-shot lowered avg_buy, the old peak armed trailing on the fresh lot (DOGE: bought 02:31, last-shot 10:07, sold both 10:08 at −2% from a peak set hours earlier). (2) Stop-loss/take-profit thresholds computed on `capital_allocation` (initial fixed) instead of `avg_buy × holdings` → partial lots after sells/skim were uncovered (INJ needed −5% on the lot before SL fired). Fix: peak resets on each TF buy + SL/TP symmetric on open value. Live in prod after orchestrator restart." },
+
+        { text: "tf_grid exit redesign — trailing stop replaces Profit Lock", status: "done", who: "AI", comment: "Brief S110d / S111 (2026-06-28). For GRID-managed TF picks (tf_grid), the +8% Profit Lock is removed; auto-exits are now a per-tick trailing stop (own wider thresholds — arms +5%, exits −4% from peak, hot-tunable from trend_config) plus SWAP rotation (profit gate now tunable, net-green proxy). Bearish-signal exit deliberately not added (too slow vs trailing). 'Never exit in loss' stays absolute; pure-TF exits unchanged. 257 tests." },
 
         { section: "Phase 3 — AI Sentinel" },
         { section: "Phase 4 — Dashboard & Monetization" },
