@@ -157,22 +157,28 @@ def _sync_config_to_bot(reader: "SupabaseConfigReader", bot: "GridBot", symbol: 
         # Same pattern as the other safety params — CEO changes the DB
         # value, the next tick picks it up. 0 disables the feature
         # immediately (peak tracking branch in grid_bot keys off it).
-        tf_tsa = reader.get_trend_config_value("tf_trailing_stop_activation_pct")
+        # S111: tf_grid coins read their own (wider) thresholds so they can
+        # let winners run; pure-TF coins keep the original tf_trailing_* cols.
+        if bot.managed_by == "tf_grid":
+            tsa_col, tsp_col = "tf_grid_trailing_activation_pct", "tf_grid_trailing_stop_pct"
+        else:
+            tsa_col, tsp_col = "tf_trailing_stop_activation_pct", "tf_trailing_stop_pct"
+        tf_tsa = reader.get_trend_config_value(tsa_col)
         if tf_tsa is not None:
             new_tsa = float(tf_tsa)
             if new_tsa != bot.tf_trailing_stop_activation_pct:
                 logger.info(
-                    f"[{symbol}] tf_trailing_stop_activation_pct updated: "
+                    f"[{symbol}] {tsa_col} updated: "
                     f"{bot.tf_trailing_stop_activation_pct} → {new_tsa}"
                 )
                 bot.tf_trailing_stop_activation_pct = new_tsa
 
-        tf_tsp = reader.get_trend_config_value("tf_trailing_stop_pct")
+        tf_tsp = reader.get_trend_config_value(tsp_col)
         if tf_tsp is not None:
             new_tsp = float(tf_tsp)
             if new_tsp != bot.tf_trailing_stop_pct:
                 logger.info(
-                    f"[{symbol}] tf_trailing_stop_pct updated: "
+                    f"[{symbol}] {tsp_col} updated: "
                     f"{bot.tf_trailing_stop_pct} → {new_tsp}"
                 )
                 bot.tf_trailing_stop_pct = new_tsp

@@ -417,7 +417,7 @@ class GridBot:
         # bot. Manual bots and TF bots with the feature disabled skip it
         # entirely (no peak persisted, no API cost). In-memory only by design
         # (see brief: a restart "forgets" the peak which is conservative).
-        if (self.managed_by == "tf"
+        if (self.managed_by in ("tf", "tf_grid")  # S111: tf_grid now trails too
                 and self.tf_trailing_stop_pct > 0
                 and self.managed_holdings > 0  # S97a: economic position, not wallet
                 and current_price > self._trailing_peak_price):
@@ -475,7 +475,7 @@ class GridBot:
         # avg_buy × (1 + activation_pct%), a drop of trailing_pct% from peak
         # forces a full liquidation. Doesn't fire if SL/TP/PL/45g already
         # latched, or when the feature is disabled (tf_trailing_stop_pct=0).
-        if (self.managed_by == "tf"
+        if (self.managed_by in ("tf", "tf_grid")  # S111: tf_grid now trails too
                 and self.tf_trailing_stop_pct > 0
                 and not self._stop_loss_triggered
                 and not self._trailing_stop_triggered
@@ -580,8 +580,8 @@ class GridBot:
         # Phase 2 hook (~2 weeks after deploy): if/when 36f Trailing Stop
         # lands, it takes priority over Profit Lock. Add the armed-check
         # right here (e.g. `and not self._trailing_stop_armed`).
-        if (self.managed_by in ("tf", "tf_grid")
-                and (self.tf_profit_lock_enabled or self.managed_by == "tf_grid")
+        if (self.managed_by == "tf"  # S111: Profit Lock now pure-TF only; tf_grid uses the trailing stop
+                and self.tf_profit_lock_enabled
                 and self.tf_profit_lock_pct > 0
                 and self.managed_holdings > 0  # S97a: economic position, not wallet
                 and self.capital > 0

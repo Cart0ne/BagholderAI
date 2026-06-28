@@ -502,7 +502,13 @@ def decide_allocations(
             if active_managed_by == "tf_grid":
                 strength_delta_threshold = SWAP_TF_GRID_STRENGTH_DELTA
                 cooldown_threshold = SWAP_TF_GRID_COOLDOWN_HOURS
-                min_profit_pct_threshold = SWAP_TF_GRID_MIN_PROFIT_PCT
+                # S111: rotation profit gate now tunable via trend_config
+                # (net-green proxy), replacing the hardcoded 0.0 breakeven.
+                _rot_min = config.get("tf_grid_rotation_min_profit_pct")
+                min_profit_pct_threshold = (
+                    float(_rot_min) if _rot_min is not None
+                    else SWAP_TF_GRID_MIN_PROFIT_PCT
+                )
             else:
                 strength_delta_threshold = SWAP_STRENGTH_DELTA
                 cooldown_threshold = SWAP_COOLDOWN_HOURS

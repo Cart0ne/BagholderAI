@@ -55,7 +55,12 @@ _TREND_CONFIG_FIELDS = (
     # whitelist, dashboard toggles of the profit-lock flag wouldn't
     # propagate via hot-reload (only via full orchestrator restart).
     "tf_profit_lock_enabled,tf_profit_lock_pct,"
-    "tf_exit_after_n_enabled,tf_exit_after_n_positive_sells"
+    "tf_exit_after_n_enabled,tf_exit_after_n_positive_sells,"
+    # 51b + S111: trailing knobs. Without these in the whitelist the
+    # hot-reload of trailing thresholds is dead (get_trend_config_value
+    # only returns whitelisted fields). tf_grid_* = wider tf_grid variants.
+    "tf_trailing_stop_activation_pct,tf_trailing_stop_pct,"
+    "tf_grid_trailing_activation_pct,tf_grid_trailing_stop_pct"
 )
 
 

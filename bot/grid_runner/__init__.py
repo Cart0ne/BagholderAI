@@ -174,13 +174,18 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
     tf_exit_after_n_default = 4
     tf_trailing_stop_activation_pct = 1.5  # 51b
     tf_trailing_stop_pct = 0.0             # 51b: 0 = disabled at startup until DB read
+    # S111: tf_grid trailing thresholds (wider — let winners run). Applied to
+    # the bot below only when managed_by == 'tf_grid'.
+    tf_grid_trailing_activation_pct = 5.0
+    tf_grid_trailing_stop_pct = 0.0        # 0 = disabled until DB read
     try:
         from db.client import get_client
         _sb = get_client()
         _tc = _sb.table("trend_config").select(
             "tf_stop_loss_pct,tf_take_profit_pct,tf_profit_lock_enabled,"
             "tf_profit_lock_pct,tf_exit_after_n_enabled,tf_exit_after_n_positive_sells,"
-            "tf_trailing_stop_activation_pct,tf_trailing_stop_pct"
+            "tf_trailing_stop_activation_pct,tf_trailing_stop_pct,"
+            "tf_grid_trailing_activation_pct,tf_grid_trailing_stop_pct"
         ).limit(1).execute()
         if _tc.data:
             row = _tc.data[0]
@@ -200,6 +205,11 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
                 tf_trailing_stop_activation_pct = float(row["tf_trailing_stop_activation_pct"])
             if row.get("tf_trailing_stop_pct") is not None:
                 tf_trailing_stop_pct = float(row["tf_trailing_stop_pct"])
+            # S111: tf_grid-specific trailing thresholds.
+            if row.get("tf_grid_trailing_activation_pct") is not None:
+                tf_grid_trailing_activation_pct = float(row["tf_grid_trailing_activation_pct"])
+            if row.get("tf_grid_trailing_stop_pct") is not None:
+                tf_grid_trailing_stop_pct = float(row["tf_grid_trailing_stop_pct"])
     except Exception as e:
         logger.warning(f"Could not read trend_config safety params: {e}. Defaulting to 0.")
 
@@ -299,6 +309,14 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
         bot.managed_by = (_initial_cfg.get("managed_by") or "grid") if _initial_cfg else "grid"
     except Exception:
         bot.managed_by = "grid"
+
+    # S111: tf_grid coins use their own (wider) trailing thresholds instead of
+    # the pure-TF ones the bot was constructed with. managed_by is only known
+    # after construction, so override here; config_sync keeps them in sync each
+    # tick afterwards.
+    if bot.managed_by == "tf_grid":
+        bot.tf_trailing_stop_activation_pct = tf_grid_trailing_activation_pct
+        bot.tf_trailing_stop_pct = tf_grid_trailing_stop_pct
 
     # Fetch initial price and setup grid
     try:
