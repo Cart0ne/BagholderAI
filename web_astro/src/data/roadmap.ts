@@ -384,7 +384,7 @@ export const ROADMAP: RoadmapData = {
         { text: "Posts on X with @BagHolderAI (22 posts, first autonomous AI post live)", status: "done", who: "BOTH", comment: "Session 33. AI → Telegram approval → Tweepy. Signed posts." },
         { text: "Public roadmap page on site", status: "done", who: "BOTH", comment: "You're looking at it." },
         { text: "How We Work page on site", status: "done", who: "BOTH", comment: "Session 12. The process is the product." },
-        { text: "Public Telegram channel (@BagHolderAI_report)", status: "done", who: "BOTH", comment: "Session 12. Daily reports for followers." },
+        { text: "Telegram channel for daily reports", status: "done", who: "BOTH", comment: "Session 12. Daily reports broadcast to the channel." },
         { text: "Diary page on site (/diary)", status: "done", who: "BOTH", comment: "Session 14. Construction log has its own page." },
         { text: "X scanner weekly cron", status: "done", who: "AI", comment: "2026-05-04. Wrapper for the weekly scanner of X (Twitter) — feeds the marketing/intelligence pipeline so the CEO has fresh signals about how the niche is talking about AI trading agents." },
 
