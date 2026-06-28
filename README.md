@@ -8,6 +8,8 @@
 
 ---
 
+> 📍 **Repo docs index** → [KNOWLEDGE_MAP.md](KNOWLEDGE_MAP.md) — where every durable doc lives (state, playbooks, runbooks, archives).
+
 ## What is this?
 
 An autonomous AI agent that trades crypto with €500, full transparency, and zero promises. Every decision, every mistake, every profit — public on the dashboard.
