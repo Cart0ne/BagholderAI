@@ -120,8 +120,9 @@ contenuto dei brief vecchi (basta linkarli).
 
 **REGOLA COMPACTION (formalizzata S79; isteresi 50/40 da S99 2026-06-07)** — il file ha 
 DUE soglie: **trigger 50KB** (quando scatta la compaction) e **target 40KB** (dove 
-deve rientrare). Quando a fine sessione il file supera 50KB, compatta riportandolo a 
-**≤40KB** — NON solo "appena sotto 50". Motivo: con trigger=target a 50KB il file 
+deve rientrare), con **tolleranza ±2KB** (confermato Max 2026-06-28: la compaction non 
+è obbligatoria finché il file resta ≤52KB). Quando a fine sessione il file supera 50KB 
+oltre la tolleranza, compatta riportandolo a **≤40KB** — NON solo "appena sotto 50". Motivo: con trigger=target a 50KB il file 
 restava sempre al limite e serviva compattare ogni sessione; il margine di ~10KB copre 
 più sessioni. NON cancellare in toto le sezioni vecchie. Workflow:
 
@@ -144,7 +145,8 @@ Mai eliminare in toto. Sempre archiviare prima.
  [2b] BUSINESS_STATE.md — stessa regola di compaction
 ═══════════════════════════════════════════
 
-Anche `BUSINESS_STATE.md` vive in root del repo e ha cap 50 KB. È il file 
+Anche `BUSINESS_STATE.md` vive in root del repo e ha **cap/trigger 50KB → target 40KB, 
+tolleranza ±2KB** (stessa regola di PROJECT_STATE §2; confermato Max 2026-06-28). È il file 
 che il CEO (Claude su claude.ai) usa per i vincoli strategici, decisioni 
 Board, deadline non-tecniche, marketing, diary status.
 
@@ -169,7 +171,7 @@ BUSINESS_STATE la compaction NON va eseguita di iniziativa, nemmeno quando
 il file supera 50KB. Anche se durante un'update authorized noto che il 
 file è sopra soglia, segnalo a Max:
 
-> "⚠️ BUSINESS_STATE è a 51KB, vuoi che compatti adesso?"
+> "⚠️ BUSINESS_STATE è a 53KB (oltre la tolleranza di 2KB), vuoi che compatti adesso?"
 
 Procedo SOLO se Max conferma. La compaction è atto strategico (decide 
 cosa resta visibile a chi legge il file vivo) e va autorizzata.
