@@ -1,12 +1,32 @@
-# Report per il CEO — Deriva del `realized_pnl` (avg-cost) sulle griglie
+# [PARKED] Deriva del `realized_pnl` (avg-cost) — Fix B + Fix A2
 
-**Data:** 2026-06-29
-**Autore:** Claude Code (Intern)
-**Origine:** finding emerso da una domanda di Max ("avvocato del diavolo") sulla coerenza dei numeri della dashboard privata `grid` / `tf`.
-**Tipo:** finding + proposta di fix (NON un brief già implementato). Zero codice scritto finora.
-**Severità:** MEDIA. Non blocca go-live, non tocca soldi reali (paper/testnet), **ma il numero sbagliato è public-facing** (card "Net Realized" su `/dashboard` pubblico).
+**Data:** 2026-06-29 · **Parcheggiato:** 2026-06-29 (S112) · **Autore:** Claude Code (Intern)
+**Origine:** finding emerso da una domanda di Max ("avvocato del diavolo") sulla coerenza dei numeri della dashboard `grid`/`tf`.
+**Stato:** **Fix A SHIPPED** (numero pubblico onesto). Restano due lavori parcheggiati (sotto).
 
-> **UPDATE 2026-06-29 — Fix A SHIPPED** (CEO-approved). Commit `0df228c`. Net Realized derivato dal replay avg-cost in entrambe le copie (`src/lib/pnl-canonical.ts` + `public/lib/pnl-canonical.js`). Verificato sui dati live: Total P&L invariato, Net Realized +30.6 → **+22.4**, incoerenza identità da ~$8.12 → ~$0.07 (rumore float dust-reset). **Fix B** (bot accounting) e **Fix A2** (Today P&L) restano da decidere (§5/§6).
+> **Fix A — ✅ FATTO 2026-06-29 (commit `0df228c`)**: il Net Realized è derivato dal replay avg-cost in entrambe le copie (`src/lib/pnl-canonical.ts` + `public/lib/pnl-canonical.js`). Verificato live: Total P&L invariato, Net Realized +30.6 → **+22.4**, incoerenza identità da ~$8.12 → ~$0.07 (rumore float). Il rischio reputazionale pubblico è **chiuso**.
+
+---
+
+## ⏸ RESIDUO DA FARE (motivo del parcheggio)
+
+### Fix B — Bot: `realized_pnl` a DB avg-cost puro · TRIGGER: pre-mainnet
+Il `realized_pnl` scritto dal bot resta **gonfiato di ~$8** (sorgente non toccata da Fix A, che agisce solo nel rendering del sito). Per renderlo vero serve **disaccoppiare due concetti oggi fusi in `avg_buy_price`**:
+1. **avg "operativo"** — può azzerarsi sulla polvere per sbloccare i buy (Strategy A guard); **da tenere**.
+2. **avg "contabile"** — deve **trattenere** il costo della polvere → realized a DB avg-cost puro.
+
+**Rischio:** ALTO relativo (trading logic LIVE: buy guard, ladder, **skim** che dipende dal realized). Brief dedicato + test + restart.
+**Decisione CEO/Board aperta:** `realized_pnl` a DB esatto (Fix B) oppure stima interna + sempre Equity-derived sul sito (Fix A "wontfix" su B)? Con soldi veri a mainnet propendo per Fix B come brief pre-mainnet.
+**Collaterale:** lo **skim** è calcolato sul realized del bot → se gonfiato, lo skim accantonato è leggermente sovra-stimato. Da verificare nello stesso brief.
+
+### Fix A2 — Today P&L homepage · TRIGGER: opzionale / quando si tocca la home
+La card "Today P&L" somma ancora `SUM(realized_pnl)` sui sell di oggi → eredita la deriva del giorno. Onesta richiede replay avg-cost intraday. Metrica di flusso → bassa priorità.
+
+---
+
+## Contesto / diagnosi originale (background)
+
+**Severità:** MEDIA. Non blocca go-live, non tocca soldi reali; il numero sbagliato **era** public-facing (`/dashboard`) — ora corretto da Fix A.
 
 ---
 
