@@ -171,7 +171,7 @@ Promise.all([
     const g = gridState.totalPnL, tf = tfState.totalPnL;
     splitEl.innerHTML =
       `<span class="${g >= 0 ? "text-pos" : "text-neg"}">Grid ${fmt(g)}</span>` +
-      `<span class="text-text-muted"> · </span>` +
+      `<br>` +
       `<span class="${tf >= 0 ? "text-pos" : "text-neg"}">TF ${fmt(tf)}</span>`;
   }
 
