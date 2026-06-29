@@ -1612,14 +1612,22 @@ async function renderBrains() {
     /* polarity=not.is.null → keep only NewsKeeper v2 rows (barometro Haiku);
        v1 shadow rows have polarity NULL and would double every headline
        during the shadow-comparison window (S105a). */
-    const heads = await sbGet<{ summary: string; polarity: number | null }>(
-      "newskeeper_signals", `select=summary,polarity&polarity=not.is.null&order=created_at.desc&limit=4`);
+    const heads = await sbGet<{ summary: string; polarity: number | null; raw_data: { link?: string } | null }>(
+      "newskeeper_signals", `select=summary,polarity,raw_data&polarity=not.is.null&order=created_at.desc&limit=4`);
     if (heads.length) {
       const sev = (p: number | null) =>
         (p ?? 0) > 0 ? "var(--color-pos)" : (p ?? 0) < 0 ? "var(--color-neg)" : "var(--color-text-muted)";
-      setHTML("nk-headlines", heads.map(h =>
-        `<div class="db-headline"><span class="sev" style="background:${sev(h.polarity)}"></span><span>${escapeHtml(h.summary)}</span></div>`
-      ).join(""));
+      setHTML("nk-headlines", heads.map(h => {
+        const text = escapeHtml(h.summary);
+        /* Source URL is stored in raw_data.link (bot/newskeeper_v2/store.py).
+           Render the headline as an outbound link when present, plain text
+           otherwise (older rows / missing link). */
+        const link = h.raw_data?.link;
+        const body = (link && /^https?:\/\//i.test(link))
+          ? `<a href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer" class="db-headline-link">${text}</a>`
+          : `<span>${text}</span>`;
+        return `<div class="db-headline"><span class="sev" style="background:${sev(h.polarity)}"></span>${body}</div>`;
+      }).join(""));
     }
     const baro = await sbGet<{ state: string }>(
       "newskeeper_regime", `select=state&order=created_at.desc&limit=1`);
