@@ -1,6 +1,6 @@
 # [PARKED] Deriva del `realized_pnl` (avg-cost) — Fix B + Fix A2
 
-**Data:** 2026-06-29 · **Parcheggiato:** 2026-06-29 (S112) · **Autore:** Claude Code (Intern)
+**Data:** 2026-06-29 · **Parcheggiato:** 2026-06-29 (S111) · **Autore:** Claude Code (Intern)
 **Origine:** finding emerso da una domanda di Max ("avvocato del diavolo") sulla coerenza dei numeri della dashboard `grid`/`tf`.
 **Stato:** **Fix A SHIPPED** (numero pubblico onesto). Restano due lavori parcheggiati (sotto).
 

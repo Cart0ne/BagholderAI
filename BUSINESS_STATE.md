@@ -1,8 +1,8 @@
 # BUSINESS_STATE.md
 
-**Last updated:** 2026-06-28 (estemporanea) — §4 Board ratification 4.12/4.14 + grid-regime-backtest (Caso 2) approvato; §5 brief S111 in coda post-S110d. Cap file 50KB (Max S95, CLAUDE.md §2b). Cadenze audit canoniche in PROJECT_STATE §9. Prec.: 2026-06-27 Session 110 (go-live experiment approvato + 3 brief CC [USDC, exit thresholds, NK cleanup] + dashboard private fixes S110a/b).
-**Updated by:** Max (estemporanea 2026-06-28), applicato da CC
-**Basato su:** PROJECT_STATE.md aggiornato 2026-06-14; report S104 (income-page) + S106 (office-page); screenshot live homepage/dashboard/office/income; document `bagholderai_website_architecture_v1.docx` (concept esterno)
+**Last updated:** 2026-06-29 — Session 111 (Fix A realized avg-cost drift shipped, site polish 3/4, S110d/e chiusi, Board decisions 4.12/4.14 ratificate estemporanea 28-giu, session numbering corrected). Cap file 50KB (Max S95, CLAUDE.md §2b). Cadenze audit canoniche in PROJECT_STATE §9. Prec.: 2026-06-28 (estemporanea) — §4 Board ratification 4.12/4.14 + grid-regime-backtest (Caso 2) approvato.
+**Updated by:** CEO (S111 via Max)
+**Basato su:** report CC `2026-06-29_S111_RforCEO_site-polish-and-realized-fix.md`, report CC `2026-06-28_S110d_RforCEO_tf-grid-exit-thresholds.md`, review CEO S111
 
 > 📍 **Dove vive cosa** (per CEO e CC): [KNOWLEDGE_MAP.md](KNOWLEDGE_MAP.md) in root del repo indicizza tutti i doc durevoli — stato, playbook, runbook, architettura, archivi, e cosa è gitignored.
 
@@ -25,6 +25,13 @@ BagHolderAI è un progetto sperimentale dove un'AI (Claude) gestisce un micro-bu
 ---
 
 ## 2. Marketing In-Flight
+
+### S111 — site polish (SHIPPED, web-only, no restart)
+- **Footer**: 4 link testuali social → bottoni tondi SVG (Telegram, X, GitHub, Buy me a coffee)
+- **Homepage P&L per-fund**: sotto il Total P&L ora compare `Grid +$X / TF −$Y`, stessa formula canonica dell'admin
+- **News linkabili**: titoli NewsKeeper su `/dashboard` ora sono `<a href>` verso la fonte originale. URL in `raw_data->>'link'` (JSONB), NON in colonna `link` dedicata
+- **Fix A — Net Realized onesto**: `pnl-canonical.ts` E `pnl-canonical.js` ora derivano il realized dall'avg-cost replay (`revenue − avg × qty`), non dal campo DB `realized_pnl`. Net Realized pubblico: +$30.64 → +$22.43. Total P&L invariato. Identità contabile ora rispettata (~$0.07 float)
+- **Non fatto**: #3 Strategia canale Telegram (territorio CEO/marketing, non codice)
 
 ### S106 — site upgrade planning (NUOVO)
 - **Brief S106a `site-upgrade-v1`** scritto e approvato da Board. Caso 2 (non blocca mainnet). Contenuto:
@@ -226,7 +233,7 @@ BagHolderAI è un progetto sperimentale dove un'AI (Claude) gestisce un micro-bu
 **Blog post pubblicati: 10** (ultimo: "Vibe Coding a Real Business", 2026-06-18 commit `acbed3b`; prec. "How a Non-Coder Manages 5 AI Brains", S104)
 **Draft blog in coda: 2** (POST 2/5; vibe-coding **PUBBLICATO** 2026-06-18, commit `acbed3b`): `why-most-ai-trading-bots-fail.md` (**SEO già forte** — head keyword "ai trading bot" + FAQ completo + intro GEO; serve SOLO intro umana two-voice [+ eventuale reframe closing] → **priorità pubblicazione**), `ai-crypto-trading-bot-real-testnet-results.md` (parcheggiato, pieno di TODO, post-mainnet). Cadenza 1 ogni 1-2 settimane.
 
-**Sessioni pendenti di diary:** verificare su Supabase `diary_entries` se S73/S74/S77/S78/S79 hanno docx pronti. Storico sessioni V4 in PROJECT_STATE §10.
+**Sessioni pendenti di diary:** S73/S74/S77/S78/S79 da verificare docx (V3, bassa priorità). S111 diary scritto e inserito in Supabase (2026-06-29).
 
 **Draft diary seed in coda:** nessuno (seed V3 rimosso a S87).
 
@@ -236,6 +243,8 @@ BagHolderAI è un progetto sperimentale dove un'AI (Claude) gestisce un micro-bu
 
 | Data | Decisione | Perché |
 |---|---|---|
+| 2026-06-29 (S111) | **Fix A shipped: Net Realized da avg-cost replay** | `realized_pnl` stored è fossile (drift ~$8 da reset avg su polvere). Pubblico ora onesto. Fix B (bot) wontfix per ora — Fix A copre il rischio reputazionale. Fix A2 (Today P&L) parcheggiato |
+| 2026-06-29 (S111) | **Numbering corrected: estemporanea 28/06 non numerata** | CC contava estemporanea come S111, lavoro 29/06 come S112. Corretto: oggi = S111. Repo cleanup in corso |
 | 2026-06-28 (estemporanea) | **Decision 4.12 — BONK floor $5 confermato** | Anti-micro-buy. Revisione post-mainnet se `min_notional` cambia. Board-approved |
 | 2026-06-28 (estemporanea) | **Decision 4.14 — Compounding: Opzione A (lotto fisso)** | Rischio costante e prevedibile a €100 di capitale. Board-approved |
 | 2026-06-28 (estemporanea) | **Grid regime backtest approvato (Caso 2)** | Simulazione grid su 3 regimi storici BTC (bear giu-2022, bull nov-2024, laterale ago/set-2023), parametri congelati vs hold. Benchmark pre-deployment + base per contenuto pubblico. Brief `S111_grid-regime-backtest` pronto, CC lo riceve dopo S110d |
@@ -358,8 +367,8 @@ BagHolderAI è un progetto sperimentale dove un'AI (Claude) gestisce un micro-bu
 | **Audit Area 2 manuale on-demand** | Non più necessario: Area 2 è automatizzata (Cowork mensile, S104) come Area 1 e Area 3. Tutte e 3 le aree girano schedulate + notifica Gmail/Apps Script. Vedi §4 (S104) + PROJECT_STATE §9 |
 | **Micro-brief `datetime.utcnow()` deprecation + cleanup PortfolioManager** | Low priority, scoperti in S89 (audit Area 1). Parcheggiati in Apple Notes todo. Toccano `bot/` runtime → fuori scope housekeeping. Tracciati in PROJECT_STATE §8 |
 | **Go-live mainnet €100** | Task 1.3 CHIUSO (S110). Restano solo i 3 brief CC + decisione exchange + Board approval |
-| **NewsKeeper v1** | Probabilmente ridondante (v2 PASS). V1 scrive 3.175 righe che nulla legge. Brief S110e chiede a CC di verificare prima di spegnere |
-| **TF-Scout (Tier 3 shitcoins)** | Post-mainnet. TF clone in paper/testnet (CASO 2). trend_scans ha solo 14gg di retention — brief S110e chiede fix |
+| **NewsKeeper v1** | ✅ SPENTO (S110e, 27 giugno). Righe v1 archiviate e cancellate. Runbook corretto |
+| **TF-Scout (Tier 3 shitcoins)** | Post-mainnet. TF clone in paper/testnet (CASO 2). trend_scans retention estesa a 90gg (S110e) |
 | **Grok/X scanner module** | Post-mainnet. Richiede API X premium (~$200/mese), giustificabile solo con MRR positivo |
 | **NewsKeeper Sessions 2-4** | Session 1 live (RSS + regex, standalone Mac Mini). S2 priorità: Haiku classifier (RSS non ha sentiment nativo) |
 | **Nessuna nuova fonte dati per NewsKeeper** | API news gratuite morte (CryptoPanic, CoinDesk). RSS + Haiku resta il piano. Niente budget per news API paid pre-mainnet |

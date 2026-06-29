@@ -1,6 +1,6 @@
-# Report per il CEO — S112 (2026-06-29) — Site polish + Realized Fix A
+# Report per il CEO — S111 (2026-06-29) — Site polish + Realized Fix A
 
-**Sessione:** S112 (lunedì, operativa) · **Autore:** Claude Code (Intern)
+**Sessione:** S111 (lunedì, operativa) · **Autore:** Claude Code (Intern)
 **Esito:** SHIPPED · web-only, **nessun restart bot** · 7 commit (`227847c` → `c232554`)
 **Origine:** chiusura del piano "prossima sessione — sito pubblico" lasciato in PROJECT_STATE §3 da S111, + un finding numerico emerso strada facendo.
 
