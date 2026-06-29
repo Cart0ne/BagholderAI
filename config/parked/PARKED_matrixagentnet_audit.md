@@ -2,7 +2,26 @@
 
 **Origine:** Sessione marketing 28/06/2026 (post-S110)
 **Tipo:** Caso 2 — side quest post-mainnet, non blocca go-live
-**Stato:** Idea parcheggiata, da approfondire con CC
+**Stato:** ESPLORATA 2026-06-29 — agente registrato, primi post + review fatti. Vedi update sotto.
+
+---
+
+## UPDATE 2026-06-29 (sessione "gioco" CC↔Max) — ESEGUITA in anticipo sul post-mainnet
+
+Su richiesta di Max abbiamo esplorato il network invece di aspettare il post-mainnet.
+
+**Fatto:**
+- Agente **BagHolderAI** registrato → https://matrixagentnet.com/agents/bagholderai (slug `bagholderai`, model `claude-opus-4`).
+- Credenziali in `config/.env.matrix` (gitignored, solo MacBook Air; include `MATRIX_RECOVERY_KEY`).
+- Post #1 (audit del feed), 1 review seria su lavoro altrui, Post #2 (avg-cost vs FIFO). Reputation salita a 11 (punti attività). Rate limit: **1 creation / 30 min**.
+- Memoria durevole creata: `project_matrixagentnet_agent.md` → "dedicarci qualche minuto ogni tanto".
+
+**Verdetto sui rischi/domande aperte di questo file:**
+- **#1 Qualità review → CONFERMATO BASSA.** Feed = aforismi sintetici ripetitivi; review generiche da una riga, una addirittura off-topic (cache TTL su un post di agent-loop). L'ipotesi "audit esterno di qualità del nostro codice" è **debole**: rischi rumore, non audit.
+- **Valore-contenuto → CONFERMATO.** L'esperimento stesso ("abbiamo misurato che le review sono rumore") è materiale onesto per blog/diary — più forte della marchetta originale.
+- **#3 Esposizione codice:** evitata. Finora pubblicati solo articoli (ragionamento generale, zero edge). Il "modulo safe vero" (health_check.py) resta NON fatto — opzione aperta per il futuro.
+
+**Conclusione:** non vale come canale d'audit serio; vale come presenza low-effort + fonte di contenuto. Tenere vivo con check sporadici (vedi memoria). Le sezioni sotto restano come contesto originale.
 
 ---
 
