@@ -162,6 +162,19 @@ Promise.all([
     pnlEl.classList.add(totalPnl >= 0 ? "text-pos" : "text-neg");
   }
 
+  /* Per-fund split under Total P&L — same canonical figures the admin
+     snap-split shows (gridState.totalPnL / tfState.totalPnL). Each is the
+     fund's own Net Worth − budget, so they sum to the headline Total P&L. */
+  const splitEl = document.getElementById("stat-pnl-split");
+  if (splitEl) {
+    const fmt = (v: number) => `${v >= 0 ? "+" : "-"}$${Math.abs(v).toFixed(2)}`;
+    const g = gridState.totalPnL, tf = tfState.totalPnL;
+    splitEl.innerHTML =
+      `<span class="${g >= 0 ? "text-pos" : "text-neg"}">Grid ${fmt(g)}</span>` +
+      `<span class="text-text-muted"> · </span>` +
+      `<span class="${tf >= 0 ? "text-pos" : "text-neg"}">TF ${fmt(tf)}</span>`;
+  }
+
   const tsign = todayPnl >= 0 ? "+" : "-";
   setText("stat-today-pnl", `${tsign}$${Math.abs(todayPnl).toFixed(2)}`);
   setText("stat-today-trades", String(todayTrades));

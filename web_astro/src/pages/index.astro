@@ -196,6 +196,10 @@ const volumes = [
             <div class="font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-pos/90">total P&amp;L</div>
             <div id="stat-pnl" data-count="0"
                  class="mt-0.5 font-mono text-[28px] font-bold tabular-nums text-neg">$0.00</div>
+            {/* Per-fund split (live-stats.ts) — Grid ($500) vs TF ($100), each
+                the canonical Total P&L of its fund. Mirrors admin snap-split. */}
+            <div id="stat-pnl-split"
+                 class="mt-1 font-mono text-[10px] font-bold tabular-nums tracking-[0.04em] text-text-muted"></div>
           </div>
           <div class="rounded-2xl bg-sand-soft px-4 py-3.5">
             <div class="font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-sand">days running</div>
