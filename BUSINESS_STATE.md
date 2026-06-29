@@ -1,8 +1,8 @@
 # BUSINESS_STATE.md
 
-**Last updated:** 2026-06-29 — Session 111 (Fix A realized avg-cost drift shipped, site polish 3/4, S110d/e chiusi, Board decisions 4.12/4.14 ratificate estemporanea 28-giu, session numbering corrected). Cap file 50KB (Max S95, CLAUDE.md §2b). Cadenze audit canoniche in PROJECT_STATE §9. Prec.: 2026-06-28 (estemporanea) — §4 Board ratification 4.12/4.14 + grid-regime-backtest (Caso 2) approvato.
-**Updated by:** CEO (S111 via Max)
-**Basato su:** report CC `2026-06-29_S111_RforCEO_site-polish-and-realized-fix.md`, report CC `2026-06-28_S110d_RforCEO_tf-grid-exit-thresholds.md`, review CEO S111
+**Last updated:** 2026-06-29 — Session 112 (planning, no code shipped: pivot venue Binance→Kraken causa MiCA, adapter Approccio A, decisioni D1/D2/D3 + funding-rate su Binance). Cap file 50KB (Max S95, CLAUDE.md §2b). Cadenze audit canoniche in PROJECT_STATE §9. Prec.: 2026-06-29 (S111) — Fix A realized avg-cost drift + site polish 3/4 + session numbering corrected.
+**Updated by:** CEO (S112 via Max)
+**Basato su:** piano CC `config/2026-06-29_S112_piano_kraken-adapter.md` + mappa `config/2026-06-29_S112_passo0_kraken-coupling-map.md`, decisioni Max/CEO S112
 
 > 📍 **Dove vive cosa** (per CEO e CC): [KNOWLEDGE_MAP.md](KNOWLEDGE_MAP.md) in root del repo indicizza tutti i doc durevoli — stato, playbook, runbook, architettura, archivi, e cosa è gitignored.
 
@@ -243,6 +243,12 @@ BagHolderAI è un progetto sperimentale dove un'AI (Claude) gestisce un micro-bu
 
 | Data | Decisione | Perché |
 |---|---|---|
+| 2026-06-29 (S112) | **Pivot venue: Binance → Kraken.** Binance ha mancato la licenza MiCA (ritiro domanda Grecia 24/06), sospende nuovi ordini spot/depositi UE dal 1° luglio. Kraken confermato (CASP, order book, API trading reale). Account Max registrato+validato, API accessibile, coppie verificate: BTC/USDC (~60.1M), SOL/USDC (~3.12M), BONK/USDC (~113K) | Binance era il venue di go-live; senza licenza il grid non può più piazzare ordini su Binance dal 1° luglio. Kraken era già il Plan B documentato. Bitpanda escluso (broker, no API trading retail); OKX/Bybit EU non valutati a fondo (Kraken = zero re-research) |
+| 2026-06-29 (S112) | **D1 — USDC per-exchange, non globale.** USDC si attiva solo con EXCHANGE=kraken; Binance testnet resta USDT | Preserva l'invariante "EXCHANGE=binance = comportamento identico"; evita migrazione globale rischiosa sul path vivo |
+| 2026-06-29 (S112) | **D2 — Grafici prezzo dashboard migrano su Kraken** (al cutover) | Coerenza fonte-trade: mostrare prezzi Binance mentre si trada su Kraken creerebbe divergenze visibili |
+| 2026-06-29 (S112) | **Funding-rate resta su Binance** (dato pubblico, read-only, EU-ok). binance_funding.py e binance_btc.py NON si toccano. Aggiungere fallback graceful se l'endpoint non risponde | Il regime (meteo di mercato) è lettura del mondo, indipendente da dove si esegue. Ricalibrare il freno Sherpa mentre si cambia già venue/valuta/fee = rischio per zero guadagno |
+| 2026-06-29 (S112) | **D3 — Exit TF restano bot-side** (soglie S110d). Guard nativi Kraken (cancel_all_after) costruiti ma disarmati = casa tecnica per futura idea anti-blackout | Non legare la logica di exit all'exchange (portabilità). Il guard meccanico lato-exchange è un livello diverso da Sherpa, da sviluppare post-cutover |
+| 2026-06-29 (S112) | **Adapter Kraken: Approccio A** (capacità completa dietro flag, hot-path NON cablato in S112; cablaggio al cutover col primo ordine reale). WS executions = fast-follow. Modello-grid (market vs limiti) = deciso al cutover | Invariante a rischio ~zero per costruzione: l'hot-path live non viene toccato. Il cablaggio rischioso si verifica al cutover insieme al primo ordine vero |
 | 2026-06-29 (S111) | **Fix A shipped: Net Realized da avg-cost replay** | `realized_pnl` stored è fossile (drift ~$8 da reset avg su polvere). Pubblico ora onesto. Fix B (bot) wontfix per ora — Fix A copre il rischio reputazionale. Fix A2 (Today P&L) parcheggiato |
 | 2026-06-29 (S111) | **Numbering corrected: estemporanea 28/06 non numerata** | CC contava estemporanea come S111, lavoro 29/06 come S112. Corretto: oggi = S111. Repo cleanup in corso |
 | 2026-06-28 (estemporanea) | **Decision 4.12 — BONK floor $5 confermato** | Anti-micro-buy. Revisione post-mainnet se `min_notional` cambia. Board-approved |
@@ -316,6 +322,9 @@ BagHolderAI è un progetto sperimentale dove un'AI (Claude) gestisce un micro-bu
 
 | Tema | Stato | Note |
 |---|---|---|
+| **[S112 NEW] Guard anti-blackout lato Kraken** (idea Max) | Post-cutover | Soglie di uscita larghe piazzate sull'exchange, più in alto di Sherpa, per proteggere in caso di downtime del bot (crash Mac Mini / connessione giù) — quando Sherpa non può agire perché è giù col bot. Parente del Portfolio Guardian, angolo specifico = resilienza al downtime |
+| **[S112 NEW] Pagina web staging "WIP / live su Kraken per MiCA"** | Brief cutover | Pagina indipendente pronta da swappare in homepage al cutover, per coprire il gap di poche ore tra "bot ripartiti su Kraken" e "sito aggiornato". Vincolo: additiva, non raggiungibile, non nel build finché non attivata |
+| **[S112 NEW] CMC come 2ª fonte F&G** (emerso nel Passo 0) | Post-cutover, brief separato | Brief parcheggiato `config/parked/PARKED_cmc_fear_greed_second_source.md` (verifica chiave S112: F&G latest+historical disponibili sul nostro piano) |
 | **Brief `2026-06-28_S110_grid-regime-backtest`** | Da assegnare dopo completamento S110d | Non gate per mainnet |
 | **[S108 NEW] CMC Fear & Greed come seconda fonte Sentinel** | Brief futuro | Nuovo file `cmc_fng.py` accanto a `alternative_fng.py`. Usa API key CMC già in `.env` (endpoint `v3/fear-and-greed/historical`). Logga valore in `sentinel_scores.raw_signals`, nessuna modifica a `regime_analyzer`. Osservare e confrontare con Alternative.me per settimane prima di decidere. Binance F&G non ha API pubblica; CMC (Binance-owned dal 2020) è il proxy più vicino |
 | **[S107 NEW] Blog post Cluster 1 "AI as CEO"** | PARCHEGGIATO | Il differenziatore massimo non ha ancora un post dedicato. Da scrivere quando il sistema ha risultati reali da raccontare (post-mainnet?) |
@@ -340,6 +349,8 @@ BagHolderAI è un progetto sperimentale dove un'AI (Claude) gestisce un micro-bu
 
 | Vincolo | Scadenza | Note |
 |---|---|---|
+| **Binance EU: nuovi ordini spot/depositi sospesi** | 1 luglio 2026 | Nessun fondo caricato su Binance → nessuna estrazione necessaria. Trigger del pivot a Kraken |
+| **Reset testnet Binance** | Stimato ~inizio luglio 2026 | Ultimo 04/06; ~mensile, non preannunciato. Trigger naturale per il cutover a Kraken |
 | **NewsKeeper v2 Barometro verdetto** | Nessuna data fissa (era ~23 giu) | T+14 raggiunto, esito: PASS qualità / INCONCLUSIVE prezzo (N=2 flip insufficiente). Esteso fino a regime change sostenuto (neutral/bullish >24h). Non blocca go-live grid. Dettagli in diary S108 |
 | **SEO+GEO POST 2 drafting** | ~metà giugno | "Why Most AI Trading Bots Fail (And What Ours Did Wrong Too)" — keyword: ai trading bot. Cadenza 1 post ogni 1-2 settimane |
 | **Apple Notes pulizia: cancellare 8 note obsolete (Max)** | A discrezione Max | 4 note attive da mantenere, 8 obsolete da cancellare manualmente |
