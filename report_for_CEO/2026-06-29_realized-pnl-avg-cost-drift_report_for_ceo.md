@@ -6,6 +6,8 @@
 **Tipo:** finding + proposta di fix (NON un brief già implementato). Zero codice scritto finora.
 **Severità:** MEDIA. Non blocca go-live, non tocca soldi reali (paper/testnet), **ma il numero sbagliato è public-facing** (card "Net Realized" su `/dashboard` pubblico).
 
+> **UPDATE 2026-06-29 — Fix A SHIPPED** (CEO-approved). Commit `0df228c`. Net Realized derivato dal replay avg-cost in entrambe le copie (`src/lib/pnl-canonical.ts` + `public/lib/pnl-canonical.js`). Verificato sui dati live: Total P&L invariato, Net Realized +30.6 → **+22.4**, incoerenza identità da ~$8.12 → ~$0.07 (rumore float dust-reset). **Fix B** (bot accounting) e **Fix A2** (Today P&L) restano da decidere (§5/§6).
+
 ---
 
 ## 0. TL;DR (3 righe)
