@@ -14,7 +14,9 @@
        fees       = Σ trades.fee                        (USDT-equivalent, already canonical)
 
    - Net Realized Profit (post-fees):
-       netRealized = Σ realized_pnl − fees              (escluso unrealized)
+       netRealized = Σ(sell.revenue − avg × qty) − fees (avg-cost replay, NOT
+                     the stored realized_pnl field — Fix A 2026-06-29; excl.
+                     unrealized)
 
    Inputs are filtered by the caller (managed_by, symbol-set, ecc.).
    This module assumes the trade rows have ALREADY been narrowed to the
@@ -108,10 +110,18 @@ function replayAvgCost(trades: CanonicalTrade[]): Record<string, SymState> {
       s.holdings = newH;
       s.totalInvested += cost;
     } else {
+      /* Fix A (CEO-approved 2026-06-29) — compute realized from the avg-cost
+         replay (revenue − avg × qty_sold) instead of reading the stored
+         realized_pnl field. The bot zeroes avg_buy_price on a dust sell-out
+         while keeping the dust coins (sell_pipeline.py:696), so each grid
+         recycle "forgets" the dust cost basis and the stored realized drifts
+         ~$8 above the true avg-cost (Net Realized read +$30.64 vs ~+$22.5).
+         Computing it here keeps realized, unrealized and Total P&L mutually
+         consistent (realized + unrealized − fees ≡ totalPnL by construction).
+         See report_for_CEO/2026-06-29_realized-pnl-avg-cost-drift_report_for_ceo.md. */
+      s.realized += cost - s.avgBuyPrice * amt;
       s.holdings -= amt;
       s.totalReceived += cost;
-      const dbPnl = Number(t.realized_pnl);
-      if (Number.isFinite(dbPnl)) s.realized += dbPnl;
       if (s.holdings <= 1e-9) {
         s.holdings = 0;
         s.avgBuyPrice = 0;
@@ -169,14 +179,12 @@ export function computeCanonicalState(
   const cash = budget - netInvested - skim;
   const netWorth = cash + holdingsMtm + skim - fees;
   const totalPnL = netWorth - budget;
-  /* Known bias (Brief 72a S72): for the 18 live testnet trades that were
-     backfilled with realized = (price - avg) × qty − fee_sell, this formula
-     subtracts fee_sell twice (once via the backfilled value, once via the
-     `fees` total). Bias ≈ −$0.22 cumulato (sotto-rappresenta netRealized).
-     Per i 458 paper trade pre-S67 la formula resta corretta (realized gross,
-     una sottrazione di fees totale). Decisione editoriale CEO 2026-05-11:
-     paper as-is, accettato bias temporaneo. Fix architetturale rinviato
-     a brief S73+ (split paper/live nel rendering pubblico). */
+  /* `realized` is now the avg-cost replay sum (Fix A 2026-06-29), so it is
+     consistent with openCost/unrealized and the identity
+        netRealized + unrealized ≡ totalPnL
+     holds by construction. (Previously this read the stored realized_pnl
+     field, which drifted ~$8 high from the bot's dust-reset on sell-out —
+     see the Fix A note in replayAvgCost.) */
   const netRealized = realized - fees;
 
   return {

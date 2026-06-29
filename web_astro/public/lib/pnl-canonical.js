@@ -21,7 +21,8 @@
        fees       = Σ trades.fee  (USDT-equivalent)
 
    - Net Realized Profit (post-fees):
-       netRealized = Σ realized_pnl − fees
+       netRealized = Σ(sell.revenue − avg × qty) − fees   (avg-cost replay,
+                     NOT the stored realized_pnl field — Fix A 2026-06-29)
 
    Brief 72a P2 (S72): when fee_asset == base_coin (live BUY), Binance
    scales fee from base balance — qty_acquired = filled − fee_native,
@@ -64,10 +65,15 @@
         s.holdings = newH;
         s.totalInvested += cost;
       } else {
+        /* Fix A (CEO-approved 2026-06-29) — compute realized from the avg-cost
+           replay (revenue − avg × qty_sold) instead of the stored realized_pnl
+           field, which drifts ~$8 high because the bot zeroes avg on dust
+           sell-out while keeping the dust coins. Keeps realized/unrealized/
+           Total P&L mutually consistent. Mirror of web_astro/src/lib/pnl-
+           canonical.ts. See report 2026-06-29_realized-pnl-avg-cost-drift. */
+        s.realized += cost - s.avgBuyPrice * amt;
         s.holdings -= amt;
         s.totalReceived += cost;
-        var dbPnl = Number(t.realized_pnl);
-        if (isFinite(dbPnl)) s.realized += dbPnl;
         if (s.holdings <= 1e-9) {
           s.holdings = 0;
           s.avgBuyPrice = 0;
@@ -116,9 +122,10 @@
     var cash = budget - netInvested - skim;
     var netWorth = cash + holdingsMtm + skim - fees;
     var totalPnL = netWorth - budget;
-    /* Known bias S72: 18 testnet sells have realized = (price-avg)×qty − fee_sell
-       (post-backfill); paper trades remain gross. `realized - fees` subtracts
-       fee_sell twice for testnet. Bias ≈ −$0.22 documented, deferred fix. */
+    /* `realized` is now the avg-cost replay sum (Fix A 2026-06-29), consistent
+       with openCost/unrealized → netRealized + unrealized ≡ totalPnL by
+       construction. (Was the stored realized_pnl field, ~$8 high from the bot's
+       dust-reset on sell-out — see the Fix A note in the sell branch.) */
     var netRealized = realized - fees;
     return {
       cash: cash,

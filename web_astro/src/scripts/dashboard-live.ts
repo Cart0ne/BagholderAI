@@ -5,10 +5,13 @@
    read-only). All updates are best-effort: if a query fails we leave
    the server-rendered mock fallback in place.
 
-   S69: tutto avg-cost (post-S66 Operation Clean Slate). Realized = DB SUM
-   di trades.realized_pnl (gia' avg-cost canonico). avg_buy_price ricostruito
-   running weighted (specchio bot/grid/buy_pipeline.py:117). Niente piu' FIFO
-   replay client-side. */
+   S69: tutto avg-cost (post-S66 Operation Clean Slate). avg_buy_price
+   ricostruito running weighted (specchio bot/grid/buy_pipeline.py:117).
+   Niente piu' FIFO replay client-side. Fix A (2026-06-29): il Net Realized
+   passa per computeCanonicalState, che ora CALCOLA il realized dal replay
+   avg-cost (NON il campo DB trades.realized_pnl, che derivava ~$8 per il
+   reset-avg-su-polvere del bot). Today P&L resta su SUM(realized_pnl) — flusso
+   giornaliero, Fix A2 parcheggiato. */
 
 import { sbFetchAll } from "./sb-paginated";
 import {
