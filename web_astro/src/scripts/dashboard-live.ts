@@ -7,11 +7,13 @@
 
    S69: tutto avg-cost (post-S66 Operation Clean Slate). avg_buy_price
    ricostruito running weighted (specchio bot/grid/buy_pipeline.py:117).
-   Niente piu' FIFO replay client-side. Fix A (2026-06-29): il Net Realized
-   passa per computeCanonicalState, che ora CALCOLA il realized dal replay
-   avg-cost (NON il campo DB trades.realized_pnl, che derivava ~$8 per il
-   reset-avg-su-polvere del bot). Today P&L resta su SUM(realized_pnl) — flusso
-   giornaliero, Fix A2 parcheggiato. */
+   Niente piu' FIFO replay client-side. Fix A (2026-06-29): TUTTI i path del
+   realized su questa pagina CALCOLANO il realized dal replay avg-cost
+   (revenue − avg×qty), NON dal campo DB trades.realized_pnl (gonfiato ~$8 dal
+   reset-avg-su-polvere del bot): computeCanonicalState (lib/pnl-canonical),
+   analyzeCoin (qui sotto) e il blocco inline `net-realized-test` in
+   dashboard.astro. Today P&L resta su SUM(realized_pnl) — flusso giornaliero,
+   Fix A2 parcheggiato. */
 
 import { sbFetchAll } from "./sb-paginated";
 import {
@@ -444,10 +446,12 @@ function analyzeCoin(trades: AllTrade[]): {
       holdings = newHoldings;
       totalInvested += cost;
     } else {
+      // Fix A (2026-06-29): realized dal replay avg-cost (revenue − avg×qty),
+      // NON il campo DB realized_pnl (gonfiato ~$8 dal reset-avg-su-polvere
+      // del bot). Coerente con lib/pnl-canonical + il blocco net-realized-test.
+      realized += cost - avgBuyPrice * amt;
       holdings -= amt;
       totalReceived += cost;
-      const dbPnl = Number(t.realized_pnl);
-      if (Number.isFinite(dbPnl)) realized += dbPnl;
       // Reset avg quando si chiude del tutto (specchio sell_pipeline.py:374)
       if (holdings <= 1e-6) {
         holdings = 0;

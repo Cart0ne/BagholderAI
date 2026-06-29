@@ -415,27 +415,30 @@ const tfSubtitle   = "The breakout hunter";
       </div>
 
       <script>
-        // Fetch sell P&L and total fees from trades v3 — aggregate client-side.
+        // Net realized (post-fees) for the Grid fund — avg-cost replay.
         // Single anon-key request; PostgREST max 1000 rows enough at testnet scale.
         //
-        // Brief 72a S72 fix (Max audit 2026-05-11): originally selected ALL
-        // v3 trades without managed_by filter — pulled in 2 TF + 2 tf_grid
-        // rows (+$0.041 realized, +$0.028 fees) → netto +$0.013 ≈ $0.01
-        // overstatement vs canonical Grid-only number on /grid.html. Filter
-        // realigned to managed_by=eq.grid (single source of truth, mirrors
-        // dashboard-live.ts gridManagedBy + grid.html post-S72).
+        // Fix A (2026-06-29): compute realized from the avg-cost replay
+        // (revenue − avg×qty per sell) instead of SUM(trades.realized_pnl).
+        // The stored realized_pnl drifts ~$8 high because the bot zeroes
+        // avg_buy_price on dust sell-out while keeping the dust coins
+        // (sell_pipeline.py:696). This inline block was the LAST consumer still
+        // reading the raw field — homepage/grid/tf/admin already use the
+        // avg-cost replay (lib/pnl-canonical). Mirrors that logic exactly so
+        // /dashboard agrees (~+$22.4, not the stale +$30.6).
+        //
+        // managed_by=eq.grid + cycle=eq.testnet_2 (S72/S97b): single source of
+        // truth, current testnet cycle only.
         (async () => {
           const SB_URL = "https://pxdhtmqfwjwjhtcoacsn.supabase.co";
           const SB_KEY =
             "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9." +
             "eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB4ZGh0bXFmd2p3amh0Y29hY3NuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4NDI1OTIsImV4cCI6MjA4OTQxODU5Mn0." +
             "G76lvYWrqlM0z2RoSkU1uAglfMBKN_rXvBGOQhb4kdg";
-          // S97b: cycle=eq.testnet_2 filter (S96a clean slate) so this metric
-          // counts only the current testnet cycle — was summing testnet_1 +
-          // testnet_2 realized/fees (stale +$9.02). Mirrors grid.html.
           const url =
             SB_URL +
-            "/rest/v1/trades?config_version=eq.v3&managed_by=eq.grid&cycle=eq.testnet_2&select=side,realized_pnl,fee";
+            "/rest/v1/trades?config_version=eq.v3&managed_by=eq.grid&cycle=eq.testnet_2" +
+            "&select=symbol,side,amount,cost,fee,fee_asset,created_at&order=created_at.asc";
           const el = document.getElementById("net-realized-test");
           if (!el) return;
           try {
@@ -444,17 +447,37 @@ const tfSubtitle   = "The breakout hunter";
             });
             if (!r.ok) throw new Error(String(r.status));
             const rows = (await r.json()) as Array<{
-              side: string;
-              realized_pnl: number | null;
-              fee: number | null;
+              symbol: string; side: string;
+              amount: number | null; cost: number | null;
+              fee: number | null; fee_asset: string | null;
+              created_at: string;
             }>;
-            let pnlSell = 0;
+            const st: Record<string, { h: number; avg: number }> = {};
+            let realized = 0;
             let fees = 0;
             for (const t of rows) {
-              if (t.side === "sell") pnlSell += Number(t.realized_pnl) || 0;
-              fees += Number(t.fee) || 0;
+              const sym = t.symbol;
+              const s = (st[sym] ||= { h: 0, avg: 0 });
+              const amt = Number(t.amount) || 0;
+              const cost = Number(t.cost) || 0;
+              const fee = Number(t.fee) || 0;
+              fees += fee;
+              if (t.side === "buy") {
+                const base = (sym.split("/")[0] || "").toUpperCase();
+                const fa = (t.fee_asset || "USDT").toUpperCase();
+                const price = amt > 0 ? cost / amt : 0;
+                const feeNative = fa === base && price > 0 ? fee / price : 0;
+                const q = amt - feeNative;
+                const nh = s.h + q;
+                if (nh > 0) s.avg = (s.avg * s.h + cost) / nh;
+                s.h = nh;
+              } else {
+                realized += cost - s.avg * amt;
+                s.h -= amt;
+                if (s.h <= 1e-9) { s.h = 0; s.avg = 0; }
+              }
             }
-            const net = pnlSell - fees;
+            const net = realized - fees;
             const sign = net >= 0 ? "+" : "−";
             el.textContent = sign + "$" + Math.abs(net).toFixed(2);
             el.classList.remove("text-pos", "text-neg");
