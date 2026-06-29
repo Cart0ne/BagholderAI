@@ -1,4 +1,4 @@
-# Brief S111 — grid-regime-backtest — 2026-06-28
+# Brief S110 (estemporanea) — grid-regime-backtest — 2026-06-28
 
 ## Contesto
 
