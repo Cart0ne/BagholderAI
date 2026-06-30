@@ -52,7 +52,9 @@ EXCHANGE = os.getenv("EXCHANGE", "binance").lower()
 #     overlay on the real USD market. BONK/USD is real spot (~$120K).
 #   - USD is fiat, not a stablecoin → MiCA stablecoin rules don't apply; Kraken
 #     EU offers /USD spot as a licensed CASP. Funding: one-time EUR→USD convert.
-# Lineup: grid BTC/USD + SOL/USD + BONK/USD; TF $100 picks from the /USD universe.
+# Lineup (original plan, USD quote): grid BTC/USD $250 + SOL/USD $150 + BONK/USD $100;
+# TF $100 picks from the /USD universe. Only the "TF €200" variant was scrapped (it was
+# the doubling-fallback for BONK's absence; BONK/USD is real → BONK back in the grid).
 # Keys are added by Max in config/.env on the Mac Mini (Withdraw permission OFF).
 class KrakenConfig:
     API_KEY = os.getenv("KRAKEN_API_KEY", "")

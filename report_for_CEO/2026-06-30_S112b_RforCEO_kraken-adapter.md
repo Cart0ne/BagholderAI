@@ -23,7 +23,7 @@ Inoltre, mischiare USD (BONK) + USDC (BTC/SOL) = due casse separate, e il bot **
 ## 2. Decisioni (Board-ratificate via Max, 2026-06-30)
 
 - **USD per tutto su Kraken** (ribalta "USDC per tutti e tre"). USD è fiat → fuori dalle regole MiCA sulle stablecoin; Kraken offre le /USD spot ai clienti EU con licenza. Costo: una conversione EUR→USD una tantum (identica a EUR→USDC). Binance testnet **resta USDT**.
-- **Lineup:** grid **BTC/USD + SOL/USD + BONK/USD** (BONK rientra); **TF $100** pesca dalle /USD.
+- **Lineup (piano originale, quote USD):** BTC/USD **$250** · SOL/USD **$150** · BONK/USD **$100** (BONK rientra) · **TF $100 pesca dalle /USD**. Scartata SOLO la variante "TF €200 sceglie da 19 coppie" (era il raddoppio-fallback per l'assenza di BONK; BONK/USD reale → presupposto decaduto, niente scope creep).
 - **Approccio A** (capacità completa dietro flag, hot-path al cutover) — invariante a rischio ~zero per costruzione.
 - **Funding-rate resta su Binance** (dato pubblico, EU-ok); `binance_funding.py`/`binance_btc.py` non toccati.
 - **Exit bot-side** (soglie S110d); `cancel_all_after` (dead-man switch) costruito ma **disarmato** (futura rete anti-blackout).
