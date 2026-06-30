@@ -207,10 +207,13 @@ def _replay_bot(history):
     return bot
 
 
-def test_replay_zeroes_unsellable_residual_in_050_to_5_band():
-    """A residual worth $3 (in the [$0.50, $5) band) is now zeroed on replay.
-    Under the old hardcoded $0.50 threshold it was kept → it would re-freeze the
-    grid on the next restart (Brief S105b A1.2 — the real bug)."""
+def test_replay_keeps_dust_residual_at_true_cost_s113():
+    """S113 churn-avg-fix: un residuo $3 (banda [$0.50,$5)) è ora TENUTO al costo
+    vero sul replay (prima veniva azzerato avg+qty). Tenere l'avg onesto sulla
+    polvere elimina la diluizione al re-entry → niente churn. La guard Strategy A
+    esente-polvere (S105b) garantisce che NON si re-introduca il dust-trap (W1
+    del CEO): dallo stato replayato un buy SOPRA avg scatta comunque e assorbe la
+    polvere in una posizione vera. Mirror del live sell_pipeline:694."""
     from bot.grid.state_manager import init_avg_cost_state_from_db
     history = [
         {"side": "buy",  "amount": 4.0, "price": 1.0, "cost": 4.0, "fee": 0.0,
@@ -221,10 +224,19 @@ def test_replay_zeroes_unsellable_residual_in_050_to_5_band():
     bot = _replay_bot(history)
     init_avg_cost_state_from_db(bot)
 
-    # residual 3.0 @ $1 = $3 < min_sellable $5 → dust → full sell-out
+    # residual 3.0 @ $1 = $3 < min_sellable $5 → polvere → ora TENUTA al costo vero
     assert bot._pct_last_buy_price == 1.0, "replay ran (buy ref restored)"
-    assert bot.state.holdings == 0.0, "residual in [$0.50,$5) zeroed (was kept under $0.50)"
-    assert bot.state.avg_buy_price == 0.0
+    assert abs(bot.state.holdings - 3.0) < 1e-9, "S113: dust residual KEPT (was zeroed)"
+    assert abs(bot.state.avg_buy_price - 1.0) < 1e-9, "S113: avg kept at true cost (was 0)"
+
+    # W1 (CEO): nessun dust-trap. Un buy sopra avg deve scattare comunque per
+    # l'esenzione is_dust della guard Strategy A (S105b), assorbendo la polvere.
+    bot.managed_by = "grid"
+    assert is_dust(bot.managed_holdings, 1.5, bot._exchange_filters), "precondition: still dust"
+    trade = bot._execute_percentage_buy(price=1.5)  # above avg $1.0
+    assert trade is not None, "re-entry above avg must fire on dust (no dust-trap)"
+    assert not is_dust(bot.managed_holdings, 1.5, bot._exchange_filters), "dust absorbed into real position"
+    assert 1.0 < bot.state.avg_buy_price < 1.5, "avg blended honestly (dust cost + new lot)"
 
 
 def test_replay_keeps_healthy_residual():

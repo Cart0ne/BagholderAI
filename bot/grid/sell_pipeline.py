@@ -693,7 +693,16 @@ def execute_percentage_sell(
 
     if fully_sold:
         bot.state.holdings = max(bot.state.holdings, 0)  # preserve dust on state if >0, just treat as zero
-        bot.state.avg_buy_price = 0
+        # S113 churn-avg-fix (Piano A, Board 2026-06-30): il reset dell'avg
+        # resta SOLO sul true-zero (uscita pulita, nessuna moneta residua).
+        # Sulla POLVERE residua (managed>1e-10 ma sotto min_notional) NON
+        # azzeriamo più l'avg: tenerlo al costo vero evita la diluizione al
+        # re-entry (avg fantasma → sell istantaneo allo stesso prezzo → churn da
+        # fee, 4× su Kraken). La guard Strategy A è esente sulla polvere
+        # (is_dust, S105b) → niente dust-trap. Allinea il bot al replay onesto
+        # del sito (Fix A). Vedi report S113 grid-regime-backtest.
+        if bot.managed_holdings <= 1e-10:
+            bot.state.avg_buy_price = 0  # true full exit: clean reset
         bot._pct_last_buy_price = price
         # Brief 70a Parte 3 (S70): reset sell ladder reference on full
         # sell-out. Next cycle's first sell will use avg_cost as reference.

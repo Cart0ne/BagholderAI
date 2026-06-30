@@ -163,9 +163,18 @@ def init_avg_cost_state_from_db(bot):
                 # fallback. GATE A2 verified GREEN: predicate dominates $0.50 for
                 # all three coins (SOL/BTC minNotional $5, BONK $1).
                 from utils.exchange_filters import is_dust
-                if qty <= 1e-9 or is_dust(qty, price, bot._exchange_filters):
+                if qty <= 1e-9:
+                    # True numeric full exit: clean reset (comportamento invariato).
                     qty = 0.0
-                    avg = 0.0  # reset on full sell-out (numeric or economic)
+                    avg = 0.0
+                    last_sell_price = 0.0  # 70a: reset ladder on full exit
+                elif is_dust(qty, price, bot._exchange_filters):
+                    # S113 churn-avg-fix (Piano A): mirror del live
+                    # sell_pipeline:694 — sulla POLVERE residua NON azzeriamo
+                    # avg/qty, li teniamo al costo vero così il replay al boot
+                    # riproduce lo stesso stato del loop live (niente diluizione
+                    # → niente churn). La polvere resta in `managed` (non diventa
+                    # phantom al reconcile). Solo il ladder si resetta.
                     last_sell_price = 0.0  # 70a: reset ladder on full exit
                 else:
                     last_sell_price = price  # 70a: partial sell → next ladder step
