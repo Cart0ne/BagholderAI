@@ -32,6 +32,35 @@ class ExchangeConfig:
     LIVE_BASE_URL = "https://api.binance.com"
 
 
+# === Exchange selection (S112, 2026-06-29) ===
+# Which venue the bot trades on. Default 'binance' → behaviour IDENTICAL to
+# pre-S112 (invariant: a git pull with EXCHANGE unset must NOT change the live
+# testnet). 'kraken' activates the dormant Kraken adapter. The cutover (flip the
+# flag + first real order) is a SEPARATE brief — nothing on the live hot-path
+# reads EXCHANGE yet (Approccio A, S112b).
+EXCHANGE = os.getenv("EXCHANGE", "binance").lower()
+
+
+# === Kraken Configuration (S112) — DORMANT until cutover ===
+# Venue we migrate to after Binance lost MiCA (no EU spot orders from 1 Jul 2026).
+# Quote = USD for EVERYTHING (Board-ratified S112b, reverses the earlier "USDC
+# for all three"). Why USD over USDC, discovered with live Kraken data:
+#   - BONK/USDC is NOT real spot — only a *synthetic* market ("S" badge, Kraken
+#     as counterparty, vol 0.00 USDC), unreachable by the trading API.
+#   - The /USDC universe is thin: 3 liquid pairs (BTC/ETH/SOL) → TF has no menu.
+#   - The /USD universe is deep: 686 pairs, 19 liquid ≥$2M; USDC is just an
+#     overlay on the real USD market. BONK/USD is real spot (~$120K).
+#   - USD is fiat, not a stablecoin → MiCA stablecoin rules don't apply; Kraken
+#     EU offers /USD spot as a licensed CASP. Funding: one-time EUR→USD convert.
+# Lineup: grid BTC/USD + SOL/USD + BONK/USD; TF $100 picks from the /USD universe.
+# Keys are added by Max in config/.env on the Mac Mini (Withdraw permission OFF).
+class KrakenConfig:
+    API_KEY = os.getenv("KRAKEN_API_KEY", "")
+    SECRET = os.getenv("KRAKEN_API_SECRET", "")
+    QUOTE = "USD"                                       # venue quote / funding currency
+    GRID_SYMBOLS = ["BTC/USD", "SOL/USD", "BONK/USD"]   # dormant: consumed at cutover
+
+
 # === Database Configuration ===
 class DatabaseConfig:
     SUPABASE_URL = os.getenv("SUPABASE_URL", "")
