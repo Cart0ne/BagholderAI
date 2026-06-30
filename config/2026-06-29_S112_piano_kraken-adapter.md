@@ -2,7 +2,8 @@
 
 > **Brief sorgente:** `config/2026-06-29_S112_brief_kraken-adapter.md` (SCOPE `kraken-adapter`).
 > **Passo 0 (mappa):** `config/2026-06-29_S112_passo0_kraken-coupling-map.md` (approvato).
-> **Stato:** PIANO in attesa di approvazione Max/CEO. **Nessun codice scritto finché non approvato** (CLAUDE.md §3).
+> **Stato:** APPROVATO ed ESEGUITO in S112b (commit `83ad81f`).
+> ⚠️ **Aggiornamento valuta (Board S112b):** la decisione finale è **USD per tutto** su Kraken (NON USDC/per-exchange come scritto in alcuni punti qui sotto, redatti prima dello scouting). Motivo: BONK/USDC è sintetico + /USDC troppo sottile. Stato autoritativo nel report `report_for_CEO/2026-06-30_S112b_RforCEO_kraken-adapter.md`.
 
 ---
 
