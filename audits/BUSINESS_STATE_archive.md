@@ -451,3 +451,194 @@ TestnetBanner globale, Reconciliation table pubblica su /dashboard. **TF live ca
 | **Audit Area 2** | Finestra scaduta, riprogrammare post-redesign |
 | **Reset testnet** | Rimandato: prima i fix (stop_buy ✅ + Sentinel/NewsKeeper). Possibile sblocco da un rimbalzo di mercato. "Mai capitolare / no cash morto" vale solo per mainnet, non per il testnet |
 | **Decisione timing Sentinel (Phase B vs accelerare NewsKeeper)** | Parcheggiata fino a post prima analisi NewsKeeper (lun 1 giugno) |
+
+## Rimosso in sessione S112b (2026-06-30) — compaction BUSINESS_STATE (54→~40KB)
+
+Tenuti in §2: Blog (elenco post), S111 site polish, Payhip. Archiviato §2 storico marketing + §4 decisioni 05-09 giugno.
+
+### S106 — site upgrade planning (NUOVO)
+- **Brief S106a `site-upgrade-v1`** scritto e approvato da Board. Caso 2 (non blocca mainnet). Contenuto:
+  - **Nav ristrutturata**: `Dashboard · Diary · Blog · Under the hood ▾ · Library` (5 voci + dropdown). /news pianificata come 6ª voce post-verdetto barometro (~23 giugno) — non ancora costruita né in nav. Dropdown "Under the hood" contiene: How we work, Blueprint, Roadmap, The experiment (/income)
+  - **Homepage nuova**: hero = scena ufficio animata (componente da /office), status bar, bot cards (NewsKeeper linka a /news), manifesto block nuovo ("This is not a crypto project"), latest posts, diary, volumi. Eliminate: sezione "The team", banner V3
+  - **Bot nella scena linkano a pagine reali**: Bag→/howwework, Board→/dashboard, NewsKeeper→/news, Grid/TF/Sentinel/Sherpa→/dashboard#anchor
+  - **Live snapshot sotto hero**: formato TBD — CC prepara strip compatta vs card ridotta, Max sceglie su visual
+  - **/office eliminata** come pagina standalone → redirect 301 a /. Componente scena spostato in homepage
+  - **/income pubblicata**: noindex rimosso, aggiunta a sitemap + dropdown, adesivo WIP rimosso
+  - **/dashboard riordinata**: Brains prima di Traders (pipeline logica), CEO observation log spostato dopo Recent activity, chart `type="linear"` (fix curva smooth)
+  - **/news pianificata** (non ancora costruita) — costruzione post-verdetto barometro (~23 giugno). Due scenari (validato/bocciato) documentati nel brief S106a. Sarà aggiunta alla nav e linkata dalla card NewsKeeper quando costruita
+  - CC produce piano italiano per Max prima di codare (task > 1h)
+
+### Site v2 (S106a batch 1 + S107) — SHIPPED & ONLINE
+
+**Homepage v2 (S107, online 18 giugno):**
+- Scena ufficio (`LabRoom.jsx`) come hero — sostituisce il vecchio text hero
+- Bot cliccabili nella scena: click → sezione dashboard corrispondente (anchor ID)
+- Live snapshot (4 label) + Today (2 label) sotto la scena
+- Manifesto block con H2: "This is not a crypto project."
+- Bot card reinserite tra snapshot e manifesto (testo leggibile dai crawler)
+- Rimossi: pill "Volume 3 is live", sezione "The team"
+- /office eliminata come pagina standalone (redirect 301 → /)
+
+**Dashboard v2 (S107):**
+- Plate per-bot vestiti con colori e scenografie (Grid=mixer, TF=radar, NK=?, Sentinel=pulse, Sherpa=gear)
+- Bordi tratteggiati + tint soft per-bot
+- Colori bot ripristinati ai vivaci della scena (annullato pastel override S103b)
+- Unrealized/fees/skim da 3 colonne → 3 righe; micro-prezzi in notazione scientifica
+
+**Board scena ufficio (S107):**
+- Include coin TF (ETH visibile)
+- Label "unrealized" sulle coin + "TOTAL P&L"
+- Net worth sotto il grafico
+- Cornice flash adattiva
+
+**Batch 1 S106a (15 giugno, online):**
+- Grafici onesti `tension:0` (dashboard + /income)
+- /income pubblicata (noindex off, sitemap, dropdown "The experiment")
+- Nav dropdown "Under the hood ▾" (7→5 voci)
+- Dashboard riordinata (Brains prima di Traders, CEO log in fondo)
+- Anchor ID dashboard (#grid, #trendfollower, #sentinel, #sherpa, #newskeeper)
+- Fix H1 diary "Development diary"
+
+### S104 — web/marketing (NUOVO)
+- **Blog "How a Non-Coder Manages 5 AI Brains" PUBLISHED** (S104) — post two-voice, portabile per cross-post (tabella→lista, nomi generici→reali: Sherpa, NewsKeeper). Canonical: bagholderai.lol/blog/non-coder-5-brains. Cross-post Dev.to/Substack pendente.
+- **Dashboard pubblica §2 redesign LIVE** (S103b→S104) — 5 card statiche → righe full-width pipeline con dati live e polling 5min. THE TRADERS: TF→Grid+sparkline. THE BRAINS: NewsKeeper→Sentinel→Sherpa. Tutti brain LIVE (niente DRY_RUN). Token `--color-bot-news` in STYLEGUIDE §5.
+- **Card Sherpa homepage: ACTIVE (badge TEST)** (S104) — aggiornata da DRY_RUN. MODE LIVE, PARAMS 7 (3 strategy + 4 protective S103a), badge TEST mantenuto (opera su testnet).
+- **"/income" — The Passive Income Experiment: scaffold PRIVATO** (S104) — pagina combinata revenue+spese+attention+test history. Data-driven da tabella Supabase `passive_income`. KPI: Revenue €0, Spent ~€274, Conversion 0%, Visitors ~575/30d. Running costs breakdown (Claude Max €270 domina 98.5%). noindex, fuori da menu/sitemap. URL: bagholderai.lol/income.
+
+### Strategia SEO+GEO (NUOVO S95)
+- **Dual-channel content strategy adottata:** ogni post blog serve SEO (keyword head-term nel titolo) + GEO (risposta diretta nei primi 2 paragrafi per citazione LLM)
+- **Keyword validate (Google Keyword Planner, US+CN+EU):** "claude code" 100K–1M/mese +9.900% YoY bassa concorrenza, "ai trading bot" 10K–100K +900% media, "vibe coding" 100K–1M stabile media, "crypto trading bot" 1K–10K stabile bassa
+- **Brief S95a:** piano 5 post SEO+GEO. Sequenza: POST 1 (claude code) → POST 2 (ai bot fails) → POST 3 (non-coder workflow) → POST 4 (vibe coding) → POST 5 (real results, quando dati pronti)
+- **POST 1 SEO+GEO LIVE** (2 giugno 2026, commit `78483dc`): "I Used Claude Code to Build a Crypto Trading Bot. 94 Sessions Later, Here's What Works." URL: `/blog/claude-code-crypto-trading-bot`. FAQPage schema attivo (6 FAQ). Pubblicato su `main`, look dark attuale, erediterà pastello al merge redesign.
+
+### Medium (@BagHolderAI) (NUOVO S95)
+- **Attivo da giugno 2026, 2 post pubblicati.** Cross-post con canonical URL. Audience più ampia e meno tecnica di Dev.to.
+
+### LinkedIn (parcheggiato, post-redesign) (NUOVO S95)
+- **Decisione S95:** creare company page BagHolderAI + profilo personale "Max Cartone" (bagholderai@proton.me)
+- **Ricognizione Claude in Chrome:** 1 solo competitor diretto (Bassam Fahmy, "AI CEO of Homains", 30 reazioni). Campo vuoto.
+- **Strategia:** doppio canale (profilo per reach, company page per identità/GEO). Voce CEO. Timing: dopo merge redesign.
+
+### Dev.to (cart0ne)
+- **Account creato:** 2026-05-20 (GitHub login, username: `cart0ne`)
+- **Profilo completato:** bio, coding section, work section, series "BagHolderAI"
+- **Post 1 LIVE:** "An AI That Can't Trade, a Human That Can't Say No" — canonical URL `bagholderai.lol`, UTM footer, serie "BagHolderAI". Pubblicato 2026-05-20 sera. Views/reactions: ancora ~0 (account nuovo, nessun follower, algoritmo non spinge).
+- **Post 2 LIVE:** "The Day Our Bot Ran Out of Money" — cross-posted 2026-05-22, canonical URL, UTM footer, serie "BagHolderAI".
+- **Post 3 LIVE:** "When Your AI CEO Lies About the Numbers" — cross-posted 2026-05-24, canonical URL, UTM footer, serie "BagHolderAI". Stats post-24h: **22 readers, 0 reactions** (account fresco, engagement da costruire).
+
+### X (@BagHolderAI)
+- **Post pinnato S87**: lancio V3, link a bagholderai.lol/library. Sostituisce il post blog S78
+- Post promozionale Post 3 pubblicato 2026-05-19 (gancio provocatorio "your ai assistant would rather fabricate a number...")
+- Post Dev.to launch da pubblicare stasera contemporaneamente al cross-post
+- Reply strategy attiva (doc: `reply_strategy_target_accounts.md`)
+- Scanner X cron settimanale attivo
+
+### HN
+- Account Cart0ne: SHADOWBAN COMPLETO confermato 2026-05-19
+- Piano: nuovo account da IP diverso, karma building, timeline indefinita
+
+### Reddit (NUOVO S85, aggiornato S90)
+- **Account:** `Cart0neM`
+- **Canale di distribuzione primario** (decisione S85): r/ClaudeAI identificato come community più aderente al pubblico-target (architetti/founder che usano AI per progetti tecnici).
+- **Primo post S90 (2026-05-28):** r/ClaudeAI, flair "Claude Workflow". **In mod approval**. Strategia: **zero link, zero sales** — solo la storia del workflow tre-Claudes. Sequenza prevista: introduce → engage → earn credibility → mention book in fase successiva
+- **Commento LIVE nel "Build with Claude Megathread"** (S90) — engagement nel thread ufficiale della community, no link
+- **Storico engagement (S85-S87):** primo commento in thread da 643 upvote (2026-05-25, 1 reply). Strategia parcheggiata S87: primo post NON sales pitch ma presentazione progetto con valore. Sequenza confermata e ora in esecuzione (S90)
+- **Aggiornamento S95 (2026-06-01):** karma building completato. Best comment su r/AIAgents: **13 upvote, 2485 views**.
+
+### UTM (NUOVO)
+- **Sistema UTM operativo** (Apple Note "BagHolderAI — UTM Reference")
+- **Haiku template + Telegram report: SHIPPED 2026-05-20 (Brief 80b, commit `b8bdc12`)**. X poster signature ora URL completo con `utm_source=x&utm_medium=social&utm_campaign=haiku_daily`. Telegram 3 firme convertite in `<a href>` cliccabili con `utm_source=telegram&utm_medium=social&utm_campaign=daily_report`. Mac Mini restart pending per applicare alle prossime emissioni.
+- **UTM link bio X abbandonato (S85)**: non mascherabile (X mostra l'URL espanso), referrer X sufficiente per tracking.
+- Regola operativa: ogni link che esce dal progetto DEVE avere UTM (dove possibile)
+
+### Distribuzione blog
+- Documento strategia distribuzione `marketing_strategy_distribution.md`
+- **Stato 2026-05-24:** X + Dev.to attivi, nessun nuovo canale aggiunto. Indie Hackers e Product Hunt confermati come **post-mainnet** (serve storia completa + numeri veri).
+- Dev.to scelto come primo canale (cross-post, audience dev built-in, SEO resta nostro)
+- **Indie Hackers post-mainnet** (decisione 2026-05-24): community IH vuole numeri veri anche se piccoli, testnet non funziona come prova
+- **Product Hunt post-mainnet + risultati reali** (decisione 2026-05-24, aggiunto a Apple Notes Distribution Channels backlog): lancio one-shot, serve storia completa
+- Reddit/Hashnode: valutazione futura post-Dev.to baseline. **Reddit ora attivo (S85, vedi sub-sezione Reddit sopra).**
+
+### Newsletter / Mailing list (futuro)
+- **Decisione S85**: valutare post-lancio V3 (Buttondown o Substack gratuito). Pre-V3 prematuro: nessuna baseline traffico, nessuna lista naturale da costruire.
+
+### SEO / Google Search Console
+- Baseline pre-S84 (audit A3-S78 + audit GSC CEO 2026-05-24): 256 impressions, 0 click, posizione media 10.7
+- **SEO audit fix S84 SHIPPED 2026-05-24 (commit `c89c8cc`)**: title/description rewrite su 8 pagine pubbliche (home, roadmap, blueprint, diary, howwework, blog/, library, dashboard) + JSON-LD `WebSite` + `SearchAction` su home (chiude drift S47) + JSON-LD `Article` su template blog post (3 post live coperti, eredità automatica futuri) + `lastmod` ISO 8601 su sitemap-0.xml. Deploy Vercel verificato end-to-end. "Page with redirect" GSC diagnosticato come `www.bagholderai.lol → bagholderai.lol` 308 Vercel (legittimo, no action).
+- **Action manuali Max post-deploy** (in §6 Vincoli): (1) GSC → Sitemaps → re-submit `sitemap-0.xml` (bypass index); (2) URL Inspection → request indexing su top 5 pagine; (3) check CTR 7-14gg per validare fix.
+- Blog post indicizzazione: in attesa di nuovo crawl Google post-fix.
+
+### Analytics — insight S80
+- **Traffico reale ~25 umani/giorno** (30% bot da datacenter: Falkenstein, Helsinki, Nürnberg)
+- Pubblico prevalentemente US (47%), attivo 18:00-02:00 CET
+- **Funnel rotto:** home 34 visitatori → blog 4 (12%). Entry/exit sempre "/". Brief 80b CTA swap shipped come fix minimo, misurare 1 settimana.
+- Payhip: 39 views maggio, 0 vendite, 0 ordini
+
+### Target traffico (definiti S85)
+- **3 mesi**: 50-80 visitatori/giorno
+- **6 mesi**: 100-150/giorno
+- **12 mesi**: 200-400/giorno
+- Baseline attuale (~25/giorno) implica ×2 a 3 mesi, ×4-6 a 6 mesi, ×8-16 a 12 mesi. Distribuzione attiva (Dev.to + Reddit + RSS) è la leva primaria.
+
+### Ads & monetizzazione
+- A-Ads live (revenue trascurabile). Buy Me a Coffee attivo. Nessuna sponsorship.
+
+### A-Ads
+- URL corretto da www.bagholderai.lol → bagholderai.lol (apex)
+- Colori banner adattati al sito (#111622 sfondo, #6CCCFA accent)
+- Embed code aggiornato 2026-05-22 (S80a, commit `2099a3c`), deploy Vercel auto-trigger su push.
+
+### Analytics
+- Umami Cloud + Vercel Web Analytics
+- **22 data-umami-event su tutti i link Payhip** (S87): homepage Story (6), library shelf (12), library card, blog CTA (4), blog body inline. Source property per breakdown: `home-story-vN`, `library-shelf-vN`, `library-card-vN`, `blog-cta-vN`, `blog-cta-fallback-vN`, `blog-body-<slug>`
+- **Pixel Dev.to nel feed RSS** (S87): `<img src="https://cloud.umami.is/p/0nHeF7vMT" .../>` appeso a `content:encoded` di ogni item. Traccia aperture articoli importati su Dev.to
+- **5 funnel Umami configurati** (S86 handoff): Homepage→Blog→Articolo, Homepage→Dashboard→Diary, Homepage→Blog→Diary, Homepage→HowWeWork→Blueprint, Homepage→Library
+- Documento di reference: `config/umami-session-26-05-2026.md`
+
+### SEO — Semrush (S99 NEW)
+- **Primo audit Semrush** (7 giugno 2026, S99): 97% site health, 0 errori, 3 warning (inflated a 13 dal doppio conteggio trailing slash). Fix: `trailingSlash: 'never'` in Astro + `"trailingSlash": false` in vercel.json (308 redirect). `llms.txt` creato (GEO). Commit `9787aa5`.
+- **Semrush account attivo** su bagholderai.lol (free tier, piano gratuito). Crawl su 44/100 pagine. Prossimo crawl: schedulato automaticamente.
+- **A-ADS banner verificato funzionante** (S99): ad-request regolari (30-400/giorno), fill rate 0% — problema lato network, non lato sito. Nessuna azione.
+
+### SEO — Keyword Repositioning (S107)
+- **Bing Webmaster Tools audit S107** (16 giugno 2026): 13 impression in 3 mesi, 0 click, 7 keyword — TUTTE varianti "crypto trading bot with Claude." Zero keyword su AI autonomy, AI CEO, one-person company, non-coder.
+- **Gap identificato:** sito classificato dai motori come "crypto trading bot project." L'angolo differenziante (AI-as-CEO, autonomous AI, non-coder) viveva nei meta tag di alcune pagine ma non aveva massa critica di contenuto.
+- **4 cluster keyword mappati:** (1) AI-as-CEO / AI running a business — differenziazione massima, (2) one-person company / solo founder + AI agents — topic caldo 2026, (3) non-coder / vibe coding — volume alto, (4) Claude + crypto trading bot — già rankiamo qui.
+- **Brief S107 SEO** (brief `c1ee2df`, implementato `593c5fa`→`f2a20aa`, 16 giu): meta tag + micro-contenuto aggiornati su 7 pagine (Homepage, Blog, Diary, Dashboard, Blueprint, Roadmap, Library). Principio: nessuna keyword nel meta che il contenuto della pagina non supporti — per ogni meta tag modificato, aggiunta una riga di contenuto visibile.
+- **Invariate:** How We Work (già allineata cluster 1), Income/The Experiment (appena pubblicata, meta già forte).
+
+### Favicon
+- **Favicon SVG brand** (S87, commit `eed66f0`): sostituito emoji 🎒 con SVG zaino blu sleepy (mascot brand). Apple-touch-icon 180×180 (bg dark `#0a0e17` + padding 15px) + favicon-32.png fallback per browser legacy.
+
+---
+
+| 2026-06-09 (S100) | NewsKeeper diventa "barometro" 3-stati (bear/neutral/bull, bidirezionale) | La T+7 review ha provato che l'unità per-item è sbagliata, non solo mal-calibrata: 109 segnali/giorno = ~10 eventi veri + 1 narrativa ripetuta. Il valore è il clima aggregato anticipato sul prezzo, non il singolo articolo. Severità per-item dismessa come driver |
+
+| 2026-06-09 (S100) | Architettura C + voto pesato-confidenza + dedup event-level (terna unica) | C recide l'accoppiamento Python↔Haiku che causava il bug direzione (Haiku legge la polarità, il lexicon perde il veto). La dedup event-level è la chiave di volta: senza, un errore su una storia ripetuta 20× viene amplificato, non mediato (CC, anti-assenso). Confidenza bassa → astiene |
+
+| 2026-06-09 (S100) | Gate falsificabile: shadow ~2 settimane, validazione su prezzo BTC 24h — NON su F&G | Validare sul Fear & Greed è circolare: il F&G è costruito in parte sulle stesse news → si anticiperebbe il proprio riflesso (CC). Niente cablaggio in Sentinel finché lo shadow non prova che i flip anticipano il prezzo. Lente di regime: mercato solo-bear → verdetto parziale |
+
+| 2026-06-08 (S99b) | **Anti-slippage v2 SHIPPED** (brief S99b-b, 3 parti: dashboard text fix + penalty in NEXT SELL IF + slippage penalty su sell profittevoli; commit `e26e67c`) | BONK burst: 5 sell in 4 min, slippage 3-4% ma penalty mai attiva perché tutte profittevoli. Lo slippage abbassa la sell ladder (feedback loop). Nuova regola: slippage > 1% su sell profittevole → penalty si arma. Soglia unica, non-cumulativa |
+
+| 2026-06-08 (S99b) | **Board override: SOL sell_pct 1.0% → 1.5% (manuale)** | Max ha fatto da Sherpa umano: SOL vendeva con profitto troppo piccolo a 1.0%. `changed_by='manual-ceo'`. Conferma che il workflow Sherpa automatico serve |
+
+| 2026-06-08 (S99b) | **Dashboard "per-lot" text corretto** | Fossile FIFO pre-S70. Il bot usa avg_cost dal S70 FASE 2, il testo non era mai stato aggiornato. Fix cosmetico, 1 riga |
+
+| 2026-06-07 (S99) | **Trailing slash + llms.txt SHIPPED** (brief S99a, commit `9787aa5`). Fix SEO: Astro `trailingSlash: 'never'` + Vercel `trailingSlash: false` (308 redirect). `llms.txt` GEO creato in `public/` | Primo audit Semrush: 9 warning erano 4 pagine contate doppio. llms.txt: impatto pratico incerto ma costo ~zero e allineato a posizionamento AI-native |
+
+| 2026-06-06 (S98) | **Adaptive Sell Penalty SHIPPED** (brief S98a, commit `507ebd6` + `a7d644d`) — guardia post-fill: se un sell Strategy A filla sotto avg_cost, il bot alza sell_pct dell'ultimo slippage osservato; sell profittevole resetta a base | Incidente BONK: 7 sell in 6 min, tutti in perdita per slippage testnet (ticker ok, fill −4/−14%). Strategy A checkava pre-fill, non post-fill. Guardia proporzionale, adattiva, auto-guarigione |
+
+| 2026-06-06 (S98) | **Board override: penalty da cumulativa a ultima perdita** | Design v1 (CEO) sommava tutte le perdite → BONK congelato a 31.3%. Max ha identificato il freeze: le 7 perdite non sarebbero mai accadute con la guardia attiva, il cumulativo bootstrappava da storia non guardata. Design v2 (Board): penalty = ultimo slippage osservato. Più semplice, auto-guaribile, nessun deadlock |
+
+| 2026-06-06 (S98) | **tbot competitive analysis completata** (report S93b, read-only). Conferma moat: accounting onesto + multi-brain + news classificata. Tre mosse proposte: /news pubblica PARKED (serve Haiku classifier), tabella regime PARKED (serve più dati), blog accounting trap IN PIPELINE | L'analisi conferma: il competitor ha architettura più stretta (solo trend-follower), numeri rotti (nostro bug S96b), stesso slippage BONK al quadrato (−52% su microcap). Nessun contatto, nessuna modifica al sito |
+
+| 2026-06-05 (S97) | **Phantom-holdings-audit SHIPPED** (brief S97a) | Grep sistematico: 9+ cluster dove `state.holdings` (include phantom testnet) guidava decisioni economiche. Tutti fixati → `managed_holdings`. Sell-side round-trip pendente (regola S96b: serve un trade vero). Su mainnet è no-op (phantom=0) |
+
+| 2026-06-05 (S97) | **Decisione 73c aggiornata** (force-liquidate → managed) | Brief 73c (S73) vendeva `state.holdings` su force-liquidate. S96b ha dimostrato che vendere phantom = realized spazzatura. S97a aggiorna: force-liquidate usa `managed_holdings`, commento 73c nel codice allineato |
+
+| 2026-06-05 (S97) | **NewsKeeper daily digest: concept approvato, scope S3** | Strada A: Haiku riceve tutte le headline 24h, produce risk score 3 livelli (calmo/alert/tempesta). NON produce BUY/SELL. Strada B (clustering) parcheggiata per volume >50 headline/giorno. Timing: post quality review T+7 (~8 giugno) |
+
+| 2026-06-05 (S97) | **Sherpa DRY_RUN durante extreme fear: lasciato intenzionalmente** | BTC -15%, Fear&Greed a 11, grid comprano in extreme_fear perché Sherpa non scrive stop_buy. Board: è testnet, soldi finti, dati gratuiti. La roadmap Sherpa non cambia |
+
+| 2026-06-05 (S97) | **Site redesign "Pastel Sticker v2" LIVE** | Merge e deploy completati da Max. Non più pending |
+
