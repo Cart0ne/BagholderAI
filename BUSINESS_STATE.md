@@ -1,8 +1,8 @@
 # BUSINESS_STATE.md
 
-**Last updated:** 2026-06-30 — Session 112b (Kraken adapter SHIPPED dormiente dietro flag, pivot valuta USD per tutto, §4 USD-rows; §2 marketing storico + §4 vecchie decisioni compattate 54→~35KB, tenuto elenco blog). Cap file 50KB (Max S95, CLAUDE.md §2b). Cadenze audit canoniche in PROJECT_STATE §9. Prec.: 2026-06-29 (S112 planning) — pivot Binance→Kraken + adapter Approccio A.
-**Updated by:** CEO (S112b via Max)
-**Basato su:** report CC `report_for_CEO/2026-06-30_S112b_RforCEO_kraken-adapter.md`, decisioni Max/CEO S112b
+**Last updated:** 2026-06-30 — S113 (churn-avg-fix Piano A SHIPPED+LIVE `8d2fdd6`, restart Mac Mini 20:27; verdetto strategico: grid = ammortizzatore non motore, passive income obiettivo in fallimento). §3 diary + §4/§5/§7 aggiornati su istruzione CEO. Cap file 50KB (Max S95, CLAUDE.md §2b). Cadenze audit canoniche in PROJECT_STATE §9. Prec.: 2026-06-30 Session 112b (Kraken adapter dormiente + pivot USD).
+**Updated by:** CEO (S113 via Max)
+**Basato su:** report CC `report_for_CEO/2026-06-30_S113_RforCEO_grid-regime-backtest.md` + brief `config/2026-06-30_S113_brief_churn-avg-fix.md`, decisioni Max/CEO S113
 
 > 📍 **Dove vive cosa** (per CEO e CC): [KNOWLEDGE_MAP.md](KNOWLEDGE_MAP.md) in root del repo indicizza tutti i doc durevoli — stato, playbook, runbook, architettura, archivi, e cosa è gitignored.
 
@@ -61,10 +61,10 @@ BagHolderAI è un progetto sperimentale dove un'AI (Claude) gestisce un micro-bu
 
 ## 3. Diary Status
 
-**Sessione corrente: S107 COMPLETE** (SEO keyword analysis + meta+content su 7 pagine + site v2 redesign).
+**Sessione corrente: S113 (BUILDING).** S112 COMPLETE. ⚠️ **S110 ancora in BUILDING (mai chiusa) — da risolvere.**
 **Interludio scritto:** "Thirteen Impressions" (copre S106-S107: visual identity per umani + SEO identity per macchine).
-- Volume corrente pubblico: V3 "From Brain to Eyes" (live). V4 in lavorazione (arc: NewsKeeper → go-live → results).
-- Ultima entry diary: **S107** "The One Where Thirteen Strangers Said Who We Are".
+- Volume corrente pubblico: V3 "From Brain to Eyes" (live). **V4 "From Eyes to Live" in corso** (arc: NewsKeeper → go-live → results).
+- Ultima entry diary: **S113 (BUILDING)**.
 - Prossimo check di congruenza diary: invariato.
 
 **Volumi pubblicati:**
@@ -87,6 +87,8 @@ BagHolderAI è un progetto sperimentale dove un'AI (Claude) gestisce un micro-bu
 
 | Data | Decisione | Perché |
 |---|---|---|
+| 2026-06-30 (S113) | **Fix churn: Board sceglie Piano A** (avg operativo non azzerato sulla polvere) vs B (dust write-off). ✅ SHIPPED+LIVE `8d2fdd6`, restart 20:27 | A elimina la causa radice e corregge sia decisioni sia reporting; B più sicuro ma butta polvere e lascia i numeri pubblici gonfiati. Fix = gate **pre-go-live-€100-Kraken, NON pre-cutover** |
+| 2026-06-30 (S113) | **Verdetto strategico: il grid puro è un ammortizzatore di volatilità, non un motore di rendimento.** Prossimo progetto: categoria diversa, non un altro bot | Passive income come obiettivo dichiarato: **in fallimento** (ricavi €0 su tutti i canali, costi ~€274). Backtest grid-regime (3 regimi BTC, fee Kraken): batte hold solo nel laterale vero e di poco (cattura ~15% del rialzo, ~76% del ribasso). Onesto = differenziante per la narrativa |
 | 2026-06-30 (S112b) | **USD per tutto su Kraken** (ribalta "USDC per i tre"). Binance testnet resta USDT | Dati live: BONK/USDC è mercato SINTETICO (badge S, controparte PEDSL-CY, vol API 0,00, "Unknown asset pair" → irraggiungibile dall'API bot); il "113K" era BONK/USD. Universo /USDC = solo 3 coppie liquide (BTC/ETH/SOL) → svuota il TF. /USD profondo (19 liquide ≥$2M, BONK/USD reale ~$120K, verificato via API). USD è fiat → fuori dalle regole MiCA sulle stablecoin; Kraken offre /USD spot ai clienti EU licenziati. Costo: conversione EUR→USD una tantum (= fatica EUR→USDC) |
 | 2026-06-30 (S112b) | **Lineup = piano originale confermato** (grid BTC/SOL/BONK, BONK rientra), unica modifica quote USD. Opzione "TF €200 sceglie da 19 coppie" SCARTATA | Era il fallback per l'assenza di BONK; BONK/USD reale → presupposto decaduto. Niente scope creep |
 | 2026-06-30 (S112b) | **Adapter Kraken SHIPPED dormiente** (commit `83ad81f`, Approccio A, 271/271 test, hot-path non cablato). Package `bot/exchanges/` (base ABC + BinanceClient delega + KrakenClient nativo). WS executions = fast-follow | Invariante a rischio ~zero per costruzione. Cablaggio + ordine reale al cutover |
@@ -151,6 +153,7 @@ BagHolderAI è un progetto sperimentale dove un'AI (Claude) gestisce un micro-bu
 
 | Tema | Stato | Note |
 |---|---|---|
+| **[S113] Replay validazione churn-fix su trade veri BTC 14–22 giu** | ✅ FATTO (gate accettazione soddisfatto) | Replay sul codice fixato: 15 cicli churn nello storico, realized fantasma +$12.25 rimosso (OLD $20.37 → NEW $8.12 onesto). Confermato LIVE al boot del restart (BTC avg-cost restored, realized=$8.12). 271/271 test |
 | **[S112 NEW] Guard anti-blackout lato Kraken** (idea Max) | Post-cutover | Soglie di uscita larghe piazzate sull'exchange, più in alto di Sherpa, per proteggere in caso di downtime del bot (crash Mac Mini / connessione giù) — quando Sherpa non può agire perché è giù col bot. Parente del Portfolio Guardian, angolo specifico = resilienza al downtime |
 | **[S112 NEW] Pagina web staging "WIP / live su Kraken per MiCA"** | Brief cutover | Pagina indipendente pronta da swappare in homepage al cutover, per coprire il gap di poche ore tra "bot ripartiti su Kraken" e "sito aggiornato". Vincolo: additiva, non raggiungibile, non nel build finché non attivata |
 | **[S112 NEW] CMC come 2ª fonte F&G** (emerso nel Passo 0) | Post-cutover, brief separato | Brief parcheggiato `config/parked/PARKED_cmc_fear_greed_second_source.md` (verifica chiave S112: F&G latest+historical disponibili sul nostro piano) |
@@ -197,6 +200,7 @@ BagHolderAI è un progetto sperimentale dove un'AI (Claude) gestisce un micro-bu
 
 | Cosa | Perché |
 |---|---|
+| **€100 reali su Kraken (primo euro vero)** | Gate Board: niente €100 finché il churn non è chiuso. ✅ **Churn-fix ora SHIPPED+LIVE** (`8d2fdd6`, S113) → questo gate è cleared; restano cutover Kraken (cablaggio+chiavi+ordine reale) + Board approval |
 | **Revenue automation completa (/income)** | La pagina /income esiste come scaffold privato, ma l'automazione fonti (Payhip, BMC, Umami API) è rinviata al primo euro: a €0 darebbero "0" → over-engineering. Solo Umami ha già un connettore. Haiku costs: soluzione Admin API trovata, parcheggiata |
 | **Pagina /news pubblica** | Pianificata (nav principale, brief S106a) ma bloccata dal verdetto barometro v2 (~23 giugno). Il brief documenta struttura e due scenari (validato/bocciato). Non costruire prima. Fonte moat: analisi tbot S98 (lui mostra gli stessi 3 feed RSS ma senza label AI → quando esponiamo, lo battiamo con sentiment/severità) |
 | **Easter egg /office interattivo** | L'idea di una pagina dove clicchi ogni bot ed entri nella sua "stanza" con dati dettagliati è parcheggiata. Se si fa, è un progetto a sé — non una pagina duplicata della homepage (la scena ufficio va nell'hero, /office standalone eliminata in S106a) |

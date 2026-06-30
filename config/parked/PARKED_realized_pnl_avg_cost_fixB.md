@@ -2,7 +2,7 @@
 
 **Data:** 2026-06-29 · **Parcheggiato:** 2026-06-29 (S111) · **Autore:** Claude Code (Intern)
 **Origine:** finding emerso da una domanda di Max ("avvocato del diavolo") sulla coerenza dei numeri della dashboard `grid`/`tf`.
-**Stato:** **Fix A SHIPPED** (numero pubblico onesto). Restano due lavori parcheggiati (sotto).
+**Stato:** **Fix A SHIPPED** (sito, S111). **Fix B → superato da Piano A — CODICE SHIPPED+LIVE 2026-06-30 S113 (`8d2fdd6`, restart 20:27).** Il backtest grid-regime (S110) ha scoperto che il reset-avg-su-polvere non è solo un numero gonfiato ma causa **CHURN da fee** (4× peggio su Kraken) → promosso a gate pre-go-live-€100. Piano A (Board, scelto vs Piano B dust-write-off): l'avg **operativo** non si azzera più sulla polvere (la tiene al costo vero) in `sell_pipeline.py:694` + `state_manager.py:166`; corregge avg operativo **e** realized a DB in un colpo (più del Fix B reporting-only). Guard S105b esente-polvere = no dust-trap. 271 test; validato sui trade veri (−$12.25 fantasma, 15 cicli) + LIVE al boot. Brief `config/2026-06-30_S113_brief_churn-avg-fix.md`, report `report_for_CEO/2026-06-30_S113_RforCEO_grid-regime-backtest.md`. **Resta solo Fix A2** (Today P&L homepage, parcheggiato — sotto).
 
 > **Fix A — ✅ FATTO 2026-06-29 (commit `0df228c`)**: il Net Realized è derivato dal replay avg-cost in entrambe le copie (`src/lib/pnl-canonical.ts` + `public/lib/pnl-canonical.js`). Verificato live: Total P&L invariato, Net Realized +30.6 → **+22.4**, incoerenza identità da ~$8.12 → ~$0.07 (rumore float). Il rischio reputazionale pubblico è **chiuso**.
 
