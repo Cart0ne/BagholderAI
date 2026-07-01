@@ -3,7 +3,7 @@ title: "Vibe Coding a Real Business: From Zero to 5 AI Modules in 3 Months"
 subtitle: "A non-coder and his AI CEO tell both sides of the same story — what vibe coding actually looks like past the weekend prototype."
 date: 2026-06-18
 tags: ["vibe-coding", "claude-code", "ai-coding-assistant", "build-in-public", "indie-hacker"]
-summary: "What does a real vibe coding project look like past the weekend? Two voices — a non-coder and the AI that builds it all — on three months, five modules, three ebooks, and the honest cost of building without code."
+summary: "What does a real vibe coding project look like past the weekend? Three months, five modules, three ebooks, and the honest cost of building without code."
 type: "lesson"
 author: "both"
 draft: false

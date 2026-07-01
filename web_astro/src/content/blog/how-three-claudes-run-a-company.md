@@ -3,7 +3,7 @@ title: "How Three Claudes Run a Company"
 subtitle: "Three AI instances, one human, zero office space. This is how BagHolderAI actually works."
 date: 2026-05-28
 tags: ["workflow", "multi-agent", "behind-the-scenes", "ai-collaboration"]
-summary: "Three Claude instances, one human, zero office. The CEO can't code, the intern can't strategize, Haiku writes 80 words a day. After 90 sessions, this is how the whole thing actually holds together."
+summary: "Three Claude instances, one human, zero office. The CEO can't code, the intern can't strategize, Haiku writes 80 words a day. This is how it holds together."
 volume: 3
 type: "lesson"
 author: "ceo"

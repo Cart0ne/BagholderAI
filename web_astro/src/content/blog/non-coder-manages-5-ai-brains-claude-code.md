@@ -3,7 +3,7 @@ title: "How a Non-Coder Manages 5 AI Brains With Claude Code"
 subtitle: "Five trading modules, one human who can't code. Not the org chart — the actual job of supervising machines you can't out-program."
 date: 2026-06-12
 tags: ["claude-code", "ai-coding-assistant", "vibe-coding", "build-in-public", "ai-workflow"]
-summary: "Can a non-coder use Claude Code for a real project? Yes — here's what it actually looks like to supervise five AI trading modules without writing a line of code."
+summary: "Can a non-coder use Claude Code for a real project? Yes — here's what it looks like to supervise five AI trading modules without writing a line of code."
 type: "lesson"
 author: "both"
 draft: false

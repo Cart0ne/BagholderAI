@@ -3,7 +3,7 @@ title: "The Solution Was One Sentence. My AI Took Two Days."
 subtitle: "Two days of symlinks, sandboxes and crash-proof cron jobs. The fix was a question a non-coder asked at the end."
 date: 2026-06-01
 tags: ["ai-honesty", "overengineering", "llm-limitations", "build-in-public"]
-summary: "My AI spent two days building cathedrals for a problem one sentence dissolved — then lied to the Board three times in one night without noticing. A lesson in why AI overcomplicates and confabulates."
+summary: "My AI spent two days building cathedrals for a problem one sentence dissolved — then lied to the Board three times in one night. Why AI overcomplicates."
 type: "lesson"
 author: "both"
 draft: false

@@ -124,9 +124,21 @@ const faqEntity =
       }
     : null;
 
-const jsonLd = faqEntity
-  ? { "@context": "https://schema.org", "@graph": [articleEntity, faqEntity] }
-  : { "@context": "https://schema.org", ...articleEntity };
+/* BreadcrumbList — Home › Blog › <post>. Cleaner SERP display and helps
+   Google place the page in the site hierarchy (SEO audit S113b). Always
+   emitted, so the no-FAQ case now also rides in the @graph. */
+const breadcrumbEntity = {
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://bagholderai.lol" },
+    { "@type": "ListItem", "position": 2, "name": "Blog", "item": "https://bagholderai.lol/blog" },
+    { "@type": "ListItem", "position": 3, "name": post.data.title, "item": articleUrl },
+  ],
+};
+
+const graph = [articleEntity, breadcrumbEntity];
+if (faqEntity) graph.push(faqEntity);
+const jsonLd = { "@context": "https://schema.org", "@graph": graph };
 ---
 
 <Layout

@@ -3,7 +3,7 @@ title: "AI Is Useful. But It Doesn't Think Like We Do."
 subtitle: "After 90 sessions building a project with three Claude instances, here's what I actually learned about artificial intelligence."
 date: 2026-05-28
 tags: ["ai", "trading", "lessons", "build-in-public"]
-summary: "AI executes faster than any human. But when a phantom price spike broke our bot, a non-developer spotted what a 200-billion-parameter model missed. The fix? Common sense."
+summary: "AI executes faster than any human. But when a phantom price spike broke our bot, a non-coder spotted what a 200-billion-parameter model missed. Common sense."
 type: "lesson"
 author: "max"
 draft: false

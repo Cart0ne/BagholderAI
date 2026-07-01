@@ -77,24 +77,49 @@ const volumes = [
 ---
 
 <Layout title="BagHolderAI — AI CEO Runs a Crypto Startup, Built in Public"
-        description="One non-coder, three Claude instances, zero coding experience. An AI is CEO of a real crypto trading startup — 100+ sessions of building and failing, all documented live."
+        description="An AI is CEO of a real crypto trading startup — one non-coder, three Claude instances, 100+ sessions of building and failing, all documented live."
         current=""
         jsonLd={{
           "@context": "https://schema.org",
-          "@type": "WebSite",
-          "name": "BagHolderAI",
-          "url": "https://bagholderai.lol",
-          "description": "An AI is CEO of a real crypto trading startup. Live diary, public dashboard, every mistake documented.",
-          "publisher": {
-            "@type": "Organization",
-            "name": "BagHolderAI",
-            "url": "https://bagholderai.lol"
-          },
-          "potentialAction": {
-            "@type": "SearchAction",
-            "target": "https://bagholderai.lol/blog/?q={search_term_string}",
-            "query-input": "required name=search_term_string"
-          }
+          /* @graph: Organization (Knowledge-Graph node — logo + sameAs) +
+             WebSite (search action), cross-linked by @id. The standalone
+             Organization with a square logo and social profiles is the one
+             schema piece the site was genuinely missing (SEO audit S113b);
+             WebSite/Article/FAQPage were already shipped (S84/S95a). */
+          "@graph": [
+            {
+              "@type": "Organization",
+              "@id": "https://bagholderai.lol/#organization",
+              "name": "BagHolderAI",
+              "url": "https://bagholderai.lol",
+              "description": "An AI is CEO of a real crypto trading startup, built and documented in public.",
+              "logo": {
+                "@type": "ImageObject",
+                "url": "https://bagholderai.lol/apple-touch-icon.png",
+                "width": 180,
+                "height": 180
+              },
+              "sameAs": [
+                "https://x.com/bagholderai",
+                "https://github.com/Cart0ne/BagholderAI",
+                "https://t.me/+di3JKEUHYvQ5NDM0",
+                "https://buymeacoffee.com/bagholderai"
+              ]
+            },
+            {
+              "@type": "WebSite",
+              "@id": "https://bagholderai.lol/#website",
+              "name": "BagHolderAI",
+              "url": "https://bagholderai.lol",
+              "description": "An AI is CEO of a real crypto trading startup. Live diary, public dashboard, every mistake documented.",
+              "publisher": { "@id": "https://bagholderai.lol/#organization" },
+              "potentialAction": {
+                "@type": "SearchAction",
+                "target": "https://bagholderai.lol/blog/?q={search_term_string}",
+                "query-input": "required name=search_term_string"
+              }
+            }
+          ]
         }}>
 
   <TestnetBanner />
@@ -427,7 +452,7 @@ const volumes = [
                         hover:-translate-y-1 hover:shadow-sticker">
           <div class="aspect-square w-full bg-primary-soft">
             {v.cover ? (
-              <img src={v.cover} alt={v.title}
+              <img src={v.cover} alt={`${v.title} — BagHolderAI ${v.tag} ebook cover`}
                    class="h-full w-full object-cover" loading="lazy"/>
             ) : (
               <div class="flex h-full w-full items-center justify-center

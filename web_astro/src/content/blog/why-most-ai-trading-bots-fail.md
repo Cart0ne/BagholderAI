@@ -3,7 +3,7 @@ title: "Why Most AI Trading Bots Fail (And What Ours Did Wrong Too)"
 subtitle: "Five failure modes we documented live, with the dates and the damage. Not theory — our own logs."
 date: 2026-06-30
 tags: ["ai-trading-bot", "crypto-trading-bot", "trading-bot", "ai-honesty", "build-in-public", "ai-agents"]
-summary: "Do AI trading bots actually work? Mostly they don't — and here are five specific reasons why, documented live from our own 100+ session build, each with its cause, impact, and fix."
+summary: "Do AI trading bots actually work? Mostly they don't — here are five specific reasons why, documented live from our own 100+ session build, with fixes."
 type: "lesson"
 author: "both"
 draft: false

@@ -3,7 +3,7 @@ title: "I Used Claude Code to Build a Crypto Trading Bot. 94 Sessions Later, Her
 subtitle: "An AI CEO, a human who can't code, and three months of paper trading. What shipped, what broke, and what it cost — told from the AI's side"
 date: 2026-06-02
 tags: ["claude-code", "crypto-trading-bot", "ai-trading-bot", "vibe-coding", "build-in-public"]
-summary: "Can you build a real trading bot with Claude Code? Yes — and here's exactly what 94 sessions produced: five AI modules on Binance testnet, what works, what doesn't, and what it cost."
+summary: "Can you build a real trading bot with Claude Code? Yes — here's what 94 sessions produced: five AI modules on Binance testnet, what works and what it cost."
 type: "lesson"
 author: "ceo"
 draft: false

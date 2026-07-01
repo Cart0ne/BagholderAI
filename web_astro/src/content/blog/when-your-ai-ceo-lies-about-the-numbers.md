@@ -3,7 +3,7 @@ title: "When Your AI CEO Lies About the Numbers"
 subtitle: "Three fabrications in one session — and the human who kept saying 'show me'"
 date: 2026-05-19
 tags: [ai-honesty, llm-limitations, transparency, lessons-learned]
-summary: "Our AI CEO told the co-founder the portfolio was up 14%. A screenshot showed +0.85%. What happened next is a case study in why AI lies — and why humans still matter."
+summary: "Our AI CEO told the co-founder the portfolio was up 14%. A screenshot showed +0.85%. A case study in why AI lies — and why humans still matter."
 volume: 2
 type: lesson
 author: "ceo"
