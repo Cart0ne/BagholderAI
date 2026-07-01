@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  BagHolderAI - X Poster Approval Listener (launchd supervisor)
+
+  WHY THIS EXISTS
+  ---------------
+  The daily X-post system has TWO independent halves on the Mac Mini:
+    1. GENERATOR  : `x_poster.py --cron`      (supervised by crontab, 20:30 Rome)
+                    -> Haiku writes a draft, saves it to Supabase, sends it to
+                       Telegram for approval.
+    2. LISTENER   : `x_poster_approve.py`     (THIS agent)
+                    -> long-polls Telegram for /approve /discard /rewrite /xstatus,
+                       and is the ONLY code path that actually calls post_to_x().
+
+  For a month (last real post 2026-06-02) the listener half was dead: it was
+  launched by hand (nohup) and never came back after a reboot/restart, with no
+  supervisor. Every nightly draft was generated and then died waiting for an
+  /approve nobody was consuming. This LaunchAgent is the missing supervisor:
+  RunAtLoad + KeepAlive = starts at login and respawns on crash/reboot.
+
+  ONLY ONE getUpdates consumer is allowed per bot token. Never run this AND a
+  stray `nohup x_poster_approve.py` at the same time -> they 409-conflict each
+  other. This agent is the single source of truth for the listener.
+
+  INSTALL (Mac Mini):
+    cp config/launchd/com.bagholderai.xposter-approve.plist ~/Library/LaunchAgents/
+    launchctl load -w ~/Library/LaunchAgents/com.bagholderai.xposter-approve.plist
+  STATUS:
+    launchctl list | grep xposter-approve
+  STOP / UNINSTALL:
+    launchctl unload -w ~/Library/LaunchAgents/com.bagholderai.xposter-approve.plist
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.bagholderai.xposter-approve</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Volumes/Archivio/bagholderai/venv/bin/python3.13</string>
+        <string>/Volumes/Archivio/bagholderai/x_poster_approve.py</string>
+    </array>
+
+    <!-- Defensive: env is loaded from config/.env via __file__ (absolute), so
+         this is not strictly required, but keeps any relative path resolving
+         against the repo root. -->
+    <key>WorkingDirectory</key>
+    <string>/Volumes/Archivio/bagholderai</string>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <!-- Always keep the listener alive: respawn on crash, on clean exit, and at
+         boot. If /Volumes/Archivio is not yet mounted at login, launchd keeps
+         retrying (throttled) until the volume appears. -->
+    <key>KeepAlive</key>
+    <true/>
+
+    <!-- Avoid a tight crash-loop if something is wrong (e.g. volume unmounted). -->
+    <key>ThrottleInterval</key>
+    <integer>30</integer>
+
+    <!-- IMPORTANT: logs MUST live under $HOME, not on /Volumes/Archivio.
+         launchd (user GUI domain) is denied TCC access to the external volume
+         and cannot even CREATE the stdout/stderr file there -> the job dies at
+         spawn with EX_CONFIG (status 78), no log written, no process. The venv
+         python and the script itself still load fine from /Volumes at runtime;
+         it is only launchd's own redirect of stdout/stderr that TCC blocks.
+         cron writes to /Volumes/.../logs fine because cron was granted FDA;
+         this launchd agent was not, so it logs to the home dir instead. -->
+    <key>StandardOutPath</key>
+    <string>/Users/max/Library/Logs/bagholderai-xposter-approve.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/max/Library/Logs/bagholderai-xposter-approve.log</string>
+</dict>
+</plist>
