@@ -244,6 +244,23 @@ git pull per partire con la versione più aggiornata?"
 Il progetto viene sviluppato su 2 macchine (MacBook Air + Mac Mini), 
 quindi il repo remoto potrebbe avere commit più recenti.
 
+**HEALTH-SWEEP PROCESSI — inizio sessione (formalizzata 2026-07-01)**: 
+insieme alla domanda sul pull, verifica che **TUTTI** i processi attesi sul 
+Mac Mini siano up — non solo orchestrator + grid bot. Fai `ssh 
+max@Mac-mini-di-Max.local 'ps aux'` (+ `launchctl list | grep bagholderai`) 
+e confronta con l'inventario atteso:
+- **Orchestrator-managed**: orchestrator + figli (4 grid BTC/SOL/BONK/ETH + 
+  TF + Sentinel + Sherpa)
+- **Standalone (non-managed)**: NewsKeeper v2; listener `x_poster_approve` 
+  (LaunchAgent `com.bagholderai.xposter-approve`)
+- **Cron sani** (crontab presente + ultimo run non in errore nei log): 
+  x_poster `--cron` 20:30 Rome, reconcile_binance 03:00 Rome, 
+  db_maintenance 04:00 UTC
+Riporta a Max **cosa è su e cosa è giù**. Un processo mancante lo **segnali**, 
+non lo riavvii d'iniziativa (la regola restart qui sotto resta). Motivo: il 
+listener `/approve` è rimasto morto ~1 mese perché il check era 
+orchestrator-centrico (caccia bug 2026-07-01, `bfe3433`).
+
 **RESTART DEI BOT — regola (formalizzata S105b, 2026-06-13)**: CC riavvia 
 l'orchestrator / i bot sul Mac Mini **SOLO se Max lo chiede esplicitamente**. 
 Pull e push restano autonomi di CC; il restart no — è Max a deciderne il 
