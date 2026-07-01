@@ -43,7 +43,10 @@ const bylineMap = {
   max: "By Max, co-founder",
   both: "By Max & Claude",
 };
-const byline = post.data.author ? bylineMap[post.data.author] : null;
+/* Un `customByline` nel frontmatter ha la precedenza sulla mappa `author`:
+   byline libero per un singolo post fuori dalla convenzione a due voci,
+   senza toccare gli altri post (S114, richiesta CEO). */
+const byline = post.data.customByline ?? (post.data.author ? bylineMap[post.data.author] : null);
 
 /* "Keep reading" — up to 3 related posts shown at the foot of the
    article so the reader has somewhere to go next instead of bouncing

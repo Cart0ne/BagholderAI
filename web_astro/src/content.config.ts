@@ -26,6 +26,13 @@ const blog = defineCollection({
     // Se assente, il template non mostra alcun byline (retro-compatibile
     // con i post già pubblicati). Vedi [...slug].astro per la resa.
     author: z.enum(["max", "ceo", "both"]).optional(),
+    // customByline: stringa libera che sovrascrive il byline derivato da
+    // `author` (mappa a 2 voci) SOLO per questo post. Serve quando il post
+    // non rientra nella convenzione a due voci (es. scritto interamente da
+    // Claude e approvato da Max). Se assente, il template usa la mappa
+    // `author`, quindi tutti gli altri post restano invariati. Vedi
+    // [...slug].astro per la precedenza.
+    customByline: z.string().optional(),
     draft: z.boolean().default(false),
     // noRss: true → il post resta sul sito ma viene escluso da /rss.xml.
     // Serve per i post NATI su dev.to e poi ripubblicati qui: senza questo
