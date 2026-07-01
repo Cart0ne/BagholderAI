@@ -16,6 +16,24 @@ from bot.exchanges.kraken_client import KrakenClient
 from bot import exchange_orders
 
 
+@pytest.fixture(autouse=True)
+def _no_prod_rejection_side_effects(monkeypatch):
+    """Neutralize the ORDER_REJECTED side-effects so these offline adapter tests
+    never touch production. `_alert_rejection` writes to bot_events_log via a
+    module-level get_client() (real Supabase) AND fires a Telegram alert — the
+    injected MagicMock exchange does not stop either (A1 MED-2, 2026-06-30: the
+    unfilled-order test leaked 6 phantom BONK/USD SELL rows into prod).
+
+    KrakenClient binds `_alert_rejection` in its OWN namespace (top-level
+    `from bot.exchange_orders import _alert_rejection`), so we patch it THERE,
+    not on bot.exchange_orders, or the patch would not bite. Same guard the
+    sibling DB-touching tests already use (test_sherpa_write_gate.py,
+    test_accounting_avg_cost.py)."""
+    monkeypatch.setattr(
+        "bot.exchanges.kraken_client._alert_rejection", lambda *a, **k: None
+    )
+
+
 # ---------------------------------------------------------------------------
 # Factory + invariant
 # ---------------------------------------------------------------------------

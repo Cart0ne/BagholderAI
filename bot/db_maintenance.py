@@ -35,6 +35,13 @@ RETENTION_POLICY: dict[str, dict] = {
     # window is kept in sync with trend_follower.cleanup_old_trend_scans.
     "trend_scans":         {"days": 90, "date_column": "created_at"},
     "trend_decisions_log": {"days": 90, "date_column": "created_at"},
+    # newskeeper_signals (A1 MED-1, 2026-06-30; recidiva dal report 2026-06-01):
+    # stessa filosofia di trend_scans/trend_decisions_log — accumulare track
+    # record per confrontare i segnali sui futuri cambi di regime, non
+    # ottimizzazione storage (la tabella è piccola, ~104 righe/giorno). Non è
+    # sull'hot-path di trading. Board ha confermato 90gg (2026-06-30), da
+    # rivedere dopo il prossimo cambio di regime osservato.
+    "newskeeper_signals":  {"days": 90, "date_column": "created_at"},
     "bot_state_snapshots": {"days":  7, "date_column": "created_at"},
     "bot_events_log":      {"days":  7, "date_column": "created_at"},
     "counterfactual_log":  {"days": 14, "date_column": "created_at"},
