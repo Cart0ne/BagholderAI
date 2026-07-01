@@ -1,8 +1,8 @@
 # BUSINESS_STATE.md
 
-**Last updated:** 2026-06-30 — S113 (churn-avg-fix Piano A SHIPPED+LIVE `8d2fdd6`, restart Mac Mini 20:27; verdetto strategico: grid = ammortizzatore non motore, passive income obiettivo in fallimento). §3 diary + §4/§5/§7 aggiornati su istruzione CEO. Cap file 50KB (Max S95, CLAUDE.md §2b). Cadenze audit canoniche in PROJECT_STATE §9. Prec.: 2026-06-30 Session 112b (Kraken adapter dormiente + pivot USD).
-**Updated by:** CEO (S113 via Max)
-**Basato su:** report CC `report_for_CEO/2026-06-30_S113_RforCEO_grid-regime-backtest.md` + brief `config/2026-06-30_S113_brief_churn-avg-fix.md`, decisioni Max/CEO S113
+**Last updated:** 2026-07-01 — S114 (audit A1 `20260630` eseguito CON RISERVE: 0 CRITICAL/HIGH, 2 MED remediati — `newskeeper_signals` retention 90gg + test DB leak Opzione A `81d00dd`, 6 righe fantasma `order_id='OZ'` pulite; pillar page "Can an AI Actually Run a Company?" pubblicata, firma "Written by Claude · Approved by Max"). §4 +4 righe, §5 riga S114 chiusa — su istruzione CEO via Max. Cap file 50KB (Max S95, CLAUDE.md §2b). Cadenze audit canoniche in PROJECT_STATE §9. Prec.: 2026-06-30 — S113 (churn-avg-fix Piano A SHIPPED+LIVE `8d2fdd6`, restart 20:27).
+**Updated by:** CEO (S114 via Max)
+**Basato su:** commit `81d00dd` (fix A1 MED-1 + MED-2-A) + report `audits/reports/20260630_audit[A1].md`, decisioni CEO/Max S114
 
 > 📍 **Dove vive cosa** (per CEO e CC): [KNOWLEDGE_MAP.md](KNOWLEDGE_MAP.md) in root del repo indicizza tutti i doc durevoli — stato, playbook, runbook, architettura, archivi, e cosa è gitignored.
 
@@ -87,6 +87,10 @@ BagHolderAI è un progetto sperimentale dove un'AI (Claude) gestisce un micro-bu
 
 | Data | Decisione | Perché |
 |---|---|---|
+| 2026-07-01 | **Audit Area 1 eseguito** (scadeva il 30/06): CON RISERVE — 0 CRITICAL/HIGH, 2 MED (newskeeper retention recidiva; SELL BONK/USD sospette in bot_events_log), 1 LOW. Test 271/271, schema 0 mismatch, brain sani | Report `audits/reports/20260630_audit[A1].md` |
+| 2026-07-01 | **Root cause MED-2 confermata: leak di test, non anomalia live.** `test_exchange_adapter_s112.py` mocka solo ccxt, non il DB → `_alert_rejection` scrive su Supabase di produzione. Fix Opzione A applicato (fixture autouse locale, pattern già in uso in test fratelli); Opzione B (conftest globale) rimandata a micro-brief separato, richiede attenzione ai moduli con import a livello modulo | Nessuna API Kraken esiste ancora — escluso ogni rischio operativo reale |
+| 2026-07-01 | **Retention `newskeeper_signals` fissata a 90gg** (era assente dal RETENTION_POLICY) | Stesso principio di trend_scans/trend_decisions_log (S110e): track record per confronto sui cambi di regime. Da rivedere al prossimo cambio di regime osservato |
+| 2026-07-01 | **Pillar page "Can an AI Actually Run a Company?" pubblicata con firma "Written by Claude · Approved by Max"** — contenuto interamente scritto in dossier SEO, zero contributo umano diretto | Corretta l'attribuzione invece di forzare la convenzione a due voci dove non si applica |
 | 2026-06-30 (S113) | **Fix churn: Board sceglie Piano A** (avg operativo non azzerato sulla polvere) vs B (dust write-off). ✅ SHIPPED+LIVE `8d2fdd6`, restart 20:27 | A elimina la causa radice e corregge sia decisioni sia reporting; B più sicuro ma butta polvere e lascia i numeri pubblici gonfiati. Fix = gate **pre-go-live-€100-Kraken, NON pre-cutover** |
 | 2026-06-30 (S113) | **Verdetto strategico: il grid puro è un ammortizzatore di volatilità, non un motore di rendimento.** Prossimo progetto: categoria diversa, non un altro bot | Passive income come obiettivo dichiarato: **in fallimento** (ricavi €0 su tutti i canali, costi ~€274). Backtest grid-regime (3 regimi BTC, fee Kraken): batte hold solo nel laterale vero e di poco (cattura ~15% del rialzo, ~76% del ribasso). Onesto = differenziante per la narrativa |
 | 2026-06-30 (S112b) | **USD per tutto su Kraken** (ribalta "USDC per i tre"). Binance testnet resta USDT | Dati live: BONK/USDC è mercato SINTETICO (badge S, controparte PEDSL-CY, vol API 0,00, "Unknown asset pair" → irraggiungibile dall'API bot); il "113K" era BONK/USD. Universo /USDC = solo 3 coppie liquide (BTC/ETH/SOL) → svuota il TF. /USD profondo (19 liquide ≥$2M, BONK/USD reale ~$120K, verificato via API). USD è fiat → fuori dalle regole MiCA sulle stablecoin; Kraken offre /USD spot ai clienti EU licenziati. Costo: conversione EUR→USD una tantum (= fatica EUR→USDC) |
@@ -153,6 +157,7 @@ BagHolderAI è un progetto sperimentale dove un'AI (Claude) gestisce un micro-bu
 
 | Tema | Stato | Note |
 |---|---|---|
+| **[S114] Verifica test-hygiene adapter Kraken** | ✅ RISOLTO — root cause confermata, fix Opzione A applicato + 6 righe fantasma pulite (order_id='OZ') | Opzione B (conftest globale anti-leak) resta come micro-brief futuro |
 | **[S113] Replay validazione churn-fix su trade veri BTC 14–22 giu** | ✅ FATTO (gate accettazione soddisfatto) | Replay sul codice fixato: 15 cicli churn nello storico, realized fantasma +$12.25 rimosso (OLD $20.37 → NEW $8.12 onesto). Confermato LIVE al boot del restart (BTC avg-cost restored, realized=$8.12). 271/271 test |
 | **[S112 NEW] Guard anti-blackout lato Kraken** (idea Max) | Post-cutover | Soglie di uscita larghe piazzate sull'exchange, più in alto di Sherpa, per proteggere in caso di downtime del bot (crash Mac Mini / connessione giù) — quando Sherpa non può agire perché è giù col bot. Parente del Portfolio Guardian, angolo specifico = resilienza al downtime |
 | **[S112 NEW] Pagina web staging "WIP / live su Kraken per MiCA"** | Brief cutover | Pagina indipendente pronta da swappare in homepage al cutover, per coprire il gap di poche ore tra "bot ripartiti su Kraken" e "sito aggiornato". Vincolo: additiva, non raggiungibile, non nel build finché non attivata |

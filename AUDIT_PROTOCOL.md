@@ -102,6 +102,7 @@ resta a una sessione fresh separata, vedi §3).
 | 2026-05-27 | 1 | Monthly automated technical integrity (codebase + DB + bot health + code patterns) | **CON RISERVE** (0 CRITICAL, 2 HIGH, 3 MED) | `audits/reports/20260527_audit[A1].md` |
 | 2026-05-31 | 3 | Cruscotto bisettimanale tutti i canali (X/Dev.to/Umami+funnel/GSC/Bing/blog/Payhip/Reddit) — Cowork scheduled automatico; refresh 5/5 OK dalla sandbox | **CON RISERVE** (0 CRITICAL, 3 HIGH, 4 MED, 2 LOW) | `audits/reports/20260531_audit[A3].md` |
 | 2026-06-01 | 1 | Monthly automated technical integrity (codebase + DB + bot health + code patterns) | **APPROVED** (0 CRITICAL, 0 HIGH, 3 MED, 2 LOW) | `audits/reports/20260601_audit[A1].md` |
+| 2026-06-30 | 1 | Monthly automated technical integrity, recidiva-check inclusa | **CON RISERVE** (0 CRITICAL, 0 HIGH, 2 MED, 1 LOW) | `audits/reports/20260630_audit[A1].md` |
 
 ---
 
@@ -138,4 +139,4 @@ L'Auditor gestisce entrambi i formati.
 
 ---
 
-*Last updated: 2026-06-19 (S108) — §2 Area 3 cadenza mensile allineata anche nel corpo (il changelog 2026-06-01 era avanti rispetto al testo §2); §7 +riga A1 2026-06-01. Prec.: 2026-06-01 (S96) — Area 2 backstop 120→60 giorni; Area 3 cadenza bisettimanale→mensile.*
+*Last updated: 2026-07-01 (S114) — §7 +riga A1 2026-06-30 (CON RISERVE, 2 MED remediati in S114). Prec.: 2026-06-19 (S108) — §2 Area 3 cadenza mensile allineata anche nel corpo (il changelog 2026-06-01 era avanti rispetto al testo §2); §7 +riga A1 2026-06-01. Prec.: 2026-06-01 (S96) — Area 2 backstop 120→60 giorni; Area 3 cadenza bisettimanale→mensile.*
