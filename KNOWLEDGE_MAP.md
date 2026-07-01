@@ -72,7 +72,7 @@
 
 | File | Contenuto |
 |---|---|
-| [config/MASTER_TASK_LIST_2026-06-26.md](config/MASTER_TASK_LIST_2026-06-26.md) | Master Task List — fonte dei task (item 4.12/4.13/4.14, 1.x pre-mainnet…) |
+| [config/MASTER_TASK_LIST_2026-07-01.md](config/MASTER_TASK_LIST_2026-07-01.md) | Master Task List — fonte dei task (item 4.12/4.13/4.14, 1.x pre-mainnet…) |
 | [config/APPROVED_golive_experiment_design.md](config/APPROVED_golive_experiment_design.md) | Design dell'esperimento go-live APPROVED (collaudo €100 → €600) |
 
 ## 6. Brief attivi / in coda (`config/`) — transient, qui per non perderli

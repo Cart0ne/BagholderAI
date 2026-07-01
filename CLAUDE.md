@@ -22,6 +22,10 @@ ALL'INIZIO di ogni sessione, leggi:
 - PROJECT_STATE.md (lo aggiorni tu, ti dice dove eri rimasto)
 - BUSINESS_STATE.md (lo aggiorna il CEO, ti dice vincoli strategici 
   e deadline non-tecniche)
+- la Master Task List più recente (`config/MASTER_TASK_LIST_*.md`; la 
+  data nel nome del file = ultimo aggiornamento) — l'elenco vivo dei task 
+  aperti/chiusi (Fasi 0-4 + backlog congelato + bug aperti). Regola 
+  formalizzata 2026-07-01.
 
 Se c'è discrepanza tra il brief ricevuto e i file di stato (es. il brief 
 assume codice in uno stato superato), FERMA e segnala a Max.
