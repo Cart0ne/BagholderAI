@@ -50,16 +50,24 @@ ottimizzare title/meta è igiene, non una leva. Le leve vere stanno altrove
    su 18 impressioni = 1–2 click. Non trattare i movimenti Bing come segnale
    di crescita.
 
+6. **"4xx" = conteggio cumulato, NON URL rotte live.** Il numero di 4xx negli
+   audit viene da `GetCrawlStats`, che **somma** le risposte di crawl 4xx sulla
+   finestra (~65 giorni) → un "25" può essere solo bot che colpiscono URL
+   inesistenti nel tempo, **non 25 pagine rotte adesso**. Le URL problematiche
+   *live* stanno in `GetCrawlIssues` (sezione dedicata del report connettore,
+   aggiunta S115a). Verificato 2026-07-02: **25 cumulati ma 0 issue live** →
+   nessun redirect da fare. Non inseguire i 4xx cumulati come pagine rotte.
+
 ---
 
 ## Google Search Console (GSC)
 
-6. **Posizione media NON comparabile mese-su-mese.** È **pesata sulle
+7. **Posizione media NON comparabile mese-su-mese.** È **pesata sulle
    impressions**: basta un cambio di *mix* di query/pagine e si sposta senza
    che sia cambiato **nessun ranking reale**. Confronta solo **per-pagina** e
    **per-query**, mai l'aggregato mese-su-mese.
 
-7. **Query anonimizzate.** Le query di `/roadmap` sono ~100% anonimizzate da
+8. **Query anonimizzate.** Le query di `/roadmap` sono ~100% anonimizzate da
    Google (long-tail rara) → **non ottimizzabili** via title/meta (lavoreresti
    al buio). NON riscrivere title/meta di pagine con query prevalentemente
    anonime.
@@ -68,7 +76,7 @@ ottimizzare title/meta è igiene, non una leva. Le leve vere stanno altrove
 
 ## Payhip (vendite)
 
-8. **Views di natura non verificabile.** La dashboard non distingue umano da
+9. **Views di natura non verificabile.** La dashboard non distingue umano da
    bot sulle *views* dei prodotti. Trattale come **ordine di grandezza**, non
    come conteggio di persone reali. Le **vendite** (ordini) sono invece reali.
 
@@ -76,7 +84,7 @@ ottimizzare title/meta è igiene, non una leva. Le leve vere stanno altrove
 
 ## Cross-strumento
 
-9. **Vercel Analytics ≠ Umami.** Contano in modo diverso (Vercel non è bloccato
+10. **Vercel Analytics ≠ Umami.** Contano in modo diverso (Vercel non è bloccato
    dagli adblocker, Umami sì; definizioni di "visita"/"pageview" diverse). Sono
    validi solo i **delta DENTRO lo stesso strumento**; **mai** confrontare il
    numero assoluto di uno con quello dell'altro.

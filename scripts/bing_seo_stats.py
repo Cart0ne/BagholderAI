@@ -98,6 +98,7 @@ def main():
         queries = _call("GetQueryStats")
         pages = _call("GetPageStats")
         crawl = _call("GetCrawlStats")
+        issues = _call("GetCrawlIssues")   # URL problematiche LIVE (≠ conteggio cumulato)
     except PermissionError as e:
         print(f"[ERROR] {e}")
         sys.exit(1)
@@ -159,7 +160,23 @@ def main():
     md += f"- **Link in entrata (InLinks):** {in_links:,}\n"
     md += f"- **Pagine crawlate (finestra):** {crawled:,}\n"
     md += f"- **Errori crawl:** {crawl_errors:,} · 4xx: {code_4xx:,} · 5xx: {code_5xx:,} · bloccate da robots: {blocked:,}\n\n"
-    md += "> Nota: `InIndex` (pagine effettivamente nell'indice di ricerca) può differire dal contatore \"pagine indicizzate\" della dashboard Bing, che spesso mostra URL note/crawlate o quelle in sitemap.\n\n---\n\n"
+    md += "> Nota: `InIndex` (pagine effettivamente nell'indice di ricerca) può differire dal contatore \"pagine indicizzate\" della dashboard Bing, che spesso mostra URL note/crawlate o quelle in sitemap.\n"
+    md += "> ⚠️ I contatori 4xx/5xx qui sopra sono **cumulati sulla finestra** (somma delle risposte di crawl), NON un elenco di URL rotte live — per quelle vedi la sezione sotto (DATA_CAVEATS Bing).\n\n---\n\n"
+
+    # --- Crawl issues per-URL (GetCrawlIssues): le URL problematiche ORA, con
+    # accesso difensivo ai campi (lo schema CrawlIssue non è verificabile finché
+    # la lista è vuota). Distingue "25 4xx cumulati" da "N URL rotte adesso". ---
+    md += "## Crawl issues (URL specifiche, stato attuale)\n\n"
+    if not issues:
+        md += "_Nessun crawl issue aperto ora._ Se la dashboard Bing mostra ancora 4xx, sono con ogni probabilità **cumulati/storici** (bot su URL inesistenti), non pagine rotte live da redirezionare.\n\n---\n\n"
+    else:
+        md += "| URL | Tipo | HTTP |\n|---|---|---|\n"
+        for it in issues[:50]:
+            u = str(it.get("Url", it.get("url", ""))).replace("|", "\\|")[:70]
+            typ = it.get("IssueType", it.get("Category", it.get("Issue", "-")))
+            code = it.get("HttpCode", it.get("Code", it.get("StatusCode", "-")))
+            md += f"| {u} | {typ} | {code} |\n"
+        md += f"\n> {len(issues)} issue totali. Triage: 301 se l'URL aveva valore/backlink, fix del link interno se è un refuso, ignora se è rumore-bot.\n\n---\n\n"
 
     md += "## Trend recente (ultimi punti giornalieri)\n\n"
     md += "| Data | Impressions | Click |\n|---|---|---|\n"
