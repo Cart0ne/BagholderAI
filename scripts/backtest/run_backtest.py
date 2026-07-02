@@ -108,9 +108,9 @@ def select_lateral(force: bool) -> dict:
     return flattest
 
 
-def run_scenario(scn: dict, snap: dict, force: bool) -> dict:
+def run_scenario(scn: dict, snap: dict, force: bool, base: str = "BTC") -> dict:
     pr = snap["params"]
-    df = fetch_ohlcv(scn["id"], scn["start"], scn["end"], force=force)
+    df = fetch_ohlcv(scn["id"], scn["start"], scn["end"], force=force, base=base)
     exch = "binance"  # sorgente dati (la fee è modellata su Kraken nel sim)
 
     # grid @ Kraken (primario), @ Binance (confronto), riparato @ Kraken
@@ -144,9 +144,11 @@ def run_scenario(scn: dict, snap: dict, force: bool) -> dict:
     pcr = os.path.join(CHART_DIR, f"{scn['id']}_price_repaired.png")
     ec = os.path.join(CHART_DIR, f"{scn['id']}_equity.png")
     price_chart(df, sim_kraken.trades_df(),
-                f"{scn['label']} — {scn['desc']} · bot ATTUALE (fee Kraken 0.40%)", pc)
+                f"{base} · {scn['label']} — {scn['desc']} · bot ATTUALE (fee Kraken 0.40%)", pc,
+                coin_label=base)
     price_chart(df, sim_repaired.trades_df(),
-                f"{scn['label']} — {scn['desc']} · bot RIPARATO (fee Kraken 0.40%)", pcr)
+                f"{base} · {scn['label']} — {scn['desc']} · bot RIPARATO (fee Kraken 0.40%)", pcr,
+                coin_label=base)
     equity_chart(sim_kraken.equity_df(), hold, pr["capital"],
                  f"{scn['label']} — Grid vs Hold (fee Kraken 0.40%)", ec,
                  repaired_eq=sim_repaired.equity_df())
@@ -172,6 +174,13 @@ def run_scenario(scn: dict, snap: dict, force: bool) -> dict:
 def _fmt(x, dec=2, pct=False, sign=False):
     s = f"{x:+,.{dec}f}" if sign else f"{x:,.{dec}f}"
     return s + ("%" if pct else "")
+
+
+def _fmt_price(x: float) -> str:
+    """Coin-aware price: full dollars for BTC/SOL, sig-figs for sub-cent (BONK)."""
+    if x >= 1:
+        return f"${x:,.2f}"
+    return f"${x:.6g}"
 
 
 def metric_table(res: dict) -> str:
@@ -200,33 +209,50 @@ def metric_table(res: dict) -> str:
     return "\n".join(out)
 
 
-def build_report(snap: dict, results: list, lateral_info: dict) -> str:
+def build_report(snap: dict, results: list, lateral_info: dict,
+                 scenarios: list, base: str = "BTC") -> str:
     pr, src, meta = snap["params"], snap["sources"], snap["meta"]
+    phase = {"BTC": "Fase 1", "SOL": "Fase 2", "BONK": "Fase 3"}.get(base, "")
     L = []
-    L.append("# Grid-Regime Backtest — Fase 1 (BTC)")
+    L.append(f"# Grid-Regime Backtest — {phase} ({base})")
     L.append("")
-    L.append(f"_Generato: {meta['snapshot_utc']} · brief "
+    L.append(f"_Generato: {meta['snapshot_utc']} · scenari selezionati sul prezzo "
+             f"reale di {base} (scan_regimes.py) · brief "
              "`config/2026-06-28_S110_brief_grid-regime-backtest.md`_")
     L.append("")
     L.append("## Cos'è (e cosa NON è)")
     L.append("")
-    L.append("Mappa **comportamentale** del nostro grid bot — a **parametri congelati** "
-             "— in tre regimi storici di BTC, confrontato con un semplice **hold**. "
-             "**Non è un'ottimizzazione**: i parametri si congelano, si gira, si guarda. "
-             "I numeri saranno poi confrontati con il mainnet reale (Kraken).")
+    _window_src = ("Le finestre di 30 giorni sono ancorate a regimi storici reali di "
+                   f"{base}." if base == "BTC" else
+                   "Le finestre di 30 giorni NON sono scelte a mano ma trovate "
+                   f"algoritmicamente sul prezzo di {base} (`scan_regimes.py`: drift "
+                   "open→close + gate laterale |drift|<10%).")
+    L.append(f"Mappa **comportamentale** del nostro grid bot su **{base}** — a "
+             "**parametri congelati** — in tre regimi storici (bear / bull / laterale), "
+             "confrontato con un semplice **hold**. **Non è un'ottimizzazione**: i "
+             f"parametri si congelano, si gira, si guarda. {_window_src} I numeri "
+             "saranno poi confrontati con il mainnet reale (Kraken).")
     L.append("")
     L.append("**Metodo & caveat (leggere prima dei numeri):**")
     L.append("")
     L.append(f"- **Fee = Kraken taker 0.40%** (i market order del grid sono taker). "
              "È il costo reale del venue mainnet (S112b). La colonna di confronto a "
              "0.10% mostra quanto il testnet Binance ci *gonfiava* il risultato.")
-    L.append("- **Risoluzione = candele 1m**, fill sul **close** (il bot live fa polling "
-             "ogni 60s su un prezzo istantaneo, non vede high/low del minuto). Sotto-conta "
-             "i micro-rimbalzi inframinuto → possibile **sottostima** di skim/sell nel laterale.")
-    L.append(f"- **Parametri congelati** = snapshot `bot_config` BTC del {meta['snapshot_utc']}. "
-             "In LIVE Sherpa li muoverebbe per regime: questo è il **caso a freno fisso**.")
-    L.append(f"- **Capitale = ${pr['capital']:.0f}** (brief; l'allocazione testnet live è "
-             f"${meta.get('capital_allocation_live')}, il target mainnet S112b è $250).")
+    _chk = int(pr.get("check_interval_seconds", 60))
+    _gran_extra = ("" if _chk >= 60 else
+                   f" ⚠️ **{base} in LIVE checka ogni {_chk}s** (< 1m): la candela 1m "
+                   "sotto-campiona ancora di più le sue oscillazioni → i numeri del "
+                   "**laterale sono un floor pessimistico** (skim reale probabilmente maggiore).")
+    L.append(f"- **Risoluzione = candele 1m**, fill sul **close** (il bot live fa polling "
+             f"ogni {_chk}s su un prezzo istantaneo, non vede high/low del minuto). Sotto-conta "
+             f"i micro-rimbalzi inframinuto → possibile **sottostima** di skim/sell nel laterale.{_gran_extra}")
+    L.append(f"- **Parametri congelati** = snapshot `bot_config` {base} del {meta['snapshot_utc']} "
+             "(inclusi i valori già mossi da Sherpa). In LIVE Sherpa li muoverebbe per "
+             "regime: questo è il **caso a freno fisso**.")
+    L.append(f"- **Capitale = ${pr['capital']:.0f}** (target mainnet go-live, Master Task List 1.3; "
+             f"allocazione testnet live: ${meta.get('capital_allocation_live')}). "
+             f"Densità griglia = capitale/lotto = **~{pr['capital']/pr['capital_per_trade']:.0f} gradini** "
+             f"(lotto ${pr['capital_per_trade']:.2f}).")
     L.append("- **Un mese per regime NON è statisticamente significativo.** Vale il "
              "**pattern**, non il centesimo. Benchmark orientativo, non paper accademico.")
     L.append("- **Sorgente prezzi = Binance** (storico profondo; Kraken via REST non lo dà). "
@@ -250,9 +276,8 @@ def build_report(snap: dict, results: list, lateral_info: dict) -> str:
     # previsioni
     L.append("## Previsioni qualitative (dichiarate PRIMA dei numeri)")
     L.append("")
-    for scn in SCENARIOS:
+    for scn in scenarios:
         L.append(f"- **{scn['label']}** — {scn['prediction']}")
-    L.append(f"- **Laterale** — {LATERAL_PREDICTION}")
     L.append("")
 
     # per scenario
@@ -261,7 +286,7 @@ def build_report(snap: dict, results: list, lateral_info: dict) -> str:
         L.append(f"## {scn['label']} — {scn['desc']}")
         L.append("")
         L.append(f"Periodo {scn['start']} → {scn['end']} · {res['candles']:,} candele 1m · "
-                 f"open ${d['open']:,.0f} → close ${d['close']:,.0f} "
+                 f"open {_fmt_price(d['open'])} → close {_fmt_price(d['close'])} "
                  f"(**{d['drift_pct']:+.1f}%**) · range intramese **{d['range_pct']:.1f}%**.")
         if scn.get("lateral_note"):
             L.append("")
@@ -306,7 +331,7 @@ def build_report(snap: dict, results: list, lateral_info: dict) -> str:
     # riepilogo
     L.append("## Riepilogo — 3 scenari (fee Kraken 0.40%): attuale vs riparato vs hold")
     L.append("")
-    L.append("| Scenario | Drift BTC | Grid ATTUALE | Grid RIPARATO | Hold | Δ fix (rip−att) | Esito (riparato vs hold) |")
+    L.append(f"| Scenario | Drift {base} | Grid ATTUALE | Grid RIPARATO | Hold | Δ fix (rip−att) | Esito (riparato vs hold) |")
     L.append("|---|---|---|---|---|---|---|")
     for res in results:
         g, r, h, d = res["grid"], res["grid_repaired"], res["hold"], res["diag"]
@@ -319,15 +344,26 @@ def build_report(snap: dict, results: list, lateral_info: dict) -> str:
     L.append("")
     L.append("**Lettura per regime (sul bot RIPARATO = comportamento onesto):**")
     L.append("")
-    L.append("- **Bull**: il grid prende tanti micro-profitti (+1.8%/giro) e **si perde il trend** "
-             "→ positivo ma molto sotto hold. È la debolezza strutturale del grid in salita, non un bug.")
-    L.append("- **Laterale(ish)**: quasi pari a hold. Settembre 2023 ha comunque un drift +3.9% "
-             "che hold cattura e il grid no (vende presto).")
-    L.append("- **Bear**: il grid compra i dip e **tiene i bag** (99% in mercato, stop-buy a −3% "
-             "ferma gli acquisti) → finisce sotto, ma **batte hold** (esposizione parziale + cash). "
-             "⚠️ **Nota**: qui il bot ATTUALE sembra *meglio* (−19% vs −28%), ma è un **effetto "
-             "collaterale del churn** che lo svuota in cash il 60% del tempo (de-risk involontario), "
-             "non una virtù. Il riparato mostra l'esposizione reale.")
+    if base == "BTC":
+        L.append("- **Bull**: il grid prende tanti micro-profitti (+1.8%/giro) e **si perde il trend** "
+                 "→ positivo ma molto sotto hold. È la debolezza strutturale del grid in salita, non un bug.")
+        L.append("- **Laterale(ish)**: quasi pari a hold. Settembre 2023 ha comunque un drift +3.9% "
+                 "che hold cattura e il grid no (vende presto).")
+        L.append("- **Bear**: il grid compra i dip e **tiene i bag** (99% in mercato, stop-buy a −3% "
+                 "ferma gli acquisti) → finisce sotto, ma **batte hold** (esposizione parziale + cash). "
+                 "⚠️ **Nota**: qui il bot ATTUALE sembra *meglio* (−19% vs −28%), ma è un **effetto "
+                 "collaterale del churn** che lo svuota in cash il 60% del tempo (de-risk involontario), "
+                 "non una virtù. Il riparato mostra l'esposizione reale.")
+    else:
+        # data-driven, una riga per scenario dai numeri reali
+        for res in results:
+            scn, r, h, d = res["scn"], res["grid_repaired"], res["hold"], res["diag"]
+            delta = r["pnl_pct"] - h["pnl_pct"]
+            verdict = "**batte hold**" if delta > 0 else "sotto hold"
+            L.append(f"- **{scn['label']}** (drift {d['drift_pct']:+.1f}%): grid riparato "
+                     f"**{r['pnl_pct']:+.2f}%** vs hold {h['pnl_pct']:+.2f}% → {verdict} "
+                     f"({delta:+.2f} p.p.) · {r['completed_sells']} sell · "
+                     f"{r['active_pct']:.0f}% del tempo in mercato.")
     L.append("")
 
     # gate laterale
@@ -357,58 +393,110 @@ def build_report(snap: dict, results: list, lateral_info: dict) -> str:
     return "\n".join(L)
 
 
+def build_coin_scenarios(base: str, force: bool):
+    """SOL/BONK: scenari bear/bull/laterale trovati dallo scanner dei regimi."""
+    from scan_regimes import scan
+    sc = scan(f"{base}/USDT", force=force, verbose=True)
+    sel = sc["selection"]
+
+    def mk(r, label, pred):
+        ym = r["ym"].replace("-", "_")
+        s = {
+            "id": f"{base.lower()}_{label.lower()}_{ym}",
+            "label": label, "start": r["start"], "end": r["end"],
+            "desc": f"{r['label']} — drift {r['drift_pct']:+.1f}%, range {r['range_pct']:.0f}%",
+            "prediction": pred,
+        }
+        if r.get("gate_tripped"):
+            s["lateral_note"] = (
+                f"_⚠️ Il mese più piatto ({r['label']}) ha drift {r['drift_pct']:+.1f}% "
+                "> soglia 10% → **quasi-laterale**, non piatto puro (un memecoin raramente "
+                "va davvero flat: onestà > forzare l'etichetta)._")
+        return s
+
+    scenarios = [
+        mk(sel["bear"], "Bearish",
+           "Il grid compra a scaglioni in caduta e **accumula bag**; lo stop-buy congela "
+           "i buy dopo il drawdown. Atteso: sotto al capitale ma **meno di hold**, poche sell."),
+        mk(sel["bull"], "Bullish",
+           "Hold (100% long dal giorno 1) **stravince**: il grid vende presto i lotti e "
+           "resta liquido, perdendo il grosso del rally. Atteso: grid positivo ma molto sotto hold."),
+        mk(sel["lateral"], "Laterale",
+           "**Campo di casa del grid**: senza trend, compra-basso/vende-alto ripetutamente e "
+           "accumula skim. MA a fee Kraken 0.40%/lato (0.80%/giro) il margine si assottiglia "
+           "— da verificare se l'edge sopravvive."),
+    ]
+    lat = sel["lateral"]
+    lateral_info = {"gate_tripped": lat.get("gate_tripped", False),
+                    "label": lat["label"], "drift_pct": lat["drift_pct"]}
+    return scenarios, lateral_info
+
+
 def main():
     ap = argparse.ArgumentParser()
+    ap.add_argument("--symbol", default="BTC/USDT",
+                    help="BTC/USDT (default) | SOL/USDT | BONK/USDT")
     ap.add_argument("--force", action="store_true", help="riscarica gli OHLCV")
     args = ap.parse_args()
+    base = args.symbol.split("/")[0].upper()
 
     os.makedirs(CHART_DIR, exist_ok=True)
 
-    snap = P.load_frozen_params()
-    P.save_snapshot(snap, os.path.join(OUT_DIR, "frozen_params_BTC.json"))
+    snap = P.load_frozen_params(args.symbol)
+    P.save_snapshot(snap, os.path.join(OUT_DIR, f"frozen_params_{base}.json"))
     print("[params] snapshot:", snap["meta"])
 
-    # risolvi laterale
-    lateral = select_lateral(args.force)
-    lat_scn = {
-        "id": lateral["id"] + "_lat", "label": "Laterale", "start": lateral["start"],
-        "end": lateral["end"],
-        "desc": f"{lateral['label']} — range-bound (il più piatto tra Ago/Set 2023)",
-        "prediction": LATERAL_PREDICTION,
-        "lateral_note": (
-            f"_Selezione: tra i candidati, **{lateral['label']}** è il più piatto "
-            f"(drift {lateral['drift_pct']:+.1f}%). "
-            + ("⚠️ supera la soglia 10% → vedi nota sul laterale._"
-               if lateral["gate_tripped"] else "Sotto la soglia 10%._")
-        ),
-    }
-    # nota: lat_scn riusa lo stesso id-cache (senza suffisso) per i dati già scaricati
-    lat_scn_fetch_id = lateral["id"]
-
-    all_scn = list(SCENARIOS) + [lat_scn]
     results = []
-    for scn in all_scn:
-        print(f"\n===== {scn['label']} =====")
-        fid = lat_scn_fetch_id if scn is lat_scn else scn["id"]
-        scn_run = dict(scn)
-        scn_run["id"] = fid  # usa la cache già scaricata
-        res = run_scenario(scn_run, snap, args.force)
-        res["scn"] = scn  # ripristina metadati display (label/desc/note)
-        results.append(res)
+    if base == "BTC":
+        # BTC: percorso originale (bear/bull hardcoded + laterale risolto a runtime).
+        lateral = select_lateral(args.force)
+        lat_scn = {
+            "id": lateral["id"] + "_lat", "label": "Laterale", "start": lateral["start"],
+            "end": lateral["end"],
+            "desc": f"{lateral['label']} — range-bound (il più piatto tra Ago/Set 2023)",
+            "prediction": LATERAL_PREDICTION,
+            "lateral_note": (
+                f"_Selezione: tra i candidati, **{lateral['label']}** è il più piatto "
+                f"(drift {lateral['drift_pct']:+.1f}%). "
+                + ("⚠️ supera la soglia 10% → vedi nota sul laterale._"
+                   if lateral["gate_tripped"] else "Sotto la soglia 10%._")),
+        }
+        lat_scn_fetch_id = lateral["id"]
+        scenarios = list(SCENARIOS) + [lat_scn]
+        lateral_info = lateral
+        for scn in scenarios:
+            print(f"\n===== {scn['label']} =====")
+            fid = lat_scn_fetch_id if scn is lat_scn else scn["id"]
+            scn_run = dict(scn)
+            scn_run["id"] = fid  # usa la cache già scaricata
+            res = run_scenario(scn_run, snap, args.force, base=base)
+            res["scn"] = scn  # ripristina metadati display (label/desc/note)
+            results.append(res)
+    else:
+        # SOL/BONK: scenari dallo scanner dei regimi.
+        scenarios, lateral_info = build_coin_scenarios(base, args.force)
+        for scn in scenarios:
+            print(f"\n===== {base} {scn['label']} ({scn['start']} → {scn['end']}) =====")
+            res = run_scenario(scn, snap, args.force, base=base)
+            res["scn"] = scn
+            results.append(res)
 
-    report = build_report(snap, results, lateral)
-    rpath = os.path.join(OUT_DIR, "report_grid_regime_backtest.md")
+    report = build_report(snap, results, lateral_info, scenarios, base=base)
+    rname = ("report_grid_regime_backtest.md" if base == "BTC"
+             else f"report_grid_regime_{base}.md")
+    rpath = os.path.join(OUT_DIR, rname)
     with open(rpath, "w") as f:
         f.write(report)
     print(f"\n[report] -> {rpath}")
     print("[charts] ->", CHART_DIR)
 
     # console summary
-    print("\n===== SOMMARIO =====")
+    print(f"\n===== SOMMARIO {base} =====")
     for res in results:
-        g, h = res["grid"], res["hold"]
-        print(f"{res['scn']['label']:9} | grid {g['pnl_pct']:+6.2f}% | hold {h['pnl_pct']:+6.2f}% "
-              f"| sell {g['completed_sells']:3d} | skim ${g['skim_total']:.2f}")
+        g, r, h = res["grid"], res["grid_repaired"], res["hold"]
+        print(f"{res['scn']['label']:9} | grid_att {g['pnl_pct']:+7.2f}% | "
+              f"grid_rip {r['pnl_pct']:+7.2f}% | hold {h['pnl_pct']:+7.2f}% "
+              f"| sell {r['completed_sells']:3d} | skim ${r['skim_total']:.2f}")
 
 
 if __name__ == "__main__":

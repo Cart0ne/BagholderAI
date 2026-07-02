@@ -40,13 +40,13 @@ def _make_exchange(name: str):
     return klass({"enableRateLimit": True})
 
 
-def _symbol_for(exchange_name: str) -> str:
+def _symbol_for(exchange_name: str, base: str = "BTC") -> str:
     # Price series is what matters; quote currency is irrelevant to OHLC shape.
     if exchange_name == "kraken":
-        return "BTC/USD"
+        return f"{base}/USD"
     if exchange_name == "binanceus":
-        return "BTC/USDT"
-    return "BTC/USDT"
+        return f"{base}/USDT"
+    return f"{base}/USDT"
 
 
 def _download_range(exchange, symbol: str, since_ms: int, end_ms: int,
@@ -78,14 +78,16 @@ def _download_range(exchange, symbol: str, since_ms: int, end_ms: int,
 
 
 def fetch_ohlcv(label: str, start: str, end: str, timeframe: str = "1m",
-                force: bool = False) -> pd.DataFrame:
-    """Download (or load from cache) 1m OHLCV for [start, end).
+                force: bool = False, base: str = "BTC") -> pd.DataFrame:
+    """Download (or load from cache) OHLCV for [start, end).
 
     label: short scenario id used as the cache filename (e.g. 'bear_2022_06').
     start/end: 'YYYY-MM-DD' (UTC, end exclusive).
+    base: coin symbol base (e.g. 'BTC', 'SOL', 'BONK'). Cache is keyed by base
+          so multi-coin runs don't collide; BTC keeps its original filename.
     """
     os.makedirs(DATA_DIR, exist_ok=True)
-    cache = os.path.join(DATA_DIR, f"BTC_{timeframe}_{label}.csv")
+    cache = os.path.join(DATA_DIR, f"{base}_{timeframe}_{label}.csv")
     if os.path.exists(cache) and not force:
         df = pd.read_csv(cache, parse_dates=["dt"])
         return df
@@ -95,7 +97,7 @@ def fetch_ohlcv(label: str, start: str, end: str, timeframe: str = "1m",
     for name in _EXCHANGE_CANDIDATES:
         try:
             ex = _make_exchange(name)
-            sym = _symbol_for(name)
+            sym = _symbol_for(name, base)
             print(f"[fetch] {label}: {name} {sym} {start}->{end} ({timeframe}) ...")
             df = _download_range(ex, sym, since_ms, end_ms, timeframe)
             if len(df) == 0:

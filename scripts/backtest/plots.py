@@ -23,9 +23,11 @@ def _style(ax):
     ax.xaxis.set_major_formatter(mdates.DateFormatter("%d %b"))
 
 
-def price_chart(df: pd.DataFrame, trades: pd.DataFrame, title: str, path: str):
+def price_chart(df: pd.DataFrame, trades: pd.DataFrame, title: str, path: str,
+                coin_label: str = "BTC"):
     fig, ax = plt.subplots(figsize=(13, 6))
-    ax.plot(df["dt"], df["close"], color="#3b6ea5", linewidth=0.8, label="BTC close (1m)")
+    ax.plot(df["dt"], df["close"], color="#3b6ea5", linewidth=0.8,
+            label=f"{coin_label} close (1m)")
     if trades is not None and len(trades):
         buys = trades[trades["side"] == "buy"]
         sells = trades[trades["side"] == "sell"]
