@@ -91,4 +91,19 @@ ottimizzare title/meta è igiene, non una leva. Le leve vere stanno altrove
 
 ---
 
+## Dev.to (cross-post)
+
+11. **Le bozze appaiono con `-temp-slug-…` ma NON sono pubbliche.** Una bozza
+   Dev.to (creata dall'import RSS dal blog) ha un URL provvisorio tipo
+   `…-temp-slug-9355224` e 0 views: è **normale per una bozza**, non una pagina
+   pubblica rotta né un problema SEO. **Non trattarla come esposta/indicizzata**
+   (l'audit A3 2026-07-02 l'aveva scambiata per una pagina live da 0 visite —
+   falso allarme). **Cancellarla è whack-a-mole**: al prossimo scan RSS Dev.to
+   la **ri-crea** (l'import è create-only sull'aggiornamento, ma re-importa ciò
+   che non trova più). Per farla sparire davvero: **pubblicarla** (diventa
+   articolo vero + canonical verso il blog) oppure **scollegare il feed RSS**
+   in Dev.to. Vedi memoria `reference_devto_rss_manual_update`.
+
+---
+
 _Creato: 2026-07-02 (S115a, brief `config/2026-07-02_S115a_brief_seo-hygiene-fixes.md`) dalla verifica dell'audit A3 2026-07-02. Aggiornare quando emerge una nuova stranezza dei dati o quando una qui elencata viene risolta (annotare, non cancellare)._
