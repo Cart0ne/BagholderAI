@@ -67,6 +67,8 @@ audits/*
 !audits/BUSINESS_STATE_archive*.md
 # Reddit stats tracker (fonte manuale — Reddit API chiusa): tracked come gli archivi
 !audits/reddit_stats_tracker.xlsx
+# Data caveats registry: doc durevole letto da ogni Auditor (Area 3) → tracked
+!audits/DATA_CAVEATS.md
 # Evergreen audit-request TEMPLATES are tracked (versioned rules, multi-machine).
 # Dated request/report files (YYYYMMDD_audit[AX].md) stay local/gitignored.
 !audits/requests/

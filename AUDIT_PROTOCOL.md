@@ -16,7 +16,8 @@ rimandano.
 
 - **Area 1 — Integrità tecnica**: bot, agenti (Grid/TF/Sentinel/Sherpa/NewsKeeper), DB. I numeri tornano, le interazioni tra cervelli sono coerenti, lo schema regge.
 - **Area 2 — Coerenza progetto**: narrazione pubblica (sito, roadmap, blog) ↔ codice LIVE ↔ state files (PROJECT_STATE/BUSINESS_STATE/brief). Il sito racconta la verità di cosa gira.
-- **Area 3 — Strategia e marketing**: posizionamento, SEO (Google + Bing), performance social (X, Dev.to, Reddit), traffico sito + funnel di conversione (Umami), vendite (Payhip), coerenza cross-piattaforma, distribuzione. I dati si raccolgono via API con `python3.13 -m scripts.marketing_data_refresh` → `marketing_data/` (NON login manuale). Output = diagnosi **+ strategia** (target breve/medio/lungo). Template fisso: `audits/requests/audit_request_A3.md`.
+- **Area 3 — Strategia e marketing**: posizionamento, SEO (Google + Bing), performance social (X, Dev.to, Reddit), traffico sito + funnel di conversione (Umami), vendite (Payhip), coerenza cross-piattaforma, distribuzione. I dati si raccolgono via API con `python3.13 -m scripts.marketing_data_refresh` → `marketing_data/`; **alcune fonti sono manuali** (Umami ha 401 dal ~giugno 2026, Payhip, Reddit — vedi DATA_CAVEATS). Output = diagnosi **+ strategia** (target breve/medio/lungo). Template fisso: `audits/requests/audit_request_A3.md`.
+  - **⚠️ OBBLIGO pre-analisi (S115a):** prima di leggere qualsiasi numero, l'Auditor DEVE aprire **`audits/DATA_CAVEATS.md`** (trappole note: bot DE/FI, self-traffic IT, Umami manuale, dedup Bing, posizione media GSC…) **e** la **`config/MASTER_TASK_LIST_*` più recente** (evita raccomandazioni doppione — es. non ri-proporre una strategia già a backlog). Saltare questo passo = rifare errori già pagati (traffico esterno reale giugno 2026 ≈ 3 visitatori, non i numeri lordi Umami).
 
 ---
 

@@ -114,6 +114,7 @@ Vedi [config/parked/README.md](config/parked/README.md) per i trigger. File:
 
 | Percorso | Note |
 |---|---|
+| [audits/DATA_CAVEATS.md](audits/DATA_CAVEATS.md) | **Trappole note dei dati marketing/analytics** — leggere PRIMA di ogni analisi Area 3 (whitelisted in `.gitignore`, in git). Creato S115a. |
 | [audits/requests/audit_request_A1.md](audits/requests/audit_request_A1.md) · [A2](audits/requests/audit_request_A2.md) · [A3](audits/requests/audit_request_A3.md) | Template **evergreen** (whitelisted in `.gitignore`, in git) |
 | `audits/requests/2026*_audit[*]_*.md` | Request/follow-up specifici — **gitignored/locali** |
 | `audits/reports/YYYYMMDD_audit[AX].md` | **I report veri sono GITIGNORED/locali.** In git solo la sintesi → PROJECT_STATE §9 |

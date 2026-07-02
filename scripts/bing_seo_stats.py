@@ -26,6 +26,7 @@ import re
 import sys
 from datetime import datetime
 from pathlib import Path
+from urllib.parse import urlsplit, urlunsplit
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -45,6 +46,28 @@ def _parse_date(raw: str) -> str:
     if not m:
         return str(raw)[:10]
     return datetime.fromtimestamp(int(m.group(1)) / 1000).strftime("%Y-%m-%d")
+
+
+def _normalize_url(raw: str) -> str:
+    """Collassa le varianti dello stesso URL in una chiave canonica.
+
+    Bing GetPageStats può restituire la stessa pagina su righe separate come
+    varianti (scheme/host case, query string, fragment, trailing slash). Per un
+    sito statico queste NON sono pagine distinte → si aggregano. Vedi
+    audits/DATA_CAVEATS.md #4.
+    """
+    s = str(raw or "").strip()
+    if not s:
+        return ""
+    parts = urlsplit(s)
+    # scheme canonicalizzato a https: il sito è https-only e statico, quindi
+    # http:// e https:// della stessa pagina NON sono contenuti distinti.
+    netloc = parts.netloc.lower()
+    path = parts.path or "/"
+    if len(path) > 1:                    # preserva "/" root, togli lo slash finale
+        path = path.rstrip("/")
+    # scarta query + fragment: varianti non-di-pagina (utm, ref, #anchor)
+    return urlunsplit(("https", netloc, path, "", ""))
 
 
 def _call(method: str) -> list:
@@ -93,8 +116,19 @@ def main():
 
     # Top queries by impressions
     q_sorted = sorted(queries, key=lambda q: int(q.get("Impressions", 0) or 0), reverse=True)[:15]
-    # Top pages by impressions
-    p_sorted = sorted(pages, key=lambda p: int(p.get("Impressions", 0) or 0), reverse=True)[:15]
+    # Top pages: aggrega per URL normalizzato PRIMA di ordinare (Bing può
+    # restituire varianti della stessa pagina su righe separate — DATA_CAVEATS #4).
+    page_agg: dict = {}
+    for p in pages:
+        key = _normalize_url(p.get("Query", p.get("Page", "")))
+        if not key:
+            continue
+        e = page_agg.setdefault(key, {"url": key, "impr": 0, "clicks": 0, "rows": 0})
+        e["impr"] += int(p.get("Impressions", 0) or 0)
+        e["clicks"] += int(p.get("Clicks", 0) or 0)
+        e["rows"] += 1
+    p_sorted = sorted(page_agg.values(), key=lambda e: e["impr"], reverse=True)[:15]
+    collapsed = sum(1 for e in page_agg.values() if e["rows"] > 1)
 
     today = datetime.now().strftime("%Y-%m-%d")
     now = datetime.now().strftime("%Y-%m-%d %H:%M")
@@ -146,12 +180,14 @@ def main():
     md += "\n---\n\n"
 
     md += "## Top pagine (per impressions)\n\n"
+    if collapsed:
+        md += f"> {collapsed} pagina/e avevano varianti URL multiple, aggregate in una riga (DATA_CAVEATS #4).\n\n"
     md += "| Pagina | Impr | Click |\n|---|---|---|\n"
     if not p_sorted:
         md += "| _nessuna pagina_ | — | — |\n"
     for p in p_sorted:
-        page = str(p.get("Query", p.get("Page", ""))).replace("|", "\\|")[:70]
-        md += f"| {page} | {int(p.get('Impressions',0) or 0):,} | {int(p.get('Clicks',0) or 0):,} |\n"
+        page = str(p["url"]).replace("|", "\\|")[:70]
+        md += f"| {page} | {p['impr']:,} | {p['clicks']:,} |\n"
     md += "\n"
 
     REPORT_DIR.mkdir(parents=True, exist_ok=True)
