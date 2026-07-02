@@ -87,6 +87,10 @@ BagHolderAI è un progetto sperimentale dove un'AI (Claude) gestisce un micro-bu
 
 | Data | Decisione | Perché |
 |---|---|---|
+| 2026-07-02 (S115) | **Umami declassato a fonte manuale negli audit A3** | API key riservate ai piani a pagamento (401 dal ~giu); pagare $9-20/mese per automatizzare la lettura di ~600 pv/mese non regge il costo/beneficio in fase collaudo |
+| 2026-07-02 (S115) | **PostHog parcheggiato come candidato analytics-con-API** | rivalutare a >5.000 pv/mese o quando i funnel diventano decisionali; migrare ora = free-but-complicated |
+| 2026-07-02 (S115) | **Metriche-ratio del sito (bounce, funnel %, CTR) fuori dal cruscotto fino a massa critica** | traffico esterno reale ~3 visitatori/mese: le percentuali su questo campione non significano nulla; si misurano solo valori assoluti per canale (Dev.to views/commenti, X impr/reply, Reddit karma/referral) |
+| 2026-07-02 (S115) | **Fix title/meta declassato da "leva anti-0-click" a igiene** | /roadmap ha query 100% anonime (non ottimizzabile), il post Kraken-bot ha 18 impr/mese (ranking ok, volume irrilevante) |
 | 2026-07-01 | **X-poster `/approve` rotto dal 2 giugno — riparato** (caccia bug, richiesta da Max). Il listener `x_poster_approve.py` (unico che pubblica su X) era spento da ~1 mese senza supervisore: ogni bozza serale del cron moriva in attesa di un `/approve` mai consumato. Fix: LaunchAgent launchd (RunAtLoad+KeepAlive; log in home per TCC sul volume esterno). Corregge la riga S106 qui sotto | Ultimo post reale 2/6 (session 94). Test `/approve` end-to-end ancora da fare (verifica anche salute API X, ferma da 1 mese) |
 | 2026-07-01 | **Audit Area 1 eseguito** (scadeva il 30/06): CON RISERVE — 0 CRITICAL/HIGH, 2 MED (newskeeper retention recidiva; SELL BONK/USD sospette in bot_events_log), 1 LOW. Test 271/271, schema 0 mismatch, brain sani | Report `audits/reports/20260630_audit[A1].md` |
 | 2026-07-01 | **Root cause MED-2 confermata: leak di test, non anomalia live.** `test_exchange_adapter_s112.py` mocka solo ccxt, non il DB → `_alert_rejection` scrive su Supabase di produzione. Fix Opzione A applicato (fixture autouse locale, pattern già in uso in test fratelli); Opzione B (conftest globale) rimandata a micro-brief separato, richiede attenzione ai moduli con import a livello modulo | Nessuna API Kraken esiste ancora — escluso ogni rischio operativo reale |
@@ -206,6 +210,7 @@ BagHolderAI è un progetto sperimentale dove un'AI (Claude) gestisce un micro-bu
 
 | Cosa | Perché |
 |---|---|
+| **Ottimizzazione on-site (SEO, funnel, CTR)** | Il sito non ha un pubblico proprio (~3 visitatori esterni/mese, verifica audit A3 2026-07-02): la trazione, piccola, vive dentro Dev.to/X/Reddit. Nessuna ottimizzazione on-site è prioritaria finché non cambia questo. Il collo di bottiglia è la **distribuzione**, non lo snippet |
 | **€100 reali su Kraken (primo euro vero)** | Gate Board: niente €100 finché il churn non è chiuso. ✅ **Churn-fix ora SHIPPED+LIVE** (`8d2fdd6`, S113) → questo gate è cleared; restano cutover Kraken (cablaggio+chiavi+ordine reale) + Board approval |
 | **Revenue automation completa (/income)** | La pagina /income esiste come scaffold privato, ma l'automazione fonti (Payhip, BMC, Umami API) è rinviata al primo euro: a €0 darebbero "0" → over-engineering. Solo Umami ha già un connettore. Haiku costs: soluzione Admin API trovata, parcheggiata |
 | **Pagina /news pubblica** | Pianificata (nav principale, brief S106a) ma bloccata dal verdetto barometro v2 (~23 giugno). Il brief documenta struttura e due scenari (validato/bocciato). Non costruire prima. Fonte moat: analisi tbot S98 (lui mostra gli stessi 3 feed RSS ma senza label AI → quando esponiamo, lo battiamo con sentiment/severità) |
