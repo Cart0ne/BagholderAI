@@ -59,6 +59,12 @@ class GridSim:
     #   di sell richiede un movimento reale -> niente churn. La guard Strategy A
     #   resta esente sulla polvere (S105b), quindi niente dust-trap dei buy.
     repaired: bool = False
+    # trend_gate=True: in uptrend confermato (regime_up passato da run()) il grid
+    #   NON fa la vendita fissa a +sell_pct — invece "cavalca" con un trailing
+    #   stop (esce a -trail_pct dal picco). Fuori dall'uptrend torna grid normale.
+    #   Default off -> comportamento identico al grid puro validato.
+    trend_gate: bool = False
+    trail_pct: float = 4.0
 
     # --- state ---
     cash: float = 0.0
@@ -77,6 +83,7 @@ class GridSim:
     skip_next_decision: bool = False
     daily_trade_count: int = 0
     daily_date: object = None
+    peak_price: float = 0.0           # max prezzo mentre tiene posizione (trailing)
 
     # --- records ---
     trades: list = field(default_factory=list)
@@ -198,7 +205,7 @@ class GridSim:
     # ------------------------------------------------------------------
     # one tick (candle close)
     # ------------------------------------------------------------------
-    def step(self, price: float, dt: pd.Timestamp):
+    def step(self, price: float, dt: pd.Timestamp, regime_up: bool = False):
         d = dt.date()
         if d != self.daily_date:
             self.daily_trade_count = 0
@@ -239,12 +246,26 @@ class GridSim:
                 self.skip_next_decision = True
                 return self._record(price, dt)
 
+        # --- track peak while holding (per il trailing del trend-gate) ---
+        if not self._is_dust(price):
+            self.peak_price = max(self.peak_price, price)
+        else:
+            self.peak_price = 0.0
+
         # --- SELL ---
         if not self._is_dust(price):
-            ref = self.last_sell_price if self.last_sell_price > 0 else self.avg
-            sell_trigger = ref * (1 + self.sell_pct / 100 + self.fee_rate) / (1 - self.fee_rate)
-            if self.avg > 0 and price >= sell_trigger:
-                self._execute_sell(price, dt)
+            if self.trend_gate and regime_up:
+                # RIDE MODE: uptrend confermato -> niente vendita fissa, si cavalca.
+                # Esce solo se il prezzo cala di trail_pct dal picco (trend rotto)
+                # e resta sopra l'avg (Strategy A: mai vendere in perdita).
+                trail_stop = self.peak_price * (1 - self.trail_pct / 100)
+                if self.avg > 0 and price <= trail_stop and price > self.avg:
+                    self._execute_sell(price, dt)
+            else:
+                ref = self.last_sell_price if self.last_sell_price > 0 else self.avg
+                sell_trigger = ref * (1 + self.sell_pct / 100 + self.fee_rate) / (1 - self.fee_rate)
+                if self.avg > 0 and price >= sell_trigger:
+                    self._execute_sell(price, dt)
 
         # --- BUY ---
         cooldown = (self.buy_cooldown_seconds > 0
@@ -298,8 +319,10 @@ class GridSim:
 
     # ------------------------------------------------------------------
     def run(self, df: pd.DataFrame) -> "GridSim":
+        has_regime = "regime_up" in df.columns
         for row in df.itertuples(index=False):
-            self.step(float(row.close), row.dt)
+            ru = bool(getattr(row, "regime_up")) if has_regime else False
+            self.step(float(row.close), row.dt, regime_up=ru)
         return self
 
     # ------------------------------------------------------------------
