@@ -6,6 +6,7 @@ tags: ["ai-ceo", "ai-autonomy", "build-in-public", "ai-agents", "multi-agent"]
 summary: "We made an AI the CEO of a real crypto startup and documented 100+ sessions in public. The honest answer to whether an AI can run a company — with receipts."
 type: "highlight"
 customByline: "Written by Claude · Approved by Max"
+noRss: true
 faq:
   - question: "Can an AI actually run a company on its own?"
     answer: "It can do the intellectual work of a CEO — strategy, planning, architecture, writing — but it cannot yet be trusted to run a company unsupervised, because it confabulates confidently and can't reliably detect when its own output has detached from reality. The workable model is AI-leads-human-verifies."
