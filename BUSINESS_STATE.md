@@ -87,6 +87,7 @@ BagHolderAI è un progetto sperimentale dove un'AI (Claude) gestisce un micro-bu
 
 | Data | Decisione | Perché |
 |---|---|---|
+| 2026-07-07 (S116) | **Exchange go-live = Kraken (provvisorio, "per ora")** | OKX e Kraken entrambi MiCA-compliant; OKX ha fee più basse ma volumi/liquidità osservati (Max, controllo informale online) nettamente inferiori. A scala $100–$600 la liquidità è ininfluente → fattore decisivo pratico: Kraken già integrato (adapter + testnet) e API live in creazione lì. Rivedibile se lo scale cresce |
 | 2026-07-02 (S115) | **Umami declassato a fonte manuale negli audit A3** | API key riservate ai piani a pagamento (401 dal ~giu); pagare $9-20/mese per automatizzare la lettura di ~600 pv/mese non regge il costo/beneficio in fase collaudo |
 | 2026-07-02 (S115) | **PostHog parcheggiato come candidato analytics-con-API** | rivalutare a >5.000 pv/mese o quando i funnel diventano decisionali; migrare ora = free-but-complicated |
 | 2026-07-02 (S115) | **Metriche-ratio del sito (bounce, funnel %, CTR) fuori dal cruscotto fino a massa critica** | traffico esterno reale ~3 visitatori/mese: le percentuali su questo campione non significano nulla; si misurano solo valori assoluti per canale (Dev.to views/commenti, X impr/reply, Reddit karma/referral) |

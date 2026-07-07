@@ -1,19 +1,19 @@
 # BagHolderAI — Master Task List
 
-**Data:** 18 giugno 2026 (creata) · **Ultimo aggiornamento:** 3 luglio 2026 (X-campaign 2.8 mining CC done; prec. S115 trend-gate + 2.7)
+**Data:** 18 giugno 2026 (creata) · **Ultimo aggiornamento:** 7 luglio 2026 (K.1 trigger aggiornato a "chiavi API Kraken", K.3 scope confermato da Max — vedi `COLLAUDO_COMMS_GUIDELINES_v1.md` v2; prec. 3-lug X-campaign 2.8 mining CC done)
 **Regola:** niente nuovi task salvo bug fix e il **cutover Kraken** (forzato da MiCA, Board-approved). Si finisce quello che c'è.
 
 ---
 
 ## FASE 1 — PRE-MAINNET / CUTOVER KRAKEN
 
-Contesto: Binance EU ha sospeso gli ordini spot dal **1-lug** (MiCA). Venue di go-live = **Kraken USD** (deciso S112b). L'adapter è già shippato **dormiente** (S112b, `bot/exchanges/`); manca il cablaggio dell'hot-path (= cutover). Trigger cutover: **prossimo reset testnet Binance** (~inizio luglio).
+Contesto: Binance EU ha sospeso gli ordini spot dal **1-lug** (MiCA). Venue di go-live = **Kraken USD** (deciso S112b). L'adapter è già shippato **dormiente** (S112b, `bot/exchanges/`); manca il cablaggio dell'hot-path (= cutover). Trigger cutover: **Max consegna le chiavi API Kraken** (aggiornato 2026-07-07 — il vecchio gate "reset testnet Binance" è superato: Binance EU ha già sospeso gli ordini spot dall'1-lug, quindi non c'è più un reset da aspettare).
 
 | # | Cosa | Dipende da | Chi | Stato |
 |---|---|---|---|---|
-| K.1 | **CUTOVER Kraken — cablare l'hot-path** al client (grid trada via Kraken) + chiavi API Kraken (Max, Withdraw OFF, `KRAKEN_API_KEY/SECRET`) + prova "ordine reale" (Kraken non ha testnet) + scelta **modello-grid** (market vs ladder a limiti) + **floor min-profit fee-aware** (fee 0,25/0,40% vs 0,10% — param Sherpa-managed, non hardcodare) + restart | reset testnet Binance | CC + Max | **PROSSIMO (brief separato)** |
+| K.1 | **CUTOVER Kraken — cablare l'hot-path** al client (grid trada via Kraken) + chiavi API Kraken (Max, Withdraw OFF, `KRAKEN_API_KEY/SECRET`) + prova "ordine reale" (Kraken non ha testnet) + scelta **modello-grid** (market vs ladder a limiti) + **floor min-profit fee-aware** (fee 0,25/0,40% vs 0,10% — param Sherpa-managed, non hardcodare) + restart | chiavi API Kraken (Max) | CC + Max | **PROSSIMO (brief separato)** |
 | K.2 | **WebSocket `executions` Kraken** — feed fill real-time (oggi polling: regge, ma è il pezzo "nuovo di paradigma") | dopo K.1 | CC | fast-follow |
-| K.3 | **Frontend cutover** — grafici Binance→Kraken, etichette USDT→USD, wording "Binance testnet"→"Kraken live" + pagina dormiente "live su Kraken (MiCA)". Touchpoint mappati in `config/2026-06-29_S112_passo0_kraken-coupling-map.md §12` | dopo K.1 | CC (design) + CEO (copy) | pending |
+| K.3 | **Frontend cutover** — homepage (live-snapshot Kraken + badge "real money, real Kraken" + scena hero aggiornata) + dashboard (sezione disclaimer in alto, TF congelata, Grid filtrato a moneta attiva, reconciliation Kraken) + pagina-disclaimer toggle per le finestre di setup (piano confermato Max 2026-07-07, `config/COLLAUDO_COMMS_GUIDELINES_v1.md`) | dopo K.1 | CC (design) + CEO (copy) | pending |
 | K.4 | **Nonce Kraken** — alzare "Nonce Window" lato account + valutare subaccount/chiave per-coin (grid = 1 processo per coin, nonce per-chiave) | al cutover | Max + CC | pending |
 | 1.3 | **Sessione go-live experiment** — formalizzare rampa/rabbocco/verdetto/Victory Lap (da `config/APPROVED_golive_experiment_design.md`). Venue Kraken USD; lineup **BTC $250 / SOL $150 / BONK $100** (grid) + **TF $100** (dalle /USD) | K.1 | CEO + Max | **PENDING** |
 | 1.8 | **Board approval call** (go/no-go €100 reali) | 1.3 + cutover | Max | **PENDING** |
