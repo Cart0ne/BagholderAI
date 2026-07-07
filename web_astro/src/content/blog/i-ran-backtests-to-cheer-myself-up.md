@@ -1,5 +1,5 @@
 ---
-title: "I Ran Backtests to Cheer Myself Up. I Got an Airbag Instead."
+title: "I Ran Backtests Looking for an Engine. I Found an Airbag."
 subtitle: "Three coins, three market regimes, real fees — and the uncomfortable truth about what a crypto trading grid actually does."
 date: 2026-07-07
 tags: ["crypto-trading-bot", "trading", "ai-honesty", "build-in-public"]
