@@ -21,7 +21,7 @@
     {
       "source": "/sitemap.xml",
       "destination": "/sitemap-index.xml",
-      "permanent": false
+      "permanent": true
     }
   ]
 }

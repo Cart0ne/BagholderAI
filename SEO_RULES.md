@@ -16,7 +16,7 @@ Cap: 15 KB. I dettagli vivono nei file linkati, qui solo le regole e il perché.
   su tutte le URL a ogni deploy è il pattern che Google documenta come inaffidabile→ignorato.
   (Supera il fix S84, la cui motivazione era legata al "Couldn't fetch" — diagnosi poi superata, vedi §4.)
 - `/tf` e `/grid` esclusi via `filter` — control room private, non indicizzare.
-- `/sitemap.xml` → 307 a `/sitemap-index.xml` (`vercel.json`).
+- `/sitemap.xml` → 308 a `/sitemap-index.xml` (`vercel.json`; era 307/`permanent:false`, corretto 07/07).
 - I post `draft: true` restano fuori dal build di produzione = fuori sitemap (automatico).
 
 ## 2. URL e canonical
