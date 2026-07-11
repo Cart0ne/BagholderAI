@@ -955,6 +955,8 @@
           <strong style="color: var(--text);">Value €</strong> is the number used for totals and charts
           (empty = no number, e.g. Trading's "waiting" status) · <strong style="color: var(--text);">Displayed</strong>
           is the string shown on the page · <strong style="color: var(--text);">Detail</strong> is the caption under it.
+          Tip: type <strong style="color: var(--text);">$1.75</strong> in Value € and it converts to EUR by itself
+          (ECB daily rate), auto-filling Displayed with the € amount.
         </div>
         <div id="exp-editor" style="font-family: var(--mono); font-size: 11px;">loading…</div>
       </div>
@@ -2643,13 +2645,36 @@
       return d + 'd ago';
     }
 
+    // USD→EUR for $-prefixed values (API costs are billed in USD, the table
+    // is EUR-normalized). Live ECB daily rate from frankfurter.app; until it
+    // resolves (or if it fails) we fall back to the same fixed ~1.11 the
+    // /income page uses for its cosmetic $ conversion.
+    var EXP_USD_EUR = { rate: 1 / 1.11, live: false };
+    fetch('https://api.frankfurter.dev/v1/latest?base=USD&symbols=EUR')
+      .then(function(r) { return r.json(); })
+      .then(function(j) {
+        if (j && j.rates && j.rates.EUR > 0) EXP_USD_EUR = { rate: j.rates.EUR, live: true };
+      })
+      .catch(function() { /* keep fallback */ });
+
     // Empty → null (row shows no number, e.g. Trading's "waiting" status);
-    // comma accepted as decimal separator.
+    // comma accepted as decimal separator. "$1.75" (or "1.75$") is converted
+    // to EUR — val is ALWAYS the EUR number that gets saved.
     function expParseNum(raw) {
       var s = (raw || '').trim().replace(',', '.');
       if (s === '') return { ok: true, val: null };
+      var usd = s.indexOf('$') !== -1;
+      if (usd) s = s.replace(/\$/g, '').trim();
       var n = parseFloat(s);
-      return isNaN(n) ? { ok: false } : { ok: true, val: n };
+      if (isNaN(n)) return { ok: false };
+      if (usd) return { ok: true, val: Math.round(n * EXP_USD_EUR.rate * 100) / 100, usd: n };
+      return { ok: true, val: n };
+    }
+
+    // Format an EUR amount the way the cost/revenue rows display it
+    // (integers without decimals: €360; fractions with two: €1.58).
+    function expFmtEur(v) {
+      return '€' + (v % 1 === 0 ? String(v) : v.toFixed(2));
     }
 
     function expDirty(key, numIn, dispIn, detIn) {
@@ -2736,7 +2761,23 @@
       tdSave.appendChild(btn);
       tdSave.appendChild(statusEl);
 
-      [numIn, dispIn, detIn].forEach(function(inp) {
+      // Typing "$1.75" in Value converts to EUR on the fly: the hint shows
+      // the € amount being saved and Displayed auto-fills with it (still
+      // editable afterwards — it's just text).
+      numIn.addEventListener('input', function() {
+        var p = expParseNum(numIn.value);
+        if (p.ok && p.usd != null) {
+          dispIn.value = expFmtEur(p.val);
+          statusEl.textContent = '$' + p.usd + ' = ' + expFmtEur(p.val) +
+            (EXP_USD_EUR.live ? ' @ ECB ' + EXP_USD_EUR.rate.toFixed(4) : ' @ fixed 1.11');
+          statusEl.style.color = 'var(--text-dim)';
+        } else {
+          statusEl.textContent = p.ok ? '' : 'invalid number';
+          statusEl.style.color = 'var(--red)';
+        }
+        btn.disabled = !expDirty(r.source_key, numIn, dispIn, detIn);
+      });
+      [dispIn, detIn].forEach(function(inp) {
         inp.addEventListener('input', function() {
           statusEl.textContent = '';
           btn.disabled = !expDirty(r.source_key, numIn, dispIn, detIn);
