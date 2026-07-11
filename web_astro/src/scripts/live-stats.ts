@@ -44,12 +44,19 @@ const sbqCount = async (table: string, params: string): Promise<number> => {
   return Number.isNaN(n) ? 0 : n;
 };
 
-/* Current testnet cycle (S96a clean slate). Grid data queries filter on
-   it so a monthly Binance testnet reset hides the closed cycle's rows.
-   Data-driven on the bot side (bot_config.cycle); on the site bump this
-   constant (here + grid.html + admin.html + dashboard-live.ts) on the
-   next reset, together with `UPDATE bot_config SET cycle=...`. */
-const CYCLE = "testnet_2";
+/* Current cycle — DATA-DRIVEN since S117 (2026-07-11): read from
+   bot_config.cycle (grid BTC row = the fleet's canonical tag) so a testnet
+   reset — or the Kraken live switch — needs ONE `UPDATE bot_config SET
+   cycle=...` and every site surface follows. No more 6-file bump ritual.
+   Top-level await: the page scripts are ES modules, and every query below
+   depends on CQ anyway. */
+const CYCLE_FALLBACK = "testnet_2";   // used only if the bot_config fetch fails
+const CYCLE = await sbq<{ cycle: string }[]>(
+  "bot_config",
+  "select=cycle&managed_by=eq.grid&symbol=eq." + encodeURIComponent("BTC/USDT") + "&limit=1",
+)
+  .then((rows) => rows?.[0]?.cycle || CYCLE_FALLBACK)
+  .catch(() => CYCLE_FALLBACK);
 const CQ = `&cycle=eq.${CYCLE}`;
 
 /* Prefer the global animated updater (set up in Layout.astro) so that

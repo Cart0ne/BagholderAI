@@ -435,7 +435,7 @@
           <div class="scan-cell">
             <div class="scan-label">Trades (v3)</div>
             <div class="scan-value" id="snap-trades">—</div>
-            <div class="scan-sub">testnet_2</div>
+            <div class="scan-sub" id="snap-cycle">—</div>
           </div>
           <div class="scan-cell">
             <div class="scan-label">Grid / TF split</div>
@@ -1140,13 +1140,31 @@
       return (n >= 0 ? '+' : '-') + '$' + Math.abs(n).toFixed(2);
     }
 
+    // S117: current cycle from bot_config (grid BTC row), cached; the literal
+    // is only the fetch-failure fallback. One `UPDATE bot_config SET cycle=...`
+    // (reset or Kraken live switch) and this page follows — no bump ritual.
+    var CYCLE_CACHE = null;
+    async function getCycle() {
+      if (CYCLE_CACHE) return CYCLE_CACHE;
+      try {
+        var rows = await sbFetch('bot_config?select=cycle&managed_by=eq.grid&symbol=eq.' + encodeURIComponent('BTC/USDT') + '&limit=1');
+        CYCLE_CACHE = (rows && rows[0] && rows[0].cycle) || 'testnet_2';
+      } catch (e) {
+        CYCLE_CACHE = 'testnet_2';
+      }
+      return CYCLE_CACHE;
+    }
+
     // A1 (S110b): top aggregated snapshot — SAME canonical formula as the homepage
     // live-stats (GRID_BUDGET 500 + TF_BUDGET 100), reusing window.PnL (loaded in <head>).
-    // cycle=testnet_2 must be bumped on the next Binance testnet reset (same as grid/home).
+    // Cycle is data-driven since S117 (see getCycle above).
     async function renderTopSnapshot() {
       if (!window.PnL) return;
       try {
-        var CQ = '&config_version=eq.v3&cycle=eq.testnet_2';
+        var CYCLE = await getCycle();
+        var cycleEl = document.getElementById('snap-cycle');
+        if (cycleEl) cycleEl.textContent = CYCLE;
+        var CQ = '&config_version=eq.v3&cycle=eq.' + CYCLE;
         var trades = await sbFetchAll('trades?select=symbol,side,amount,cost,fee,fee_asset,realized_pnl,created_at,managed_by' + CQ + '&order=created_at.asc');
         var skimRows = await sbFetch('reserve_ledger?select=symbol,amount' + CQ);
         trades = trades || []; skimRows = skimRows || [];

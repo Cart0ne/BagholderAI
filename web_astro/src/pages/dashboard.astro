@@ -427,21 +427,31 @@ const tfSubtitle   = "The breakout hunter";
         // avg-cost replay (lib/pnl-canonical). Mirrors that logic exactly so
         // /dashboard agrees (~+$22.4, not the stale +$30.6).
         //
-        // managed_by=eq.grid + cycle=eq.testnet_2 (S72/S97b): single source of
-        // truth, current testnet cycle only.
+        // managed_by=eq.grid + current cycle (S72/S97b): single source of
+        // truth. Cycle is data-driven from bot_config since S117.
         (async () => {
           const SB_URL = "https://pxdhtmqfwjwjhtcoacsn.supabase.co";
           const SB_KEY =
             "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9." +
             "eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB4ZGh0bXFmd2p3amh0Y29hY3NuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4NDI1OTIsImV4cCI6MjA4OTQxODU5Mn0." +
             "G76lvYWrqlM0z2RoSkU1uAglfMBKN_rXvBGOQhb4kdg";
-          const url =
-            SB_URL +
-            "/rest/v1/trades?config_version=eq.v3&managed_by=eq.grid&cycle=eq.testnet_2" +
-            "&select=symbol,side,amount,cost,fee,fee_asset,created_at&order=created_at.asc";
           const el = document.getElementById("net-realized-test");
           if (!el) return;
           try {
+            /* S117: cycle from bot_config (grid BTC row), fallback to the
+               last known tag — same data-driven rule as dashboard-live.ts. */
+            const cycle = await fetch(
+              SB_URL + "/rest/v1/bot_config?select=cycle&managed_by=eq.grid&symbol=eq." +
+                encodeURIComponent("BTC/USDT") + "&limit=1",
+              { headers: { apikey: SB_KEY, Authorization: "Bearer " + SB_KEY } },
+            )
+              .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+              .then((rows: Array<{ cycle: string }>) => rows?.[0]?.cycle || "testnet_2")
+              .catch(() => "testnet_2");
+            const url =
+              SB_URL +
+              "/rest/v1/trades?config_version=eq.v3&managed_by=eq.grid&cycle=eq." + cycle +
+              "&select=symbol,side,amount,cost,fee,fee_asset,created_at&order=created_at.asc";
             const r = await fetch(url, {
               headers: { apikey: SB_KEY, Authorization: "Bearer " + SB_KEY },
             });

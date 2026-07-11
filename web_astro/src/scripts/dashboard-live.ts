@@ -32,22 +32,42 @@ const headers = {
   Authorization: `Bearer ${SB_KEY}`,
 };
 
-/* Current testnet cycle (S96a clean slate) — grid queries filter on it so
-   a monthly Binance testnet reset hides the closed cycle. Bump on next
-   reset (here + live-stats.ts + grid.html), with `UPDATE bot_config`. */
-const CYCLE = "testnet_2";
+/* Current cycle — DATA-DRIVEN since S117 (2026-07-11): read from
+   bot_config.cycle (grid BTC row = the fleet's canonical tag), so a reset —
+   or the Kraken live switch — needs ONE `UPDATE bot_config SET cycle=...`
+   and the whole site follows. The literals below are fallbacks used only
+   if the fetch fails (site degrades to the last known cycle, never breaks).
+   Top-level await: page scripts are ES modules and everything downstream
+   depends on CQ anyway. */
+const CYCLE_FALLBACK = "testnet_2";
+const CYCLE_START_FALLBACK = "2026-06-05T00:00:00Z";
+const CYCLE = await fetch(
+  `${SB_URL}/rest/v1/bot_config?select=cycle&managed_by=eq.grid&symbol=eq.${encodeURIComponent("BTC/USDT")}&limit=1`,
+  { headers },
+)
+  .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+  .then((rows: { cycle: string }[]) => rows?.[0]?.cycle || CYCLE_FALLBACK)
+  .catch(() => CYCLE_FALLBACK);
 const CQ = `&cycle=eq.${CYCLE}`;
 /* Two day anchors (S99). The rule is by CONTEXT, not by surface:
    - MONEY numbers reset per testnet cycle (clean slate). → CYCLE_START_ISO
    - PROJECT/diary numbers are continuous from the v3/site launch. → V3_LAUNCH_ISO
    So the MONEY day counters (NET WORTH / Grid / TF cards + §3 P&L chart) use
    CYCLE_START_ISO, while the CEO-log "Earlier from the log" diary numbers stay
-   progressive on V3_LAUNCH_ISO. CYCLE_START_ISO = first trade of the current
-   cycle (Jun 5: clean slate tagged Jun 4 but first testnet_2 trade landed Jun 5,
-   first-buy gate unblocked in S96b). Bump it on the next reset together with
-   CYCLE (and live-stats.ts / grid.html). */
+   progressive on V3_LAUNCH_ISO. CYCLE_START_ISO = midnight UTC of the current
+   cycle's FIRST TRADE (Day 1 — same convention as the homepage sticker and
+   "days running"), derived live so a cycle bump moves it by itself. */
 const V3_LAUNCH_ISO = "2026-03-30T00:00:00Z";
-const CYCLE_START_ISO = "2026-06-05T00:00:00Z";
+const CYCLE_START_ISO = await fetch(
+  `${SB_URL}/rest/v1/trades?select=created_at&config_version=eq.v3${CQ}&order=created_at.asc&limit=1`,
+  { headers },
+)
+  .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+  .then((rows: { created_at: string }[]) =>
+    rows?.[0]?.created_at
+      ? rows[0].created_at.slice(0, 10) + "T00:00:00Z"
+      : CYCLE_START_FALLBACK)
+  .catch(() => CYCLE_START_FALLBACK);
 /* Money basis of the current cycle: Grid $500 + TF $100 (S97b). Used by
    the § 3 chart for the $-axis relabel, tooltip net worth and big number. */
 const INITIAL_CAPITAL = 600;
@@ -1579,7 +1599,7 @@ async function renderSparklines() {
   try {
     const rows = await sbGet<{ date: string; total_value: number }>(
       "daily_pnl",
-      `select=date,total_value&managed_by=eq.grid&cycle=eq.testnet_2&order=date.desc&limit=7`,
+      `select=date,total_value&managed_by=eq.grid${CQ}&order=date.desc&limit=7`,
     );
     drawSpark("grid-spark", rows.map(r => Number(r.total_value)).reverse(), "var(--color-bot-grid)");
     /* TF is idle this cycle (no daily_pnl history) → keep the flat default. */

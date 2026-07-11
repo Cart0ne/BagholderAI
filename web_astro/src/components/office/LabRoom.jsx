@@ -52,8 +52,18 @@ const SB_KEY =
   "eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB4ZGh0bXFmd2p3amh0Y29hY3NuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4NDI1OTIsImV4cCI6MjA4OTQxODU5Mn0." +
   "G76lvYWrqlM0z2RoSkU1uAglfMBKN_rXvBGOQhb4kdg";
 const SB_HEADERS = { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` };
-const CYCLE = "testnet_2";                       // S96a clean slate (bump on reset)
-const CQ = `&cycle=eq.${CYCLE}`;
+/* Current cycle — DATA-DRIVEN since S117: bot_config.cycle (grid BTC row),
+   fetched once and cached; the literal is only the fetch-failure fallback.
+   One `UPDATE bot_config SET cycle=...` (reset or Kraken live switch) and
+   the scene board follows — no more bump ritual. */
+const CYCLE_FALLBACK = "testnet_2";
+let cyclePromise = null;
+function getCycle() {
+  cyclePromise ??= sbGet(`bot_config?select=cycle&managed_by=eq.grid&symbol=eq.${encodeURIComponent("BTC/USDT")}&limit=1`)
+    .then((rows) => (rows && rows[0] && rows[0].cycle) || CYCLE_FALLBACK)
+    .catch(() => CYCLE_FALLBACK);
+  return cyclePromise;
+}
 const GRID_INITIAL = 500, TF_INITIAL = 100, TOTAL_INITIAL = 600;
 
 async function sbGet(path) {
@@ -107,6 +117,7 @@ function useOfficeData() {
     let alive = true;
     async function load() {
       try {
+        const CQ = `&cycle=eq.${await getCycle()}`;
         const [trades, skimRows, sparkRows, sentRows, costRows] = await Promise.all([
           sbGetAll(`trades?select=symbol,side,amount,cost,fee,fee_asset,created_at,managed_by&config_version=eq.v3${CQ}&order=created_at.asc`),
           sbGet(`reserve_ledger?select=symbol,amount&config_version=eq.v3${CQ}`),
