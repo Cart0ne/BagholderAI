@@ -258,8 +258,10 @@ e confronta con l'inventario atteso:
 - **Standalone (non-managed)**: NewsKeeper v2; listener `x_poster_approve` 
   (LaunchAgent `com.bagholderai.xposter-approve`)
 - **Cron sani** (crontab presente + ultimo run non in errore nei log): 
-  x_poster `--cron` 20:30 Rome, reconcile_binance 03:00 Rome, 
-  db_maintenance 04:00 UTC
+  x_poster `--cron` 20:30 Rome, reconcile_binance 03:00 Rome
+- **In-process (no crontab)**: db_maintenance 04:00 UTC gira dentro 
+  l'orchestrator (`bot/db_maintenance.py`, chiamato da `orchestrator.py`) — 
+  verificare riga `[maintenance]` recente nel log orchestrator, non il crontab
 Riporta a Max **cosa è su e cosa è giù**. Un processo mancante lo **segnali**, 
 non lo riavvii d'iniziativa (la regola restart qui sotto resta). Motivo: il 
 listener `/approve` è rimasto morto ~1 mese perché il check era 
