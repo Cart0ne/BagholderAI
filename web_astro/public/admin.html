@@ -346,6 +346,26 @@
       margin-top: 8px; line-height: 1.4;
     }
 
+    /* Experiment data editor (/income) — S117 */
+    #exp-editor input {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 4px; color: var(--text);
+      font-family: var(--mono); font-size: 11px; padding: 3px 6px;
+    }
+    #exp-editor input:focus { border-color: var(--purple); outline: none; }
+    .exp-group-label {
+      font-family: var(--mono); font-size: 11px; color: var(--text-dim);
+      text-transform: uppercase; letter-spacing: 0.05em; margin: 14px 0 6px;
+    }
+    .exp-save {
+      background: transparent; border: 1px solid var(--purple);
+      color: var(--purple); padding: 3px 10px; border-radius: 4px;
+      cursor: pointer; font-family: var(--mono); font-size: 11px;
+    }
+    .exp-save:hover:not(:disabled) { background: var(--purple); color: #0a0a0a; }
+    .exp-save:disabled { opacity: 0.35; cursor: default; }
+    .exp-status { font-family: var(--mono); font-size: 10px; margin-left: 6px; white-space: nowrap; }
+
     /* Global time-range selector — applies to all charts (Sentinel trend,
        Reaction, Parameters history). One change triggers a refetch +
        re-render across the whole dashboard. */
@@ -925,6 +945,20 @@
         </div>
       </div>
 
+      <!-- ============ EXPERIMENT DATA (/income editor) — S117 ============ -->
+      <div class="section-title" style="color: var(--purple);">🧪 Experiment data (/income)</div>
+      <div class="card">
+        <div style="font-family: var(--mono); font-size: 11px; color: var(--text-dim); line-height: 1.5;">
+          The figures shown on the public <a href="https://bagholderai.lol/income" target="_blank" style="color: var(--purple);">/income</a> page
+          ("The experiment") — all manual entries. Edit and Save: the page redraws totals, donuts and the
+          "updated Xd ago" chips from these rows on its next load, nothing else to deploy.
+          <strong style="color: var(--text);">Value €</strong> is the number used for totals and charts
+          (empty = no number, e.g. Trading's "waiting" status) · <strong style="color: var(--text);">Displayed</strong>
+          is the string shown on the page · <strong style="color: var(--text);">Detail</strong> is the caption under it.
+        </div>
+        <div id="exp-editor" style="font-family: var(--mono); font-size: 11px;">loading…</div>
+      </div>
+
     </div>
   </div>
 
@@ -971,6 +1005,9 @@
       document.getElementById('dashboard').style.display = 'block';
       wireRangeSelector();
       bootstrap();
+      // Loaded once here, NOT from bootstrap(): bootstrap re-runs on every
+      // resize/range click and a re-render would wipe unsaved edits.
+      loadExperimentEditor();
     }
 
     if (sessionStorage.getItem('bh_admin') === '1') showDashboard();
@@ -1016,6 +1053,30 @@
       });
       if (!res.ok) throw new Error('Supabase RPC ' + res.status + ' on ' + fnName);
       return res.json();
+    }
+
+    // PATCH helper (S117, same as tf.html/grid.html — used by the Experiment
+    // data editor on passive_income).
+    async function sbPatch(table, matchCol, matchVal, data) {
+      var res = await fetch(SB_URL + '/rest/v1/' + table + '?' + matchCol + '=eq.' + encodeURIComponent(matchVal), {
+        method: 'PATCH',
+        headers: {
+          'apikey': SB_KEY,
+          'Authorization': 'Bearer ' + SB_KEY,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=representation',
+        },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) throw new Error('Supabase ' + res.status + ' on ' + table);
+      var rows = await res.json();
+      // 39i: PostgREST returns 200 + [] when RLS silently blocks the update
+      // (row matches the filter but the mutation is denied). Without this
+      // guard the UI shows "saved" while the DB never changed.
+      if (!Array.isArray(rows) || rows.length === 0) {
+        throw new Error('no rows updated (RLS policy?)');
+      }
+      return rows;
     }
 
     // Supabase REST caps responses at 1000 rows even if `limit=N` URL param
@@ -2560,6 +2621,159 @@
         console.error(e);
         document.getElementById('last-update').textContent = 'fetch error: ' + e.message;
       }
+    }
+
+    // === EXPERIMENT DATA EDITOR (S117) ===
+    // Edits the passive_income rows that drive the public /income page
+    // ("The experiment"). Direct PATCH with the anon key, same pattern as
+    // the tf.html safety editor (anon UPDATE policy: migration 20260711).
+    // INSERT/DELETE stay closed — new sources go through a migration.
+    var EXP_ROWS = {}; // source_key -> last-saved row, for change detection
+
+    var EXP_BLOCKS = [
+      { key: 'cost',     title: 'Running costs (€, cumulative since Mar ’26)', numHeader: 'Value €' },
+      { key: 'revenue',  title: 'Income streams (€, cumulative)',              numHeader: 'Value €' },
+      { key: 'traction', title: 'Traction (attention counters)',               numHeader: 'Value #' },
+    ];
+
+    function expDaysAgo(iso) {
+      var d = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
+      if (!isFinite(d)) return '—';
+      if (d <= 0) return 'today';
+      return d + 'd ago';
+    }
+
+    // Empty → null (row shows no number, e.g. Trading's "waiting" status);
+    // comma accepted as decimal separator.
+    function expParseNum(raw) {
+      var s = (raw || '').trim().replace(',', '.');
+      if (s === '') return { ok: true, val: null };
+      var n = parseFloat(s);
+      return isNaN(n) ? { ok: false } : { ok: true, val: n };
+    }
+
+    function expDirty(key, numIn, dispIn, detIn) {
+      var orig = EXP_ROWS[key];
+      var p = expParseNum(numIn.value);
+      if (!p.ok) return false;                 // invalid number → keep Save off
+      if (!dispIn.value.trim()) return false;  // value_display is NOT NULL
+      var origNum = orig.value_num == null ? null : Number(orig.value_num);
+      return String(p.val) !== String(origNum) ||
+        dispIn.value.trim() !== (orig.value_display || '') ||
+        (detIn.value.trim() || null) !== (orig.detail || null);
+    }
+
+    async function expSave(key, numIn, dispIn, detIn, btn, statusEl, updatedEl) {
+      var p = expParseNum(numIn.value);
+      if (!p.ok) { statusEl.textContent = 'invalid number'; statusEl.style.color = 'var(--red)'; return; }
+      var disp = dispIn.value.trim();
+      if (!disp) { statusEl.textContent = 'Displayed is required'; statusEl.style.color = 'var(--red)'; return; }
+      btn.disabled = true;
+      statusEl.textContent = 'saving…';
+      statusEl.style.color = 'var(--text-dim)';
+      try {
+        var rows = await sbPatch('passive_income', 'source_key', key, {
+          value_num: p.val,
+          value_display: disp,
+          detail: detIn.value.trim() || null,
+          // Also refreshes the "manual · Xd ago" chip on the public page.
+          updated_at: new Date().toISOString(),
+        });
+        EXP_ROWS[key] = rows[0];
+        updatedEl.textContent = 'today';
+        statusEl.textContent = '✓ saved';
+        statusEl.style.color = 'var(--green)';
+      } catch (e) {
+        statusEl.textContent = '✗ ' + e.message;
+        statusEl.style.color = 'var(--red)';
+        btn.disabled = false;
+      }
+    }
+
+    function expBuildRow(r) {
+      EXP_ROWS[r.source_key] = r;
+      var tr = document.createElement('tr');
+
+      var tdLabel = document.createElement('td');
+      tdLabel.textContent = r.label;
+      tdLabel.title = r.source_key;
+      tdLabel.style.whiteSpace = 'nowrap';
+
+      function input(value, width) {
+        var inp = document.createElement('input');
+        inp.type = 'text';
+        inp.value = value == null ? '' : String(value);
+        inp.style.width = width;
+        return inp;
+      }
+      var numIn = input(r.value_num, '70px');
+      var dispIn = input(r.value_display, '110px');
+      var detIn = input(r.detail, '100%');
+
+      var tdNum = document.createElement('td');
+      tdNum.className = 'num';
+      tdNum.appendChild(numIn);
+      var tdDisp = document.createElement('td');
+      tdDisp.appendChild(dispIn);
+      var tdDet = document.createElement('td');
+      tdDet.style.width = '40%';
+      tdDet.appendChild(detIn);
+
+      var tdUpd = document.createElement('td');
+      tdUpd.textContent = expDaysAgo(r.updated_at);
+      tdUpd.style.color = 'var(--text-dim)';
+      tdUpd.style.whiteSpace = 'nowrap';
+
+      var tdSave = document.createElement('td');
+      tdSave.style.whiteSpace = 'nowrap';
+      var btn = document.createElement('button');
+      btn.className = 'exp-save';
+      btn.textContent = 'Save';
+      btn.disabled = true;
+      var statusEl = document.createElement('span');
+      statusEl.className = 'exp-status';
+      btn.onclick = function() { expSave(r.source_key, numIn, dispIn, detIn, btn, statusEl, tdUpd); };
+      tdSave.appendChild(btn);
+      tdSave.appendChild(statusEl);
+
+      [numIn, dispIn, detIn].forEach(function(inp) {
+        inp.addEventListener('input', function() {
+          statusEl.textContent = '';
+          btn.disabled = !expDirty(r.source_key, numIn, dispIn, detIn);
+        });
+      });
+
+      [tdLabel, tdNum, tdDisp, tdDet, tdUpd, tdSave].forEach(function(td) { tr.appendChild(td); });
+      return tr;
+    }
+
+    async function loadExperimentEditor() {
+      var host = document.getElementById('exp-editor');
+      if (!host) return;
+      var rows;
+      try {
+        rows = await sbFetch('passive_income?select=source_key,block,label,value_num,value_display,detail,is_status,sort_order,updated_at&order=sort_order');
+      } catch (e) {
+        host.textContent = 'passive_income fetch failed: ' + e.message;
+        return;
+      }
+      EXP_ROWS = {};
+      host.innerHTML = '';
+      EXP_BLOCKS.forEach(function(b) {
+        var blockRows = rows.filter(function(r) { return r.block === b.key; });
+        if (!blockRows.length) return;
+        var head = document.createElement('div');
+        head.className = 'exp-group-label';
+        head.textContent = b.title;
+        host.appendChild(head);
+        var table = document.createElement('table');
+        table.className = 'rules';
+        table.innerHTML = '<thead><tr><th>Source</th><th class="num">' + b.numHeader + '</th><th>Displayed</th><th>Detail</th><th>Updated</th><th></th></tr></thead>';
+        var tbody = document.createElement('tbody');
+        blockRows.forEach(function(r) { tbody.appendChild(expBuildRow(r)); });
+        table.appendChild(tbody);
+        host.appendChild(table);
+      });
     }
 
     // Re-render charts on resize so the canvas stays sharp

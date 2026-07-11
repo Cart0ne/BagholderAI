@@ -327,6 +327,10 @@ function render(rows: IncomeRow[]): void {
   if (costTotalEl) costTotalEl.textContent = `${costEur} · ~${costUsd}`;
   const kpiSpent = document.getElementById("kpi-spent");
   if (kpiSpent) kpiSpent.textContent = "~" + costEur;
+  // Prose sentence in the Running-costs card — kept in sync so the static
+  // "~€274" fallback can't go stale when costs are edited from /admin.
+  const costProse = document.getElementById("income-cost-prose");
+  if (costProse) costProse.textContent = "~" + costEur;
   renderDonut(
     "donut-costs-segs",
     "donut-costs-legend",
