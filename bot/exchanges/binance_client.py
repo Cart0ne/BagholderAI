@@ -42,13 +42,19 @@ class BinanceClient(ExchangeClient):
         return fetch_ticker(self._exchange, symbol)
 
     # --- market orders ---
-    def place_market_buy(self, symbol: str, quote_amount: float) -> Optional[dict]:
+    # `params` (S118) is accepted for interface parity but IGNORED here: the
+    # binance path must stay byte-identical to pre-S112 (§3 invariant), and
+    # nothing on it ever passes params. validate=true is a Kraken-only need.
+    def place_market_buy(self, symbol: str, quote_amount: float,
+                         params: Optional[dict] = None) -> Optional[dict]:
         return exchange_orders.place_market_buy(self._exchange, symbol, quote_amount)
 
-    def place_market_buy_base(self, symbol: str, base_amount: float) -> Optional[dict]:
+    def place_market_buy_base(self, symbol: str, base_amount: float,
+                              params: Optional[dict] = None) -> Optional[dict]:
         return exchange_orders.place_market_buy_base(self._exchange, symbol, base_amount)
 
-    def place_market_sell(self, symbol: str, base_amount: float) -> Optional[dict]:
+    def place_market_sell(self, symbol: str, base_amount: float,
+                          params: Optional[dict] = None) -> Optional[dict]:
         return exchange_orders.place_market_sell(self._exchange, symbol, base_amount)
 
     # --- account / reconcile ---

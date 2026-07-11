@@ -113,7 +113,9 @@ def test_kraken_market_buy_uses_native_cost_order():
         "cost": 59.0, "fee": {"cost": 0.1475, "currency": "USD"},
     }
     out = kc.place_market_buy("BTC/USD", 59.0)
-    kc._exchange.create_market_buy_order_with_cost.assert_called_once_with("BTC/USD", 59.0)
+    # S118: params passthrough — no params from the grid means the ccxt
+    # default {} (semantically identical to the pre-S118 two-arg call).
+    kc._exchange.create_market_buy_order_with_cost.assert_called_once_with("BTC/USD", 59.0, {})
     assert out["order_id"] == "OABC"
     assert out["filled_amount"] == 0.001
     assert out["fee_cost"] == 0.1475
@@ -128,7 +130,8 @@ def test_kraken_market_sell_uses_create_order():
         "cost": 148.0, "fee": {"cost": 0.37, "currency": "USD"},
     }
     out = kc.place_market_sell("SOL/USD", 2.0)
-    kc._exchange.create_order.assert_called_once_with("SOL/USD", "market", "sell", 2.0)
+    # S118: params passthrough — (price=None, params={}) are the ccxt defaults.
+    kc._exchange.create_order.assert_called_once_with("SOL/USD", "market", "sell", 2.0, None, {})
     assert out["fee_cost"] == 0.37
     assert out["fee_base"] == 0.0
 

@@ -51,18 +51,25 @@ class ExchangeClient(ABC):
         return float((self.fetch_ticker(symbol) or {}).get("last") or 0)
 
     # --- market orders (the surface the grid uses today) ---
+    # `params` (S118): optional venue-specific order params. The binance path
+    # never passes it (invariant §3: BinanceClient ignores it); KrakenClient
+    # forwards it to ccxt — used by the Fase 1 "prova generale" to send
+    # validate=true orders through the SAME code path the grid uses live.
     @abstractmethod
-    def place_market_buy(self, symbol: str, quote_amount: float) -> Optional[dict]:
+    def place_market_buy(self, symbol: str, quote_amount: float,
+                         params: Optional[dict] = None) -> Optional[dict]:
         """Market BUY for `quote_amount` of quote currency worth of `symbol`."""
         ...
 
     @abstractmethod
-    def place_market_buy_base(self, symbol: str, base_amount: float) -> Optional[dict]:
+    def place_market_buy_base(self, symbol: str, base_amount: float,
+                              params: Optional[dict] = None) -> Optional[dict]:
         """Market BUY for a base-asset `base_amount` (lot-step rounded by caller)."""
         ...
 
     @abstractmethod
-    def place_market_sell(self, symbol: str, base_amount: float) -> Optional[dict]:
+    def place_market_sell(self, symbol: str, base_amount: float,
+                          params: Optional[dict] = None) -> Optional[dict]:
         """Market SELL of `base_amount` base asset (lot-step rounded by caller)."""
         ...
 
@@ -118,3 +125,10 @@ class ExchangeClient(ABC):
     def fee_tier(self, symbol: Optional[str] = None) -> dict:
         """Current maker/taker fee + 30d volume."""
         raise NotImplementedError(f"{self.name}: fee_tier not supported")
+
+    def taker_fee_rate(self, symbol: Optional[str] = None) -> float:
+        """Current taker fee as a FRACTION (0.008 = 0.80%), for the grid's
+        dynamic fee_rate (S118, K.1 Fase 1). Only venues with real, tiered
+        fees implement this (Kraken); the binance path keeps GridBot's
+        FEE_RATE constant and never calls it."""
+        raise NotImplementedError(f"{self.name}: taker_fee_rate not supported")

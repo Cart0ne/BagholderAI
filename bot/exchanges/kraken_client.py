@@ -32,6 +32,7 @@ testnet) — methods are mock-tested here.
 from __future__ import annotations
 
 import logging
+import time
 from typing import Optional
 
 import ccxt
@@ -50,6 +51,9 @@ class KrakenClient(ExchangeClient):
     quote_currency = "USD"
 
     def __init__(self, exchange=None):
+        # S118: taker_fee_rate() cache (fetch_trading_fee is a private call —
+        # don't hit it every tick; the tier moves with 30d volume, slowly).
+        self._fee_cache: dict = {}   # symbol -> (rate, fetched_at)
         if exchange is not None:
             self._exchange = exchange  # tests inject a mock
             return
@@ -99,7 +103,25 @@ class KrakenClient(ExchangeClient):
         return self._exchange.fetch_ticker(symbol)
 
     # --- market orders ---
-    def place_market_buy(self, symbol: str, quote_amount: float) -> Optional[dict]:
+    # `params` (S118): forwarded to ccxt. The one consumer today is the Fase 1
+    # "prova generale" sending {"validate": True} through the SAME methods the
+    # grid uses live — Kraken validates the order (permissions, pair, ordermin)
+    # without executing it and returns no txid/fill, so validate responses skip
+    # the fill-normalization (which would treat them as rejected not-filled).
+    @staticmethod
+    def _is_validate(params: Optional[dict]) -> bool:
+        return bool((params or {}).get("validate"))
+
+    @staticmethod
+    def _validate_ok(order, symbol: str, side: str) -> dict:
+        logger.info(f"[kraken] {side.upper()} {symbol} VALIDATE-ONLY accepted (no execution).")
+        return {"validated": True, "order_id": "", "filled_amount": 0.0,
+                "avg_price": 0.0, "cost": 0.0, "fee_cost": 0.0, "fee_currency": "",
+                "fee_native_amount": 0.0, "fee_base": 0.0, "status": "validated",
+                "raw": order}
+
+    def place_market_buy(self, symbol: str, quote_amount: float,
+                         params: Optional[dict] = None) -> Optional[dict]:
         """Market BUY for `quote_amount` USD worth of `symbol` (native cost order)."""
         if quote_amount <= 0:
             logger.error(f"[kraken] BUY {symbol}: invalid quote_amount={quote_amount}")
@@ -107,45 +129,56 @@ class KrakenClient(ExchangeClient):
                              {"quote_amount": quote_amount})
             return None
         try:
-            order = self._exchange.create_market_buy_order_with_cost(symbol, quote_amount)
+            order = self._exchange.create_market_buy_order_with_cost(
+                symbol, quote_amount, params or {})
         except Exception as e:
             reason = f"{type(e).__name__}: {e}"
             logger.error(f"[kraken] BUY {symbol} ${quote_amount:.2f} FAILED: {reason}")
             _alert_rejection(symbol, "buy", reason,
                              {"quote_amount": quote_amount, "exception_type": type(e).__name__})
             return None
+        if self._is_validate(params):
+            return self._validate_ok(order, symbol, "buy")
         return self._normalize_order_response(order, symbol, "buy")
 
-    def place_market_buy_base(self, symbol: str, base_amount: float) -> Optional[dict]:
+    def place_market_buy_base(self, symbol: str, base_amount: float,
+                              params: Optional[dict] = None) -> Optional[dict]:
         """Market BUY for a base-asset `base_amount` (lot-step rounded by caller)."""
         if base_amount <= 0:
             logger.error(f"[kraken] BUY {symbol}: invalid base_amount={base_amount}")
             _alert_rejection(symbol, "buy", "invalid base_amount", {"base_amount": base_amount})
             return None
         try:
-            order = self._exchange.create_order(symbol, "market", "buy", base_amount)
+            order = self._exchange.create_order(
+                symbol, "market", "buy", base_amount, None, params or {})
         except Exception as e:
             reason = f"{type(e).__name__}: {e}"
             logger.error(f"[kraken] BUY {symbol} base={base_amount} FAILED: {reason}")
             _alert_rejection(symbol, "buy", reason,
                              {"base_amount": base_amount, "exception_type": type(e).__name__})
             return None
+        if self._is_validate(params):
+            return self._validate_ok(order, symbol, "buy")
         return self._normalize_order_response(order, symbol, "buy")
 
-    def place_market_sell(self, symbol: str, base_amount: float) -> Optional[dict]:
+    def place_market_sell(self, symbol: str, base_amount: float,
+                          params: Optional[dict] = None) -> Optional[dict]:
         """Market SELL of `base_amount` base asset (lot-step rounded by caller)."""
         if base_amount <= 0:
             logger.error(f"[kraken] SELL {symbol}: invalid base_amount={base_amount}")
             _alert_rejection(symbol, "sell", "invalid base_amount", {"base_amount": base_amount})
             return None
         try:
-            order = self._exchange.create_order(symbol, "market", "sell", base_amount)
+            order = self._exchange.create_order(
+                symbol, "market", "sell", base_amount, None, params or {})
         except Exception as e:
             reason = f"{type(e).__name__}: {e}"
             logger.error(f"[kraken] SELL {symbol} {base_amount} FAILED: {reason}")
             _alert_rejection(symbol, "sell", reason,
                              {"base_amount": base_amount, "exception_type": type(e).__name__})
             return None
+        if self._is_validate(params):
+            return self._validate_ok(order, symbol, "sell")
         return self._normalize_order_response(order, symbol, "sell")
 
     # --- account / reconcile ---
@@ -233,6 +266,48 @@ class KrakenClient(ExchangeClient):
         except Exception as e:
             logger.error(f"[kraken] fee_tier({symbol}) FAILED: {e}")
             return {}
+
+    # S118 (K.1 Fase 1): dynamic fee for the grid. Live tier-0 is 0.80% taker
+    # (verified Fase 0, 2026-07-11 — the brief assumed 0.40%), dropping with
+    # 30d volume. NEVER hardcoded in the trading logic: the grid reads it from
+    # here; this fallback exists only for API failures and is the conservative
+    # tier-0 worst case, so the floor/trigger over-protect rather than under.
+    FALLBACK_TAKER_FEE = 0.008          # tier-0 taker, fraction (0.80%)
+    _FEE_TTL = 3600.0                   # happy-path cache: 1h
+    _FEE_TTL_FALLBACK = 300.0           # retry sooner after a failed read
+
+    def taker_fee_rate(self, symbol: Optional[str] = None) -> float:
+        """Current taker fee as a FRACTION (0.008 = 0.80%), cached 1h.
+
+        Reads fetch_trading_fee live so volume-tier improvements (0.80% →
+        0.60% over $2.5K/30d, then lower) propagate automatically. On any
+        error/malformed response returns FALLBACK_TAKER_FEE (cached 5min so
+        a flaky API isn't hammered every tick).
+        """
+        key = symbol or "BTC/USD"
+        now = time.time()
+        cached = self._fee_cache.get(key)
+        if cached:
+            rate, fetched_at, ttl = cached
+            if now - fetched_at < ttl:
+                return rate
+        tier = self.fee_tier(key)
+        taker = tier.get("taker") if isinstance(tier, dict) else None
+        try:
+            taker = float(taker)
+        except (TypeError, ValueError):
+            taker = None
+        # Sanity window: Kraken spot taker fees live in (0%, 5%). Anything
+        # outside is a malformed/unit-confused response → fallback.
+        if taker is not None and 0 < taker < 0.05:
+            self._fee_cache[key] = (taker, now, self._FEE_TTL)
+            return taker
+        logger.warning(
+            f"[kraken] taker_fee_rate({key}): unusable live tier ({tier!r}) — "
+            f"falling back to conservative {self.FALLBACK_TAKER_FEE:.4f}"
+        )
+        self._fee_cache[key] = (self.FALLBACK_TAKER_FEE, now, self._FEE_TTL_FALLBACK)
+        return self.FALLBACK_TAKER_FEE
 
     # --- normalization ---
     def _normalize_order_response(self, order: dict, symbol: str, side: str) -> Optional[dict]:
