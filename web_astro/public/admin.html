@@ -2633,9 +2633,10 @@
     var EXP_ROWS = {}; // source_key -> last-saved row, for change detection
 
     var EXP_BLOCKS = [
-      { key: 'cost',     title: 'Running costs (€, cumulative since Mar ’26)', numHeader: 'Value €' },
-      { key: 'revenue',  title: 'Income streams (€, cumulative)',              numHeader: 'Value €' },
-      { key: 'traction', title: 'Traction (attention counters)',               numHeader: 'Value #' },
+      { key: 'cost',     title: 'Running costs (€, cumulative since Mar ’26)',   numHeader: 'Value €' },
+      { key: 'revenue',  title: 'Income streams (€, cumulative)',                numHeader: 'Value €' },
+      { key: 'traction', title: 'Traction (attention counters)',                 numHeader: 'Value #' },
+      { key: 'books',    title: 'Attention by book (Payhip views per volume)',   numHeader: 'Views' },
     ];
 
     function expDaysAgo(iso) {

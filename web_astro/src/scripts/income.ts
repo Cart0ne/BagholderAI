@@ -23,7 +23,7 @@ const sbq = async <T>(table: string, params: string): Promise<T> => {
 };
 
 type IncomeRow = {
-  block: "revenue" | "traction";
+  block: "revenue" | "traction" | "cost" | "books";
   source_key: string;
   label: string;
   value_num: number | null;
@@ -35,9 +35,16 @@ type IncomeRow = {
   updated_at: string;
 };
 
-/* Approx EUR→USD used for the $ figure on cost totals (Max's billing
-   rate ~1.11: €1.40→$1.54, €1.60→$1.77, €270→$300). Adjust freely. */
-const USD_PER_EUR = 1.11;
+/* EUR→USD for the $ figure on cost totals. Live ECB daily rate (same
+   source as the admin panel's $→€ conversion); the ~1.11 constant is
+   only the fallback if the fetch fails. */
+let USD_PER_EUR = 1.11;
+const fxReady = fetch("https://api.frankfurter.dev/v1/latest?base=EUR&symbols=USD")
+  .then((r) => r.json())
+  .then((j: { rates?: { USD?: number } }) => {
+    if (j?.rates?.USD && j.rates.USD > 0) USD_PER_EUR = j.rates.USD;
+  })
+  .catch(() => {});
 
 /* Brand palette (global.css tokens) keyed by source. */
 const COLOR: Record<string, string> = {
@@ -65,13 +72,10 @@ const SHORT: Record<string, string> = {
   infra: "Infra",
 };
 
-/* Book views per volume — real Payhip product views (sum 91). Hardcoded
-   for now; move to a table when we wire the per-volume breakdown. */
-const BOOK_VIEWS = [
-  { label: "Vol 1", value: 14, color: "#8A3D22" }, // brick-deep
-  { label: "Vol 2", value: 50, color: "#B5562F" }, // brick
-  { label: "Vol 3", value: 27, color: "#D58E60" }, // brick-light
-];
+/* Book views per volume come from the `books` block of passive_income
+   (S117 — editable from the admin panel like everything else). Monochrome
+   brick ramp assigned by row order; extend when Volume 4+ ships. */
+const BOOK_RAMP = ["#8A3D22", "#B5562F", "#D58E60", "#E8B08A"];
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 
@@ -279,10 +283,14 @@ function render(rows: IncomeRow[]): void {
   const moneyFill = document.getElementById("bar-money-fill");
   if (moneyFill) (moneyFill as HTMLElement).style.width = total > 0 ? "55%" : "0%";
 
-  /* KPI reach + attention bar label from traction */
+  /* KPI reach + attention bar label from traction. The sub-label under the
+     visitor count is the row's detail ("Umami · All time"), so the time
+     basis follows whatever Max writes in the panel — no static label. */
   const visits = traction.find((r) => r.source_key === "umami_visits");
   const kpiReach = document.getElementById("kpi-reach");
   if (kpiReach && visits) kpiReach.textContent = visits.value_display;
+  const kpiReachSub = document.getElementById("kpi-reach-sub");
+  if (kpiReachSub && visits) kpiReachSub.textContent = visits.detail ?? "";
   const attnLabel = document.getElementById("bar-attention-label");
   if (attnLabel && traction.length) {
     attnLabel.textContent = traction
@@ -304,15 +312,56 @@ function render(rows: IncomeRow[]): void {
     totalStr,
   );
 
-  /* Donut 2 — attention by book (real data today) */
-  const viewsTotal = BOOK_VIEWS.reduce((s, b) => s + b.value, 0);
+  /* Donut 2 — attention by book (books block: per-volume Payhip views) */
+  const books = sorted.filter((r) => r.block === "books");
+  const viewsTotal = books.reduce(
+    (s, r) => s + (typeof r.value_num === "number" ? r.value_num : 0),
+    0,
+  );
   renderDonut(
     "donut-views-segs",
     "donut-views-legend",
     "donut-views-center",
-    BOOK_VIEWS,
+    books.map((r, i) => ({
+      label: r.label,
+      value: typeof r.value_num === "number" ? r.value_num : 0,
+      display: r.value_display,
+      color: BOOK_RAMP[i % BOOK_RAMP.length],
+    })),
     String(viewsTotal),
   );
+
+  /* KPI conversion — product views vs sales. The sales count is parsed
+     from the Books revenue row's detail ("N sales"), so the whole KPI
+     follows panel edits with no code change. */
+  const bookRev = revenue.find((r) => r.source_key === "payhip_books");
+  const salesMatch = (bookRev?.detail ?? "").match(/(\d+)\s*sale/i);
+  const sales = salesMatch ? parseInt(salesMatch[1], 10) : 0;
+  const kpiConv = document.getElementById("kpi-conversion");
+  if (kpiConv && viewsTotal > 0) {
+    const pct = (sales / viewsTotal) * 100;
+    kpiConv.textContent = pct === 0 ? "0%" : pct.toFixed(pct < 1 ? 1 : 0) + "%";
+  }
+  const kpiConvSub = document.getElementById("kpi-conversion-sub");
+  if (kpiConvSub && viewsTotal > 0)
+    kpiConvSub.textContent = `${viewsTotal} views → ${sales} sales`;
+
+  /* Caption under the donuts — every number and the "last updated" come
+     from the DB rows (Max refreshes monthly from the panel). */
+  const store = traction.find((r) => r.source_key === "payhip_views");
+  const noteEl = document.getElementById("book-views-note");
+  if (noteEl && books.length) {
+    const newest = books.reduce(
+      (m, r) => (r.updated_at > m ? r.updated_at : m),
+      books[0].updated_at,
+    );
+    noteEl.textContent =
+      `Book views = Payhip product views (sum ${viewsTotal} across volumes)` +
+      (store
+        ? `; the whole Payhip store counts ${store.value_display} daily views, the gap is the store page`
+        : "") +
+      `. Manual, updated ${relativeTime(newest)}.`;
+  }
 
   /* Costs — running expenses (QuickBooks-style expense donut). The donut
      legend doubles as the cost breakdown, so no separate list. */
@@ -349,21 +398,18 @@ function render(rows: IncomeRow[]): void {
 const monthEl = document.getElementById("income-month");
 if (monthEl) monthEl.textContent = `Month ${experimentMonth()}`;
 
-/* Render the book-views donut immediately (constant data) so the page has
-   a populated chart even before the network resolves. */
-renderDonut(
-  "donut-views-segs",
-  "donut-views-legend",
-  "donut-views-center",
-  BOOK_VIEWS,
-  String(BOOK_VIEWS.reduce((s, b) => s + b.value, 0)),
-);
-
-sbq<IncomeRow[]>(
-  "passive_income",
-  "select=block,source_key,label,value_num,value_display,detail,is_status,method,sort_order,updated_at",
-)
-  .then((rows) => {
+/* Book-views donut data now lives in the same passive_income fetch (books
+   block) — no constant pre-render anymore. fxReady is awaited alongside so
+   the $ conversion uses the live ECB rate (it never rejects; worst case we
+   keep the 1.11 fallback). */
+Promise.all([
+  sbq<IncomeRow[]>(
+    "passive_income",
+    "select=block,source_key,label,value_num,value_display,detail,is_status,method,sort_order,updated_at",
+  ),
+  fxReady,
+])
+  .then(([rows]) => {
     if (Array.isArray(rows) && rows.length) render(rows);
     else throw new Error("empty");
   })

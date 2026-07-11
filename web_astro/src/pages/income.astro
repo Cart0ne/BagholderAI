@@ -59,22 +59,22 @@ import Layout from "../layouts/Layout.astro";
         <div class="font-mono text-[10px] uppercase tracking-[0.12em] text-text-muted">
           Spent to date
         </div>
-        <div id="kpi-spent" class="mt-1.5 font-display text-[26px] font-extrabold leading-none text-text">~€274</div>
+        <div id="kpi-spent" class="mt-1.5 font-display text-[26px] font-extrabold leading-none text-text">—</div>
         <div class="mt-1 text-[11px] text-text-muted">to run it all</div>
       </div>
       <div class="rounded-2xl border border-border bg-surface px-4 py-4 shadow-sticker-sm">
         <div class="font-mono text-[10px] uppercase tracking-[0.12em] text-text-muted">
           Conversion
         </div>
-        <div id="kpi-conversion" class="mt-1.5 font-display text-[26px] font-extrabold leading-none text-text">0%</div>
-        <div class="mt-1 text-[11px] text-text-muted">150 views → 0 sales</div>
+        <div id="kpi-conversion" class="mt-1.5 font-display text-[26px] font-extrabold leading-none text-text">—</div>
+        <div id="kpi-conversion-sub" class="mt-1 text-[11px] text-text-muted">book views → sales</div>
       </div>
       <div class="rounded-2xl border border-border bg-surface px-4 py-4 shadow-sticker-sm">
         <div class="font-mono text-[10px] uppercase tracking-[0.12em] text-text-muted">
-          Visitors / 30d
+          Visitors
         </div>
-        <div id="kpi-reach" class="mt-1.5 font-display text-[26px] font-extrabold leading-none text-text">~575</div>
-        <div class="mt-1 text-[11px] text-text-muted">site-wide (Umami)</div>
+        <div id="kpi-reach" class="mt-1.5 font-display text-[26px] font-extrabold leading-none text-text">—</div>
+        <div id="kpi-reach-sub" class="mt-1 text-[11px] text-text-muted">Umami</div>
       </div>
     </div>
   </section>
@@ -91,7 +91,7 @@ import Layout from "../layouts/Layout.astro";
       <div class="mb-4">
         <div class="mb-1.5 flex items-baseline justify-between gap-3">
           <span class="text-[13.5px] font-semibold text-text">Attention</span>
-          <span id="bar-attention-label" class="font-mono text-[12px] text-text-dim">~575 site visits · 150 book views</span>
+          <span id="bar-attention-label" class="font-mono text-[12px] text-text-dim">—</span>
         </div>
         <div class="h-3.5 w-full overflow-hidden rounded-full border border-border-soft bg-panel">
           <div class="h-full rounded-full bg-sand" style="width:90%"></div>
@@ -143,12 +143,12 @@ import Layout from "../layouts/Layout.astro";
           Running <span class="text-sand">costs</span>
         </h2>
         <span class="font-mono text-[11px] uppercase tracking-[0.12em] text-text-muted">
-          total <span id="income-cost-total" class="font-bold text-text">€274 · ~$304</span>
+          total <span id="income-cost-total" class="font-bold text-text">—</span>
         </span>
       </div>
       <p class="mb-4 text-[13px] leading-[1.55] text-text-dim">
         What it takes to run the experiment. We spend
-        <strong id="income-cost-prose" class="font-semibold text-text">~€274</strong> to make €0 —
+        <strong id="income-cost-prose" class="font-semibold text-text">real money</strong> to make €0 —
         almost all of it the Claude Max subscription.
       </p>
       <div class="flex flex-col items-center gap-6 sm:flex-row sm:gap-8">
@@ -159,7 +159,7 @@ import Layout from "../layouts/Layout.astro";
             <g id="donut-costs-segs"></g>
           </svg>
           <div class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-            <span id="donut-costs-center" class="font-display text-[18px] font-extrabold leading-none text-text">€274</span>
+            <span id="donut-costs-center" class="font-display text-[18px] font-extrabold leading-none text-text">—</span>
             <span class="font-mono text-[8px] uppercase tracking-[0.1em] text-text-muted">total</span>
           </div>
         </div>
@@ -213,7 +213,7 @@ import Layout from "../layouts/Layout.astro";
           <span class="font-mono text-[9.5px] uppercase tracking-[0.1em] text-text-muted">book views</span>
         </div>
         <p class="mb-4 text-[12.5px] leading-[1.5] text-text-dim">
-          Which volume pulls the eyes — even with 0 sales yet.
+          Which volume pulls the eyes.
         </p>
         <div class="flex items-center gap-5">
           <div class="relative shrink-0">
@@ -223,7 +223,7 @@ import Layout from "../layouts/Layout.astro";
               <g id="donut-views-segs"></g>
             </svg>
             <div class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-              <span id="donut-views-center" class="font-display text-[18px] font-extrabold leading-none text-text">91</span>
+              <span id="donut-views-center" class="font-display text-[18px] font-extrabold leading-none text-text">—</span>
               <span class="font-mono text-[8px] uppercase tracking-[0.1em] text-text-muted">views</span>
             </div>
           </div>
@@ -232,10 +232,9 @@ import Layout from "../layouts/Layout.astro";
       </div>
     </div>
 
-    <p class="mt-3 px-1 text-[11.5px] leading-[1.5] text-text-muted">
-      Book views = Payhip product views (sum 91 across volumes); the Payhip
-      dashboard reports 150 site-wide, the gap is the store page. Manual, last
-      checked this month.
+    <p id="book-views-note" class="mt-3 px-1 text-[11.5px] leading-[1.5] text-text-muted">
+      Book views = Payhip product views per volume; the store-wide counter is
+      higher, the gap is the store page. Manual.
     </p>
   </section>
 
