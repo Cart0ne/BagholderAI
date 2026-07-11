@@ -1,8 +1,8 @@
 # BUSINESS_STATE.md
 
-**Last updated:** 2026-07-01 — S114 (audit A1 `20260630` eseguito CON RISERVE: 0 CRITICAL/HIGH, 2 MED remediati — `newskeeper_signals` retention 90gg + test DB leak Opzione A `81d00dd`, 6 righe fantasma `order_id='OZ'` pulite; pillar page "Can an AI Actually Run a Company?" pubblicata, firma "Written by Claude · Approved by Max"). §4 +4 righe, §5 riga S114 chiusa — su istruzione CEO via Max. Cap file 50KB (Max S95, CLAUDE.md §2b). Cadenze audit canoniche in PROJECT_STATE §9. Prec.: 2026-06-30 — S113 (churn-avg-fix Piano A SHIPPED+LIVE `8d2fdd6`, restart 20:27).
-**Updated by:** CEO (S114 via Max) + CC (correzione X-poster 2026-07-01, su istruzione Max: aggiunta riga §4 + corretta riga stale S106 "sistema attivo")
-**Basato su:** commit `81d00dd` (fix A1 MED-1 + MED-2-A) + report `audits/reports/20260630_audit[A1].md`, decisioni CEO/Max S114
+**Last updated:** 2026-07-11 — S117 (chiavi API Kraken generate + Fase 0 plumbing PASS 18/18; **K.1 risequenziato in Fasi 0-4** dal Board — le chiavi = test, il cutover = operazione coordinata; fee Kraken verificate post-dubbio CEO: taker 0,80%/maker 0,40% tier-0, 2 fonti indipendenti). §4 +5 righe, §5 +3 righe (1 già chiusa), §7 +1 riga — su istruzione CEO via Max; bullet fee emendati da CC all'esito verifica, approvazione esplicita Max. Cap file 50KB (Max S95, CLAUDE.md §2b). Cadenze audit canoniche in PROJECT_STATE §9. Prec.: 2026-07-01 — S114 (audit A1 CON RISERVE remediato `81d00dd`; pillar page pubblicata).
+**Updated by:** CEO (S117 via Max) + CC (verifica fee 2 fonti: API grezza `TradeVolume` + listino ufficiale kraken.com — emendamento approvato da Max 2026-07-11)
+**Basato su:** report `report_for_CEO/2026-07-11_S117_RforCEO_kraken-cutover.md` + commit `002fa23` (script check) + `3295dda` (state docs), decisioni Board/Max S117
 
 > 📍 **Dove vive cosa** (per CEO e CC): [KNOWLEDGE_MAP.md](KNOWLEDGE_MAP.md) in root del repo indicizza tutti i doc durevoli — stato, playbook, runbook, architettura, archivi, e cosa è gitignored.
 
@@ -87,6 +87,11 @@ BagHolderAI è un progetto sperimentale dove un'AI (Claude) gestisce un micro-bu
 
 | Data | Decisione | Perché |
 |---|---|---|
+| 2026-07-11 (S117) | **Chiavi API Kraken generate** (Withdraw OFF, WebSocket ON, nonce window 10000ms) + **Fase 0 plumbing test PASS** (18 check, 0 fail; script riusabile `scripts/kraken_cutover_check.py`) | Auth OK, 3 coppie risolvono, ordermin verificati (BTC ~$3,21 / SOL ~$4,68 / BONK ~$4,94 → griglia non rada con $25/trade) |
+| 2026-07-11 (S117) | **Cutover K.1 RISEQUENZIATO in Fasi 0-4** (Board) | Le chiavi = test di plumbing, il cutover = operazione coordinata (disclaimer window + stop bot, comms guidelines) che il brief S117 saltava. Fase 0 chiusa; Fase 1 (cablaggio+floor+isolamento venue) = brief dedicato |
+| 2026-07-11 (S117) | **Modello grid collaudo = A (market on-trigger), Board-confirmed** | B (ladder maker) rimandato a deployment, da ri-esaminare coi numeri fee veri |
+| 2026-07-11 (S117) | **Floor min-profit fee-aware ma Sherpa HANDS-OFF su righe Kraken durante collaudo** (colonna venue, Fase 1) | BOARD_TABLE ha profit_target_pct=0 → Sherpa live azzererebbe il floor; machine-test vuole parametri statici deterministici |
+| 2026-07-11 (S117) | ⚠️ **FEE KRAKEN VERIFICATE** (2 fonti indipendenti, post-dubbio CEO): risposta API **grezza** (`TradeVolume`, no parsing) = taker 0,80% / maker 0,40% a tier-0; listino ufficiale kraken.com conferma identico (0,40/0,25 era il listino VECCHIO) | Floor si calibra su 0,80% taker letto live; ri-esame Modello B in Board pre-deployment coi numeri veri (maker = metà del taker). Residuo: conferma visiva UI account (Max, cosmetica) |
 | 2026-07-07 (S116) | **Exchange go-live = Kraken (provvisorio, "per ora")** | OKX e Kraken entrambi MiCA-compliant; OKX ha fee più basse ma volumi/liquidità osservati (Max, controllo informale online) nettamente inferiori. A scala $100–$600 la liquidità è ininfluente → fattore decisivo pratico: Kraken già integrato (adapter + testnet) e API live in creazione lì. Rivedibile se lo scale cresce |
 | 2026-07-02 (S115) | **Umami declassato a fonte manuale negli audit A3** | API key riservate ai piani a pagamento (401 dal ~giu); pagare $9-20/mese per automatizzare la lettura di ~600 pv/mese non regge il costo/beneficio in fase collaudo |
 | 2026-07-02 (S115) | **PostHog parcheggiato come candidato analytics-con-API** | rivalutare a >5.000 pv/mese o quando i funnel diventano decisionali; migrare ora = free-but-complicated |
@@ -163,6 +168,9 @@ BagHolderAI è un progetto sperimentale dove un'AI (Claude) gestisce un micro-bu
 
 | Tema | Stato | Note |
 |---|---|---|
+| **[S117] Verifica fee grezza + audit codice fee-reading** (era BLOCCANTE pre-Fase-1) | ✅ FATTO 2026-07-11 | Risposta API grezza + listino ufficiale concordi: taker 0,80%/maker 0,40% tier-0; ipotesi bug-di-lettura esclusa — il dato grezzo non passa da ccxt. Non blocca più la Fase 1 |
+| **[S117] Meccanismo isolamento single-grid per collaudo sequenziale** | Fase 1 (brief dedicato) | Proposta CC: colonna `venue` in bot_config, hands-off orchestrator/Sherpa sulle righe Kraken |
+| **[S117] Fix sorgente volatilità Sherpa su Kraken** | Post-collaudo, prima di Sherpa-live su Kraken | Oggi legge klines Binance con naming BTC/USD→"BTCUSD" inesistente |
 | **[S114] Verifica test-hygiene adapter Kraken** | ✅ RISOLTO — root cause confermata, fix Opzione A applicato + 6 righe fantasma pulite (order_id='OZ') | Opzione B (conftest globale anti-leak) resta come micro-brief futuro |
 | **[S113] Replay validazione churn-fix su trade veri BTC 14–22 giu** | ✅ FATTO (gate accettazione soddisfatto) | Replay sul codice fixato: 15 cicli churn nello storico, realized fantasma +$12.25 rimosso (OLD $20.37 → NEW $8.12 onesto). Confermato LIVE al boot del restart (BTC avg-cost restored, realized=$8.12). 271/271 test |
 | **[S112 NEW] Guard anti-blackout lato Kraken** (idea Max) | Post-cutover | Soglie di uscita larghe piazzate sull'exchange, più in alto di Sherpa, per proteggere in caso di downtime del bot (crash Mac Mini / connessione giù) — quando Sherpa non può agire perché è giù col bot. Parente del Portfolio Guardian, angolo specifico = resilienza al downtime |
@@ -211,6 +219,7 @@ BagHolderAI è un progetto sperimentale dove un'AI (Claude) gestisce un micro-bu
 
 | Cosa | Perché |
 |---|---|
+| **Cutover Kraken — NON eseguito** | Solo Fase 0 (test read-only + validate=true). Zero ordini reali. Il grid trada ancora su Binance testnet. TF congelato (fuori dal collaudo) |
 | **Ottimizzazione on-site (SEO, funnel, CTR)** | Il sito non ha un pubblico proprio (~3 visitatori esterni/mese, verifica audit A3 2026-07-02): la trazione, piccola, vive dentro Dev.to/X/Reddit. Nessuna ottimizzazione on-site è prioritaria finché non cambia questo. Il collo di bottiglia è la **distribuzione**, non lo snippet |
 | **€100 reali su Kraken (primo euro vero)** | Gate Board: niente €100 finché il churn non è chiuso. ✅ **Churn-fix ora SHIPPED+LIVE** (`8d2fdd6`, S113) → questo gate è cleared; restano cutover Kraken (cablaggio+chiavi+ordine reale) + Board approval |
 | **Revenue automation completa (/income)** | La pagina /income esiste come scaffold privato, ma l'automazione fonti (Payhip, BMC, Umami API) è rinviata al primo euro: a €0 darebbero "0" → over-engineering. Solo Umami ha già un connettore. Haiku costs: soluzione Admin API trovata, parcheggiata |
