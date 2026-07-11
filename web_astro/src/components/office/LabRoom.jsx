@@ -79,10 +79,14 @@ const fmtSigned = (n) => `${n >= 0 ? '+' : '-'}${fmtUsd(n)}`;
 const fmtPct = (n) => `${n >= 0 ? '+' : ''}${n.toFixed(2)}%`;
 
 // Sparkline polyline from a net-worth series, fit to a w×h viewBox.
-function sparkPath(vals, w, h) {
+// minSpan (S117): floor on the y-range so a ±$2 wiggle doesn't fill the
+// whole height and read as drama — small moves now LOOK small.
+function sparkPath(vals, w, h, minSpan = 0) {
   const pts = (vals || []).filter(Number.isFinite);
   if (pts.length < 2) return { pts: `2,${h / 2} ${w - 2},${h / 2}`, last: { x: w - 2, y: h / 2 } };
-  const min = Math.min(...pts), max = Math.max(...pts), span = (max - min) || 1;
+  const lo = Math.min(...pts), hi = Math.max(...pts);
+  const span = Math.max(hi - lo, minSpan) || 1;
+  const mid = (hi + lo) / 2, min = mid - span / 2;
   const X = (i) => 2 + (i / (pts.length - 1)) * (w - 4);
   const Y = (v) => (h - 2) - ((v - min) / span) * (h - 6);
   const arr = pts.map((v, i) => `${X(i).toFixed(1)},${Y(v).toFixed(1)}`);
@@ -92,6 +96,7 @@ function sparkPath(vals, w, h) {
 
 const EMPTY_LIVE = {
   ready: false, netWorthStr: '—', pctStr: '—', pctColor: BH.muted,
+  totalPnlStr: '—', gridPnl: null, tfPnl: null,
   coins: [], spark: [], risk: null, gridRealizedStr: '—', costTotal: null,
 };
 
@@ -142,6 +147,8 @@ function useOfficeData() {
           netWorthStr: fmtUsd(netWorth),
           pctStr: fmtPct(totalPct),
           pctColor: totalPnl >= 0 ? BH.pos : BH.neg,
+          totalPnlStr: fmtSigned(totalPnl),
+          gridPnl: grid.totalPnL, tfPnl: tf.totalPnL,
           coins, spark, risk,
           gridRealizedStr: fmtSigned(grid.netRealized),
           costTotal,
@@ -437,33 +444,49 @@ function LabRoom() {
             <span style={{ fontFamily: BH.mono, fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: BH.primary }}>Portfolio Overview</span>
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontFamily: BH.mono, fontSize: 7, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: BH.pos }}><span style={{ width: 5, height: 5, borderRadius: 99, background: live.ready ? BH.pos : BH.muted, animation: 'bhPulse 1.8s ease-in-out infinite' }} />live</span>
           </div>
+          {/* S117 redesign — one metric, one story: everything on the board is
+              Total P&L on the $600 basis. Left: the headline number ($ + %),
+              the reference line that was missing (net worth · basis), and the
+              7d sparkline honestly scoped to the grid fund (daily_pnl only
+              tracks grid). Right: the per-fund split, which sums EXACTLY to
+              the headline (canonical Grid/TF, same as the homepage split),
+              then — clearly its own group — per-coin unrealized %, with no
+              pseudo-total pretending those rows add up. */}
           <div style={{ display: 'flex', gap: 10, padding: '8px 11px 10px' }}>
             <div style={{ flex: 1 }}>
-              <div style={{ fontFamily: BH.mono, fontSize: 6.5, letterSpacing: '0.12em', textTransform: 'uppercase', color: BH.muted, marginBottom: 4 }}>Net worth · live</div>
+              <div style={{ fontFamily: BH.mono, fontSize: 6.5, letterSpacing: '0.12em', textTransform: 'uppercase', color: BH.muted, marginBottom: 3 }}>Total P&amp;L · live</div>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                <span style={{ fontFamily: BH.display, fontWeight: 800, fontSize: 20, color: live.ready ? live.pctColor : BH.text }}>{live.totalPnlStr}</span>
+                <span style={{ fontFamily: BH.mono, fontSize: 8.5, fontWeight: 700, color: live.pctColor }}>{live.pctStr}</span>
+              </div>
+              <div style={{ fontFamily: BH.mono, fontSize: 6.5, letterSpacing: '0.08em', textTransform: 'uppercase', color: BH.muted, margin: '3px 0 4px' }}>net worth {live.netWorthStr} · basis $600</div>
+              <div style={{ fontFamily: BH.mono, fontSize: 6, letterSpacing: '0.1em', textTransform: 'uppercase', color: BH.muted, marginBottom: 1 }}>grid fund · 7d</div>
               {(() => {
-                const sp = sparkPath(live.spark, 150, 56);
+                const sp = sparkPath(live.spark, 150, 42, 12);   // minSpan $12 (2% of basis)
                 const col = live.ready ? live.pctColor : BH.muted;
                 return (
-                  <svg viewBox="0 0 150 56" style={{ width: '100%', height: 56, display: 'block' }}>
+                  <svg viewBox="0 0 150 42" style={{ width: '100%', height: 42, display: 'block' }}>
                     <polyline points={sp.pts} fill="none" stroke={col} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
                     <circle cx={sp.last.x} cy={sp.last.y} r="2.4" fill={col} />
                   </svg>
                 );
               })()}
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginTop: 5 }}>
-                <span style={{ fontFamily: BH.display, fontWeight: 800, fontSize: 19, color: BH.text }}>{live.netWorthStr}</span>
-                <span style={{ fontFamily: BH.mono, fontSize: 8.5, fontWeight: 700, color: live.pctColor }}>{live.pctStr}</span>
-              </div>
             </div>
             <div style={{ width: 86, display: 'flex', flexDirection: 'column', gap: 4, paddingTop: 2 }}>
-              <div style={{ fontFamily: BH.mono, fontSize: 6.5, letterSpacing: '0.12em', textTransform: 'uppercase', color: BH.muted }}>unrealized</div>
+              <div style={{ fontFamily: BH.mono, fontSize: 6.5, letterSpacing: '0.12em', textTransform: 'uppercase', color: BH.muted }}>by fund</div>
               {[
-                ...live.coins.map((c) => ({ k: c.sym, v: fmtPct(c.pct), color: c.pct >= 0 ? BH.pos : BH.neg })),
-                { k: 'TOTAL P&L', v: live.pctStr, color: live.pctColor, total: true },
+                { k: 'GRID', v: live.gridPnl }, { k: 'TF', v: live.tfPnl },
               ].map((row) => (
-                <div key={row.k} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: row.total ? `1px solid ${BH.borderSoft}` : 'none', paddingTop: row.total ? 4 : 0 }}>
-                  <span style={{ fontFamily: BH.mono, fontSize: 7.5, fontWeight: row.total ? 700 : 500, color: row.total ? BH.text : BH.muted }}>{row.k}</span>
-                  <span style={{ fontFamily: BH.mono, fontSize: 8, fontWeight: 700, color: row.color }}>{row.v}</span>
+                <div key={row.k} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={{ fontFamily: BH.mono, fontSize: 7.5, fontWeight: 700, color: BH.text }}>{row.k}</span>
+                  <span style={{ fontFamily: BH.mono, fontSize: 8, fontWeight: 700, color: row.v == null ? BH.muted : (row.v >= 0 ? BH.pos : BH.neg) }}>{row.v == null ? '—' : fmtSigned(row.v)}</span>
+                </div>
+              ))}
+              <div style={{ fontFamily: BH.mono, fontSize: 6.5, letterSpacing: '0.12em', textTransform: 'uppercase', color: BH.muted, borderTop: `1px solid ${BH.borderSoft}`, paddingTop: 4, marginTop: 1 }}>unrealized</div>
+              {live.coins.map((c) => (
+                <div key={c.sym} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={{ fontFamily: BH.mono, fontSize: 7.5, fontWeight: 500, color: BH.muted }}>{c.sym}</span>
+                  <span style={{ fontFamily: BH.mono, fontSize: 8, fontWeight: 700, color: c.pct >= 0 ? BH.pos : BH.neg }}>{fmtPct(c.pct)}</span>
                 </div>
               ))}
             </div>
