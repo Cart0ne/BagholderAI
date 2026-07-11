@@ -19,6 +19,13 @@ Steps:
                uses (market BUY by base amount, market SELL by base amount)
                plus the cost-order fallback (market BUY by quote amount).
                Kraken validates symbol/permissions/minimums WITHOUT executing.
+  6. Client  — S118 "PROVA GENERALE": the same validate=true orders, but sent
+               through KrakenClient.place_market_* — the EXACT methods the
+               grid pipelines call after the Fase 1 wiring (step 5 exercised
+               the raw ccxt layer only). Sizes are grid-realistic ($25 per
+               step, the collaudo capital_per_trade). Also checks
+               taker_fee_rate() returns a sane live tier (the dynamic fee
+               consumed by trigger + floor).
 
 Run on the Mac Mini (keys live in config/.env there):
     cd /Volumes/Archivio/bagholderai && venv/bin/python3.13 scripts/kraken_cutover_check.py
@@ -171,6 +178,46 @@ def main():
                    f"cost=${cost} accepted (validate). descr={(resp.get('info') or {}).get('descr')}")
         except Exception as e:
             record(f"5c validate BUY cost {sym}", INFO, f"{type(e).__name__}: {e}")
+
+    # --- Step 6 (S118, Fase 1): PROVA GENERALE via KrakenClient ---
+    # Same validate=true orders, but through the client methods the grid
+    # pipelines actually call post-wiring (place_market_buy_base /
+    # place_market_sell / place_market_buy). A None return here = the client
+    # layer mangles what the raw layer accepted → wiring bug, catch it now.
+    # Grid-realistic size: $25 (the collaudo capital_per_trade).
+    GRID_STEP_USD = 25.0
+    for sym in PAIRS:
+        info = pair_info.get(sym) or {}
+        last = info.get("last_price")
+        if not isinstance(last, (int, float)) or not last:
+            record(f"6 client validate {sym}", FAIL, "missing price from step 1b, skipped")
+            continue
+        base_amt = round(GRID_STEP_USD / last, 8)
+
+        out = client.place_market_buy_base(sym, base_amt, params={"validate": True})
+        record(f"6a client BUY base {sym}",
+               PASS if out and out.get("validated") else FAIL,
+               f"amount={base_amt} (${GRID_STEP_USD}) → {out and out.get('status')}")
+
+        out = client.place_market_sell(sym, base_amt, params={"validate": True})
+        record(f"6b client SELL base {sym}",
+               PASS if out and out.get("validated") else FAIL,
+               f"amount={base_amt} (${GRID_STEP_USD}) → {out and out.get('status')}")
+
+        out = client.place_market_buy(sym, GRID_STEP_USD, params={"validate": True})
+        record(f"6c client BUY cost {sym}",
+               PASS if out and out.get("validated") else FAIL,
+               f"cost=${GRID_STEP_USD} → {out and out.get('status')}")
+
+    # --- Step 6d: dynamic taker fee (consumed by trigger + floor) ---
+    try:
+        rate = client.taker_fee_rate(PAIRS[0])
+        is_fallback = rate == KrakenClient.FALLBACK_TAKER_FEE
+        record("6d taker_fee_rate", PASS,
+               f"{rate*100:.2f}% per side ({rate*2*100:.2f}% round-trip)"
+               + (" — NOTE: equals the fallback; check fee_tier response" if is_fallback else " (live tier)"))
+    except Exception as e:
+        record("6d taker_fee_rate", FAIL, f"{type(e).__name__}: {e}")
 
     return finish()
 
