@@ -92,7 +92,7 @@ function sparkPath(vals, w, h) {
 
 const EMPTY_LIVE = {
   ready: false, netWorthStr: '—', pctStr: '—', pctColor: BH.muted,
-  coins: [], spark: [], risk: null, gridRealizedStr: '—',
+  coins: [], spark: [], risk: null, gridRealizedStr: '—', costTotal: null,
 };
 
 // Fetches the real portfolio + risk every 60s and exposes the board/monitor slots.
@@ -102,11 +102,14 @@ function useOfficeData() {
     let alive = true;
     async function load() {
       try {
-        const [trades, skimRows, sparkRows, sentRows] = await Promise.all([
+        const [trades, skimRows, sparkRows, sentRows, costRows] = await Promise.all([
           sbGetAll(`trades?select=symbol,side,amount,cost,fee,fee_asset,created_at,managed_by&config_version=eq.v3${CQ}&order=created_at.asc`),
           sbGet(`reserve_ledger?select=symbol,amount&config_version=eq.v3${CQ}`),
           sbGet(`daily_pnl?select=date,total_value&managed_by=eq.grid${CQ}&order=date.desc&limit=7`),
           sbGet(`sentinel_scores?select=risk_score&score_type=eq.fast&order=created_at.desc&limit=1`),
+          /* S117 — overhead mini-board: same passive_income cost rows the
+             /income page renders (updated monthly from the admin panel). */
+          sbGet(`passive_income?select=value_num&block=eq.cost`).catch(() => null),
         ]);
         const gridTrades = trades.filter((t) => t.managed_by === 'grid');
         const tfTrades = trades.filter((t) => t.managed_by === 'tf' || t.managed_by === 'tf_grid');
@@ -130,6 +133,9 @@ function useOfficeData() {
         const spark = (sparkRows || []).map((r) => Number(r.total_value)).reverse().filter(Number.isFinite);
         const risk = (sentRows && sentRows[0] && sentRows[0].risk_score != null)
           ? Math.round(Number(sentRows[0].risk_score)) : null;
+        const costTotal = Array.isArray(costRows)
+          ? costRows.reduce((s, r) => s + (Number(r.value_num) || 0), 0)
+          : null;
         if (!alive) return;
         setData({
           ready: true,
@@ -138,6 +144,7 @@ function useOfficeData() {
           pctColor: totalPnl >= 0 ? BH.pos : BH.neg,
           coins, spark, risk,
           gridRealizedStr: fmtSigned(grid.netRealized),
+          costTotal,
         });
       } catch (e) {
         console.warn('[office] live data failed:', e);
@@ -466,6 +473,38 @@ function LabRoom() {
     </div>
   );
 
+  // ── the overhead mini-board, back wall LEFT — the bill the bots must beat ──
+  // Max's monito (S117): the fixed costs of the experiment glare at the
+  // working bots. Live total from passive_income (block='cost' — the same
+  // rows /income renders, refreshed monthly from the admin panel), monthly
+  // burn derived by even dilution since day one (same convention as the
+  // /income burn chart). Click → /income. Sits above the GRID station,
+  // inside the left lamp's light cone, balancing the wall clock on the right.
+  const CostBoard = () => {
+    const START = Date.UTC(2026, 2, 18);          // experiment day one (Mar 18 '26)
+    const months = Math.max(1, (Date.now() - START) / (30.44 * 86400000));
+    const t = live.costTotal;
+    const totalStr = t == null ? '—' : `−€${Math.round(t)}`;
+    const burnStr = t == null ? '—' : `~€${Math.round(t / months)}/mo`;
+    return (
+      <a className="bh-board-link" href="/income" style={{ position: 'absolute', left: 280, top: 152, width: 112, transform: 'translateX(-50%) rotate(-2deg)', zIndex: 8, display: 'block', textDecoration: 'none', background: '#FFFFFF', border: `1px solid ${BH.border}`, borderRadius: 10, boxShadow: BH.shadowSm, padding: 5 }}>
+        <div style={{ background: '#FCFDFB', border: `1px solid ${BH.borderSoft}`, borderRadius: 6, overflow: 'hidden' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 7px', borderBottom: `1px solid ${BH.borderSoft}`, background: BH.negSoft }}>
+            <span style={{ width: 4, height: 4, borderRadius: 99, background: BH.neg, animation: 'bhPulse 1.8s ease-in-out infinite' }} />
+            <span style={{ fontFamily: BH.mono, fontSize: 6.5, fontWeight: 700, letterSpacing: '0.13em', textTransform: 'uppercase', color: BH.neg }}>Overhead</span>
+          </div>
+          <div style={{ padding: '6px 8px 7px' }}>
+            <div style={{ fontFamily: BH.display, fontWeight: 800, fontSize: 17, color: BH.neg, lineHeight: 1 }}>{totalStr}</div>
+            <div style={{ fontFamily: BH.mono, fontSize: 6, letterSpacing: '0.08em', textTransform: 'uppercase', color: BH.muted, marginTop: 3 }}>fixed costs · {burnStr}</div>
+            <div style={{ marginTop: 5, paddingTop: 4, borderTop: `1px dashed ${BH.borderSoft}`, fontFamily: BH.sans, fontSize: 7.5, fontStyle: 'italic', lineHeight: 1.35, color: BH.dim }}>
+              “Earn it back, bots.” — CEO
+            </div>
+          </div>
+        </div>
+      </a>
+    );
+  };
+
   // ── the CEO podium: low round museum pedestal, Bag standing on top ──
   const Podium = () => {
     const cx = VP.x, cy = 480;          // top-surface ellipse centre (on the floor, against the back wall)
@@ -631,6 +670,7 @@ function LabRoom() {
 
       {/* board on the back wall + CEO podium (against the wall) */}
       <Board />
+      <CostBoard />
       <Podium />
       {/* steaming coffee on the CEO podium */}
       <MugProp x={560} y={487} scale={1.6} steam={1.7} zi={540} />
