@@ -19,22 +19,15 @@ const homeBlogPosts = allBlogPosts
 const fmtBlogDate = (d: Date) =>
   d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 
-/* Static placeholder data — sostituibile da Supabase in sessione successiva. */
-const stats = {
-  trades:    "147",
-  pnl:       "+$84.21",
-  daysLive:  "182",
-  mode:      "$600 TESTNET",  /* $500 Grid + $100 Trend Follower (Tier 1-2) */
-};
-
-
 /* Bot stats. Live from Supabase. Wins/losses metric may be revised
    post-mainnet. See audit S88 finding 1.2.
-   These literals are the SSR fallback (current testnet era): live-stats.ts
-   §4 overrides Grid wins/losses and §3 fills the "since" date. TF shows no
-   win/loss record — it hands its coins to Grid (scanning line in the card). */
+   Wins/losses/since are NEUTRAL SSR fallbacks (S117): live-stats.ts §4
+   fills Grid wins/losses and §3 the "since" date. Era-specific literals
+   here go stale at every testnet reset and non-JS crawlers read them as
+   current (same GEO rule as /income). TF shows no win/loss record — it
+   hands its coins to Grid (scanning line in the card). */
 const botData = [
-  { variant: "grid"     as const, mode: "live"     as const, patience: 95, speed: 30, capital: 500, wins: 19, losses: 2, since: "May 8",
+  { variant: "grid"     as const, mode: "live"     as const, patience: 95, speed: 30, capital: 500, wins: 0, losses: 0,
     description: "buys dips, sells rallies, in a fixed range" },
   { variant: "tf"       as const, mode: "live"     as const, patience: 25, speed: 90, capital: 100, wins: 0, losses: 0,
     description: "Scanning Tier 1-2 assets. Shitcoins excluded." },

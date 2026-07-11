@@ -1,19 +1,76 @@
 ---
-/* CleanSlateSticker.astro — S96b
-   Rotated pastel "sticker" marking the testnet fresh start. The reset (clean
-   slate) landed 2026-06-04, but Day 1 / first testnet_2 trade was Jun 5, so the
-   public date is Jun 5 — aligned with DAYS RUNNING (audit A2 L1, S108).
+/* CleanSlateSticker.astro — S96b, self-updating since S117 (2026-07-11).
+   Rotated pastel "sticker" marking a testnet fresh start (Binance resets
+   the test exchange periodically without notice; the counters restart).
    Positive / transparent tone — the reset is a fresh start, not a problem.
+
+   Fully data-driven, no dates in code: the client script reads the current
+   cycle from bot_config and stamps the date of that cycle's FIRST TRADE
+   (Day 1, same convention as "days running" — audit A2 L1, S108). Shown
+   only while the restart is actually news — FRESH_DAYS days from Day 1 —
+   then it hides itself until the next reset, when it reappears with the
+   new date on its own. Hidden by default: no stale date ever reaches
+   non-JS crawlers, and a fetch failure just keeps it hidden (better
+   nothing than wrong).
+
    Place inside a `relative` parent and position via the `class` prop
-   (e.g. "absolute -top-3 -left-3 z-20"). Also pinned bottom-right
-   (scaled 0.8) on both § 3 chart cards (S101). Retire when the reset
-   is old news. */
+   (e.g. "absolute -top-3 -left-3 z-20"). Used on the homepage snapshot
+   and (scaled 0.8) on both /dashboard § 3 chart cards — Astro dedupes the
+   component script, so the fetch runs once per page. */
 const { class: cls = "" } = Astro.props;
 ---
-<div class={`-rotate-[7deg] select-none rounded-full border border-neg/40
+<div data-clean-slate class={`hidden -rotate-[7deg] select-none rounded-full border border-neg/40
              bg-neg-soft px-3 py-[5px] shadow-sticker ${cls}`}>
   <span class="whitespace-nowrap font-mono text-[9.5px] font-bold uppercase
                tracking-[0.1em] text-neg">
-    ✨ Fresh start · Jun 5
+    ✨ Fresh start · <span data-clean-slate-date></span>
   </span>
 </div>
+
+<script>
+  /* One fetch per page (Astro dedupes component scripts); updates every
+     sticker instance found in the DOM. */
+  const FRESH_DAYS = 42; // ~6 weeks: after that a "fresh start" isn't news
+
+  const SB_URL = "https://pxdhtmqfwjwjhtcoacsn.supabase.co";
+  const SB_KEY =
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9." +
+    "eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB4ZGh0bXFmd2p3amh0Y29hY3NuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4NDI1OTIsImV4cCI6MjA4OTQxODU5Mn0." +
+    "G76lvYWrqlM0z2RoSkU1uAglfMBKN_rXvBGOQhb4kdg";
+  const headers = { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` };
+
+  const q = async <T,>(path: string): Promise<T> => {
+    const r = await fetch(`${SB_URL}/rest/v1/${path}`, { headers });
+    if (!r.ok) throw new Error(String(r.status));
+    return r.json() as Promise<T>;
+  };
+
+  (async () => {
+    /* Current cycle straight from bot_config — no hardcoded cycle name,
+       so a reset (cycle bump on the bot side) re-arms the sticker alone. */
+    const cfg = await q<{ cycle: string }[]>("bot_config?select=cycle&limit=1");
+    const cycle = cfg?.[0]?.cycle;
+    if (!cycle) return;
+
+    const first = await q<{ created_at: string }[]>(
+      `trades?select=created_at&config_version=eq.v3&cycle=eq.${cycle}` +
+        "&order=created_at.asc&limit=1",
+    );
+    const day1 = first?.[0]?.created_at;
+    if (!day1) return;
+
+    const ageDays = (Date.now() - new Date(day1).getTime()) / 86_400_000;
+    if (ageDays < 0 || ageDays > FRESH_DAYS) return; // old news — stay hidden
+
+    const label = new Date(day1).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      timeZone: "UTC",
+    });
+    document.querySelectorAll("[data-clean-slate]").forEach((el) => {
+      const d = el.querySelector("[data-clean-slate-date]");
+      if (d) d.textContent = label;
+      el.classList.remove("hidden");
+    });
+  })().catch(() => {}); /* fetch failure → sticker simply stays hidden */
+</script>
