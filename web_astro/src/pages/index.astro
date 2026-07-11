@@ -231,7 +231,9 @@ const volumes = [
               <span class="mt-0.5 text-[11px] font-bold uppercase tracking-[0.1em] text-text-muted">testnet</span>
             </div>
           </div>
-          <CleanSlateSticker class="absolute -bottom-5 left-3 z-20" />
+          {/* S117: nudged down-left so it clears the Total P&L tile's per-fund
+              split lines (it used to cover the "TF +$x" row). */}
+          <CleanSlateSticker class="absolute -bottom-7 -left-1 z-20" />
         </div>
       </div>
 

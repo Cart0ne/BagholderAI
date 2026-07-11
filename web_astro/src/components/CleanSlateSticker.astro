@@ -19,11 +19,14 @@
    component script, so the fetch runs once per page. */
 const { class: cls = "" } = Astro.props;
 ---
-<div data-clean-slate class={`hidden -rotate-[7deg] select-none rounded-full border border-neg/40
+{/* -5deg (was -7): with the ✨ weighing down the left end, a steeper tilt
+    made the text read as slanted differently than the pill outline. */}
+<div data-clean-slate class={`hidden -rotate-[5deg] select-none rounded-full border border-neg/40
              bg-neg-soft px-3 py-[5px] shadow-sticker ${cls}`}>
-  <span class="whitespace-nowrap font-mono text-[9.5px] font-bold uppercase
-               tracking-[0.1em] text-neg">
-    ✨ Fresh start · <span data-clean-slate-date></span>
+  <span class="flex items-center gap-1 whitespace-nowrap font-mono text-[9.5px]
+               font-bold uppercase leading-none tracking-[0.1em] text-neg">
+    <span class="text-[11px] leading-none">✨</span>
+    <span>Fresh start · <span data-clean-slate-date></span></span>
   </span>
 </div>
 
