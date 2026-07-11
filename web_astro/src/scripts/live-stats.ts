@@ -62,6 +62,29 @@ const CYCLE = await sbq<{ cycle: string }[]>(
   .catch(() => CYCLE_FALLBACK);
 const CQ = `&cycle=eq.${CYCLE}`;
 
+/* ---------- 0. disclaimer gate (S118, K.3 prep) ----------
+   site_flags.disclaimer_mode=true → swap the homepage for the disclaimer
+   overlay (COLLAUDO_COMMS_GUIDELINES Step 1/3). Zero-deploy: the flag row is
+   flipped with a plain UPDATE (same pattern as project_status, Brief 86a).
+   Fire-and-forget: any failure leaves the gate hidden (site behaves as
+   pre-S118); the flip is a Fase 2 runbook step. */
+sbq<{ disclaimer_mode: boolean; disclaimer_text: string }[]>(
+  "site_flags",
+  "select=disclaimer_mode,disclaimer_text&id=eq.1&limit=1",
+)
+  .then((rows) => {
+    const flag = rows?.[0];
+    if (!flag?.disclaimer_mode) return;
+    const gate = document.getElementById("disclaimer-gate");
+    if (!gate) return;
+    const text = document.getElementById("disclaimer-gate-text");
+    if (text && flag.disclaimer_text) text.textContent = flag.disclaimer_text;
+    gate.classList.remove("hidden");
+    gate.setAttribute("aria-hidden", "false");
+    document.body.style.overflow = "hidden"; // the overlay owns the scroll
+  })
+  .catch(() => { /* gate stays off — never break the homepage over a flag */ });
+
 /* Prefer the global animated updater (set up in Layout.astro) so that
    counters tween smoothly to the new value. Falls back to plain text
    write if the API isn't available (e.g. on pages without Layout). */

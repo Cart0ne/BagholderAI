@@ -5,6 +5,7 @@ import BotCardOriginal from "../components/BotCardOriginal.astro";
 import WatchtowerCard from "../components/WatchtowerCard.astro";
 import SherpaLockedCard from "../components/SherpaLockedCard.astro";
 import TestnetBanner from "../components/TestnetBanner.astro";
+import DisclaimerGate from "../components/DisclaimerGate.astro";
 import CleanSlateSticker from "../components/CleanSlateSticker.astro";
 import LabRoom from "../components/office/LabRoom.jsx";
 
@@ -116,6 +117,11 @@ const volumes = [
         }}>
 
   <TestnetBanner />
+
+  {/* S118 (K.3 prep): full-page disclaimer overlay for cutover windows.
+      Hidden SSR; live-stats.ts unhides it when site_flags.disclaimer_mode
+      is true (zero-deploy toggle). Homepage-only by design (guidelines). */}
+  <DisclaimerGate />
 
   {/* ============================================================ HERO */}
   <section class="mx-auto max-w-6xl px-4 pt-3 pb-4 sm:px-6 sm:pt-4 sm:pb-5">
