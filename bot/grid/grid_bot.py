@@ -90,6 +90,8 @@ class GridBot:
         trade_logger,
         portfolio_manager,
         pnl_tracker,
+        exchange_client=None,           # S118: venue-normalized order surface (bot/exchanges); None → legacy direct path (old tests)
+        venue: str = "binance",         # S118: per-row venue from bot_config.venue
         symbol: str = "BTC/USDT",
         strategy: str = "A",
         capital: float = 100.0,  # USDT allocated to this grid
@@ -118,6 +120,18 @@ class GridBot:
         greed_decay_tiers: Optional[list] = None, # 42a: [{minutes, tp_pct}, ...] — None for manual bots
     ):
         self.exchange = exchange
+        # S118: order calls route through exchange_client when present (the
+        # BinanceClient delegates VERBATIM to bot.exchange_orders, so the
+        # binance path is byte-identical). None → pipelines fall back to the
+        # legacy direct calls (keeps pre-S118 tests/constructions working).
+        self.exchange_client = exchange_client
+        self.venue = (venue or "binance").lower()
+        # S118: per-venue fee as an INSTANCE value. Binance keeps the class
+        # constant (0.1%); on venue='kraken' grid_runner/config_sync overwrite
+        # it with the LIVE taker tier (never hardcoded — Fase 0 measured 0.80%
+        # at tier-0, double the briefed 0.40%). Consumed by the sell trigger
+        # fee buffer, synth/paper fees and the fee-aware min-profit floor.
+        self.fee_rate = self.FEE_RATE
         self.trade_logger = trade_logger
         self.portfolio_manager = portfolio_manager
         self.pnl_tracker = pnl_tracker
@@ -850,9 +864,16 @@ class GridBot:
                     # Brief S98a (2026-06-06): Adaptive Sell Penalty. Alza la
                     # soglia effettiva del danno-slippage accumulato. TF escluso
                     # (ramo else): le sue uscite di emergenza non vanno penalizzate.
+                    # S118: fee buffer sulla fee di ISTANZA (per-venue). Su
+                    # binance fee_rate == FEE_RATE (0,1%, invariante); su
+                    # kraken è il taker tier LIVE (~0,8%) → il trigger copre
+                    # davvero il round-trip 2×fee. Stesso fee_rate usato dal
+                    # floor min-profit in sell_pipeline: i due punti DEVONO
+                    # muoversi insieme o il bot chiede vendite che il floor
+                    # poi blocca (stallo silenzioso).
                     threshold_pct = threshold_pct + self._sell_pct_penalty
                     reference = self._last_sell_price if self._last_sell_price > 0 else avg_cost
-                    sell_trigger = reference * (1 + threshold_pct / 100 + self.FEE_RATE) / (1 - self.FEE_RATE)
+                    sell_trigger = reference * (1 + threshold_pct / 100 + self.fee_rate) / (1 - self.fee_rate)
                 else:
                     sell_trigger = avg_cost * (1 + threshold_pct / 100)
             else:

@@ -262,7 +262,9 @@ def _force_liquidate(bot, exchange, trade_logger, notifier, symbol: str,
         # 52a: paper-mode realized_pnl excludes fees — see grid_bot.py
         # _execute_sell comment for the full rationale.
         from bot.grid.grid_bot import GridBot
-        fee_rate = GridBot.FEE_RATE
+        # S118: per-venue instance rate when available (kraken ~0.8%); the
+        # class constant stays the binance default.
+        fee_rate = float(getattr(bot, "fee_rate", GridBot.FEE_RATE) or GridBot.FEE_RATE)
         sell_fee = proceeds * fee_rate
         buy_fees = lot_cost_basis * fee_rate
         realized_pnl = proceeds - lot_cost_basis

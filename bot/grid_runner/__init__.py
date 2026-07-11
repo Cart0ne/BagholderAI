@@ -45,10 +45,10 @@ logger = logging.getLogger("bagholderai.runner")
 # Imports from project
 from config.settings import (
     TradingMode, HardcodedRules, ExchangeConfig, get_grid_config,
-    GRID_INSTANCES,
+    GRID_INSTANCES, KRAKEN_GRID_INSTANCES, KrakenConfig, EXCHANGE,
 )
 from config.supabase_config import SupabaseConfigReader
-from bot.exchange import create_exchange
+from bot.exchanges import create_client
 from bot.grid.grid_bot import GridBot
 from db.client import TradeLogger, DailyPnLTracker, ReserveLedger
 from db.event_logger import log_event
@@ -105,11 +105,26 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
     except Exception as e:
         logger.warning(f"Could not load Supabase config, using local defaults: {e}")
 
+    # S118 (K.1 Fase 1, nodo 1 — Max 2026-07-11): venue is PER-ROW. Each grid
+    # runner picks its exchange from its own bot_config row; the EXCHANGE env
+    # flag is only the fallback for rows/DB reads without the column. Read
+    # once at boot — switching venue mid-run is not supported by design
+    # (config_sync deliberately does NOT hot-reload it).
+    venue = "binance"
+    try:
+        if sb_cfg and sb_cfg.get("venue"):
+            venue = str(sb_cfg["venue"]).lower()
+        else:
+            venue = (EXCHANGE or "binance").lower()
+    except Exception:
+        venue = "binance"
+
     config_reader.start_refresh_loop()
 
     logger.info("=" * 50)
     logger.info("BagHolderAI Grid Bot starting...")
     logger.info(f"Mode: {'PAPER' if TradingMode.is_paper() else 'LIVE'}")
+    logger.info(f"Venue: {venue}")
     logger.info(f"Symbol: {cfg.symbol}")
     logger.info(f"Capital: ${cfg.capital}")
     logger.info(f"Capital per trade: ${cfg.capital_per_trade}")
@@ -121,29 +136,60 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
     # Safety checks for live mode (testnet OR mainnet).
     # 66a Step 3: live trading path is now implemented via
     # bot/exchange_orders.py (market orders only).
+    # S118: the gate is venue-aware. Binance keeps the S67 logic untouched
+    # (testnet ok, mainnet hard-blocked). Kraken has NO testnet — live mode
+    # means REAL MONEY from the first order, so it demands its own keys AND
+    # the explicit ALLOW_REAL_MONEY consent flag (nodo 3, Max 2026-07-11).
     if TradingMode.is_live():
-        if not ExchangeConfig.API_KEY or not ExchangeConfig.SECRET:
-            logger.error(
-                "Live mode requires BINANCE_API_KEY and BINANCE_SECRET in config/.env. Aborting."
-            )
-            return
-        if ExchangeConfig.TESTNET:
+        if venue == "kraken":
+            if not KrakenConfig.API_KEY or not KrakenConfig.SECRET:
+                logger.error(
+                    "Live mode on Kraken requires KRAKEN_API_KEY and "
+                    "KRAKEN_API_SECRET in config/.env. Aborting."
+                )
+                return
+            if not KrakenConfig.ALLOW_REAL_MONEY:
+                logger.error(
+                    "LIVE MODE: KRAKEN — REAL MONEY gate closed. Kraken has no "
+                    "testnet: every order spends real USD. Set "
+                    "ALLOW_REAL_MONEY=true in the environment (Fase 2 runbook "
+                    "step) to authorize. Aborting."
+                )
+                return
             logger.warning(
-                "LIVE MODE: TESTNET — orders route to testnet.binance.vision (fake money, real fills)"
+                "LIVE MODE: KRAKEN — REAL MONEY, REAL ORDERS "
+                "(ALLOW_REAL_MONEY=true, Withdraw permission OFF on the key)"
             )
         else:
-            # Mainnet authorization gate. Will be lifted in a future brief
-            # once testnet shake-down + reconciliation gate (Step 5) are
-            # green. Until then mainnet is hard-blocked from this entry point.
-            logger.error(
-                "LIVE MODE: MAINNET — not authorized in S67. "
-                "Set BINANCE_TESTNET=true in config/.env to use testnet, "
-                "or wait for the mainnet go-live brief. Aborting."
-            )
-            return
+            if not ExchangeConfig.API_KEY or not ExchangeConfig.SECRET:
+                logger.error(
+                    "Live mode requires BINANCE_API_KEY and BINANCE_SECRET in config/.env. Aborting."
+                )
+                return
+            if ExchangeConfig.TESTNET:
+                logger.warning(
+                    "LIVE MODE: TESTNET — orders route to testnet.binance.vision (fake money, real fills)"
+                )
+            else:
+                # Mainnet authorization gate. Will be lifted in a future brief
+                # once testnet shake-down + reconciliation gate (Step 5) are
+                # green. Until then mainnet is hard-blocked from this entry point.
+                logger.error(
+                    "LIVE MODE: MAINNET — not authorized in S67. "
+                    "Set BINANCE_TESTNET=true in config/.env to use testnet, "
+                    "or wait for the mainnet go-live brief. Aborting."
+                )
+                return
 
-    # Initialize components
-    exchange = create_exchange()
+    # Initialize components.
+    # S118: the exchange is built by the venue factory (bot/exchanges). For
+    # venue='binance' create_client returns BinanceClient, whose .raw is the
+    # SAME create_exchange() instance as pre-S118 — the raw handle keeps every
+    # existing read-only call-site (fetch_price, spike guard, daily report)
+    # working unchanged on both venues; ORDERS go through `client` (normalized
+    # per-venue response, see bot/exchanges/base.py).
+    client = create_client(venue)
+    exchange = client.raw
 
     if dry_run:
         trade_logger = None
@@ -268,6 +314,8 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
     # Create grid bot
     bot = GridBot(
         exchange=exchange,
+        exchange_client=client,   # S118: venue-normalized order surface
+        venue=venue,              # S118: per-row venue (bot_config.venue)
         trade_logger=trade_logger,
         portfolio_manager=portfolio_manager,
         pnl_tracker=pnl_tracker,
@@ -326,13 +374,39 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
         logger.error(f"Failed to fetch price: {e}")
         return
 
+    # S118 (K.1 Fase 1): dynamic per-venue fee. Binance keeps the FEE_RATE
+    # constant (0.1%, invariant); Kraken reads the REAL taker tier live
+    # (0.80% at tier-0, dropping with 30d volume — Fase 0 finding: double the
+    # 0.40% the brief assumed). Never hardcoded: taker_fee_rate() falls back
+    # to the conservative tier-0 worst case only on API failure. Refreshed
+    # each tick by config_sync (1h cache inside the client).
+    if venue == "kraken":
+        try:
+            bot.fee_rate = client.taker_fee_rate(cfg.symbol)
+            logger.info(
+                f"[{cfg.symbol}] Kraken taker fee (live tier): "
+                f"{bot.fee_rate * 100:.2f}% per side "
+                f"({bot.fee_rate * 2 * 100:.2f}% round-trip)"
+            )
+        except Exception as e:
+            logger.warning(
+                f"[{cfg.symbol}] Could not read Kraken fee tier at boot: {e}. "
+                f"Keeping conservative default {bot.fee_rate * 100:.2f}%."
+            )
+
     # Load exchange filters for order validation + cache to Supabase
-    from utils.exchange_filters import fetch_filters, fetch_and_cache_filters
+    from utils.exchange_filters import fetch_and_cache_filters
     try:
-        filters = fetch_filters(exchange, cfg.symbol)
+        filters = client.fetch_filters(cfg.symbol)
         bot.set_exchange_filters(filters)
-        # Cache filters for all grid instances (first bot to start does this)
-        all_symbols = [inst.symbol for inst in GRID_INSTANCES]
+        # Cache filters for all grid instances of THIS venue (first bot to
+        # start does this). S118: never mix venues — fetching /USD pairs from
+        # Binance (or /USDT from Kraken) would poison the exchange_filters
+        # cache with cross-venue rows.
+        if venue == "kraken":
+            all_symbols = [inst.symbol for inst in KRAKEN_GRID_INSTANCES]
+        else:
+            all_symbols = [inst.symbol for inst in GRID_INSTANCES]
         fetch_and_cache_filters(exchange, all_symbols, supabase_client=trade_logger.client if trade_logger else None)
     except Exception as e:
         logger.warning(f"[{cfg.symbol}] Could not load exchange filters: {e}")

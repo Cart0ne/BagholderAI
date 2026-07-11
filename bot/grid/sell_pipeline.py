@@ -282,13 +282,32 @@ def execute_percentage_sell(
     else:
         amount = bot.managed_holdings
 
-    # Mirror the same guards as _execute_sell
-    if bot.min_profit_pct > 0 and bot.state.avg_buy_price > 0:
-        min_price = bot.state.avg_buy_price * (1 + bot.min_profit_pct / 100)
+    # Mirror the same guards as _execute_sell.
+    # S118 (K.1 Fase 1) — FEE-AWARE MIN-PROFIT FLOOR (il cuore trading-safety
+    # del cutover): sell_price ≥ avg × (1 + margine/100 + 2×fee_reale).
+    # Su venue='kraken' il round-trip a mercato costa 2×taker (1,6% a tier-0,
+    # letto LIVE — mai hardcodato): senza questo termine il floor "protegge"
+    # vendite che vincono nominalmente e perdono in USD veri. Su binance
+    # fee_floor=0 → formula e condizione IDENTICHE a prima (invariante §3).
+    # Il margine (min_profit_pct ← bot_config.profit_target_pct) resta il
+    # parametro Board/Sherpa, hot-reload via config_sync.
+    # force_all (stop-loss / trailing / bearish exit / liquidazioni TF) NON
+    # passa dal floor: un'uscita d'emergenza non va bloccata da un target di
+    # profitto (oggi latente perché profit_target_pct=0 ovunque; esplicitato
+    # qui perché su kraken il floor diventa attivo sempre).
+    fee_floor = (
+        2.0 * float(getattr(bot, "fee_rate", 0.0) or 0.0)
+        if getattr(bot, "venue", "binance") == "kraken" else 0.0
+    )
+    if (not force_all
+            and (bot.min_profit_pct > 0 or fee_floor > 0)
+            and bot.state.avg_buy_price > 0):
+        min_price = bot.state.avg_buy_price * (1 + bot.min_profit_pct / 100 + fee_floor)
         if price < min_price:
             logger.info(
                 f"SKIP: pct sell at {fmt_price(price)} below min profit target "
-                f"(need {fmt_price(min_price)}, {bot.min_profit_pct:.1f}% above avg buy)"
+                f"(need {fmt_price(min_price)}, {bot.min_profit_pct:.1f}% above avg buy"
+                + (f" + {fee_floor * 100:.2f}% fee floor)" if fee_floor > 0 else ")")
             )
             return None
 
@@ -381,8 +400,14 @@ def execute_percentage_sell(
     exchange_order_id = None
     fee_currency = "USDT"
     if TradingMode.is_live() and bot.exchange is not None:
-        from bot.exchange_orders import place_market_sell
-        res = place_market_sell(bot.exchange, bot.symbol, amount)
+        # S118: route through the venue-normalized client when present
+        # (BinanceClient delegates VERBATIM → binance path byte-identical).
+        _client = getattr(bot, "exchange_client", None)
+        if _client is not None:
+            res = _client.place_market_sell(bot.symbol, amount)
+        else:
+            from bot.exchange_orders import place_market_sell
+            res = place_market_sell(bot.exchange, bot.symbol, amount)
         if res is None:
             # Order failed or did not fill — no state change. Retry on next tick.
             return None
@@ -393,15 +418,28 @@ def execute_percentage_sell(
         fee_currency = res["fee_currency"] or "USDT"
         exchange_order_id = res["order_id"]
         # S96b option B (2026-06-05): post-reset testnet charges zero fee →
-        # synthesize FEE_RATE so realized_pnl carries a realistic fee drag
-        # (realized = revenue - cost_basis - fee below). Mainnet fee passes through.
-        if fee == 0:
-            fee = revenue * bot.FEE_RATE
+        # synthesize the fee so realized_pnl carries a realistic fee drag
+        # (realized = revenue - cost_basis - fee below). Real fees pass through.
+        # S118: bot.fee_rate (instance, per-venue) — on binance it IS FEE_RATE.
+        synth_fee = (fee == 0)
+        if synth_fee:
+            fee = revenue * bot.fee_rate
+        # S118 (fix contabile): on Kraken the SELL fee is real USD withheld
+        # from the proceeds — the wallet receives revenue − fee. Flagged here,
+        # applied on total_received below so _available_cash mirrors the true
+        # cash. Binance/testnet keep the legacy gross booking (synth fee was
+        # never taken from the wallet).
+        quote_fee_live = (
+            getattr(bot, "venue", "binance") == "kraken"
+            and not synth_fee
+            and fee > 0
+        )
         if check_price > 0:
             slippage_pct = (price - check_price) / check_price * 100
     else:
         revenue = amount * price
-        fee = revenue * bot.FEE_RATE
+        fee = revenue * bot.fee_rate
+        quote_fee_live = False  # S118: paper never pays a real quote fee
     holdings_value_before = bot.managed_holdings * price  # S97a: economic position value
 
     # 66a (Operation Clean Slate): canonical avg-cost.
@@ -428,7 +466,7 @@ def execute_percentage_sell(
     # truth instead of the old misleading "X% above avg cost".
     ladder_ref_at_trigger = float(bot._last_sell_price or 0)
     cost_basis = amount * sell_avg_cost
-    buy_fee = cost_basis * bot.FEE_RATE  # backward-compat for state.total_fees
+    buy_fee = cost_basis * bot.fee_rate  # backward-compat for state.total_fees (S118: per-venue instance rate)
     # Brief 72a P3 (S72): realized_pnl is netto fees. Binance scales fee
     # from USDT on market SELL — your wallet receives `revenue - fee`,
     # not `revenue`. The pre-72a formula `revenue - cost_basis` overstated
@@ -641,7 +679,9 @@ def execute_percentage_sell(
     # Brief s70 FASE 1: avg-cost trading — no FIFO queue to consume.
     # TODO 62a (Phase 2): these state mutations happen BEFORE log_trade.
     # If log_trade fails (60c), state is desynced from DB. Make atomic.
-    bot.state.total_received += revenue
+    # S118: on Kraken the wallet receives revenue NET of the USD fee — book
+    # the net so _available_cash mirrors real cash. Binance keeps gross.
+    bot.state.total_received += (revenue - fee) if quote_fee_live else revenue
     bot.state.total_fees += fee + buy_fee
     bot.state.holdings -= amount
     bot.state.realized_pnl += realized_pnl

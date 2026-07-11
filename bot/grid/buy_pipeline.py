@@ -159,7 +159,12 @@ def execute_percentage_buy(bot, price: float) -> Optional[dict]:
         # broke lot_step_size divisibility. Reference price = check_price
         # (last polled tick); real fill comes from Binance response.
         # Fallback to quote-order only if filters unavailable (boot edge).
-        from bot.exchange_orders import place_market_buy, place_market_buy_base
+        # S118: orders route through bot.exchange_client when present — the
+        # venue-normalized surface (BinanceClient delegates VERBATIM to the
+        # legacy functions below → binance path byte-identical; KrakenClient
+        # is the native USD path). The direct-call fallback keeps pre-S118
+        # constructions (old tests) working unchanged.
+        _client = getattr(bot, "exchange_client", None)
         res = None
         if bot._exchange_filters and price > 0:
             from utils.exchange_filters import round_to_step
@@ -168,7 +173,11 @@ def execute_percentage_buy(bot, price: float) -> Optional[dict]:
                 base_est, bot._exchange_filters["lot_step_size"],
             )
             if base_rounded > 0:
-                res = place_market_buy_base(bot.exchange, bot.symbol, base_rounded)
+                if _client is not None:
+                    res = _client.place_market_buy_base(bot.symbol, base_rounded)
+                else:
+                    from bot.exchange_orders import place_market_buy_base
+                    res = place_market_buy_base(bot.exchange, bot.symbol, base_rounded)
             else:
                 logger.warning(
                     f"[{bot.symbol}] BUY skipped: base_rounded=0 from "
@@ -176,8 +185,14 @@ def execute_percentage_buy(bot, price: float) -> Optional[dict]:
                 )
                 return None
         else:
-            # No filters → fallback to quote-order (still better than skipping)
-            res = place_market_buy(bot.exchange, bot.symbol, cost)
+            # No filters → fallback to quote-order (still better than skipping).
+            # On Kraken this is the native cost-order — Fase 0 finding 2: it is
+            # picky near the pair minimums, fine at grid sizes ($25 ≫ ordermin).
+            if _client is not None:
+                res = _client.place_market_buy(bot.symbol, cost)
+            else:
+                from bot.exchange_orders import place_market_buy
+                res = place_market_buy(bot.exchange, bot.symbol, cost)
         if res is None:
             # Order failed or did not fill — no state change. Retry on next tick.
             return None
@@ -193,12 +208,28 @@ def execute_percentage_buy(bot, price: float) -> Optional[dict]:
         # touch base balance — paper fee is informational, USDT-equivalent.
         fee_base = float(res.get("fee_base", 0.0) or 0.0)
         # S96b option B (2026-06-05): the post-reset Binance testnet charges
-        # zero commission. Synthesize the configured FEE_RATE so testnet P&L
+        # zero commission. Synthesize the configured fee so testnet P&L
         # reflects a realistic mainnet-like fee drag. Fires only when the real
-        # fill reported no fee (testnet); on mainnet fee_cost>0 passes through.
+        # fill reported no fee (testnet); on real-fee venues fee_cost>0 passes
+        # through. S118: bot.fee_rate (instance, per-venue) — on binance it IS
+        # the old FEE_RATE constant.
         synth_fee = (fee == 0)
         if synth_fee:
-            fee = cost * bot.FEE_RATE
+            fee = cost * bot.fee_rate
+        # S118 (fix contabile fee-in-quote): on Kraken the BUY fee is REAL and
+        # charged in the QUOTE currency (USD) — it leaves the cash wallet but
+        # is NOT reflected in qty (fee_base=0). It must enter the cost basis
+        # (else avg is ~0.8% low and the floor "protects" losing sells) and
+        # the invested-cash bookkeeping (else _available_cash drifts above the
+        # real wallet and SWEEP/LAST SHOT overspend). Venue-gated: on binance
+        # live the BUY fee is taken in BASE coin (fee_base>0, 72a) and the
+        # testnet synth path already folds it → no behavior change there.
+        quote_fee_live = (
+            getattr(bot, "venue", "binance") == "kraken"
+            and not synth_fee
+            and fee > 0
+            and fee_base == 0.0
+        )
         if check_price > 0:
             slippage_pct = (price - check_price) / check_price * 100
     else:
@@ -215,9 +246,10 @@ def execute_percentage_buy(bot, price: float) -> Optional[dict]:
                 return None
             cost = amount * price  # recalculate cost after rounding
 
-        fee = cost * bot.FEE_RATE
+        fee = cost * bot.fee_rate
         fee_base = 0.0  # 72a: paper has no base-coin commission
         synth_fee = False  # paper fee is legacy-simulated, kept out of avg
+        quote_fee_live = False  # S118: paper never pays a real quote fee
 
     old_last_buy = bot._pct_last_buy_price
     old_holdings = bot.state.holdings
@@ -230,7 +262,10 @@ def execute_percentage_buy(bot, price: float) -> Optional[dict]:
     # accumulates phantom qty and eventual sell-all gets InsufficientFunds
     # rejected (S71 BONK incident, 12.280 BONK observed drift over 9 buys).
     qty_acquired = amount - fee_base
-    bot.state.total_invested += cost
+    # S118: on Kraken the quote fee is real cash leaving the wallet on the BUY
+    # → count it as invested so _available_cash mirrors the true USD balance.
+    # Binance (base-coin fee / synth testnet fee) keeps the legacy line.
+    bot.state.total_invested += (cost + fee) if quote_fee_live else cost
     bot.state.total_fees += fee
     bot.state.holdings += qty_acquired
 
@@ -260,9 +295,13 @@ def execute_percentage_buy(bot, price: float) -> Optional[dict]:
     old_managed = max(0.0, old_holdings - bot._phantom_holdings)
     # S96b option B: a synthetic testnet fee is paid in quote currency and is
     # NOT reflected in qty_acquired, so fold it into the cost basis here —
-    # mirrors the 72a intent (avg includes the buy fee). On mainnet the fee is
-    # taken in base coin (already in qty_acquired) so we must NOT double-count.
-    cost_for_avg = cost + fee if synth_fee else cost
+    # mirrors the 72a intent (avg includes the buy fee). On Binance mainnet the
+    # fee is taken in base coin (already in qty_acquired) so we must NOT
+    # double-count. S118: Kraken's REAL quote fee (quote_fee_live) folds in for
+    # the same reason as the synth one — it's USD paid for these coins. The
+    # boot replay in state_manager mirrors this rule, or the fix would
+    # evaporate at every restart.
+    cost_for_avg = cost + fee if (synth_fee or quote_fee_live) else cost
     if managed_after > 0:
         bot.state.avg_buy_price = (
             (old_avg * old_managed + cost_for_avg) / managed_after

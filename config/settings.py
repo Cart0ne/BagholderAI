@@ -61,6 +61,12 @@ class KrakenConfig:
     SECRET = os.getenv("KRAKEN_API_SECRET", "")
     QUOTE = "USD"                                       # venue quote / funding currency
     GRID_SYMBOLS = ["BTC/USD", "SOL/USD", "BONK/USD"]   # dormant: consumed at cutover
+    # S118 (nodo 3, Max 2026-07-11): explicit real-money consent gate. Kraken
+    # has no testnet — a grid runner on a venue='kraken' row trades REAL money
+    # from the first order. It refuses to start in live mode unless this env
+    # flag is set (Fase 2 runbook step). Keys alone are NOT consent: they were
+    # generated for plumbing tests (Fase 0).
+    ALLOW_REAL_MONEY = os.getenv("ALLOW_REAL_MONEY", "false").lower() == "true"
 
 
 # === Database Configuration ===
@@ -318,6 +324,45 @@ GRID_INSTANCES = [
     ),
 ]
 
+# === Kraken USD pairs (S118, K.1 Fase 1) — cadence defaults only ===
+# SEPARATE list on purpose: GRID_INSTANCES is consumed by Binance-only code
+# (daily_report iteration, reconcile_binance cron, boot filter caching) and
+# adding /USD entries there would leak Kraken symbols onto the binance path
+# (§3 invariant). get_grid_config() searches this list too, so /USD symbols
+# stop falling back to the BTC/USDT entry (wrong check interval / cooldown
+# for SOL and BONK). Economic params (capital, per_trade, buy/sell_pct,
+# profit_target) come from the bot_config row inserted at Fase 2 — the
+# values here are fallback-only, mirroring each coin's USDT twin cadence.
+KRAKEN_GRID_INSTANCES = [
+    GridInstanceConfig(
+        symbol="BTC/USD",
+        capital=100.0,
+        check_interval_seconds=60,
+        buy_cooldown_seconds=1800,
+        buy_pct=1.80,
+        sell_pct=1.00,
+        capital_per_trade=25.00,
+    ),
+    GridInstanceConfig(
+        symbol="SOL/USD",
+        capital=100.0,
+        check_interval_seconds=45,
+        buy_cooldown_seconds=900,
+        buy_pct=1.50,
+        sell_pct=1.00,
+        capital_per_trade=25.00,
+    ),
+    GridInstanceConfig(
+        symbol="BONK/USD",
+        capital=100.0,
+        check_interval_seconds=20,
+        buy_cooldown_seconds=300,
+        buy_pct=1.00,
+        sell_pct=1.00,
+        capital_per_trade=25.00,
+    ),
+]
+
 def get_grid_config(symbol: str) -> GridInstanceConfig:
     """Look up a grid instance config by symbol. Falls back to default BTC config.
 
@@ -330,6 +375,12 @@ def get_grid_config(symbol: str) -> GridInstanceConfig:
     of [BTC, SOL, BONK]. dataclasses.replace makes a clean shallow copy.
     """
     for cfg in GRID_INSTANCES:
+        if cfg.symbol == symbol:
+            return replace(cfg)
+    # S118: Kraken /USD symbols have their own cadence entries. Searched
+    # AFTER the Binance list so the binance path is byte-identical (no /USD
+    # symbol ever matches a /USDT lookup and vice versa).
+    for cfg in KRAKEN_GRID_INSTANCES:
         if cfg.symbol == symbol:
             return replace(cfg)
     return replace(GRID_INSTANCES[0])  # default = BTC/USDT

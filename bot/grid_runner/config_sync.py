@@ -73,6 +73,25 @@ def _sync_config_to_bot(reader: "SupabaseConfigReader", bot: "GridBot", symbol: 
     if "managed_by" in sb_cfg and sb_cfg.get("managed_by"):
         bot.managed_by = sb_cfg["managed_by"]
 
+    # S118 (K.1 Fase 1): refresh the dynamic Kraken taker fee each tick. The
+    # client caches it 1h internally, so this is a dict lookup on most ticks;
+    # when the tier improves with 30d volume (0.80% → 0.60% → …) the trigger
+    # fee buffer and the min-profit floor adapt without a restart. NOTE:
+    # `venue` itself is deliberately NOT hot-reloaded — switching exchange
+    # mid-run is unsupported by design (S118 nodo 1).
+    if (getattr(bot, "venue", "binance") == "kraken"
+            and getattr(bot, "exchange_client", None) is not None):
+        try:
+            new_fee = float(bot.exchange_client.taker_fee_rate(symbol))
+            if new_fee > 0 and new_fee != bot.fee_rate:
+                logger.info(
+                    f"[{symbol}] Kraken taker fee updated: "
+                    f"{bot.fee_rate * 100:.2f}% → {new_fee * 100:.2f}% per side"
+                )
+                bot.fee_rate = new_fee
+        except Exception as e:
+            logger.warning(f"[{symbol}] Kraken fee refresh failed: {e}")
+
     # 39j: hot-reload of TF safety params from trend_config. Only TF bots use
     # these thresholds (grid_bot gates the checks on managed_by); manual bots
     # keep their own stop_buy_drawdown_pct (39b). Log at INFO on change —

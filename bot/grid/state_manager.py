@@ -78,6 +78,15 @@ def init_avg_cost_state_from_db(bot):
         return
 
     base_coin = bot.symbol.split("/")[0].upper() if "/" in bot.symbol else ""
+    quote_coin = bot.symbol.split("/")[1].upper() if "/" in bot.symbol else ""
+    # S118 (fix contabile fee-in-quote): the replay must mirror the runtime
+    # bookkeeping of buy_pipeline/sell_pipeline or the fix evaporates at every
+    # restart. On venue='kraken' fees are REAL and charged in QUOTE (USD):
+    # BUY fee folds into cost basis + invested, SELL proceeds are net of fee.
+    # Strictly venue-gated: binance rows replay byte-identically to pre-S118
+    # (testnet synth fees are logged with fee_asset='USDT' but were never
+    # taken from the wallet — they must NOT be netted here).
+    is_kraken = getattr(bot, "venue", "binance") == "kraken"
 
     last_buy_price = 0.0
     last_sell_price = 0.0  # Brief 70a Parte 3: sell ladder reference (Grid manual)
@@ -115,16 +124,27 @@ def init_avg_cost_state_from_db(bot):
             else:
                 fee_native_est = 0.0
             qty_acquired = amount - fee_native_est
-            total_invested += cost
+            # S118: Kraken quote fee (USD) is real cash spent on this buy →
+            # mirror buy_pipeline (cost_for_avg + total_invested include it).
+            if is_kraken and fee_asset == quote_coin and fee_usdt > 0:
+                cost_eff = cost + fee_usdt
+            else:
+                cost_eff = cost
+            total_invested += cost_eff
             last_buy_price = price
             new_qty = qty + qty_acquired
             if new_qty > 0:
                 # P2 formula: avg = total_cost_usdt / qty_net_acquired
-                avg = (avg * qty + cost) / new_qty
+                avg = (avg * qty + cost_eff) / new_qty
             qty = new_qty
         elif side == "sell":
             revenue = amount * price
-            total_received += revenue
+            # S118: Kraken withholds the USD fee from the proceeds — book net
+            # (mirror of sell_pipeline total_received). Binance keeps gross.
+            if is_kraken and fee_asset == quote_coin and fee_usdt > 0:
+                total_received += revenue - fee_usdt
+            else:
+                total_received += revenue
             if qty > 1e-12:
                 # Brief 72a P3 (S72): realized = (price − avg) × qty − fee_sell
                 # Pre-72a was just (price − avg) × qty → systematically
@@ -293,7 +313,10 @@ def _reconcile_holdings_against_exchange(bot, replayed_qty: float, base_coin: st
     if not TradingMode.is_live() or bot.exchange is None or not base_coin:
         return
     try:
-        balance = bot.exchange.fetch_balance()
+        # S118: via the venue client when present (BinanceClient delegates to
+        # the same raw fetch_balance → byte-identical on the binance path).
+        _client = getattr(bot, "exchange_client", None)
+        balance = _client.fetch_balance() if _client is not None else bot.exchange.fetch_balance()
     except Exception as e:
         logger.warning(
             f"[{bot.symbol}] Boot reconcile: fetch_balance failed ({type(e).__name__}: {e}), "
@@ -413,7 +436,9 @@ def maybe_reconcile_after_fill(bot, base_coin: str = "") -> None:
     if not coin:
         return
     try:
-        balance = bot.exchange.fetch_balance()
+        # S118: via the venue client when present (see boot reconcile above).
+        _client = getattr(bot, "exchange_client", None)
+        balance = _client.fetch_balance() if _client is not None else bot.exchange.fetch_balance()
     except Exception as e:
         logger.debug(f"[{bot.symbol}] post-fill reconcile: fetch_balance failed ({e})")
         return
