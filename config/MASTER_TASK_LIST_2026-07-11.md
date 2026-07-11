@@ -1,6 +1,6 @@
 # BagHolderAI — Master Task List
 
-**Data:** 18 giugno 2026 (creata) · **Ultimo aggiornamento:** 7 luglio 2026 (K.1 trigger aggiornato a "chiavi API Kraken", K.3 scope confermato da Max — vedi `COLLAUDO_COMMS_GUIDELINES_v1.md` v2; prec. 3-lug X-campaign 2.8 mining CC done)
+**Data:** 18 giugno 2026 (creata) · **Ultimo aggiornamento:** 11 luglio 2026 (K.1 **risequenziato da Max in Fasi 0-4**; Fase 0 plumbing check ✅ — fee taker reale 0,80% tier-0, vedi report S117b; prec. 7-lug K.1 trigger "chiavi API Kraken" + K.3 scope Max)
 **Regola:** niente nuovi task salvo bug fix e il **cutover Kraken** (forzato da MiCA, Board-approved). Si finisce quello che c'è.
 
 ---
@@ -11,7 +11,7 @@ Contesto: Binance EU ha sospeso gli ordini spot dal **1-lug** (MiCA). Venue di g
 
 | # | Cosa | Dipende da | Chi | Stato |
 |---|---|---|---|---|
-| K.1 | **CUTOVER Kraken — cablare l'hot-path** al client (grid trada via Kraken) + chiavi API Kraken (Max, Withdraw OFF, `KRAKEN_API_KEY/SECRET`) + prova "ordine reale" (Kraken non ha testnet) + scelta **modello-grid** (market vs ladder a limiti) + **floor min-profit fee-aware** (fee 0,25/0,40% vs 0,10% — param Sherpa-managed, non hardcodare) + restart | chiavi API Kraken (Max) | CC + Max | **PROSSIMO (brief separato)** |
+| K.1 | **CUTOVER Kraken — RISEQUENZIATO in Fasi 0-4 (Max, 11-lug, report S117b)**. Chiavi API ✅ in `.env` (Withdraw OFF). **Fase 0 ✅ (11-lug)**: plumbing check `scripts/kraken_cutover_check.py` — 18 check 0 FAIL; **fee taker reale 0,80% tier-0 → 1,6% a giro** (non 0,40%: floor fee-aware indispensabile; Modello B maker 0,40% da ri-esaminare in Board pre-deployment); ordermin $3-5; cost-order fallback schizzinoso ai minimi (path base verde). **Fase 1 (prossima, senza fermo)**: cablaggio hot-path dietro flag + `fee_rate` dinamico + floor `avg×(1+2×fee+margine)` + colonna `venue` (orchestrator/Sherpa hands-off) + disclaimer-toggle (anticipa parte di K.3). **Fase 2 (decide Max)**: finestra coordinata sito+bot + $100. **Fase 3**: collaudo. **Fase 4**: deployment | Fase 1: brief/piano CEO | CC + Max | **Fase 0 ✅ · Fase 1 PROSSIMA** |
 | K.2 | **WebSocket `executions` Kraken** — feed fill real-time (oggi polling: regge, ma è il pezzo "nuovo di paradigma") | dopo K.1 | CC | fast-follow |
 | K.3 | **Frontend cutover** — homepage (live-snapshot Kraken + badge "real money, real Kraken" + scena hero aggiornata) + dashboard (sezione disclaimer in alto, TF congelata, Grid filtrato a moneta attiva, reconciliation Kraken) + pagina-disclaimer toggle per le finestre di setup (piano confermato Max 2026-07-07, `config/COLLAUDO_COMMS_GUIDELINES_v1.md`) | dopo K.1 | CC (design) + CEO (copy) | pending |
 | K.4 | **Nonce Kraken** — alzare "Nonce Window" lato account + valutare subaccount/chiave per-coin (grid = 1 processo per coin, nonce per-chiave) | al cutover | Max + CC | pending |

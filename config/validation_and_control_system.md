@@ -105,6 +105,8 @@ Da session 59 in poi, ogni brief del CEO contiene una sezione "Roadmap impact" i
 | Zero FIFO drift alerts per 7 giorni | 🔲 In osservazione dal 5 maggio |
 | Health check passa al 100% per 7 giorni | 🔲 In osservazione dal 5 maggio |
 | DB retention stabile | ✅ |
+| **Kraken plumbing check** (clock/AssetPairs/auth/fee-tier/nonce/AddOrder validate — Fase 0 cutover) | ✅ 2026-07-11 (S117b, 18 check 0 FAIL, `scripts/kraken_cutover_check.py` riusabile post-funding) |
+| Kraken Fase 1 (cablaggio hot-path + floor fee-aware + isolamento venue) verificata a secco | 🔲 |
 | Board approval (Max) | 🔲 |
 
 ---
@@ -145,4 +147,5 @@ Da session 59 in poi, ogni brief del CEO contiene una sezione "Roadmap impact" i
 | 2026-05-05 | 59 | Correzione attribuzione: i check FIFO/health sono brief **57a** (non 59a). Frequenza health check: cambiata da "ogni 30 min" a "giornaliero" (eliminato spam Telegram, baseline statico non richiede polling più frequente). |
 | 2026-05-05 | 59 | Aggiunte sezione **7. Post-Go-Live Monitoring** (validation continua dopo il go-live) e sezione **8. Process & Log Hygiene** (file system + processi + credenziali — scoperto perché un log da 23 MB con token Telegram in chiaro non era stato individuato da nessun check esistente). Sezione 6 rinominata da "Live validation" a "Pre-live gates" per chiarire che non chiude la validazione. |
 | 2026-05-06 | 61 | Sentinel + Sherpa Sprint 1 shipped (DRY_RUN default). Nuove tabelle `sentinel_scores` e `sherpa_proposals` (counterfactual tracker). Sentinel pubblica risk/opportunity score ogni 60s; Sherpa propone parametri Grid (buy_pct/sell_pct/idle_reentry_hours) ogni 120s loggando in `sherpa_proposals`. `stop_buy_drawdown_pct` resta Board-only (Sherpa logga solo `proposed_stop_buy_active` quando risk>90). `bot_config` non viene mai toccato in DRY_RUN. Switch a LIVE solo via `SHERPA_MODE=live` + Board approval. |
+| 2026-07-11 | 117b | §6 Pre-Live Gates: aggiunti **Kraken plumbing check ✅** (Fase 0 cutover, 18 check 0 FAIL — fee taker reale 0,80% tier-0, non 0,40%) e gate 🔲 «Fase 1 verificata a secco». K.1 risequenziato da Max in Fasi 0-4 (report `2026-07-11_S117_RforCEO_kraken-cutover.md`). |
 | 2026-06-25 | 109 | §2 «Coerenza superfici»: i 4 check passano da 🔲 TODO a ✅ PRESIDIATO — coperti dall'Audit Area 2 (coherence automatizzato Cowork mensile, S87→S108) + integration test catena config (S109, `tests/test_config_sync_chain_s109.py`, verifica DB→bot). Terminologia «FIFO P&L» → «avg-cost equity» (FIFO superato dal brief 70). NB: §1/§7 contengono ancora «FIFO» (nomi storici dei check) — fuori scope §2, da rivedere con CEO+Board. |

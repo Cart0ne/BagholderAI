@@ -41,8 +41,8 @@ export interface RoadmapData {
 }
 
 export const ROADMAP: RoadmapData = {
-  version: "Versione 1.50 — Giugno 2026",
-  lastUpdated: "2026-06-28",
+  version: "Versione 1.51 — Luglio 2026",
+  lastUpdated: "2026-07-11",
   phases: [
     {
       id: 0,
@@ -191,6 +191,8 @@ export const ROADMAP: RoadmapData = {
       status: "planned",
       description: "Only after the full Sentinel-first sequence is complete: Grid stable on testnet ✓, Sentinel Sprint 1 audit PASS ✓, Sentinel Sprint 2 built + APPROVED ✓, Sherpa reworked per-coin (Sprint 2) + second Brain Analysis, then Sherpa LIVE on testnet one parameter at a time (sell_pct, then buy_pct). Mainnet starts with €100. Go-live depends on observed market conditions (bear + bull + lateral), not a calendar date (Board decision S82, 2026-05-23 — supersedes the earlier late-June/July target).",
       tasks: [
+        { text: "Venue pivot to Kraken (MiCA): dormant exchange adapter behind a flag", status: "done", who: "AI", comment: "S112b (2026-06-30). Binance EU suspended spot orders on July 1 (MiCA). New venue: Kraken, USD pairs. Adapter shipped dormant — testnet behaviour untouched." },
+        { text: "Kraken API plumbing check: clock, pairs, auth, real fees, validate-only orders", status: "done", who: "AI", comment: "2026-07-11. 18 checks, 0 failures, zero real orders. Reality check included: the real taker fee for a fresh account is 0.80% per market order (we assumed 0.40%) — exactly why the bot will read its fee live instead of trusting a constant." },
         { text: "GO/NO-GO decision based on data", status: "todo", who: "MAX" },
         { text: "Deposit initial capital (€100-200, NOT €500)", status: "todo", who: "MAX" },
         { text: "Switch from paper to live (config flag)", status: "todo", who: "AI" },
