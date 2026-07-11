@@ -109,6 +109,7 @@ Vedi [config/parked/README.md](config/parked/README.md) per i trigger. File:
 | `report_for_CEO/` + `report_for_CEO/resolved/` | Report per il CEO (naming `YYYY-MM-DD_SXX_RforCEO_SCOPE.md`); resolved = archivio |
 | `drafts/` + `drafts/applied/` | Bozze ([drafts/cover_evolution_memo.md](drafts/cover_evolution_memo.md) = idea blog futura) |
 | `audits/*.jsonl` + `*_manifest.json` | Archivio NewsKeeper v1 (3.182 righe, ritirato S110e) |
+| [web_astro/archive/2026-07-11_income_test-history-pnl-chart.md](web_astro/archive/2026-07-11_income_test-history-pnl-chart.md) | Codice completo del grafico "Test history (P&L by run)" rimosso da /income (S117) — incl. serie PAPER irrecuperabile + istruzioni rigenerazione |
 
 ## 10. Audit — template (in git) vs report (locali)
 

@@ -261,40 +261,48 @@ import Layout from "../layouts/Layout.astro";
     </div>
   </section>
 
-  {/* ===================================== TEST HISTORY (P&L by run)
-       Why trading is still €0 + the proof: P&L across each test run.
-       Two real lines today (testnet v1, v2); a "paper" series can be
-       added once/if we have that data — see income.ts PNL_SERIES. */}
+  {/* ===================================== MONEY OUT vs MONEY IN (burn)
+       The page's thesis as a time series: cumulative money out sliding
+       down since day one, money in flat at €0. Both lines derive from the
+       passive_income totals (no extra table, no monthly ritual): the cost
+       line is the cumulative total diluted evenly from the start date —
+       we track totals, not receipts-by-date — and the caption says so.
+       The old "Test history (P&L by run)" chart this section replaced is
+       archived with regeneration notes in
+       web_astro/archive/2026-07-11_income_test-history-pnl-chart.md. */}
   <section class="reveal mx-auto max-w-4xl px-4 pt-4 pb-10 sm:px-6">
     <div class="rounded-2xl border border-border bg-surface px-5 py-5
                 shadow-sticker-sm sm:px-7 sm:py-6">
       <div class="mb-1 flex items-baseline justify-between">
         <h2 class="font-display text-[18px] font-extrabold tracking-[-0.01em] text-text">
-          Test history <span class="text-sand">(P&amp;L by run)</span>
+          Money out vs <span class="text-sand">money in</span>
         </h2>
         <span class="font-mono text-[10px] uppercase tracking-[0.12em] text-text-muted">
-          paper · testnet v1 · v2
+          since Mar 18, '26
         </span>
       </div>
       <p class="mb-4 text-[14px] leading-[1.6] text-text-dim">
-        Trading revenue is €0 because we're not live with real money yet — the
-        bot runs on Binance <strong class="font-semibold text-text">testnet</strong>
-        (real orders, simulated funds). That €0 means <em>not started</em>, not
-        <em>not working</em>. Here's the running P&amp;L of each test run:
+        The whole experiment in two lines: what running it costs, month after
+        month, against what it brings in. The gap between them is what
+        honesty looks like. The day the lines cross is break-even — that's
+        the finish line we're chasing.
       </p>
 
       <div class="relative h-72 w-full">
-        <canvas id="income-pnl-chart"></canvas>
-        <p id="income-pnl-empty"
+        <canvas id="income-burn-chart"></canvas>
+        <p id="income-burn-empty"
            class="hidden absolute inset-x-0 top-1/2 -translate-y-1/2
                   text-center font-mono text-[12px] text-text-muted">
-          No P&amp;L history yet.
+          Chart unavailable right now.
         </p>
       </div>
 
       <p class="mt-3 text-[11.5px] leading-[1.5] text-text-muted">
-        Daily portfolio P&amp;L from <code>daily_pnl</code>. The gap is the
-        monthly testnet reset (a fresh start, by design). Live values on the
+        Costs are the cumulative total spread evenly since day one — we track
+        totals, not receipts-by-date. Revenue is flat at €0: real, not a
+        placeholder. Trading is still on Binance testnet (simulated funds), so
+        it adds nothing yet — and once it goes live, the money-in line can
+        also go <em>down</em>. Live bot P&amp;L on the
         <a href="/dashboard" class="underline decoration-border-soft hover:text-text">dashboard</a>.
       </p>
     </div>
@@ -305,7 +313,7 @@ import Layout from "../layouts/Layout.astro";
     </p>
   </section>
 
-  {/* Chart.js for the P&L line chart (same CDN + version as /dashboard). */}
+  {/* Chart.js for the burn chart (same CDN + version as /dashboard). */}
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" is:inline></script>
   <script>
     import "../scripts/income.ts";

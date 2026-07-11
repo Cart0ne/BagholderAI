@@ -392,6 +392,9 @@ function render(rows: IncomeRow[]): void {
     })),
     costEur,
   );
+
+  /* Burn chart — money out vs money in, from the same totals */
+  waitForChart((C) => renderBurnChart(C, costTotal, total));
 }
 
 /* Month label first (no network needed), then the data. */
@@ -418,52 +421,21 @@ Promise.all([
       .querySelectorAll("[data-income-list]")
       .forEach((el) => ((el as HTMLElement).innerHTML = ""));
     document.getElementById("income-error")?.classList.remove("hidden");
+    document.getElementById("income-burn-empty")?.classList.remove("hidden");
   });
 
-/* ---------- Test-history P&L chart (Chart.js) ----------
-   Two real series come from daily_pnl (testnet v1 / v2). The paper era
-   lives in a backup — drop its daily points into PAPER below (date +
-   P&L in $) and the third line draws itself, no other change needed. */
-type PnlRow = {
-  date: string;
-  total_value: number | null;
-  total_pnl: number | null;
-  initial_capital: number | null;
-  cycle: string;
-};
-
-/* Paper era (pre-testnet, initial €500) — restored from the S67 pre-reset
-   backup daily_pnl.jsonl (bagholderai_backups/2026-05-08_pre-reset-s67/).
-   Static historical data, never changes; lives here rather than in the
-   live daily_pnl table to avoid affecting other readers. */
-const PAPER: { date: string; pnl: number }[] = [
-  { date: "2026-03-29", pnl: -11.1 }, { date: "2026-03-30", pnl: -0.4 },
-  { date: "2026-03-31", pnl: 0.51 }, { date: "2026-04-01", pnl: 1.08 },
-  { date: "2026-04-02", pnl: -0.12 }, { date: "2026-04-03", pnl: 1.18 },
-  { date: "2026-04-04", pnl: 2.49 }, { date: "2026-04-05", pnl: -5.68 },
-  { date: "2026-04-06", pnl: 7.42 }, { date: "2026-04-07", pnl: 7.43 },
-  { date: "2026-04-08", pnl: 8.56 }, { date: "2026-04-09", pnl: 11.97 },
-  { date: "2026-04-10", pnl: 15.49 }, { date: "2026-04-11", pnl: 15.95 },
-  { date: "2026-04-12", pnl: 11.51 }, { date: "2026-04-13", pnl: 14.85 },
-  { date: "2026-04-14", pnl: 20.82 }, { date: "2026-04-15", pnl: 24.35 },
-  { date: "2026-04-16", pnl: 29.64 }, { date: "2026-04-17", pnl: 34.95 },
-  { date: "2026-04-18", pnl: 21.98 }, { date: "2026-04-19", pnl: 12.89 },
-  { date: "2026-04-20", pnl: 20.34 }, { date: "2026-04-21", pnl: 18.41 },
-  { date: "2026-04-22", pnl: 40.59 }, { date: "2026-04-23", pnl: 35.33 },
-  { date: "2026-04-24", pnl: 39.04 }, { date: "2026-04-25", pnl: 32.75 },
-  { date: "2026-04-26", pnl: 40.59 }, { date: "2026-04-27", pnl: 38.13 },
-  { date: "2026-04-28", pnl: 37.11 }, { date: "2026-04-29", pnl: 36.61 },
-  { date: "2026-04-30", pnl: 38.87 }, { date: "2026-05-01", pnl: 48.72 },
-  { date: "2026-05-02", pnl: 48.56 }, { date: "2026-05-03", pnl: 24.03 },
-  { date: "2026-05-04", pnl: 56.73 }, { date: "2026-05-05", pnl: 60.51 },
-  { date: "2026-05-06", pnl: 69.95 }, { date: "2026-05-07", pnl: 69.05 },
-];
-
-const CYCLE_STYLE: Record<string, { label: string; color: string }> = {
-  paper: { label: "Paper", color: "#B5562F" }, // brick
-  testnet_1: { label: "Testnet v1", color: "#4E8198" }, // bot-sentinel
-  testnet_2: { label: "Testnet v2 (live)", color: "#5E8A54" }, // bot-grid
-};
+/* ---------- Burn chart: money out vs money in (Chart.js) ----------
+   The page's cost/revenue thesis as a time series. Both lines derive from
+   the passive_income totals already fetched for the page (no extra table):
+   the cost line is the cumulative total DILUTED EVENLY from the experiment
+   start date to today (we track running totals, not receipts-by-date — the
+   caption states the convention), the revenue line is the same dilution of
+   the revenue total, i.e. flat at €0 until something earns. Each monthly
+   panel update moves the endpoints; the slope recomputes by itself.
+   Replaced the "Test history (P&L by run)" chart on 2026-07-11 — archived
+   with regeneration notes in
+   web_astro/archive/2026-07-11_income_test-history-pnl-chart.md. */
+const EXPERIMENT_START = "2026-03-18T00:00:00Z";
 
 function waitForChart(cb: (C: unknown) => void, tries = 0): void {
   const C = (window as unknown as { Chart?: unknown }).Chart;
@@ -472,69 +444,58 @@ function waitForChart(cb: (C: unknown) => void, tries = 0): void {
   setTimeout(() => waitForChart(cb, tries + 1), 100);
 }
 
-function pnlOf(r: PnlRow): number | null {
-  if (typeof r.total_pnl === "number") return r.total_pnl;
-  if (typeof r.total_value === "number" && typeof r.initial_capital === "number")
-    return r.total_value - r.initial_capital;
-  return null;
-}
-
-function fmtDay(iso: string): string {
-  const d = new Date(iso + "T00:00:00Z");
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
-}
-
 /* eslint-disable @typescript-eslint/no-explicit-any */
-function renderPnlChart(C: any, rows: PnlRow[]): void {
-  const canvas = document.getElementById("income-pnl-chart") as HTMLCanvasElement | null;
+function renderBurnChart(C: any, costTotal: number, revTotal: number): void {
+  const canvas = document.getElementById("income-burn-chart") as HTMLCanvasElement | null;
   if (!canvas) return;
+  document.getElementById("income-burn-empty")?.classList.add("hidden");
 
-  const byCycle: Record<string, Record<string, number>> = {};
-  for (const r of rows) {
-    const v = pnlOf(r);
-    if (v === null || !r.cycle) continue;
-    (byCycle[r.cycle] ??= {})[r.date] = v;
+  const start = new Date(EXPERIMENT_START).getTime();
+  const now = Date.now();
+
+  /* Monthly anniversaries of the start date, plus today as the endpoint. */
+  const points: number[] = [];
+  const d = new Date(EXPERIMENT_START);
+  while (d.getTime() < now) {
+    points.push(d.getTime());
+    d.setUTCMonth(d.getUTCMonth() + 1);
   }
-  if (PAPER.length) {
-    const m: Record<string, number> = {};
-    for (const p of PAPER) m[p.date] = p.pnl;
-    byCycle.paper = m;
-  }
+  points.push(now);
 
-  const order = ["paper", "testnet_1", "testnet_2"].filter((c) => byCycle[c]);
-  const empty = document.getElementById("income-pnl-empty");
-  if (!order.length) {
-    empty?.classList.remove("hidden");
-    return;
-  }
-  empty?.classList.add("hidden");
-
-  const labels = Array.from(
-    new Set(order.flatMap((c) => Object.keys(byCycle[c]))),
-  ).sort();
-
-  const datasets = order.map((c) => {
-    const style = CYCLE_STYLE[c] ?? { label: c, color: "#59634F" };
-    return {
-      label: style.label,
-      data: labels.map((d) => (d in byCycle[c] ? byCycle[c][d] : null)),
-      borderColor: style.color,
-      backgroundColor: style.color,
-      borderWidth: 2.5,
-      pointRadius: 2.5,
-      pointHoverRadius: 4,
-      // tension:0 (S106a) — straight point-to-point segments. Same honesty
-      // rule as the dashboard P&L chart: smooth splines invent values that
-      // never existed, a lie on a radical-transparency page.
-      tension: 0,
-      spanGaps: false,
-    };
-  });
+  const frac = (t: number) => (t - start) / (now - start);
+  const labels = points.map((t) =>
+    new Date(t).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" }),
+  );
+  const eur = (v: number) => (v < 0 ? "−€" : "€") + Math.abs(v).toFixed(0);
 
   const mono = { family: "JetBrains Mono", size: 10 };
   new C(canvas, {
     type: "line",
-    data: { labels, datasets },
+    data: {
+      labels,
+      datasets: [
+        {
+          label: "Money out (costs)",
+          data: points.map((t) => -(costTotal * frac(t))),
+          borderColor: "#BC4032", // --color-neg (loss red)
+          backgroundColor: "#BC4032",
+        },
+        {
+          label: "Money in (revenue)",
+          data: points.map((t) => revTotal * frac(t)),
+          borderColor: "#4E8A57", // --color-pos (sage)
+          backgroundColor: "#4E8A57",
+        },
+      ].map((ds) => ({
+        ...ds,
+        borderWidth: 2.5,
+        pointRadius: 2.5,
+        pointHoverRadius: 4,
+        // tension:0 — the dilution is already a stated convention; a spline
+        // on top of it would invent movement that never happened.
+        tension: 0,
+      })),
+    },
     options: {
       responsive: true,
       maintainAspectRatio: false,
@@ -545,9 +506,7 @@ function renderPnlChart(C: any, rows: PnlRow[]): void {
         },
         tooltip: {
           callbacks: {
-            title: (items: any[]) => (items.length ? fmtDay(String(items[0].label)) : ""),
-            label: (it: any) =>
-              `${it.dataset.label}: ${it.parsed.y >= 0 ? "+" : ""}$${Number(it.parsed.y).toFixed(2)}`,
+            label: (it: any) => `${it.dataset.label}: ${eur(Number(it.parsed.y))}`,
           },
         },
       },
@@ -555,22 +514,16 @@ function renderPnlChart(C: any, rows: PnlRow[]): void {
         x: {
           grid: { color: "#DFE4D5" },
           border: { display: false },
-          ticks: { color: "#59634F", font: mono, maxRotation: 0, autoSkip: true, maxTicksLimit: 7, callback: (_v: any, i: number) => fmtDay(labels[i]) },
+          ticks: { color: "#59634F", font: mono, maxRotation: 0, autoSkip: true, maxTicksLimit: 8 },
         },
         y: {
           grid: { color: "#DFE4D5" },
           border: { display: false },
-          ticks: { color: "#59634F", font: mono, callback: (v: any) => (v >= 0 ? "+" : "") + "$" + v },
-          title: { display: true, text: "P&L ($)", color: "#59634F", font: mono },
+          grace: "12%",
+          ticks: { color: "#59634F", font: mono, callback: (v: any) => eur(Number(v)) },
+          title: { display: true, text: "cumulative (€)", color: "#59634F", font: mono },
         },
       },
     },
   });
 }
-
-sbq<PnlRow[]>(
-  "daily_pnl",
-  "select=date,total_value,total_pnl,initial_capital,cycle&order=date.asc&limit=2000",
-)
-  .then((rows) => waitForChart((C) => renderPnlChart(C, rows)))
-  .catch(() => document.getElementById("income-pnl-empty")?.classList.remove("hidden"));
