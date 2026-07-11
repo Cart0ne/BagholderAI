@@ -52,14 +52,15 @@ const SB_KEY =
   "eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB4ZGh0bXFmd2p3amh0Y29hY3NuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4NDI1OTIsImV4cCI6MjA4OTQxODU5Mn0." +
   "G76lvYWrqlM0z2RoSkU1uAglfMBKN_rXvBGOQhb4kdg";
 const SB_HEADERS = { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` };
-/* Current cycle — DATA-DRIVEN since S117: bot_config.cycle (grid BTC row),
-   fetched once and cached; the literal is only the fetch-failure fallback.
-   One `UPDATE bot_config SET cycle=...` (reset or Kraken live switch) and
-   the scene board follows — no more bump ritual. */
+/* Current cycle — DATA-DRIVEN since S117: bot_config.cycle, fetched once and
+   cached; the literal is only the fetch-failure fallback. One `UPDATE
+   bot_config SET cycle=...` (reset or Kraken live switch) and the scene board
+   follows — no more bump ritual. S118: most recently updated ACTIVE grid row
+   (no symbol literal — at the cutover the live row is BTC/USD). */
 const CYCLE_FALLBACK = "testnet_2";
 let cyclePromise = null;
 function getCycle() {
-  cyclePromise ??= sbGet(`bot_config?select=cycle&managed_by=eq.grid&symbol=eq.${encodeURIComponent("BTC/USDT")}&limit=1`)
+  cyclePromise ??= sbGet("bot_config?select=cycle&managed_by=eq.grid&is_active=eq.true&order=updated_at.desc&limit=1")
     .then((rows) => (rows && rows[0] && rows[0].cycle) || CYCLE_FALLBACK)
     .catch(() => CYCLE_FALLBACK);
   return cyclePromise;

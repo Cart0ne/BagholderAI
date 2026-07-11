@@ -41,8 +41,12 @@ const headers = {
    depends on CQ anyway. */
 const CYCLE_FALLBACK = "testnet_2";
 const CYCLE_START_FALLBACK = "2026-06-05T00:00:00Z";
+/* S118: "most recently updated ACTIVE grid row" instead of the BTC/USDT
+   literal — at the Kraken cutover the live row is BTC/USD and a symbol
+   literal would freeze the dashboard on the dead cycle. Same result today
+   (all grid rows share one cycle). */
 const CYCLE = await fetch(
-  `${SB_URL}/rest/v1/bot_config?select=cycle&managed_by=eq.grid&symbol=eq.${encodeURIComponent("BTC/USDT")}&limit=1`,
+  `${SB_URL}/rest/v1/bot_config?select=cycle&managed_by=eq.grid&is_active=eq.true&order=updated_at.desc&limit=1`,
   { headers },
 )
   .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))

@@ -438,11 +438,12 @@ const tfSubtitle   = "The breakout hunter";
           const el = document.getElementById("net-realized-test");
           if (!el) return;
           try {
-            /* S117: cycle from bot_config (grid BTC row), fallback to the
-               last known tag — same data-driven rule as dashboard-live.ts. */
+            /* S117: cycle from bot_config, fallback to the last known tag —
+               same data-driven rule as dashboard-live.ts. S118: most recently
+               updated ACTIVE grid row (no symbol literal — Kraken-proof). */
             const cycle = await fetch(
-              SB_URL + "/rest/v1/bot_config?select=cycle&managed_by=eq.grid&symbol=eq." +
-                encodeURIComponent("BTC/USDT") + "&limit=1",
+              SB_URL + "/rest/v1/bot_config?select=cycle&managed_by=eq.grid" +
+                "&is_active=eq.true&order=updated_at.desc&limit=1",
               { headers: { apikey: SB_KEY, Authorization: "Bearer " + SB_KEY } },
             )
               .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))

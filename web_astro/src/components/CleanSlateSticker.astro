@@ -50,8 +50,13 @@ const { class: cls = "" } = Astro.props;
 
   (async () => {
     /* Current cycle straight from bot_config — no hardcoded cycle name,
-       so a reset (cycle bump on the bot side) re-arms the sticker alone. */
-    const cfg = await q<{ cycle: string }[]>("bot_config?select=cycle&limit=1");
+       so a reset (cycle bump on the bot side) re-arms the sticker alone.
+       S118: filtered to the most recently updated ACTIVE grid row — the old
+       unfiltered limit=1 became NON-DETERMINISTIC the moment a second venue
+       row (Kraken) exists with a different cycle. */
+    const cfg = await q<{ cycle: string }[]>(
+      "bot_config?select=cycle&managed_by=eq.grid&is_active=eq.true&order=updated_at.desc&limit=1",
+    );
     const cycle = cfg?.[0]?.cycle;
     if (!cycle) return;
 

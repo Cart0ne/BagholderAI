@@ -34,21 +34,39 @@ def get_current_cycle(client=None, symbol: Optional[str] = None) -> str:
 
     Cached for _CYCLE_TTL when read globally (symbol=None). Falls back to
     'testnet_1' on any DB error so a write/replay never crashes on this.
+
+    S118 (global path): the current cycle is the one on the most recently
+    updated ACTIVE row (fallback: most recently updated row of all). The old
+    rule — lexicographic max() across every row — silently broke the moment
+    two venues coexist with different cycle tags (the winner depended on the
+    alphabet, so Kraken trades could get stamped with the dead testnet
+    cycle). With today's uniform tags the result is identical.
     """
     now = _time.time()
     if symbol is None and _CYCLE_CACHE["val"] and (now - _CYCLE_CACHE["ts"]) < _CYCLE_TTL:
         return _CYCLE_CACHE["val"]
     try:
         c = client or get_client()
-        q = c.table("bot_config").select("cycle")
         if symbol:
-            q = q.eq("symbol", symbol)
-        rows = q.execute().data or []
-        # bot_config only ever holds the current cycle, uniform across grids.
-        val = max((r["cycle"] for r in rows if r.get("cycle")), default="testnet_1")
-        if symbol is None:
-            _CYCLE_CACHE["val"] = val
-            _CYCLE_CACHE["ts"] = now
+            rows = (
+                c.table("bot_config").select("cycle")
+                .eq("symbol", symbol).execute().data or []
+            )
+            val = max((r["cycle"] for r in rows if r.get("cycle")), default="testnet_1")
+            return val
+        rows = (
+            c.table("bot_config").select("cycle,is_active,updated_at")
+            .execute().data or []
+        )
+        tagged = [r for r in rows if r.get("cycle")]
+        active = [r for r in tagged if r.get("is_active")]
+        pool = active or tagged
+        if pool:
+            val = max(pool, key=lambda r: str(r.get("updated_at") or ""))["cycle"]
+        else:
+            val = "testnet_1"
+        _CYCLE_CACHE["val"] = val
+        _CYCLE_CACHE["ts"] = now
         return val
     except Exception:
         return _CYCLE_CACHE["val"] or "testnet_1"

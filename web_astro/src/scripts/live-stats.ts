@@ -45,15 +45,18 @@ const sbqCount = async (table: string, params: string): Promise<number> => {
 };
 
 /* Current cycle — DATA-DRIVEN since S117 (2026-07-11): read from
-   bot_config.cycle (grid BTC row = the fleet's canonical tag) so a testnet
-   reset — or the Kraken live switch — needs ONE `UPDATE bot_config SET
-   cycle=...` and every site surface follows. No more 6-file bump ritual.
-   Top-level await: the page scripts are ES modules, and every query below
-   depends on CQ anyway. */
+   bot_config.cycle so a testnet reset — or the Kraken live switch — needs
+   ONE `UPDATE bot_config SET cycle=...` and every site surface follows.
+   S118: the row is "the most recently updated ACTIVE grid row" instead of
+   the literal BTC/USDT — at the Kraken cutover the live row is BTC/USD and
+   a symbol literal would silently freeze the site on the dead cycle
+   (lexical-drift family, S70/S72). Today all grid rows share one cycle so
+   the result is identical. Top-level await: the page scripts are ES
+   modules, and every query below depends on CQ anyway. */
 const CYCLE_FALLBACK = "testnet_2";   // used only if the bot_config fetch fails
 const CYCLE = await sbq<{ cycle: string }[]>(
   "bot_config",
-  "select=cycle&managed_by=eq.grid&symbol=eq." + encodeURIComponent("BTC/USDT") + "&limit=1",
+  "select=cycle&managed_by=eq.grid&is_active=eq.true&order=updated_at.desc&limit=1",
 )
   .then((rows) => rows?.[0]?.cycle || CYCLE_FALLBACK)
   .catch(() => CYCLE_FALLBACK);
