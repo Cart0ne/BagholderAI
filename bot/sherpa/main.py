@@ -387,13 +387,25 @@ def _fetch_active_manual_bots(supabase) -> list[dict]:
         .select(
             "symbol, is_active, managed_by, buy_pct, sell_pct, "
             "idle_reentry_hours, stop_buy_drawdown_pct, "
-            "stop_buy_unlock_hours, dead_zone_hours, profit_target_pct"
+            "stop_buy_unlock_hours, dead_zone_hours, profit_target_pct, venue"
         )
         .eq("is_active", True)
         .eq("managed_by", "grid")
         .execute()
     )
-    return res.data or []
+    rows = res.data or []
+    # S118 (K.1 Fase 1) — HANDS-OFF sulle righe Kraken (decisione Board/Max
+    # 2026-07-11): se Sherpa gestisse una riga venue='kraken', la BOARD_TABLE
+    # (profit_target_pct=0 in ogni cella) azzererebbe il floor min-profit
+    # fee-aware al primo ciclo, e buy/sell_pct verrebbero riscritti con la
+    # calibrazione volatilità tarata su fee Binance 0,1% (Kraken costa 1,6%
+    # a giro) → churn in perdita. In più volatility.py legge klines Binance
+    # con naming 'BTC/USD'→'BTCUSD' inesistente. L'attivazione Sherpa-live su
+    # Kraken è decisione Board post-collaudo (valori non-zero in BOARD_TABLE
+    # + fix sorgente volatilità). Filtro in Python e null-safe di proposito:
+    # un .neq() query-side escluderebbe anche eventuali righe con venue NULL
+    # (semantica SQL a 3 valori).
+    return [r for r in rows if (r.get("venue") or "binance") != "kraken"]
 
 
 def _fetch_board_states(supabase) -> dict[str, dict]:

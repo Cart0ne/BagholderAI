@@ -1223,6 +1223,12 @@ def apply_allocations(
                 "is_active": True,
                 "managed_by": mgmt_mode,
                 "pending_liquidation": False,
+                # S118 (K.1 Fase 1): TF allocates on Binance only (TF è
+                # congelato fuori dal cutover Kraken; post-collaudo è un brief
+                # separato). Explicit — NOT left to the column default: a
+                # default-dependent INSERT is exactly the S107 stale-cycle bug
+                # ('testnet_1') in a new coat.
+                "venue": "binance",
                 "capital_allocation": capital,
                 "capital_per_trade": capital_per_trade,
                 "buy_pct": buy_pct,

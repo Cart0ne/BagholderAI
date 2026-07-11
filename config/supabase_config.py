@@ -43,7 +43,13 @@ _CONFIG_FIELDS = (
     # cost. FRACTION (0.03 = 3%). NULL -> grid_bot keeps its constant default.
     # Same gotcha as stop_buy_unlock_hours: must be in this SELECT or the
     # config_sync hot-reload silently no-ops.
-    "slippage_buffer_pct"
+    "slippage_buffer_pct,"
+    # S118 (K.1 Fase 1): per-row exchange venue ('binance' default | 'kraken').
+    # Read ONCE at boot by grid_runner to pick the ExchangeClient; NOT
+    # hot-reloaded (switching venue mid-run is unsupported by design). Same
+    # gotcha as above: without this column in the SELECT the runner would
+    # never see it and silently default to binance.
+    "venue"
 )
 
 # 39j: global TF params polled from trend_config alongside bot_config.

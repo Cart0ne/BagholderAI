@@ -376,8 +376,11 @@ def run_orchestrator():
     while not shutting_down["v"]:
         try:
             # 1. Desired state from bot_config
+            # S118: venue read for spawn telemetry only — the orchestrator is
+            # venue-agnostic by design (it spawns any is_active row; the
+            # grid_runner picks its exchange from its own row).
             result = supabase.table("bot_config").select(
-                "symbol, is_active, managed_by, pending_liquidation"
+                "symbol, is_active, managed_by, pending_liquidation, venue"
             ).execute()
             desired = {r["symbol"]: r for r in (result.data or [])}
 
@@ -463,7 +466,8 @@ def run_orchestrator():
                 proc = _spawn_grid_bot(sym)
                 grid_processes[sym] = ProcessInfo(sym, proc, managed_by)
                 source = "TF" if managed_by == "tf" else "Grid"
-                logger.info(f"[{sym}] Grid bot spawned (pid={proc.pid}, {source})")
+                venue = desired[sym].get("venue") or "binance"
+                logger.info(f"[{sym}] Grid bot spawned (pid={proc.pid}, {source}, venue={venue})")
                 # Per-bot spawn notification suppressed — the orchestrator-level
                 # summary message is enough; new TF allocations still surface via
                 # the scan-report Telegram sent by the Trend Follower itself.
