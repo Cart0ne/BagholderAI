@@ -41,8 +41,8 @@ export interface RoadmapData {
 }
 
 export const ROADMAP: RoadmapData = {
-  version: "Versione 1.51 — Luglio 2026",
-  lastUpdated: "2026-07-11",
+  version: "Versione 1.52 — Luglio 2026",
+  lastUpdated: "2026-07-12",
   phases: [
     {
       id: 0,
@@ -193,6 +193,7 @@ export const ROADMAP: RoadmapData = {
       tasks: [
         { text: "Venue pivot to Kraken (MiCA): dormant exchange adapter behind a flag", status: "done", who: "AI", comment: "S112b (2026-06-30). Binance EU suspended spot orders on July 1 (MiCA). New venue: Kraken, USD pairs. Adapter shipped dormant — testnet behaviour untouched." },
         { text: "Kraken API plumbing check: clock, pairs, auth, real fees, validate-only orders", status: "done", who: "AI", comment: "2026-07-11. 18 checks, 0 failures, zero real orders. Reality check included: the real taker fee for a fresh account is 0.80% per market order (we assumed 0.40%) — exactly why the bot will read its fee live instead of trusting a constant." },
+        { text: "Cutover Fase 1: grid wired to the Kraken adapter (per-row venue), dynamic live fee, fee-aware profit floor", status: "done", who: "AI", comment: "S118 (2026-07-11). All pre-work done with bots running, zero testnet diff (290/290 tests green). The sell floor now covers the REAL 1.6% round-trip fee read live from the account tier. Full dress rehearsal on the real account: 28 validate-only checks, 0 failures. Real orders still gated behind an explicit consent flag — money moves only in Fase 2." },
         { text: "GO/NO-GO decision based on data", status: "todo", who: "MAX" },
         { text: "Deposit initial capital (€100-200, NOT €500)", status: "todo", who: "MAX" },
         { text: "Switch from paper to live (config flag)", status: "todo", who: "AI" },
