@@ -16,7 +16,7 @@ from typing import Optional
 
 from config.settings import EXCHANGE
 
-from .base import ExchangeClient
+from .base import ExchangeClient, OrderFillUnconfirmed
 from .binance_client import BinanceClient
 
 logger = logging.getLogger("bagholderai.exchanges")
@@ -35,4 +35,4 @@ def create_client(exchange_name: Optional[str] = None) -> ExchangeClient:
     )
 
 
-__all__ = ["ExchangeClient", "BinanceClient", "create_client"]
+__all__ = ["ExchangeClient", "OrderFillUnconfirmed", "BinanceClient", "create_client"]

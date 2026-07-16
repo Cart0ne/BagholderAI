@@ -50,13 +50,20 @@ const sbqCount = async (table: string, params: string): Promise<number> => {
    S118: the row is "the most recently updated ACTIVE grid row" instead of
    the literal BTC/USDT — at the Kraken cutover the live row is BTC/USD and
    a symbol literal would silently freeze the site on the dead cycle
-   (lexical-drift family, S70/S72). Today all grid rows share one cycle so
-   the result is identical. Top-level await: the page scripts are ES
-   modules, and every query below depends on CQ anyway. */
+   (lexical-drift family, S70/S72).
+   S119 (Fase 2a): pin to venue='binance'. During the Kraken test/collaudo
+   (Board decision S119) binance is the canonical public venue — the S118
+   "most-recently-updated active row" rule coincided with binance ONLY because
+   every row shares one cycle today; activating a Kraken row (its UPDATE becomes
+   the newest write) would make the whole site jump onto the near-empty Kraken
+   cycle. The explicit venue filter makes the public view robust, not lucky.
+   All rows are venue='binance' today (migration default NOT NULL) → no-op now.
+   Top-level await: the page scripts are ES modules, and every query below
+   depends on CQ anyway. */
 const CYCLE_FALLBACK = "testnet_2";   // used only if the bot_config fetch fails
 const CYCLE = await sbq<{ cycle: string }[]>(
   "bot_config",
-  "select=cycle&managed_by=eq.grid&is_active=eq.true&order=updated_at.desc&limit=1",
+  "select=cycle&managed_by=eq.grid&is_active=eq.true&venue=eq.binance&order=updated_at.desc&limit=1",
 )
   .then((rows) => rows?.[0]?.cycle || CYCLE_FALLBACK)
   .catch(() => CYCLE_FALLBACK);

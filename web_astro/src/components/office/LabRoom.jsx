@@ -60,7 +60,8 @@ const SB_HEADERS = { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` };
 const CYCLE_FALLBACK = "testnet_2";
 let cyclePromise = null;
 function getCycle() {
-  cyclePromise ??= sbGet("bot_config?select=cycle&managed_by=eq.grid&is_active=eq.true&order=updated_at.desc&limit=1")
+  // S119 (Fase 2a): venue=binance is the canonical public cycle during the Kraken test/collaudo (all rows venue='binance' today → no-op).
+  cyclePromise ??= sbGet("bot_config?select=cycle&managed_by=eq.grid&is_active=eq.true&venue=eq.binance&order=updated_at.desc&limit=1")
     .then((rows) => (rows && rows[0] && rows[0].cycle) || CYCLE_FALLBACK)
     .catch(() => CYCLE_FALLBACK);
   return cyclePromise;

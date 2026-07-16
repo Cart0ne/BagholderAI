@@ -46,7 +46,8 @@ const CYCLE_START_FALLBACK = "2026-06-05T00:00:00Z";
    literal would freeze the dashboard on the dead cycle. Same result today
    (all grid rows share one cycle). */
 const CYCLE = await fetch(
-  `${SB_URL}/rest/v1/bot_config?select=cycle&managed_by=eq.grid&is_active=eq.true&order=updated_at.desc&limit=1`,
+  // S119 (Fase 2a): venue=binance canonical for the public view during Kraken test/collaudo (all rows venue='binance' today → no-op).
+  `${SB_URL}/rest/v1/bot_config?select=cycle&managed_by=eq.grid&is_active=eq.true&venue=eq.binance&order=updated_at.desc&limit=1`,
   { headers },
 )
   .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))

@@ -41,7 +41,7 @@ from config.settings import KrakenConfig
 from utils import exchange_filters
 from bot.exchange_orders import _alert_rejection  # reuse venue-agnostic ORDER_REJECTED alert
 
-from .base import ExchangeClient
+from .base import ExchangeClient, OrderFillUnconfirmed
 
 logger = logging.getLogger("bagholderai.exchanges.kraken")
 
@@ -125,8 +125,9 @@ class KrakenClient(ExchangeClient):
         """Market BUY for `quote_amount` USD worth of `symbol` (native cost order)."""
         if quote_amount <= 0:
             logger.error(f"[kraken] BUY {symbol}: invalid quote_amount={quote_amount}")
-            _alert_rejection(symbol, "buy", "invalid quote_amount",
-                             {"quote_amount": quote_amount})
+            if not self._is_validate(params):
+                _alert_rejection(symbol, "buy", "invalid quote_amount",
+                                 {"quote_amount": quote_amount})
             return None
         try:
             order = self._exchange.create_market_buy_order_with_cost(
@@ -134,19 +135,24 @@ class KrakenClient(ExchangeClient):
         except Exception as e:
             reason = f"{type(e).__name__}: {e}"
             logger.error(f"[kraken] BUY {symbol} ${quote_amount:.2f} FAILED: {reason}")
-            _alert_rejection(symbol, "buy", reason,
-                             {"quote_amount": quote_amount, "exception_type": type(e).__name__})
+            # S119 (Fase 2a): a validate=true probe that fails is an expected
+            # rejection (permissions/ordermin near the edge) — do NOT fire the
+            # prod Telegram alert / bot_events_log row for it, only for real orders.
+            if not self._is_validate(params):
+                _alert_rejection(symbol, "buy", reason,
+                                 {"quote_amount": quote_amount, "exception_type": type(e).__name__})
             return None
         if self._is_validate(params):
             return self._validate_ok(order, symbol, "buy")
-        return self._normalize_order_response(order, symbol, "buy")
+        return self._confirm_and_normalize(order, symbol, "buy")
 
     def place_market_buy_base(self, symbol: str, base_amount: float,
                               params: Optional[dict] = None) -> Optional[dict]:
         """Market BUY for a base-asset `base_amount` (lot-step rounded by caller)."""
         if base_amount <= 0:
             logger.error(f"[kraken] BUY {symbol}: invalid base_amount={base_amount}")
-            _alert_rejection(symbol, "buy", "invalid base_amount", {"base_amount": base_amount})
+            if not self._is_validate(params):
+                _alert_rejection(symbol, "buy", "invalid base_amount", {"base_amount": base_amount})
             return None
         try:
             order = self._exchange.create_order(
@@ -154,19 +160,21 @@ class KrakenClient(ExchangeClient):
         except Exception as e:
             reason = f"{type(e).__name__}: {e}"
             logger.error(f"[kraken] BUY {symbol} base={base_amount} FAILED: {reason}")
-            _alert_rejection(symbol, "buy", reason,
-                             {"base_amount": base_amount, "exception_type": type(e).__name__})
+            if not self._is_validate(params):  # S119: no prod alert on validate probes
+                _alert_rejection(symbol, "buy", reason,
+                                 {"base_amount": base_amount, "exception_type": type(e).__name__})
             return None
         if self._is_validate(params):
             return self._validate_ok(order, symbol, "buy")
-        return self._normalize_order_response(order, symbol, "buy")
+        return self._confirm_and_normalize(order, symbol, "buy")
 
     def place_market_sell(self, symbol: str, base_amount: float,
                           params: Optional[dict] = None) -> Optional[dict]:
         """Market SELL of `base_amount` base asset (lot-step rounded by caller)."""
         if base_amount <= 0:
             logger.error(f"[kraken] SELL {symbol}: invalid base_amount={base_amount}")
-            _alert_rejection(symbol, "sell", "invalid base_amount", {"base_amount": base_amount})
+            if not self._is_validate(params):
+                _alert_rejection(symbol, "sell", "invalid base_amount", {"base_amount": base_amount})
             return None
         try:
             order = self._exchange.create_order(
@@ -174,12 +182,13 @@ class KrakenClient(ExchangeClient):
         except Exception as e:
             reason = f"{type(e).__name__}: {e}"
             logger.error(f"[kraken] SELL {symbol} {base_amount} FAILED: {reason}")
-            _alert_rejection(symbol, "sell", reason,
-                             {"base_amount": base_amount, "exception_type": type(e).__name__})
+            if not self._is_validate(params):  # S119: no prod alert on validate probes
+                _alert_rejection(symbol, "sell", reason,
+                                 {"base_amount": base_amount, "exception_type": type(e).__name__})
             return None
         if self._is_validate(params):
             return self._validate_ok(order, symbol, "sell")
-        return self._normalize_order_response(order, symbol, "sell")
+        return self._confirm_and_normalize(order, symbol, "sell")
 
     # --- account / reconcile ---
     def fetch_balance(self) -> dict:
@@ -308,6 +317,103 @@ class KrakenClient(ExchangeClient):
         )
         self._fee_cache[key] = (self.FALLBACK_TAKER_FEE, now, self._FEE_TTL_FALLBACK)
         return self.FALLBACK_TAKER_FEE
+
+    # --- fill confirmation (S119 Fase 2a, CRITICAL fix) ---
+    # Kraken's AddOrder / AddOrderWithCost response carries ONLY {descr, txid} —
+    # no vol_exec, price, or fee. Reading `filled` off THAT response always sees
+    # 0, so the old code treated every executed order as "not filled" → returned
+    # None → the grid re-ordered on the next tick, spending real money in a loop
+    # and recording nothing (review S118, blocker CRITICAL; validate=true skipped
+    # this path so the prova generale never exercised it). Fix: after a live
+    # order, POLL fetch_order(txid) until the fill is readable, then normalize
+    # THAT. Market orders fill in <1s, so the first read almost always returns.
+    #
+    # Poll budget ~15s (Max, S119): the schedule below sleeps a beat first (give
+    # Kraken time to register the order), then backs off. Tunable — if Kraken
+    # proves consistently instant we can tighten it.
+    _FILL_POLL_BACKOFF = (1.0, 1.0, 2.0, 3.0, 4.0, 4.0)   # cumulative ~15s
+    _FILL_POLL_MAX_SECONDS = 15.0
+    # Terminal states that mean "done, nothing executed" (a genuine no-op, e.g.
+    # a rejected/canceled order) — distinct from the fill-less AddOrder ack,
+    # which carries NO terminal status and must be polled.
+    _TERMINAL_UNFILLED = {"canceled", "cancelled", "closed", "rejected", "expired"}
+
+    @staticmethod
+    def _extract_order_id(order: Optional[dict]) -> str:
+        """ccxt normalizes AddOrder's txid list to order['id']; fall back to the
+        raw info.txid (which Kraken returns as a list) if the unified id is empty."""
+        if not order:
+            return ""
+        oid = order.get("id")
+        if oid:
+            return str(oid)
+        txid = (order.get("info") or {}).get("txid")
+        if isinstance(txid, (list, tuple)):
+            return str(txid[0]) if txid else ""
+        return str(txid or "")
+
+    def _confirm_and_normalize(self, order: Optional[dict], symbol: str,
+                               side: str) -> Optional[dict]:
+        """Confirm the REAL fill of a live order, then normalize it.
+
+        If `order` already carries the executed volume (an exchange/mock that
+        returns the fill inline), normalize it directly — no poll. Otherwise
+        poll fetch_order(txid) within the budget. On timeout the order is
+        in-flight but unreadable: raise OrderFillUnconfirmed so the caller HALTS
+        (never retries — that would double-spend, Max S119).
+        """
+        # Fill already present (mocks, or a venue that fills inline) → no poll.
+        if order and float(order.get("filled") or 0) > 0:
+            return self._normalize_order_response(order, symbol, side)
+
+        # A response already in a TERMINAL state with no fill is a genuine no-op
+        # (rejected/canceled) — NOT an unread fill. Keep the legacy behaviour
+        # (rejection alert + None via _normalize), don't poll or halt.
+        if order and (order.get("status") or "").lower() in self._TERMINAL_UNFILLED:
+            return self._normalize_order_response(order, symbol, side)
+
+        order_id = self._extract_order_id(order)
+        if not order_id:
+            # Placed something we can't track (no txid, no fill). Never a silent
+            # no-op that would re-order — halt and reconcile by hand.
+            raise OrderFillUnconfirmed(symbol, side, "", "no order id in AddOrder response")
+
+        start = time.time()
+        last: Optional[dict] = None
+        for wait in self._FILL_POLL_BACKOFF:
+            time.sleep(wait)
+            try:
+                last = self._exchange.fetch_order(order_id, symbol)
+            except Exception as e:
+                logger.warning(
+                    f"[kraken] {side.upper()} {symbol}: fetch_order({order_id}) "
+                    f"failed: {type(e).__name__}: {e}"
+                )
+                last = None
+            if last and float(last.get("filled") or 0) > 0:
+                logger.info(
+                    f"[kraken] {side.upper()} {symbol}: fill confirmed via "
+                    f"fetch_order after {time.time() - start:.1f}s (id={order_id})"
+                )
+                return self._normalize_order_response(last, symbol, side)
+            # Order reached a terminal state without a fill (canceled/rejected
+            # after placing) — stop polling, genuine no-op (don't false-HALT).
+            if last and (last.get("status") or "").lower() in self._TERMINAL_UNFILLED:
+                logger.warning(
+                    f"[kraken] {side.upper()} {symbol}: order {order_id} terminal "
+                    f"({last.get('status')}) with no fill — no-op."
+                )
+                return self._normalize_order_response(last, symbol, side)
+            if time.time() - start >= self._FILL_POLL_MAX_SECONDS:
+                break
+
+        status = (last or {}).get("status") if last else "unreadable"
+        logger.critical(
+            f"[kraken] {side.upper()} {symbol}: fill NOT confirmed within "
+            f"{self._FILL_POLL_MAX_SECONDS:.0f}s (id={order_id}, status={status}). "
+            f"Order may be in-flight — HALT, do not retry."
+        )
+        raise OrderFillUnconfirmed(symbol, side, order_id, f"status={status}")
 
     # --- normalization ---
     def _normalize_order_response(self, order: dict, symbol: str, side: str) -> Optional[dict]:

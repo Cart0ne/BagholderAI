@@ -55,7 +55,12 @@ const { class: cls = "" } = Astro.props;
        unfiltered limit=1 became NON-DETERMINISTIC the moment a second venue
        row (Kraken) exists with a different cycle. */
     const cfg = await q<{ cycle: string }[]>(
-      "bot_config?select=cycle&managed_by=eq.grid&is_active=eq.true&order=updated_at.desc&limit=1",
+      // S119 (Fase 2a): pin the public view to venue=binance. During the Kraken
+      // test/collaudo (Board decision S119) binance is the canonical public venue
+      // — without the filter, activating a Kraken row would make this jump onto
+      // its near-empty cycle and flash "Fresh start". All current rows are
+      // venue='binance' (migration default NOT NULL), so this is a no-op today.
+      "bot_config?select=cycle&managed_by=eq.grid&is_active=eq.true&venue=eq.binance&order=updated_at.desc&limit=1",
     );
     const cycle = cfg?.[0]?.cycle;
     if (!cycle) return;

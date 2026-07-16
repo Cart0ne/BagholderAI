@@ -31,6 +31,27 @@ from abc import ABC, abstractmethod
 from typing import Optional
 
 
+class OrderFillUnconfirmed(Exception):
+    """A real order was placed but its fill could NOT be confirmed within the
+    poll budget (in-flight / unreadable). The one case a caller must NEVER
+    retry (Max, S119): retrying re-orders and double-spends real money. Raised
+    only by venues that must poll for the fill after placing (Kraken — its
+    AddOrder response carries no fill). BinanceClient never raises it → the
+    binance path is unaffected (invariant §3). Callers HALT and reconcile by
+    hand instead of re-ordering.
+    """
+
+    def __init__(self, symbol: str, side: str, order_id: str, detail: str = ""):
+        self.symbol = symbol
+        self.side = side
+        self.order_id = order_id
+        self.detail = detail
+        super().__init__(
+            f"{side.upper()} {symbol}: fill unconfirmed "
+            f"(order_id={order_id or 'n/a'}; {detail})"
+        )
+
+
 class ExchangeClient(ABC):
     """Venue-agnostic trading surface. Subclasses: BinanceClient, KrakenClient."""
 

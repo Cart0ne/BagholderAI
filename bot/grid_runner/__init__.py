@@ -9,6 +9,7 @@ Usage:
     python -m bot.grid_runner --dry-run    # Show what would happen, don't log
 """
 
+import os
 import sys
 import signal
 import time
@@ -48,7 +49,7 @@ from config.settings import (
     GRID_INSTANCES, KRAKEN_GRID_INSTANCES, KrakenConfig, EXCHANGE,
 )
 from config.supabase_config import SupabaseConfigReader
-from bot.exchanges import create_client
+from bot.exchanges import create_client, OrderFillUnconfirmed
 from bot.grid.grid_bot import GridBot
 from db.client import TradeLogger, DailyPnLTracker, ReserveLedger
 from db.event_logger import log_event
@@ -118,6 +119,18 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
             venue = (EXCHANGE or "binance").lower()
     except Exception:
         venue = "binance"
+
+    # S119 (Fase 2a): supervised Kraken order-proof. Kraken has no testnet, so
+    # the CRITICAL fill-confirmation fix can only be validated by a real order.
+    # The test row lives at is_active=false so the orchestrator (venue-agnostic,
+    # spawns any is_active=true row) never picks it up — clean isolation from
+    # the live testnet fleet (§5). This flag lets Max run THIS grid_runner by
+    # hand against that is_active=false row. Kraken-only + env-gated: never set
+    # in production → the binance invariant is untouched.
+    kraken_test_mode = (
+        venue == "kraken"
+        and os.getenv("KRAKEN_TEST_MODE", "").lower() in ("1", "true", "yes")
+    )
 
     config_reader.start_refresh_loop()
 
@@ -526,8 +539,10 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
                             f"[{cfg.symbol}] proactive 45g check failed: {e}"
                         )
 
-            # Graceful shutdown if is_active=false in Supabase
-            if not bot.is_active:
+            # Graceful shutdown if is_active=false in Supabase.
+            # S119: the supervised Kraken order-proof runs against a row kept at
+            # is_active=false (orchestrator isolation, §5) — keep it alive.
+            if not bot.is_active and not kraken_test_mode:
                 logger.info(f"[{cfg.symbol}] is_active=false — shutting down gracefully")
                 notifier.send_message(
                     f"🛑 <b>{cfg.symbol} grid bot stopped</b> (is_active=false)"
@@ -839,6 +854,44 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
 
         except KeyboardInterrupt:
             logger.info("\nStopping grid bot (Ctrl+C)...")
+            break
+        except OrderFillUnconfirmed as e:
+            # S119 (Fase 2a): a real order was placed but its fill could not be
+            # confirmed. The ONE case we must NOT fall through to the generic
+            # handler below — that one sleeps and RETRIES, which would re-order
+            # and double-spend (Max). Sticky HALT: flip is_active=false so
+            # neither this loop nor an orchestrator respawn re-enters trading
+            # until Max reconciles by hand on Kraken; alert; break (no retry).
+            # Kraken-only-reachable (BinanceClient never raises this) → the
+            # binance invariant is untouched.
+            logger.critical(f"[{cfg.symbol}] ORDER FILL UNCONFIRMED — HALTING (no retry): {e}")
+            try:
+                if trade_logger is not None:
+                    trade_logger.client.table("bot_config").update(
+                        {"is_active": False}
+                    ).eq("symbol", cfg.symbol).eq("venue", "kraken").execute()
+            except Exception as _halt_e:
+                logger.error(
+                    f"[{cfg.symbol}] halt: could not flip is_active=false: {_halt_e}"
+                )
+            log_event(
+                severity="critical",
+                category="error",
+                event="order_fill_unconfirmed",
+                symbol=cfg.symbol,
+                message=f"Order fill unconfirmed — halted: {str(e)[:180]}",
+                details={"order_id": getattr(e, "order_id", ""),
+                         "side": getattr(e, "side", ""),
+                         "detail": getattr(e, "detail", "")},
+            )
+            notifier.send_message(
+                f"🛑🔴 <b>{cfg.symbol}: FILL NON CONFERMATO — HALT</b>\n"
+                f"Ordine reale in volo ma non leggibile. Bot fermato, "
+                f"<b>nessun retry</b>. Riconcilia a mano su Kraken prima di "
+                f"riattivare (is_active portato a false).\n"
+                f"<code>{str(e)[:200]}</code>"
+            )
+            stop_reason = "order_fill_unconfirmed"
             break
         except Exception as e:
             _error_count += 1

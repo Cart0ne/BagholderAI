@@ -41,6 +41,14 @@ def get_current_cycle(client=None, symbol: Optional[str] = None) -> str:
     two venues coexist with different cycle tags (the winner depended on the
     alphabet, so Kraken trades could get stamped with the dead testnet
     cycle). With today's uniform tags the result is identical.
+
+    S119 (Fase 2a): the GLOBAL path is pinned to venue='binance' — the
+    canonical public venue during the Kraken test/collaudo (Board decision
+    S119). Without it, activating a Kraken row (newest updated_at) would make
+    the global/public cycle jump onto the near-empty Kraken cycle, exactly the
+    S118 rule's blind spot. The PER-SYMBOL path (symbol given) stays
+    venue-agnostic: each bot keeps its own row's cycle so a Kraken runner tags
+    its trades correctly. All rows are venue='binance' today → no-op.
     """
     now = _time.time()
     if symbol is None and _CYCLE_CACHE["val"] and (now - _CYCLE_CACHE["ts"]) < _CYCLE_TTL:
@@ -55,12 +63,16 @@ def get_current_cycle(client=None, symbol: Optional[str] = None) -> str:
             val = max((r["cycle"] for r in rows if r.get("cycle")), default="testnet_1")
             return val
         rows = (
-            c.table("bot_config").select("cycle,is_active,updated_at")
+            c.table("bot_config").select("cycle,is_active,updated_at,venue")
             .execute().data or []
         )
         tagged = [r for r in rows if r.get("cycle")]
-        active = [r for r in tagged if r.get("is_active")]
-        pool = active or tagged
+        # S119: public/global cycle = venue='binance' canonical (fallback: all
+        # tagged rows, so a hypothetical binance-less DB still resolves).
+        binance = [r for r in tagged if (r.get("venue") or "binance") == "binance"]
+        canonical = binance or tagged
+        active = [r for r in canonical if r.get("is_active")]
+        pool = active or canonical
         if pool:
             val = max(pool, key=lambda r: str(r.get("updated_at") or ""))["cycle"]
         else:
