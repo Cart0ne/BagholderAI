@@ -61,10 +61,10 @@ BagHolderAI è un progetto sperimentale dove un'AI (Claude) gestisce un micro-bu
 
 ## 3. Diary Status
 
-**Sessione corrente: S113 (BUILDING).** S112 COMPLETE. ⚠️ **S110 ancora in BUILDING (mai chiusa) — da risolvere.**
+**Sessione corrente: S119 (BUILDING).** Diario S118 scritto (.docx, "The One Where 28 Out of 28 Wasn't Enough"). S119 su Supabase = BUILDING (coda domani: report CC post-implementazione brief 2a + diario S119). ⚠️ **S110 ancora in BUILDING (mai chiusa) — da risolvere.**
 **Interludio scritto:** "Thirteen Impressions" (copre S106-S107: visual identity per umani + SEO identity per macchine).
 - Volume corrente pubblico: V3 "From Brain to Eyes" (live). **V4 "From Eyes to Live" in corso** (arc: NewsKeeper → go-live → results).
-- Ultima entry diary: **S113 (BUILDING)**.
+- Ultima entry diary: **S118 (.docx scritto)**; S119 BUILDING.
 - Prossimo check di congruenza diary: invariato.
 
 **Volumi pubblicati:**
@@ -87,6 +87,12 @@ BagHolderAI è un progetto sperimentale dove un'AI (Claude) gestisce un micro-bu
 
 | Data | Decisione | Perché |
 |---|---|---|
+| 2026-07-13 (S119) | **Fase 2 cutover Kraken spezzata in 2a + 2b** — 2a (fix bug + ordine-prova reale sorvegliato), 2b (switch reale sui $100 già sul conto) | Kraken non ha testnet: il codice che legge la risposta di un ordine reale non è esercitabile a costo zero, e il bug critico vive proprio lì. La sola certificazione onesta è un ordine reale minimo guardato a mano |
+| 2026-07-13 (S119) | **Sito pubblico resta su `binance` durante test interno e collaudo** → venue canonico = binance | Rende invisibile il test da $25 e sblocca il fix cycle-fetch venue-aware (senza, il sito salterebbe sulla riga Kraken mostrando "Fresh start" al pubblico) |
+| 2026-07-13 (S119) | **Floor (`profit_target_pct`) lasciato a 0** = "non vendere sotto il break-even dopo le fee" (già sicuro, non "spento"). Trigger test $25 = 2% manuale; Sherpa spento sulle righe Kraken durante i test | Separare "quando vendere" (trigger) da "mai in perdita" (floor); per i test i parametri sono statici a mano. Il 2% copre il round-trip Kraken 1,6% + cuscino slippage |
+| 2026-07-13 (S119) | **Fix-fee Sherpa 0,1%→0,80% = prerequisito SOLO per il sistema pieno (fase €600), FUORI scope Fase 2a** | Sherpa oggi calcola i trigger sulle fee Binance; su Kraken produrrebbe sell_pct sotto il floor → stallo. Nei test manuali Sherpa è spento, quindi non serve subito |
+| 2026-07-13 (S119) | **Staging collaudo confermato**: $25 BTC (meccanica grid) → $100 sequenziale grid-only BTC→SOL→BONK (segnale pulito, una variabile alla volta) → sistema pieno (Sentinel + Sherpa fee-fixed + NewsKeeper wired) SOLO dopo | "Tutti i brain insieme" è il passo dopo il collaudo, non il collaudo; accenderli sul primo denaro reale perde il segnale pulito e impila integrazione non testata sul momento di rischio massimo |
+| 2026-07-13 (S119) | **Cuscino slippage dentro `sell_pct` per ora**; colonna `slippage_buffer_pct` resta NULL | Micro-decisione, rivedibile |
 | 2026-07-11 (S117) | **Chiavi API Kraken generate** (Withdraw OFF, WebSocket ON, nonce window 10000ms) + **Fase 0 plumbing test PASS** (18 check, 0 fail; script riusabile `scripts/kraken_cutover_check.py`) | Auth OK, 3 coppie risolvono, ordermin verificati (BTC ~$3,21 / SOL ~$4,68 / BONK ~$4,94 → griglia non rada con $25/trade) |
 | 2026-07-11 (S117) | **Cutover K.1 RISEQUENZIATO in Fasi 0-4** (Board) | Le chiavi = test di plumbing, il cutover = operazione coordinata (disclaimer window + stop bot, comms guidelines) che il brief S117 saltava. Fase 0 chiusa; Fase 1 (cablaggio+floor+isolamento venue) = brief dedicato |
 | 2026-07-11 (S117) | **Modello grid collaudo = A (market on-trigger), Board-confirmed** | B (ladder maker) rimandato a deployment, da ri-esaminare coi numeri fee veri |
@@ -168,6 +174,9 @@ BagHolderAI è un progetto sperimentale dove un'AI (Claude) gestisce un micro-bu
 
 | Tema | Stato | Note |
 |---|---|---|
+| **[S119] Isolamento processo test da terminale vs orchestrator** | Da sciogliere nel piano 2a | Chi "possiede" la riga BTC/USD-Kraken quando Max lancia il bot di test da terminale mentre l'orchestrator gestisce la flotta testnet sul Mini |
+| **[S119] Timeout/retry del poll `fetch_order`** | Da definire nel fix critico 2a | Comportamento se il fill non è confermato entro il timeout (ordine in volo ma non ancora leggibile) — caso limite più pericoloso del fix critico |
+| **[S119] Dimensione primo ordine-prova ($25 vs ~$5 ordermin)** | Decisione Board (Max) | Da chiedere prima di finalizzare il runbook 2a |
 | **[S117] Verifica fee grezza + audit codice fee-reading** (era BLOCCANTE pre-Fase-1) | ✅ FATTO 2026-07-11 | Risposta API grezza + listino ufficiale concordi: taker 0,80%/maker 0,40% tier-0; ipotesi bug-di-lettura esclusa — il dato grezzo non passa da ccxt. Non blocca più la Fase 1 |
 | **[S117] Meccanismo isolamento single-grid per collaudo sequenziale** | Fase 1 (brief dedicato) | Proposta CC: colonna `venue` in bot_config, hands-off orchestrator/Sherpa sulle righe Kraken |
 | **[S117] Fix sorgente volatilità Sherpa su Kraken** | Post-collaudo, prima di Sherpa-live su Kraken | Oggi legge klines Binance con naming BTC/USD→"BTCUSD" inesistente |
