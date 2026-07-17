@@ -97,3 +97,32 @@ Nessuna modifica a codice / `bot_config` / `trades`; nessun restart; nessun ordi
 ## Escalation (§5)
 - **A Max/Board:** la correzione del **report S119** (numero trigger), la revisione **floor** (nodo 5), l'eventuale micro-fix etichetta reconcile → sono **brief separati**, non li eseguo qui.
 - **Nessun blocker** che impedisca la Fase 2b: il replay è sano, il reconcile è corretto. Il floor-double-count è una taratura del nodo 5, non un bug bloccante.
+
+---
+
+## Addendum — capitale e DCA (risposta all'obiezione CEO, 2026-07-17)
+
+**Il CEO ha ragione. Il mio caveat prezzo-dipendente era sbagliato. Concedo.**
+
+Avevo verificato che il **buy-trigger di prezzo** sarebbe stato soddisfatto sotto ~$63.293, ma **non ho seguito la catena fino al gate del cash** che gira *dopo* il trigger. Con capitale esaurito, quel gate salta l'ordine a qualsiasi prezzo.
+
+**Q1 — quanto vale `_available_cash` dopo il buy, e la fee entra nell'invested?**
+Sì, la fee entra nell'invested — **come credevi**:
+- Runtime: `buy_pipeline.py:268` `total_invested += (cost + fee) if quote_fee_live` → 24,99917 + 0,19999 = **$25,19916**.
+- Replay al boot: `state_manager.py:129-131` lo rispecchia (`is_kraken and fee_asset==quote → cost_eff = cost + fee_usdt`) → invested identico dopo un restart.
+- `_available_cash()` (`grid_bot.py:271`): `base = max(0.0, capital − total_invested + total_received) = max(0.0, 25 − 25,19916 + 0) = max(0.0, −0,19916)` = **$0,00** (clampato a zero; il −$0,199 non diventa mai negativo). Reserve = 0 (skim_pct=0).
+
+**Q2 — al buy-trigger $63.293 può partire un ordine? Quale gate lo ferma?**
+**No.** `buy_pipeline.py:99-133`:
+- `cash_before = _available_cash() = 0.0`
+- `0.0 >= standard_cost (25)` → no
+- `0.0 >= MIN_LAST_SHOT_USD (5.0, config/settings.py:198)` → no
+- → ramo `else` (`buy_pipeline.py:129-133`): *"Insufficient cash for BUY … Skipping pct buy."* → `return None`, **nessun ordine inviato**.
+
+Il buy-trigger di prezzo può anche scattare: l'ordine viene comunque **skippato** dal gate del cash, che sta *a valle* del trigger. Le munizioni sono zero.
+
+**È un bug del gate?** No — **l'opposto**. Il gate fa esattamente il suo lavoro: a capitale esaurito **non compra**. Non è un buco, non va in §5 come finding. (Sarebbe stato un bug se avesse comprato a `cash=0`; non lo fa.)
+
+### Verdetto finale riformulato
+> **Il riavvio del processo di test è sicuro INCONDIZIONATAMENTE** (non prezzo-dipendente).
+> Tre gate indipendenti lo garantiscono: (1) il replay ricostruisce lo stato → niente first-entry (Q1); (2) il reconcile Kraken conferma holdings → nessun FAIL (Q3); (3) **capitale esaurito (`_available_cash=0 < $5`) → nessun DCA a nessun prezzo** (questo addendum). Il caveat "$63.293" del corpo del report è **superato**: valeva solo se il capitale fosse stato disponibile, e non lo è.
