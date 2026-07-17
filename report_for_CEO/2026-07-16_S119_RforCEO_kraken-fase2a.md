@@ -1,5 +1,41 @@
 # Report per CEO — S119 Fase 2a cutover Kraken
 
+> ## ⭐ AGGIORNAMENTO POST-TEST LIVE — 2026-07-17
+>
+> **Il primo ordine reale su Kraken è passato. Il fix critico è validato su denaro vero.**
+>
+> Max ha lanciato l'ordine-prova (BTC/USD, riga isolata `is_active=false` +
+> `KRAKEN_TEST_MODE`, sorvegliato). Esito del **BUY**:
+> - `[kraken] BUY BTC/USD: fill confirmed via fetch_order after 3.1s` → il fix
+>   critico **in azione**: il bot ha chiesto a Kraken l'esito reale e l'ha letto.
+>   **Un solo BUY, nessun loop.**
+> - Fill reale: **0,00039379 BTC @ $63.483,50 · costo $24,999 · fee $0,19999 USD**
+>   (= 0,80% taker, letta dal vivo). Fee uscita dai **dollari**, non dal BTC.
+> - **Tripla conferma incrociata**: DB `trades` = API Kraken = interfaccia Kraken,
+>   stessi numeri e stesso order-id (`OCILGP-2GRMI-D3WSNK`). Saldi tornano:
+>   $111,40 → $86,20 USD + $25 di BTC.
+>
+> **Il SELL è ancora pendente**: parte da solo quando BTC sale ~2% (trigger
+> ~$64.753; ora ~$63.470). Il bot resta acceso e sorvegliato; alla vendita
+> arriva un Telegram `🔴 SELL BTC/USD`. **La 2b si sblocca solo dopo aver visto
+> registrare bene ANCHE una vendita reale** (brief). Nessuna urgenza.
+>
+> **🟡 Finding operativo per il go-live (da valutare Board/BUSINESS_STATE):** i
+> "$100" caricati erano in **EUR** (€97,80), non USD. Le coppie `/USD` si tradano
+> solo con **USD reali** sul conto (il toggle EUR/USD dell'interfaccia è solo una
+> vista, non converte l'asset). Max ha fatto una **conversione manuale EUR→USD**
+> su Kraken (EUR/USD, ~$111). → Il flusso di funding per il go-live è
+> **deposito EUR → conversione a USD → trading /USD**: va messo nel runbook 2b e,
+> se il CEO vuole, loggato in BUSINESS_STATE.
+>
+> **Cosmetico (non blocca):** il log di boot scrive "vs Binance" nel reconcile
+> anche su venue kraken (etichetta hardcoded; holdings letti correttamente = 0).
+> Da ripulire in un micro-fix.
+>
+> **Prossimo passo:** aspettare il SELL (quando BTC fa +2%) → verifica finale →
+> poi Board decide il **nodo 5** (margine floor `profit_target_pct`, proposta CC
+> 0,4%, + parametri delle 3 monete) → runbook Fase 2b (switch reale $100).
+
 **Data:** 2026-07-16 · **Brief sorgente:** `config/2026-07-13_S119_brief_kraken-fase2a.md`
 **Commit:** `2c57fb0` (fix S119) · precede `2cb315b` (BUSINESS_STATE update S119)
 **Esito:** SHIPPED — no restart, **NESSUN ordine reale** (Kraken resta dormiente, `ALLOW_REAL_MONEY=false`)
