@@ -15,8 +15,8 @@
 >   stessi numeri e stesso order-id (`OCILGP-2GRMI-D3WSNK`). Saldi tornano:
 >   $111,40 → $86,20 USD + $25 di BTC.
 >
-> **Il SELL è ancora pendente**: parte da solo quando BTC sale ~2% (trigger
-> ~$64.753; ora ~$63.470). Il bot resta acceso e sorvegliato; alla vendita
+> **Il SELL è ancora pendente**: parte da solo quando BTC sale +2% sopra l'avg
+> (trigger ≈ **$65.271**; ora ~$63.470). Il bot resta acceso e sorvegliato; alla vendita
 > arriva un Telegram `🔴 SELL BTC/USD`. **La 2b si sblocca solo dopo aver visto
 > registrare bene ANCHE una vendita reale** (brief). Nessuna urgenza.
 >
@@ -32,9 +32,14 @@
 > anche su venue kraken (etichetta hardcoded; holdings letti correttamente = 0).
 > Da ripulire in un micro-fix.
 >
-> **Prossimo passo:** aspettare il SELL (quando BTC fa +2%) → verifica finale →
-> poi Board decide il **nodo 5** (margine floor `profit_target_pct`, proposta CC
-> 0,4%, + parametri delle 3 monete) → runbook Fase 2b (switch reale $100).
+> **Prossimo passo:** aspettare il SELL (quando BTC supera avg × 1,02) → verifica
+> finale → poi Board decide il **nodo 5** (margine floor `profit_target_pct`,
+> proposta CC 0,4%, + parametri delle 3 monete) → runbook Fase 2b (switch reale $100).
+>
+> *Correzione 2026-07-17 (indagine S119b): il trigger SELL era erroneamente indicato
+> a ~$64.753 (prezzo puro × 1,02). L'avg **include la fee** (`buy_pipeline.py:304`) →
+> avg ≈ $63.991 → trigger reale ≈ **$65.271**. Margine netto a +2% ≈ **+1,19%** (non
+> +0,39%). Il runbook era già corretto. Dettaglio: `..._S119b_RforCEO_kraken-replay-avg-reconcile.md`.*
 
 **Data:** 2026-07-16 · **Brief sorgente:** `config/2026-07-13_S119_brief_kraken-fase2a.md`
 **Commit:** `2c57fb0` (fix S119) · precede `2cb315b` (BUSINESS_STATE update S119)
