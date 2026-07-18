@@ -1,8 +1,8 @@
 # BUSINESS_STATE.md
 
-**Last updated:** 2026-07-11 — S117 (chiavi API Kraken generate + Fase 0 plumbing PASS 18/18; **K.1 risequenziato in Fasi 0-4** dal Board — le chiavi = test, il cutover = operazione coordinata; fee Kraken verificate post-dubbio CEO: taker 0,80%/maker 0,40% tier-0, 2 fonti indipendenti). §4 +5 righe, §5 +3 righe (1 già chiusa), §7 +1 riga — su istruzione CEO via Max; bullet fee emendati da CC all'esito verifica, approvazione esplicita Max. Cap file 50KB (Max S95, CLAUDE.md §2b). Cadenze audit canoniche in PROJECT_STATE §9. Prec.: 2026-07-01 — S114 (audit A1 CON RISERVE remediato `81d00dd`; pillar page pubblicata).
-**Updated by:** CEO (S117 via Max) + CC (verifica fee 2 fonti: API grezza `TradeVolume` + listino ufficiale kraken.com — emendamento approvato da Max 2026-07-11)
-**Basato su:** report `report_for_CEO/2026-07-11_S117_RforCEO_kraken-cutover.md` + commit `002fa23` (script check) + `3295dda` (state docs), decisioni Board/Max S117
+**Last updated:** 2026-07-17 — S119 chiusura (primo ordine reale su Kraken; indagine S119b; nodo 5 rinviato a pre-2b). §2 +marketing (primo click Google), §3 S119 COMPLETE, §4 +7 righe, §5 +1, §6 +2, §7 +2 — su istruzione CEO (brief S119c) via Max. Cap file 50KB ±2KB (CLAUDE.md §2b). Cadenze audit canoniche in PROJECT_STATE §9. Prec.: 2026-07-13 — S119 Fase 2a/2b split + venue=binance (via Max); 2026-07-11 — S117 (chiavi Kraken + Fase 0 18/18; fee 0,80% tier-0).
+**Updated by:** CEO (S119c via Max)
+**Basato su:** PROJECT_STATE.md corrente + `report_for_CEO/2026-07-16_S119_RforCEO_kraken-fase2a.md` + `report_for_CEO/2026-07-17_S119b_RforCEO_kraken-replay-avg-reconcile.md`
 
 > 📍 **Dove vive cosa** (per CEO e CC): [KNOWLEDGE_MAP.md](KNOWLEDGE_MAP.md) in root del repo indicizza tutti i doc durevoli — stato, playbook, runbook, architettura, archivi, e cosa è gitignored.
 
@@ -25,6 +25,10 @@ BagHolderAI è un progetto sperimentale dove un'AI (Claude) gestisce un micro-bu
 ---
 
 ## 2. Marketing In-Flight
+
+### S119 — primo denaro reale + segnale distribuzione (17-lug)
+- **Primo click organico da Google (17-lug).** GSC 3 mesi: **1 click · 417 impressioni · posizione media 15,1 · CTR 0,2%**. È il primo in assoluto. Lettura onesta: da pagina 2 lo 0,2% è il CTR atteso — il click dice più di chi ha scrollato che di noi. **Ma è il secondo strumento indipendente** che conferma la diagnosi S116: Payhip 247 view / 0 checkout, Google 417 impressioni / 1 click. Due misure, una diagnosi: **non arriva nessuno**. Il buco è a monte, non nel prodotto.
+- **Nessun annuncio del test da $25** (vedi §4). Deroga alla regola no-post-ven/sab/dom: **valutata e non usata**.
 
 ### S111 — site polish (SHIPPED, web-only, no restart)
 - **Footer**: 4 link testuali social → bottoni tondi SVG (Telegram, X, GitHub, Buy me a coffee)
@@ -61,7 +65,7 @@ BagHolderAI è un progetto sperimentale dove un'AI (Claude) gestisce un micro-bu
 
 ## 3. Diary Status
 
-**Sessione corrente: S119 (BUILDING).** Diario S118 scritto (.docx, "The One Where 28 Out of 28 Wasn't Enough"). S119 su Supabase = BUILDING (coda domani: report CC post-implementazione brief 2a + diario S119). ⚠️ **S110 ancora in BUILDING (mai chiusa) — da risolvere.**
+**S119 COMPLETE** — *"The One Where Everyone's Numbers Were Wrong"* (13–17 luglio). `.docx` prodotto, `diary_entries` aggiornata dal CEO via MCP. Diario S118 scritto (.docx, "The One Where 28 Out of 28 Wasn't Enough"). **Volume 4 "From Eyes to Live": l'arco è passato dalla porta — S119 è il primo denaro reale.** ⚠️ **S110 ancora in BUILDING (mai chiusa) — da risolvere.**
 **Interludio scritto:** "Thirteen Impressions" (copre S106-S107: visual identity per umani + SEO identity per macchine).
 - Volume corrente pubblico: V3 "From Brain to Eyes" (live). **V4 "From Eyes to Live" in corso** (arc: NewsKeeper → go-live → results).
 - Ultima entry diary: **S118 (.docx scritto)**; S119 BUILDING.
@@ -87,6 +91,13 @@ BagHolderAI è un progetto sperimentale dove un'AI (Claude) gestisce un micro-bu
 
 | Data | Decisione | Perché |
 |---|---|---|
+| 2026-07-17 (S119) | **Primo ordine reale eseguito** — $25 BTC/USD su Kraken, riga isolata `is_active=false` + `KRAKEN_TEST_MODE`, sorvegliato. `OCILGP-2GRMI-D3WSNK`: 0,00039379 BTC @ $63.483,50, costo $24,99917, fee $0,19999 USD | `fill confirmed via fetch_order after 3.1s` = **il fix critico S119 in azione**: un solo BUY, nessun loop. Kraken non ha testnet → il fix poteva essere certificato **solo** da denaro vero; 297 test verdi non bastavano. Tripla conferma incrociata log / API Kraken / DB. **Fee live 0,7999% = tier EU 0,80% ri-confermata** (già chiusa in S117b/Fase 0 con 2 fonti; questa è la terza). **Fase 2a resta APERTA**: un buy è mezzo ciclo, serve un SELL registrato |
+| 2026-07-17 (S119) | **Funding path corretto: deposito EUR → conversione manuale EUR→USD → trading /USD** | I "$100" caricati erano **€97,80**. Le coppie `/USD` si tradano solo con USD reali sul conto: il toggle EUR/USD dell'interfaccia Kraken è una **vista**, non converte l'asset. Scoperto sul campo, non nel design. Costo: spread di conversione ad ogni rabbocco. **Va nel runbook Fase 2b** |
+| 2026-07-17 (S119) | **Nessun annuncio pubblico del test da $25 — la carta "primo denaro reale" resta per il collaudo** | `COLLAUDO_COMMS_GUIDELINES` §1: la milestone si gioca **una volta sola**. Il test è Fase 2a su una riga che il sito pubblico non vede; il collaudo è Fase 3 ($100, K.3, badge "real money, real Kraken"). Annunciare ora brucia la carta e contraddice una homepage pinnata a `venue=binance` → incoerenza narrazione↔codice (territorio audit Area 2) |
+| 2026-07-17 (S119) | **Status line pubblica corretta** (non "aggiornata"): da *"Phase 1 wired, still asleep · before any real trade"* a *"One supervised $25 order on Kraken · real money, real fill, no loop · the sell hasn't come yet"* 🔬 | Alle 18:45 la riga precedente è diventata **falsa** sulla superficie più pubblica del progetto. Il post è opzionale, la verità del badge no. Distinzione: **push** (annuncio, rivendica) vs **cronaca** (dice dove siamo). **Nessuna automazione**: quando il SELL arriva la riga torna falsa, va rifatta a mano. *(CC: confermato live sul sito da Max, 17-lug — nessun drift doc↔sito.)* |
+| 2026-07-17 (S119) | **Trigger SELL reale = ~$65.271** (avg fee-inclusive × 1,02), **non $64.753**. Margine netto a target ≈ **+1,19% ≈ $0,30** su $25 | Il codice include la fee di buy nell'avg (`buy_pipeline.py:304`, `cost_for_avg = cost + fee`). Il **report S119 di CC** citava il prezzo puro → sbagliato (corretto 17-lug); il **runbook §4** era corretto. Trovato dal cross-check del CEO; risolto dall'indagine S119b — che ha poi demolito anche il calcolo del CEO (0,39% ≈ $0,10). **Il SELL è più lontano di quanto si credeva**, non più vicino |
+| 2026-07-17 (S119) | **Nodo 5 (margine floor) rinviato a PRIMA della Fase 2b, non durante** | CC ha trovato che il floor **doppia-conta la fee di buy**: `min_price = avg × (1 + min_profit + 2×fee)` mentre l'avg include già 1× fee → floor a avg×1,016 contro un break-even reale di avg×1,008. **Sovra-protettivo di ~0,8%**, non pericoloso, ma blocca vendite già in utile netto. Il margine si sceglie **sopra il break-even vero**: la formula va corretta prima di tararlo. *(Nota: inerte sul test corrente — trigger avg×1,02 > floor avg×1,016.)* |
+| 2026-07-17 (S119) | **Riavvio del processo di test: sicuro INCONDIZIONATAMENTE** (non prezzo-dipendente) | Tre gate indipendenti: replay sano (trova il trade su `symbol`+`v3`+`cycle`) · reconcile Kraken corretto (interroga Kraken, "Binance" è solo un'etichetta hardcoded) · **capitale esaurito** (`_available_cash` clampato a $0 < $5 min) → nessun DCA a nessun prezzo. Il caveat "$63.293" del corpo del report S119b è **superato per concessione di CC** dopo obiezione del CEO |
 | 2026-07-13 (S119) | **Fase 2 cutover Kraken spezzata in 2a + 2b** — 2a (fix bug + ordine-prova reale sorvegliato), 2b (switch reale sui $100 già sul conto) | Kraken non ha testnet: il codice che legge la risposta di un ordine reale non è esercitabile a costo zero, e il bug critico vive proprio lì. La sola certificazione onesta è un ordine reale minimo guardato a mano |
 | 2026-07-13 (S119) | **Sito pubblico resta su `binance` durante test interno e collaudo** → venue canonico = binance | Rende invisibile il test da $25 e sblocca il fix cycle-fetch venue-aware (senza, il sito salterebbe sulla riga Kraken mostrando "Fresh start" al pubblico) |
 | 2026-07-13 (S119) | **Floor (`profit_target_pct`) lasciato a 0** = "non vendere sotto il break-even dopo le fee" (già sicuro, non "spento"). Trigger test $25 = 2% manuale; Sherpa spento sulle righe Kraken durante i test | Separare "quando vendere" (trigger) da "mai in perdita" (floor); per i test i parametri sono statici a mano. Il 2% copre il round-trip Kraken 1,6% + cuscino slippage |
@@ -174,7 +185,9 @@ BagHolderAI è un progetto sperimentale dove un'AI (Claude) gestisce un micro-bu
 
 | Tema | Stato | Note |
 |---|---|---|
-| **[S119] Isolamento processo test da terminale vs orchestrator** | Da sciogliere nel piano 2a | Chi "possiede" la riga BTC/USD-Kraken quando Max lancia il bot di test da terminale mentre l'orchestrator gestisce la flotta testnet sul Mini |
+| **[S119 NEW] `trades` non ha colonna `venue`** | 🆕 Da valutare — fase sistema-pieno | La separazione Kraken ↔ testnet regge **solo** su `cycle` (`kraken_test` vs `testnet_2`) + il simbolo (`BTC/USD` vs `BTC/USDT`). Funziona oggi. Ma è **accoppiamento implicito**, stessa famiglia dei bug che ci hanno già morso: cycle-fetch (S118 🟠) e superfici sito (S119 🟠). Valutare colonna `venue` esplicita quando Kraken passa a 3 monete. **Non blocca la 2b** |
+| **[S119] Isolamento processo test da terminale vs orchestrator** | ✅ CHIUSO 2a | Risolto: riga `is_active=false` (orchestrator la ignora) + `KRAKEN_TEST_MODE`. Provato live 17-lug |
+| **[S119] Timeout/retry del poll `fetch_order`** | Da definire nel fix critico 2a | Comportamento se il fill non è confermato entro il timeout (ordine in volo ma non ancora leggibile) — caso limite più pericoloso del fix critico |
 | **[S119] Timeout/retry del poll `fetch_order`** | Da definire nel fix critico 2a | Comportamento se il fill non è confermato entro il timeout (ordine in volo ma non ancora leggibile) — caso limite più pericoloso del fix critico |
 | **[S119] Dimensione primo ordine-prova ($25 vs ~$5 ordermin)** | Decisione Board (Max) | Da chiedere prima di finalizzare il runbook 2a |
 | **[S117] Verifica fee grezza + audit codice fee-reading** (era BLOCCANTE pre-Fase-1) | ✅ FATTO 2026-07-11 | Risposta API grezza + listino ufficiale concordi: taker 0,80%/maker 0,40% tier-0; ipotesi bug-di-lettura esclusa — il dato grezzo non passa da ccxt. Non blocca più la Fase 1 |
@@ -218,6 +231,10 @@ BagHolderAI è un progetto sperimentale dove un'AI (Claude) gestisce un micro-bu
 | **Sherpa LIVE su testnet (7/7 parametri)** | ✅ DONE (S102+S103) | Scrive TUTTI E 7 i parametri: buy_pct, sell_pct, idle_reentry_hours + stop_buy_drawdown_pct, stop_buy_unlock_hours, dead_zone_hours, profit_target_pct. I 4 protettivi via lookup (regime × volatility tier) con debounce 24h |
 | **Volume 4** | Nessuna deadline | In accumulo da S83, arco narrativo NewsKeeper build → go-live |
 
+**S119 — collaudo Kraken in corso:**
+- **Fase 2a APERTA** finché un SELL reale non è registrato correttamente. Trigger ~$65.271. Nessuna vendita forzata: vendere a mano su Kraken **non** valida il criterio (il test è "il bot registra", non "esiste una vendita").
+- **Non cancellare** la riga `bot_config` `BTC/USD`/`kraken` finché il ciclo è aperto (il runbook §7.3 lo propone: **sospeso**). Cancellarla con $25 di BTC in pancia orfaneggia la posizione.
+
 **Multi-macchina:** MBP (sviluppo) ↔ Mac Mini (runtime). PID/runtime dettagliati in PROJECT_STATE §1+§7.
 
 **Piattaforma pubblicazione:** Payhip (free plan, 5% fee). Nessuna urgenza di cambiare.
@@ -228,7 +245,9 @@ BagHolderAI è un progetto sperimentale dove un'AI (Claude) gestisce un micro-bu
 
 | Cosa | Perché |
 |---|---|
-| **Cutover Kraken — NON eseguito** | Solo Fase 0 (test read-only + validate=true). Zero ordini reali. Il grid trada ancora su Binance testnet. TF congelato (fuori dal collaudo) |
+| **Nessun post pubblico sul primo ordine reale** | Non è prudenza: la milestone si annuncia al **collaudo**, con il sito allineato. Oggi diventerà la **prova di rigore** dentro quel post ("prima dei $100 ne abbiamo messi 25, uno solo, guardato a mano"), non una notizia autonoma |
+| **Fase 2b ferma** | In attesa del **SELL** reale registrato (Fase 2a aperta) + chiusura **nodo 5** (margine floor). Solo dopo: runbook finestra coordinata, switch $100 |
+| **Cutover Kraken — Fase 2a in corso** | Primo ordine reale ($25 BUY) eseguito e validato 17-lug; manca il SELL. Il grid trada ancora su Binance testnet; la riga Kraken di prova è isolata (`is_active=false`). TF congelato (fuori dal collaudo). *(era: "NON eseguito / solo Fase 0" — superato)* |
 | **Ottimizzazione on-site (SEO, funnel, CTR)** | Il sito non ha un pubblico proprio (~3 visitatori esterni/mese, verifica audit A3 2026-07-02): la trazione, piccola, vive dentro Dev.to/X/Reddit. Nessuna ottimizzazione on-site è prioritaria finché non cambia questo. Il collo di bottiglia è la **distribuzione**, non lo snippet |
 | **€100 reali su Kraken (primo euro vero)** | Gate Board: niente €100 finché il churn non è chiuso. ✅ **Churn-fix ora SHIPPED+LIVE** (`8d2fdd6`, S113) → questo gate è cleared; restano cutover Kraken (cablaggio+chiavi+ordine reale) + Board approval |
 | **Revenue automation completa (/income)** | La pagina /income esiste come scaffold privato, ma l'automazione fonti (Payhip, BMC, Umami API) è rinviata al primo euro: a €0 darebbero "0" → over-engineering. Solo Umami ha già un connettore. Haiku costs: soluzione Admin API trovata, parcheggiata |
