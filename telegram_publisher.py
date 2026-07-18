@@ -32,7 +32,12 @@ logging.basicConfig(
 )
 logger = logging.getLogger("bagholderai.telegram_publisher.cli")
 
-from utils.telegram_publisher import run_all, publish_status_line, publish_diary
+from utils.telegram_publisher import (
+    run_all,
+    publish_status_line,
+    publish_diary,
+    publish_regime,
+)
 
 
 def main():
@@ -40,10 +45,11 @@ def main():
     ap.add_argument("--cron", action="store_true", help="run all enabled publishers once")
     ap.add_argument("--status", action="store_true", help="run only the status-line publisher")
     ap.add_argument("--diary", action="store_true", help="run only the diary publisher")
+    ap.add_argument("--regime", action="store_true", help="run only the regime publisher")
     ap.add_argument("--dry-run", action="store_true", help="print what would be posted, send nothing")
     args = ap.parse_args()
 
-    if not (args.cron or args.status or args.diary):
+    if not (args.cron or args.status or args.diary or args.regime):
         ap.print_help()
         sys.exit(2)
 
@@ -55,6 +61,8 @@ def main():
             results.append(publish_status_line(dry_run=args.dry_run))
         if args.diary:
             results.append(publish_diary(dry_run=args.dry_run))
+        if args.regime:
+            results.append(publish_regime(dry_run=args.dry_run))
 
     for r in results:
         logger.info("result: %s", r)

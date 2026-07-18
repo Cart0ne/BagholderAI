@@ -21,6 +21,7 @@ Features are built incrementally:
   (d) press review — one digest/day, top-N with links  [TODO]
 """
 
+import json
 import logging
 from datetime import datetime, timezone
 
@@ -216,6 +217,120 @@ def publish_diary(sb=None, dry_run=False) -> dict:
     return {"feature": "diary", "posted": True, "message_id": msg_id, "session": row.get("session")}
 
 
+# ======================================================================
+# (c) REGIME F&G — post on a confirmed regime-bucket change (debounced, no pin)
+# ======================================================================
+#
+# Source: sentinel_scores (score_type='slow'). raw_signals already carries the
+# computed regime bucket ("extreme_fear".."extreme_greed") + fng_value/label —
+# so we read the regime the system already decided (no re-deriving thresholds).
+# F&G updates ~1×/day; the slow loop (~4h) re-reads the same daily value.
+#
+# Anti-chatter guards (Max's "freno anti-tremolio"), all three must pass:
+#   1. CONFIRMED: the latest K slow scans all agree on the bucket (kills a
+#      single-scan fetch glitch).
+#   2. CHANGED: the confirmed bucket differs from the last one we announced.
+#   3. MIN-HOLD: at least REGIME_MIN_HOLD_HOURS since our last regime post
+#      (caps to ~1/day, kills day-to-day flapping across a bucket boundary).
+
+REGIME_MARKER = "regime:last_bucket"
+REGIME_POSTED_AT = "regime:last_posted_at"
+REGIME_CONFIRM_SCANS = 2
+REGIME_MIN_HOLD_HOURS = 18
+
+REGIME_LABELS = {
+    "extreme_fear":  ("😱", "Extreme Fear"),
+    "fear":          ("😨", "Fear"),
+    "neutral":       ("😐", "Neutral"),
+    "greed":         ("🤑", "Greed"),
+    "extreme_greed": ("🤯", "Extreme Greed"),
+}
+
+
+def _parse_raw_signals(rs):
+    if isinstance(rs, str):
+        try:
+            return json.loads(rs)
+        except Exception:
+            return {}
+    return rs or {}
+
+
+def read_recent_slow(sb, limit):
+    r = (
+        sb.table("sentinel_scores")
+        .select("raw_signals, created_at")
+        .eq("score_type", "slow")
+        .order("created_at", desc=True)
+        .limit(limit)
+        .execute()
+    )
+    return r.data or []
+
+
+def confirmed_regime(rows, k=REGIME_CONFIRM_SCANS):
+    """Return the regime bucket iff the latest k slow rows all agree; else None
+    (chattering, or not enough history yet)."""
+    if len(rows) < k:
+        return None
+    buckets = [_parse_raw_signals(r.get("raw_signals")).get("regime") for r in rows[:k]]
+    if buckets and all(b and b == buckets[0] for b in buckets):
+        return buckets[0]
+    return None
+
+
+def build_regime_post(bucket, fng_value=None, fng_label=None, prev_bucket=None) -> str:
+    emoji, label = REGIME_LABELS.get(bucket, ("🌡️", bucket))
+    if prev_bucket and prev_bucket in REGIME_LABELS:
+        _, plabel = REGIME_LABELS[prev_bucket]
+        line = f"The Fear &amp; Greed climate shifted from {plabel} to {emoji} <b>{label}</b>"
+    else:
+        line = f"The Fear &amp; Greed climate is now {emoji} <b>{label}</b>"
+    fng_bit = f" (F&amp;G {fng_value})" if fng_value is not None else ""
+    return (
+        f"🌡️ <b>Market regime</b>\n"
+        f"{line}{fng_bit}.\n\n"
+        f"<i>{SITE_LINK.format(campaign='regime')}</i>"
+    )
+
+
+def publish_regime(sb=None, dry_run=False, k=REGIME_CONFIRM_SCANS, now=None) -> dict:
+    """Post a regime shift if confirmed + changed + past the min-hold window."""
+    sb = sb or get_client()
+    rows = read_recent_slow(sb, k)
+    bucket = confirmed_regime(rows, k)
+    if not bucket:
+        return {"feature": "regime", "posted": False, "reason": "not confirmed (chatter/insufficient history)"}
+
+    last_bucket = get_state(sb, REGIME_MARKER)
+    if bucket == last_bucket:
+        return {"feature": "regime", "posted": False, "reason": "unchanged"}
+
+    now = now or datetime.now(timezone.utc)
+    last_at = get_state(sb, REGIME_POSTED_AT)
+    if last_at:
+        try:
+            prev_dt = datetime.fromisoformat(last_at)
+            if (now - prev_dt).total_seconds() < REGIME_MIN_HOLD_HOURS * 3600:
+                return {"feature": "regime", "posted": False, "reason": "debounced (min-hold)"}
+        except Exception:
+            pass
+
+    latest = _parse_raw_signals(rows[0].get("raw_signals"))
+    text = build_regime_post(bucket, latest.get("fng_value"), latest.get("fng_label"), last_bucket)
+    if dry_run:
+        logger.info("[dry-run] regime post:\n%s", text)
+        return {"feature": "regime", "posted": False, "reason": "dry-run", "text": text, "bucket": bucket}
+
+    msg_id = _send_public(text, campaign="regime")
+    if msg_id is None:
+        return {"feature": "regime", "posted": False, "reason": "send failed"}
+
+    set_state(sb, REGIME_MARKER, bucket)
+    set_state(sb, REGIME_POSTED_AT, now.isoformat())
+    return {"feature": "regime", "posted": True, "message_id": msg_id, "bucket": bucket}
+
+
 # ----------------------------------------------------------------------
 # IO layer (telegram) — lazy SDK import so the module loads without it.
 # Posts to the PUBLIC channel; keeps exactly one pinned message (the status
@@ -305,7 +420,7 @@ def run_all(dry_run=False) -> list:
     """Run every enabled publisher once. Returns a list of result dicts."""
     sb = get_client()
     results = []
-    for fn in (publish_status_line, publish_diary):  # (c)/(d) appended as they land
+    for fn in (publish_status_line, publish_diary, publish_regime):  # (d) appended when it lands
         try:
             results.append(fn(sb=sb, dry_run=dry_run))
         except Exception as e:
