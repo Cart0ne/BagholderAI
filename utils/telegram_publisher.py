@@ -136,6 +136,86 @@ def publish_status_line(sb=None, dry_run=False) -> dict:
     return {"feature": "status_line", "posted": True, "message_id": msg_id}
 
 
+# ======================================================================
+# (b) DIARY — post the CEO's session summary on a new COMPLETE entry (no pin)
+# ======================================================================
+
+DIARY_MARKER = "diary:last_posted_session"
+
+
+def read_latest_diary(sb):
+    """Most recent COMPLETE diary entry (gate on status so we never post a
+    half-written draft)."""
+    r = (
+        sb.table("diary_entries")
+        .select("session, title, summary, date, status")
+        .eq("status", "COMPLETE")
+        .order("session", desc=True)
+        .limit(1)
+        .execute()
+    )
+    return r.data[0] if r.data else None
+
+
+def build_diary_post(row) -> str:
+    session = row.get("session")
+    title = (row.get("title") or "").strip()
+    summary = (row.get("summary") or "").strip()
+    date_str = (row.get("date") or "").strip()
+    head = f"📓 <b>New diary entry — Session {session}</b>"
+    if date_str:
+        head += f"\n<i>{date_str}</i>"
+    body = ""
+    if title:
+        body += f"\n\n<b>{title}</b>"
+    if summary:
+        body += f"\n{summary}"
+    return (
+        f"{head}{body}\n\n"
+        f"<i>{SITE_LINK.format(campaign='diary')}</i>"
+    )
+
+
+def diary_is_new(row, marker) -> bool:
+    """New iff a COMPLETE entry with a summary has a higher session than the
+    last posted one. Latest-only (a burst of back-written sessions announces
+    just the newest → anti-spam)."""
+    if not row or row.get("status") != "COMPLETE":
+        return False
+    if not (row.get("summary") or "").strip():
+        return False
+    try:
+        last = int(marker) if marker is not None else -1
+    except (TypeError, ValueError):
+        last = -1
+    try:
+        return int(row.get("session")) > last
+    except (TypeError, ValueError):
+        return False
+
+
+def publish_diary(sb=None, dry_run=False) -> dict:
+    """Post the latest CEO diary summary if a newer COMPLETE session exists."""
+    sb = sb or get_client()
+    row = read_latest_diary(sb)
+    if not row:
+        return {"feature": "diary", "posted": False, "reason": "no COMPLETE diary"}
+    if not diary_is_new(row, get_state(sb, DIARY_MARKER)):
+        return {"feature": "diary", "posted": False, "reason": "no new session"}
+
+    text = build_diary_post(row)
+    if dry_run:
+        logger.info("[dry-run] diary post:\n%s", text)
+        return {"feature": "diary", "posted": False, "reason": "dry-run", "text": text}
+
+    msg_id = _send_public(text, campaign="diary")
+    if msg_id is None:
+        return {"feature": "diary", "posted": False, "reason": "send failed"}
+
+    set_state(sb, DIARY_MARKER, str(row.get("session")))
+    return {"feature": "diary", "posted": True, "message_id": msg_id, "session": row.get("session")}
+
+
 # ----------------------------------------------------------------------
 # IO layer (telegram) — lazy SDK import so the module loads without it.
 # Posts to the PUBLIC channel; keeps exactly one pinned message (the status
@@ -225,7 +305,7 @@ def run_all(dry_run=False) -> list:
     """Run every enabled publisher once. Returns a list of result dicts."""
     sb = get_client()
     results = []
-    for fn in (publish_status_line,):  # (b)/(c)/(d) appended as they land
+    for fn in (publish_status_line, publish_diary):  # (c)/(d) appended as they land
         try:
             results.append(fn(sb=sb, dry_run=dry_run))
         except Exception as e:
