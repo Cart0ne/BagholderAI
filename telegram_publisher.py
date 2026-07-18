@@ -37,6 +37,7 @@ from utils.telegram_publisher import (
     publish_status_line,
     publish_diary,
     publish_regime,
+    publish_press_review,
 )
 
 
@@ -46,10 +47,11 @@ def main():
     ap.add_argument("--status", action="store_true", help="run only the status-line publisher")
     ap.add_argument("--diary", action="store_true", help="run only the diary publisher")
     ap.add_argument("--regime", action="store_true", help="run only the regime publisher")
+    ap.add_argument("--press", action="store_true", help="run only the press-review publisher")
     ap.add_argument("--dry-run", action="store_true", help="print what would be posted, send nothing")
     args = ap.parse_args()
 
-    if not (args.cron or args.status or args.diary or args.regime):
+    if not (args.cron or args.status or args.diary or args.regime or args.press):
         ap.print_help()
         sys.exit(2)
 
@@ -63,6 +65,8 @@ def main():
             results.append(publish_diary(dry_run=args.dry_run))
         if args.regime:
             results.append(publish_regime(dry_run=args.dry_run))
+        if args.press:
+            results.append(publish_press_review(dry_run=args.dry_run))
 
     for r in results:
         logger.info("result: %s", r)

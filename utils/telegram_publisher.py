@@ -23,7 +23,7 @@ Features are built incrementally:
 
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from config.settings import TelegramConfig
 from db.client import get_client
@@ -331,6 +331,125 @@ def publish_regime(sb=None, dry_run=False, k=REGIME_CONFIRM_SCANS, now=None) -> 
     return {"feature": "regime", "posted": True, "message_id": msg_id, "bucket": bucket}
 
 
+# ======================================================================
+# (d) PRESS REVIEW — one digest/day, top-N NewsKeeper articles with links (no pin)
+# ======================================================================
+#
+# Source: newskeeper_signals (~82 rows/day → must rank + cap). NewsKeeper already
+# labels relevance high/medium/discard; we keep high>medium, drop discard,
+# break ties by confidence, dedup by event_key (same story across outlets),
+# take the top PRESS_MAX. Posted once/day, in the morning (hour gate).
+#
+# v2 is still "shadow", but a press review (links to real articles it surfaced)
+# is the LOW-risk way to give it a public airing — worst case a so-so article,
+# not a wrong trade signal.
+
+PRESS_MARKER = "press_review:last_date"
+PRESS_HOUR = 9            # local hour gate (cron runs Europe/Rome on the Mini)
+PRESS_MAX = 5
+PRESS_RELEVANCE_RANK = {"high": 2, "medium": 1}  # "discard"/unknown → excluded
+
+
+def _esc(s) -> str:
+    """Escape for Telegram HTML parse mode."""
+    return (str(s or "")
+            .replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;"))
+
+
+def _polarity_emoji(p) -> str:
+    try:
+        p = int(p)
+    except (TypeError, ValueError):
+        return "•"
+    return "📈" if p > 0 else ("📉" if p < 0 else "•")
+
+
+def read_press_candidates(sb):
+    since = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()
+    r = (
+        sb.table("newskeeper_signals")
+        .select("summary, relevance, confidence, polarity, event_key, raw_data, created_at")
+        .gte("created_at", since)
+        .in_("relevance", ["high", "medium"])
+        .order("created_at", desc=True)
+        .limit(120)
+        .execute()
+    )
+    return r.data or []
+
+
+def rank_press(rows, max_n=PRESS_MAX):
+    """Rank by relevance (high>medium) then confidence; dedup by event_key
+    (fallback link); keep the best per story; return the top max_n."""
+    cand = []
+    for r in rows:
+        rank = PRESS_RELEVANCE_RANK.get((r.get("relevance") or "").lower())
+        if rank is None:
+            continue
+        raw = _parse_raw_signals(r.get("raw_data"))
+        link = raw.get("link")
+        title = (r.get("summary") or "").strip()
+        if not link or not title:
+            continue
+        cand.append({
+            "title": title,
+            "link": link,
+            "rank": rank,
+            "confidence": float(r.get("confidence") or 0),
+            "polarity": r.get("polarity"),
+            "key": r.get("event_key") or link,
+        })
+    cand.sort(key=lambda x: (x["rank"], x["confidence"]), reverse=True)
+    out, seen = [], set()
+    for c in cand:
+        if c["key"] in seen:
+            continue
+        seen.add(c["key"])
+        out.append(c)
+        if len(out) >= max_n:
+            break
+    return out
+
+
+def build_press_post(items, date_str) -> str:
+    lines = ["🗞️ <b>Daily crypto press review</b>", f"<i>{_esc(date_str)}</i>", ""]
+    for it in items:
+        emoji = _polarity_emoji(it.get("polarity"))
+        lines.append(f'{emoji} <a href="{_esc(it["link"])}">{_esc(it["title"])}</a>')
+    lines.append("")
+    lines.append(f"<i>Selected by NewsKeeper · {SITE_LINK.format(campaign='press')}</i>")
+    return "\n".join(lines)
+
+
+def publish_press_review(sb=None, dry_run=False, now=None) -> dict:
+    """One morning digest per day of NewsKeeper's top relevant articles."""
+    sb = sb or get_client()
+    now = now or datetime.now()  # local (hour gate); matches daily_report convention
+    if now.hour < PRESS_HOUR:
+        return {"feature": "press_review", "posted": False, "reason": f"before {PRESS_HOUR}:00"}
+    today = now.date().isoformat()
+    if get_state(sb, PRESS_MARKER) == today:
+        return {"feature": "press_review", "posted": False, "reason": "already posted today"}
+
+    items = rank_press(read_press_candidates(sb), PRESS_MAX)
+    if not items:
+        return {"feature": "press_review", "posted": False, "reason": "no relevant articles"}
+
+    text = build_press_post(items, today)
+    if dry_run:
+        logger.info("[dry-run] press_review post:\n%s", text)
+        return {"feature": "press_review", "posted": False, "reason": "dry-run", "text": text, "count": len(items)}
+
+    msg_id = _send_public(text, campaign="press")
+    if msg_id is None:
+        return {"feature": "press_review", "posted": False, "reason": "send failed"}
+
+    set_state(sb, PRESS_MARKER, today)
+    return {"feature": "press_review", "posted": True, "message_id": msg_id, "count": len(items)}
+
+
 # ----------------------------------------------------------------------
 # IO layer (telegram) — lazy SDK import so the module loads without it.
 # Posts to the PUBLIC channel; keeps exactly one pinned message (the status
@@ -420,7 +539,7 @@ def run_all(dry_run=False) -> list:
     """Run every enabled publisher once. Returns a list of result dicts."""
     sb = get_client()
     results = []
-    for fn in (publish_status_line, publish_diary, publish_regime):  # (d) appended when it lands
+    for fn in (publish_status_line, publish_diary, publish_regime, publish_press_review):
         try:
             results.append(fn(sb=sb, dry_run=dry_run))
         except Exception as e:
