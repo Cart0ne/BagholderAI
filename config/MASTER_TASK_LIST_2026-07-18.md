@@ -1,6 +1,6 @@
 # BagHolderAI — Master Task List
 
-**Data:** 18 giugno 2026 (creata) · **Ultimo aggiornamento:** 12 luglio 2026 (K.1 **Fase 1 ✅ SHIPPED S118**: cablaggio venue-aware + fee dinamica + floor fee-aware + fix contabile + hands-off Sherpa + disclaimer-toggle + prova generale 28/28 sul Mini; prec. 11-lug risequenziamento Fasi 0-4 + Fase 0 ✅)
+**Data:** 18 giugno 2026 (creata) · **Ultimo aggiornamento:** 18 luglio 2026 (**S120 canale Telegram**: T.1 contenuti ✅ **SHIPPED+LIVE** — publisher `telegram_publisher.py` cron 10min sul Mini con status+pin/diario/regime F&G/rassegna stampa; T.2/T.3 fix daily report **CODED, pending restart** bot; alert trade parcheggiato. Prec. 12-lug: K.1 Fase 1 ✅ SHIPPED S118)
 **Regola:** niente nuovi task salvo bug fix e il **cutover Kraken** (forzato da MiCA, Board-approved). Si finisce quello che c'è.
 
 ---
@@ -126,3 +126,5 @@ Contesto: il listener `/approve` è stato **riparato 1-lug** (era morto dal 2/6,
 *Compilata: CEO, 18 giugno 2026. Aggiornamenti CC: 18/25/26 giugno.*
 
 *Aggiornato: CC, 1 luglio 2026 — allineato a S111-S114 + pivot Kraken. **Rimossi** gli item chiusi: FASE 0 (barometro + Sherpa verdetti), 1.1/1.2/1.2b/1.4/1.5/1.6/1.7, 2.2, 3.3/3.4, 4.11, e i 4 bug S109 (exchange_order_id, datetime.utcnow, PortfolioManager, validation §2). **Aggiunti:** cutover Kraken (K.1-K.4), estensione backtest SOL/BONK + blog post (2.6/2.7), contenuti canale Telegram + bug daily-report unrealized (T.1/T.2). 4.12/4.14/4.11 → sezione "Deciso di recente".*
+
+*Aggiornato: CC, 18 luglio 2026 (**S120**) — canale Telegram. **T.1** (contenuti canale) ✅ **SHIPPED+LIVE**: nuovo sottosistema `telegram_publisher.py` (cron 10min send-only sul Mini, tabella `telegram_publish_state`) con 4 feature — status line post+pin / diario / regime F&G debounced / rassegna stampa 1×/gg; seminati i 4 post attuali + cron attivo; **alert trade (idea 5) parcheggiato** (Max ci pensa). **T.2/T.3** (bug daily report) **CODED+test** (`f4c2d95`, `0965471`), **effetto al prossimo restart bot**. File **rinominato** `MASTER_TASK_LIST_2026-07-12.md` → `MASTER_TASK_LIST_2026-07-18.md` (convenzione: data-nel-nome = ultimo aggiornamento). Bug T.2/T.3 → CODED-pending-restart nella sezione BUG APERTI.*

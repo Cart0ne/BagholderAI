@@ -117,7 +117,7 @@ Fonte: `config/2026-07-07_telegram-content-proposal.md` (proposta S116). **4 ide
 - `config/2026-07-07_telegram-content-proposal.md` — proposta contenuti S116 (T.1) + 4 decisioni aperte.
 - `config/parked/PARKED_daily_pnl_canonical_fase2b.md` — fix condivisa T.3 + daily_pnl (§3 punto A), trigger Fase 2b.
 - `config/parked/PARKED_realized_pnl_avg_cost_fixB.md` — famiglia dust-reset, superficie `trades.realized_pnl`, trigger pre-mainnet.
-- `config/MASTER_TASK_LIST_2026-07-12.md:66-74,99-103` — T.1/T.2/T.3 + BUG APERTI.
+- `config/MASTER_TASK_LIST_2026-07-18.md` (§ CANALE TELEGRAM + BUG APERTI) — T.1/T.2/T.3 (aggiornati a S120: T.1 SHIPPED+LIVE, T.2/T.3 coded-pending-restart).
 - `PROJECT_STATE.md §5/§6` (residuo $25 + 4 decisioni contenuti).
 
 **Memorie**: `reference_telegram_channel_squat` (canale privato, ID, anti-squat), `feedback_no_telegram_alerts` (no nuovi alert, monitoring→/admin), `reference_newskeeper_standalone_launch` (v1 ritirato, come lanciare v2), `project_realized_pnl_dust_drift` (famiglia $25/dust-drift, gemello Python `get_grid_state`).
