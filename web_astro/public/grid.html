@@ -373,6 +373,11 @@
       <div class="section-title">Grid status per coin</div>
       <div id="coin-cards"></div>
 
+      <!-- S119b — Kraken collaudo (real money), rendered separately so it never
+           mixes into the paper testnet P&L above. Hidden when no Kraken rows. -->
+      <div class="section-title" id="kraken-collaudo-title" style="display:none;">Kraken collaudo · real money</div>
+      <div id="kraken-collaudo" style="display:none;"></div>
+
       <!-- Recent Trades -->
       <div class="section-title">Recent trades</div>
       <div class="card" style="overflow-x: auto;">
@@ -513,6 +518,13 @@
     // symbol's row is missing or stale.
     var runtimeStateBySymbol = {};
 
+    // S119b — Kraken collaudo (real money) kept SEPARATE from the paper testnet
+    // grid. configData below is filtered to venue='binance'; the Kraken rows +
+    // their real trades (own cycle, e.g. 'kraken_test') live in these and render
+    // in a dedicated section so real money never contaminates the paper P&L.
+    var krakenConfigData = [];
+    var krakenTradesData = [];
+
     async function fetchLivePrices() {
       try {
         var symbols = ['BTCUSDT', 'SOLUSDT', 'BONKUSDT'];
@@ -528,6 +540,28 @@
       }
     }
 
+    // S119b — live price for the Kraken collaudo rows. Tries Kraken's real
+    // BTC/USD ticker; if CORS/network fails, falls back to the Binance /USDT
+    // proxy already fetched (≈0.1% off on a $25 position → negligible). Any
+    // kraken symbol still missing a price is mapped from its /USDT twin.
+    async function fetchKrakenPrices() {
+      if (!krakenConfigData.length) return;
+      try {
+        var r = await fetch('https://api.kraken.com/0/public/Ticker?pair=XBTUSD');
+        if (r.ok) {
+          var d = await r.json();
+          var k = (d && d.result) ? d.result[Object.keys(d.result)[0]] : null;
+          if (k && k.c && k.c[0]) livePrices['BTC/USD'] = Number(k.c[0]);
+        }
+      } catch (e) { /* fall back to the /USDT proxy below */ }
+      krakenConfigData.forEach(function(c) {
+        if (!livePrices[c.symbol]) {
+          var proxy = c.symbol.replace('/USD', '/USDT');
+          if (livePrices[proxy]) livePrices[c.symbol] = livePrices[proxy];
+        }
+      });
+    }
+
     // S117: current cycle from bot_config (grid BTC row), cached; the literal
     // is only the fetch-failure fallback. One `UPDATE bot_config SET cycle=...`
     // (reset or Kraken live switch) and this page follows — no bump ritual.
@@ -535,7 +569,7 @@
     async function getCycle() {
       if (CYCLE_CACHE) return CYCLE_CACHE;
       try {
-        var rows = await sbGet('bot_config', 'select=cycle&managed_by=eq.grid&is_active=eq.true&order=updated_at.desc&limit=1'); // S118: active grid row, no symbol literal (Kraken-proof)
+        var rows = await sbGet('bot_config', 'select=cycle&managed_by=eq.grid&is_active=eq.true&venue=eq.binance&order=updated_at.desc&limit=1'); // S118: active grid row, no symbol literal. S119b: pin venue=binance so the paper section never follows a live Kraken row's cycle (Kraken lives in its own section below).
         CYCLE_CACHE = (rows && rows[0] && rows[0].cycle) || 'testnet_2';
       } catch (e) {
         CYCLE_CACHE = 'testnet_2';
@@ -583,7 +617,12 @@
         return;
       }
 
-      configData = settled[0].value;
+      // S119b: split by venue. The whole paper pipeline (alerts, overview,
+      // cards, avg-cost) runs on venue='binance' only → the Kraken collaudo
+      // row's $25 allocation no longer inflates totalAlloc/net worth here.
+      var _allGridConfig = settled[0].value || [];
+      configData = _allGridConfig.filter(function(c) { return (c.venue || 'binance') === 'binance'; });
+      krakenConfigData = _allGridConfig.filter(function(c) { return (c.venue || 'binance') !== 'binance'; });
       tradesData = settled[1].value;
       pnlData = settled[2].value;
       var skimRows = settled[3].value;
@@ -661,6 +700,28 @@
       totalRealizedAll = Object.values(avgCostBySymbol).reduce(function(s, x) {
         return s + x.realized;
       }, 0);
+
+      // S119b: Kraken collaudo — fetch its real trades from THEIR cycle(s)
+      // (e.g. 'kraken_test'), never mixed with the testnet_2 paper set above,
+      // + the Kraken live price. Best-effort: a failure leaves the section
+      // empty, the paper grid is unaffected.
+      krakenTradesData = [];
+      if (krakenConfigData.length) {
+        var kcycles = [];
+        krakenConfigData.forEach(function(c) {
+          if (c.cycle && kcycles.indexOf(c.cycle) === -1) kcycles.push(c.cycle);
+        });
+        if (kcycles.length) {
+          try {
+            krakenTradesData = await sbGet('trades',
+              'select=id,symbol,side,amount,price,cost,fee,fee_asset,realized_pnl,created_at,exchange_order_id,mode' +
+              '&config_version=eq.v3&managed_by=eq.grid&cycle=in.(' + kcycles.join(',') + ')' +
+              '&order=created_at.desc');
+          } catch (e) { krakenTradesData = []; }
+        }
+        await fetchKrakenPrices();
+      }
+
       render();
       document.getElementById('refresh-time').textContent = new Date().toLocaleTimeString();
       document.getElementById('refresh-status').textContent = 'auto every 5m';
@@ -672,7 +733,112 @@
       renderAlerts();
       renderOverview();
       renderCoinCards();
+      renderKraken();
       renderTrades();
+    }
+
+    // S119b — Kraken collaudo section. Real-money rows (venue!='binance') are
+    // rendered here from THEIR own trades/cycle, with a self-contained subtotal
+    // that is NEVER summed into the paper testnet net worth above. Carries
+    // forward to collaudo/regime: when the live grid runs on Kraken, this is
+    // where its coins surface (the paper section empties as testnet retires).
+    function renderKraken() {
+      var host = document.getElementById('kraken-collaudo');
+      var titleEl = document.getElementById('kraken-collaudo-title');
+      if (!host) return;
+      if (!krakenConfigData.length) {
+        host.style.display = 'none';
+        if (titleEl) titleEl.style.display = 'none';
+        return;
+      }
+      host.style.display = '';
+      if (titleEl) titleEl.style.display = '';
+
+      var KR = '#7b61ff'; // Kraken accent (distinct from the paper coin colors)
+      var krakenBudget = krakenConfigData.reduce(function(s, c) {
+        return s + Number(c.capital_allocation || 0);
+      }, 0);
+      // Same canonical engine as the paper grid, on the Kraken trade set only.
+      var kc = window.PnL.computeCanonicalState(krakenTradesData, 0, livePrices, krakenBudget);
+      var perBySym = {};
+      kc.perCoin.forEach(function(p) { perBySym[p.symbol] = p; });
+
+      // Per-symbol trade aggregates (fee, counts, last order id) for the cards.
+      var aggBySym = {};
+      krakenTradesData.forEach(function(t) {
+        var a = aggBySym[t.symbol] || (aggBySym[t.symbol] = { fee: 0, buys: 0, sells: 0, lastOrder: null, invested: 0, received: 0 });
+        a.fee += Number(t.fee || 0);
+        if (t.side === 'buy') { a.buys++; a.invested += Number(t.cost || 0); }
+        else { a.sells++; a.received += Number(t.cost || 0); }
+        if (!a.lastOrder && t.exchange_order_id) a.lastOrder = t.exchange_order_id;
+      });
+
+      var pnlColor = kc.totalPnL >= 0 ? 'var(--green)' : 'var(--red)';
+
+      // ---- Subtotal (isolated from paper P&L) ----
+      var subtotal =
+        '<div class="stats-row">' +
+          '<div class="stat-box">' +
+            '<div class="stat-label">Real capital loaded</div>' +
+            '<div class="stat-value">$' + fmt(krakenBudget) + '</div>' +
+            '<div class="stat-sub">on Kraken · isolated from the paper $500 grid</div>' +
+          '</div>' +
+          '<div class="stat-box">' +
+            '<div class="stat-label">Position value (MTM)</div>' +
+            '<div class="stat-value">$' + fmt(kc.holdingsMtm) + '</div>' +
+            '<div class="stat-sub">holdings × Kraken live price</div>' +
+          '</div>' +
+          '<div class="stat-box">' +
+            '<div class="stat-label">Collaudo net worth</div>' +
+            '<div class="stat-value" style="color:' + pnlColor + ';">$' + fmt(kc.netWorth) +
+              ' <span style="font-size:0.7em;">(' + (kc.totalPnL >= 0 ? '+' : '') + '$' + fmt(kc.totalPnL) + ')</span></div>' +
+            '<div class="stat-sub">= cash + holdings − fees · vs $' + fmt(krakenBudget) + ' loaded</div>' +
+          '</div>' +
+        '</div>';
+
+      // ---- One card per Kraken row ----
+      var cards = krakenConfigData.map(function(cfg) {
+        var sym = cfg.symbol;
+        var p = perBySym[sym] || { holdings: 0, avgBuyPrice: 0, livePrice: livePrices[sym] || 0, mtm: 0, openCost: 0, unrealized: 0, unrealizedPct: 0, realized: 0 };
+        var a = aggBySym[sym] || { fee: 0, buys: 0, sells: 0, lastOrder: null, invested: 0, received: 0 };
+        var live = livePrices[sym] || p.livePrice || 0;
+        var hasPos = p.holdings > 0.00000001;
+        var traded = a.buys + a.sells > 0;
+        var unrColor = p.unrealized >= 0 ? 'var(--green)' : 'var(--red)';
+        var statusTxt = cfg.is_active
+          ? 'ACTIVE — live trading'
+          : 'PAUSED — manual test order (bot not trading this row)';
+        var statusColor = cfg.is_active ? 'var(--green)' : 'var(--yellow)';
+
+        var body;
+        if (!traded) {
+          body = '<div class="stat-sub" style="margin-top:8px;">No order yet · allocated $' + fmt(Number(cfg.capital_allocation || 0)) + ', awaiting first buy.</div>';
+        } else {
+          body =
+            '<div class="stats-row" style="margin-top:10px;">' +
+              '<div class="stat-box"><div class="stat-label">Holdings</div><div class="stat-value">' + (hasPos ? p.holdings.toFixed(8) : '0') + '</div><div class="stat-sub">' + sym.split('/')[0] + '</div></div>' +
+              '<div class="stat-box"><div class="stat-label">Avg buy</div><div class="stat-value">' + fmtPrice(p.avgBuyPrice) + '</div><div class="stat-sub">cost basis $' + fmt(p.openCost) + '</div></div>' +
+              '<div class="stat-box"><div class="stat-label">Kraken live</div><div class="stat-value">' + fmtPrice(live) + '</div><div class="stat-sub">current value $' + fmt(p.mtm) + '</div></div>' +
+            '</div>' +
+            '<div class="stats-row" style="margin-top:8px;">' +
+              '<div class="stat-box"><div class="stat-label">Unrealized</div><div class="stat-value" style="color:' + unrColor + ';">' + (p.unrealized >= 0 ? '+' : '') + '$' + fmt(p.unrealized) + '</div><div class="stat-sub">' + (p.unrealizedPct >= 0 ? '+' : '') + fmt(p.unrealizedPct) + '% vs avg</div></div>' +
+              '<div class="stat-box"><div class="stat-label">Fees paid</div><div class="stat-value" style="color:var(--text-dim);">−$' + fmt(a.fee) + '</div><div class="stat-sub">Kraken taker (real)</div></div>' +
+              '<div class="stat-box"><div class="stat-label">Realized</div><div class="stat-value">' + (a.sells > 0 ? ('$' + fmt(p.realized)) : 'pending') + '</div><div class="stat-sub">' + a.buys + ' buy · ' + a.sells + ' sell</div></div>' +
+            '</div>' +
+            (a.lastOrder ? '<div class="stat-sub" style="margin-top:8px;">Last order id: <span style="font-family:monospace;">' + a.lastOrder + '</span></div>' : '');
+        }
+
+        return '<div class="card" style="border-left:3px solid ' + KR + ';margin-bottom:12px;">' +
+          '<div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap;">' +
+            '<div style="font-weight:700;font-size:1.05em;">' + sym +
+              ' <span style="font-size:0.62em;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:' + KR + ';border:1px solid ' + KR + ';border-radius:4px;padding:1px 6px;margin-left:6px;">Kraken · real</span></div>' +
+            '<div style="font-size:0.8em;color:' + statusColor + ';">' + statusTxt + '</div>' +
+          '</div>' +
+          body +
+        '</div>';
+      }).join('');
+
+      host.innerHTML = subtotal + '<div style="margin-top:14px;">' + cards + '</div>';
     }
 
     // G1 (S110): floor di acquisto del bot — rispecchia config/settings.py MIN_LAST_SHOT_USD ($5).

@@ -1147,7 +1147,7 @@
     async function getCycle() {
       if (CYCLE_CACHE) return CYCLE_CACHE;
       try {
-        var rows = await sbFetch('bot_config?select=cycle&managed_by=eq.grid&is_active=eq.true&order=updated_at.desc&limit=1'); // S118: active grid row, no symbol literal (Kraken-proof)
+        var rows = await sbFetch('bot_config?select=cycle&managed_by=eq.grid&is_active=eq.true&venue=eq.binance&order=updated_at.desc&limit=1'); // S118: active grid row, no symbol literal. S119b: pin venue=binance so admin money queries stay on the paper cycle, not a live Kraken row's, in Fase 2b.
         CYCLE_CACHE = (rows && rows[0] && rows[0].cycle) || 'testnet_2';
       } catch (e) {
         CYCLE_CACHE = 'testnet_2';

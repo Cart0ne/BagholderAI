@@ -412,6 +412,7 @@ type ConfigFull = {
   managed_by: string;
   is_active: boolean;
   volume_tier: number | null;
+  venue: string | null;
 };
 
 /* Asset color palette — used for cash bar segments and card accents.
@@ -500,7 +501,7 @@ async function renderInstruments() {
     const [configs, allTrades, skimRows, trendCfg] = await Promise.all([
       sbq<ConfigFull[]>(
         "bot_config",
-        "select=symbol,capital_allocation,managed_by,is_active,volume_tier",
+        "select=symbol,capital_allocation,managed_by,is_active,volume_tier,venue",
       ),
       fetchAllTrades<AllTrade>(
         /* Brief 72a (S72): include fee_asset for the canonical replay
@@ -520,9 +521,15 @@ async function renderInstruments() {
        sum of active allocations, which fluctuates). Falls back to 100. */
     const TF_BUDGET = Number(trendCfg?.[0]?.tf_budget ?? 100);
     /* GRID budget is the sum of grid coin allocations (fixed by design:
-       BTC + SOL + BONK = $500 in v3). */
+       BTC + SOL + BONK = $500 in v3). S119b: filter to venue='binance' —
+       the Kraken collaudo row (BTC/USD, venue='kraken', is_active=false,
+       cycle='kraken_test') carries a $25 capital_allocation but its trades
+       live in a separate cycle, so counting it here inflated the public Grid
+       budget/net worth by exactly $25 while nothing offset it. The public
+       view stays binance-canonical during the Kraken test/collaudo (same
+       decision as the S119 cycle-fetch pin); Fase 2b flips it deliberately. */
     const GRID_BUDGET = (configs ?? [])
-      .filter(c => c.managed_by === "grid")
+      .filter(c => c.managed_by === "grid" && (c.venue ?? "binance") === "binance")
       .reduce((s, c) => s + Number(c.capital_allocation || 0), 0);
 
     /* Brief 46b filter: which managed_by values count for which section. */
