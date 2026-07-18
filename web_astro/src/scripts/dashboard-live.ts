@@ -996,7 +996,15 @@ type DailyPnlRow = {
   date: string;
   total_value: string | number;
   realized_pnl_today: string | number;
+  /* S119b: the curve de-biases the nightly snapshot with
+        total_pnl (= total_value − initial_capital) − Σ total_fees_today
+     total_pnl uses the bot's own baseline, so it self-cancels the $25 Kraken
+     the bot baked into initial_capital on 2026-07-17 (500→525); subtracting
+     cumulative fees makes it net-of-fee. It stays internally consistent
+     (all measured at the 20:00 snapshot) so the line is smooth; the final
+     point is pinned to the live canonical value. */
   total_pnl: string | number;
+  total_fees_today: string | number;
 };
 
 (async () => {
@@ -1016,22 +1024,30 @@ type DailyPnlRow = {
   Chart.defaults.font.family = "'JetBrains Mono', monospace";
   Chart.defaults.color = "#59634F";
 
-  /* ----- Fetch in parallel: Grid daily_pnl + ALL v3 trades ----- */
+  /* ----- Fetch in parallel: Grid daily_pnl + ALL v3 trades + skim ----- */
   let dailyPnlRows: DailyPnlRow[] = [];
   let allTrades: AllTrade[] = [];
+  let skimRows: SkimRow[] = [];
   try {
-    const [dp, tr] = await Promise.all([
+    const [dp, tr, sk] = await Promise.all([
       sbq<DailyPnlRow[]>(
         "daily_pnl",
-        "select=date,total_value,realized_pnl_today,total_pnl" +
+        "select=date,total_value,realized_pnl_today,total_pnl,total_fees_today" +
         "&managed_by=eq.grid" + CQ + "&order=date.asc",
       ),
+      /* S119b: fee + fee_asset needed for the live canonical replay (net-of-fee
+         + P2 base-coin formula), so § 3's headline matches the hero exactly. */
       fetchAllTrades<AllTrade>(
-        "symbol,side,amount,price,cost,realized_pnl,created_at,managed_by",
+        "symbol,side,amount,price,cost,fee,fee_asset,realized_pnl,created_at,managed_by",
+      ),
+      sbq<SkimRow[]>(
+        "reserve_ledger",
+        "select=symbol,amount&config_version=eq.v3" + CQ,
       ),
     ]);
     dailyPnlRows = dp ?? [];
     allTrades = tr ?? [];
+    skimRows = sk ?? [];
   } catch (err) {
     console.warn("[dashboard-live] § 3 fetch failed:", err);
     return;
@@ -1045,6 +1061,21 @@ type DailyPnlRow = {
   const tfTrades   = allTrades.filter(t =>
     t.managed_by === "tf" || t.managed_by === "tf_grid",
   );
+
+  /* ----- S119b: LIVE canonical P&L (net-of-fee, avg-cost) — the SAME number
+     the hero shows — for the headline AND the curve's final point. This
+     replaces the old headline that read the last nightly daily_pnl snapshot
+     (gross of fees, $25 Kraken baked in, ~15h stale) and so contradicted the
+     hero. Budgets $500 Grid / $100 TF; the Kraken row lives in a different
+     cycle and isn't in allTrades, so it's excluded by construction. ----- */
+  const gridSyms3 = new Set(gridTrades.map(t => t.symbol));
+  const tfSyms3   = new Set(tfTrades.map(t => t.symbol));
+  const sumSkim3 = (has: Set<string>) =>
+    (skimRows ?? []).reduce((s, r) => has.has(r.symbol) ? s + Number(r.amount || 0) : s, 0);
+  const prices3 = await fetchLivePrices([...gridSyms3, ...tfSyms3]);
+  const liveGrid3 = computeCanonicalState(gridTrades, sumSkim3(gridSyms3), prices3, 500);
+  const liveTf3   = computeCanonicalState(tfTrades, sumSkim3(tfSyms3), prices3, 100);
+  const liveCanonPnl = liveGrid3.totalPnL + liveTf3.totalPnL;
 
   /* ----- Daily realized aggregation from DB (Opzione A — decision_s65).
      SUM(realized_pnl) per day, on sells only. Returns
@@ -1160,6 +1191,7 @@ type DailyPnlRow = {
 
     const out: DailyPoint[] = [];
     let cumGrid = 0, cumTF = 0;
+    let cumGridFees = 0;   /* S119b: running Σ total_fees_today → net-of-fee */
     let cur = new Date(startDate + "T00:00:00Z");
     const endD = new Date(endStr + "T00:00:00Z");
     while (cur <= endD) {
@@ -1170,15 +1202,28 @@ type DailyPnlRow = {
       cumTF   += tfDay;
       const realizedCum = +(cumGrid + cumTF).toFixed(2);
 
-      /* MTM = Grid total_value (from daily_pnl) + reconstructed TF. */
+      /* MTM = Grid P&L (from daily_pnl) + reconstructed TF P&L. */
       const dp = dpByDate[dStr];
       let mtmCum: number;
       let estimated = false;
       if (dp) {
-        const gridVal = Number(dp.total_value || 0);
-        const tfVal = reconstructTFForDay(dStr);
-        /* Subtract initial capital so the line shows P&L not net worth. */
-        mtmCum = +(gridVal + tfVal - INITIAL_CAPITAL).toFixed(2);
+        cumGridFees += Number(dp.total_fees_today || 0);
+        /* S119b — smooth de-bias of the nightly snapshot, matching the hero:
+           - grid P&L = total_pnl (= total_value − initial_capital) → the bot's
+             own baseline self-cancels the $25 Kraken it added to
+             initial_capital on 2026-07-17 (500→525). (Old code did
+             total_value − 600, counting the $25 phantom cash as gain.)
+           - minus cumulative grid fees → net-of-fee.
+           total_pnl keeps the snapshot internally consistent (cash+holdings+
+           skim all at 20:00), so the line stays smooth. TF has no daily_pnl
+           snapshots → reconstruct (small). Final point pinned to the live
+           canonical value below. The last step is the real intraday move plus
+           the snapshot's residual ~$8 optimism (the bot's dust-reset realized
+           drift, which the live/canonical rail excludes and the deeper
+           bot-side daily_pnl fix would remove for good). */
+        const gridPnl = Number(dp.total_pnl || 0) - cumGridFees;
+        const tfPnl   = reconstructTFForDay(dStr) - 100;
+        mtmCum = +(gridPnl + tfPnl).toFixed(2);
       } else {
         /* No daily_pnl snapshot for this day yet — fall back to realized.
            Flagged so the tooltip says "est." instead of passing the
@@ -1201,23 +1246,31 @@ type DailyPnlRow = {
 
   const fullDaily = buildDailySeries();
 
-  /* ----- Big number on the line card (S101, decision D2): last point
-     backed by a REAL daily_pnl snapshot, so the number always matches
-     the end of the curve. The live "now" figure stays in the hero. ----- */
+  /* ----- S119b: pin the curve's final point to the LIVE canonical net worth
+     (same as the hero), not the stale nightly snapshot. The curve now ends
+     exactly where the headline — and "if we sold everything today" — say it
+     does. The step from the last nightly point to this one is the real
+     intraday move plus the snapshot's known optimism (BONK@20:00 +
+     dust-reset realized), which only the live/canonical rail corrects. ----- */
+  if (fullDaily.length) {
+    const last = fullDaily[fullDaily.length - 1];
+    last.mtmCum = +liveCanonPnl.toFixed(2);
+    last.estimated = false;
+  }
+
+  /* ----- Big number on the line card (S119b): the LIVE canonical P&L — the
+     honest "if we sold everything today" figure, identical to the hero. It is
+     the last point of the curve (pinned above), so headline and curve end
+     agree. ----- */
   {
-    const lastReal = [...fullDaily].reverse().find(d => !d.estimated);
     const valueEl = document.getElementById("cumul-value");
-    if (lastReal && valueEl) {
-      const pnl = lastReal.mtmCum;
+    if (valueEl) {
+      const pnl = +liveCanonPnl.toFixed(2);
       const pct = (pnl / INITIAL_CAPITAL) * 100;
       valueEl.textContent = `${fmtSigned(pnl)} · ${fmtPct(pct)}`;
       valueEl.classList.remove("text-text-muted");
       valueEl.classList.add(pnl >= 0 ? "text-pos" : "text-neg");
-      const todayStr = new Date().toISOString().slice(0, 10);
-      setText(
-        "cumul-asof",
-        lastReal.date === todayStr ? "today" : `as of ${fmtLabel(lastReal.date, "daily")}`,
-      );
+      setText("cumul-asof", "today");
     }
   }
 
