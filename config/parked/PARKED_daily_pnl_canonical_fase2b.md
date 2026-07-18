@@ -33,8 +33,9 @@ Il bot scrive lo snapshot in `bot/grid_runner/daily_report.py:147-159` (`pnl_tra
 
 ## 3. Cosa fare alla Fase 2b
 
-**A. `initial_capital` = solo righe attive del collaudo** (fix del leak $25 lato bot).
-Ricalcolare la base grid del `daily_pnl` sul lineup attivo reale (venue/`is_active`), così non ingloba righe dormienti/altro-venue. Verificare `_build_portfolio_summary`/`get_grid_state`.
+**A. `initial_capital` = solo righe attive del collaudo** (fix del leak $25 lato bot). **← punto singolo, alto valore.**
+Il leak è UNA riga: `commentary.py:503-514` `get_grid_state` fa `bot_config.select(...).eq("managed_by","grid")` **senza filtro venue/is_active** → `grid_budget = Σ capital_allocation` ingloba la riga collaudo Kraken ($25) → `initial_capital = 525` (il commento in-code dice esplicitamente "Inactive coins still contribute their slice"). Fix = aggiungere `.eq("venue","binance")` alla query (riga 506), **stesso identico fix già fatto sul sito** (`GRID_BUDGET` venue-filtered, commit `f6388b6`).
+**⚠️ `get_grid_state` è CONDIVISO**: alimenta sia lo snapshot `daily_pnl` sia il **daily report Telegram** (`_build_portfolio_summary` → `get_grid_state`, `bot/grid_runner/lifecycle.py:122`). Quindi **questa singola riga sana ENTRAMBE le superfici** (grafico §3 storico ciclo-nuovo + report Telegram = MTL **T.3**). Il cycle è già a posto (`get_current_cycle` globale pinnato `venue=binance`, `db/client.py:45`).
 
 **B. Decisione: `daily_pnl.total_value` net-of-fee?**
 Se lo allineiamo al canonico (`− fees`), il grafico §3 diventa perfettamente sul binario dell'hero **senza** la toppa frontend. Trade-off: cambia la semantica storica di `total_value` (finora lorda). Decisione CEO/Board. Alternativa: lasciarlo lordo e tenere la de-bias lato sito (già in piedi).

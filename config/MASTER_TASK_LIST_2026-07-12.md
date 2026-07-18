@@ -71,6 +71,7 @@ Contesto: il listener `/approve` è stato **riparato 1-lug** (era morto dal 2/6,
 |---|---|---|---|
 | T.1 | **🆕 Rivedere i contenuti del canale Telegram** (il privato ma aperto al pubblico) — cosa pubblicare oltre al daily report per tenerlo vivo e dare valore agli iscritti (anti-squat) | CEO/marketing + Max | strategico, non-codice |
 | T.2 | **🆕 [BUG] Daily report del canale: mostra i guadagni delle vendite ma non le perdite delle posizioni aperte** — la riga "Today · Realized 🟢 $+X" somma solo i `realized_pnl` delle vendite del giorno (`scripts/send_daily_reports_now.py:48` + formula in `commentary.py`), ignorando la variazione **unrealized** (spesso negativa) delle posizioni aperte → quadro falsamente positivo (es. 01/07: Today +$1.05 mentre BTC −2.1%, BONK −7.3%, ETH −8.9%). Fix: aggiungere il **P&L mark-to-market del giorno** (delta equity vs snapshot di ieri, infra `daily_pnl`). Onestà / one-source-of-truth | CC | brief separato |
+| T.3 | **🆕 [BUG — VERIFICATO 2026-07-18] Il report Telegram eredita il fantasma $25 Kraken** (lato bot, NON risolto dal fix sito S119b). **Causa**: `commentary.py:503-514` `get_grid_state` somma `capital_allocation` di **tutte** le righe `managed_by=grid` **senza filtro venue/is_active** (il commento dice pure "Inactive coins still contribute their slice") → con la riga collaudo Kraken `BTC/USD` ($25, `venue=kraken`, `is_active=false`) il `grid_budget = 525` invece di 500, mentre i trade sono filtrati per cycle (Kraken escluso) → il **Total P&L del report è depresso di $25** (baseline gonfiato). `get_grid_state` alimenta **sia il daily report Telegram sia lo snapshot `daily_pnl`** (per questo `daily_pnl.initial_capital` è saltato 500→525 il 17-lug). **Fix** = 1 riga: aggiungere `.eq("venue","binance")` alla query `bot_config` (riga 506), **stesso identico fix già fatto sul sito** (`GRID_BUDGET` filtra venue, commit `f6388b6`). NB: il cycle è già a posto (`get_current_cycle` path globale pinnato `venue=binance`, S119, `db/client.py:45`). **È lato bot → serve restart**; è la STESSA correzione del parked `config/parked/PARKED_daily_pnl_canonical_fase2b.md` (work item A) → **conviene farla insieme a quella, al restart della Fase 2b** (ciclo nuovo azzera pure la deriva dust-reset storica). Se la si vuole prima (report letto ogni giorno), è comunque 1 riga + restart. | CC | 1-riga, lato bot (restart) — coordinare con T.2 + parked Fase 2b |
 
 ---
 
@@ -98,6 +99,7 @@ Contesto: il listener `/approve` è stato **riparato 1-lug** (era morto dal 2/6,
 | Bug | Priorità | Chi | Stato |
 |---|---|---|---|
 | Daily report canale: unrealized non mostrato (vedi **T.2**) | Med (onestà) | CC | 🆕 aperto 1-lug |
+| Report Telegram + `daily_pnl`: fantasma $25 Kraken nel budget (`get_grid_state` no filtro venue, vedi **T.3**) | Med (onestà, baseline P&L −$25) | CC | 🆕 verificato 2026-07-18; fix 1-riga lato bot, coordinare con parked Fase 2b |
 | PGRST100 "failed to parse columns" nel TF (warning ricorrente nei log) | Low | CC | aperto (PROJECT_STATE §5) |
 
 ---
