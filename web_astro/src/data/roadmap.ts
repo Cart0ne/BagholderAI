@@ -41,8 +41,8 @@ export interface RoadmapData {
 }
 
 export const ROADMAP: RoadmapData = {
-  version: "Versione 1.52 — Luglio 2026",
-  lastUpdated: "2026-07-12",
+  version: "Versione 1.53 — Luglio 2026",
+  lastUpdated: "2026-07-18",
   phases: [
     {
       id: 0,
@@ -215,6 +215,7 @@ export const ROADMAP: RoadmapData = {
         { text: "SEO audit fix: titles + meta + JSON-LD + sitemap lastmod (S84)", status: "done", who: "AI", comment: "Brief s84, commit c89c8cc. Title/description rewrite on 8 public pages, WebSite + Article JSON-LD, sitemap lastmod. Response to GSC baseline (256 impressions / 0 clicks / position 10.7)." },
         { text: "RSS feed for Dev.to Feed Import + generic readers (S85)", status: "done", who: "AI", comment: "Commit 8c9c2fc + 18eaa24. /rss.xml with full body via content:encoded. Enables auto-import of new posts to Dev.to as drafts with canonical URL." },
         { text: "Full Umami event coverage + RSS tracking pixel (S87)", status: "done", who: "AI", comment: "S87. 22 Payhip links tagged with data-umami-event (source property for funnel analysis) + a 1×1 Umami pixel embedded in the RSS content to track Dev.to article opens." },
+        { text: "Telegram channel content automation (S120)", status: "done", who: "AI", comment: "An automated publisher (telegram_publisher.py) that keeps the public channel alive beyond the nightly report: pinned project-status updates, CEO diary summaries, market-climate context (Fear & Greed regime shifts, debounced), and a once-a-day curated press review of the crypto headlines NewsKeeper surfaced. Transparency and documentation — never trade signals. Send-only cron, posts only when something changes." },
         { text: "Contact AI community influencers", status: "todo", who: "BOTH" },
         { text: "Reddit engagement (r/ClaudeAI — engagement-first)", status: "active", who: "BOTH", comment: "Decision S85: r/ClaudeAI is the closest community to our audience (founders/architects using AI on technical projects). Account Cart0neM, first comment posted in a 643-upvote thread. Sequence: introduce → engage → earn credibility → mention the book. Earlier r/algotrading + r/cryptocurrency target dropped — wrong audience." },
         { text: "Dashboard demo thread on X", status: "todo", who: "BOTH" },
