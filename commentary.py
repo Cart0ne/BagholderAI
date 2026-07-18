@@ -500,10 +500,20 @@ def get_grid_state(supabase_client):
         cycle = get_current_cycle(supabase_client)
 
         # 1. bot_config: which Grid coins are configured (manual = Grid).
+        # venue=binance: the Kraken collaudo row (BTC/USD, $25, is_active=false,
+        # cycle=kraken_test) would otherwise leak its $25 into grid_budget →
+        # "Started with $525", net worth +$25, cash +$25, and inflate the P&L %
+        # denominator (the $ P&L itself cancels out). Same fix as the public site
+        # (GRID_BUDGET venue-filtered, commit f6388b6, S119b). Also drops the
+        # phantom zero BTC/USD position from `positions`.
+        # NB: pin to "binance" mirrors the S119 Board decision (binance canonical
+        # while collaudo runs); revisit for venue-awareness at the full-Kraken
+        # cutover (parked PARKED_daily_pnl_canonical_fase2b.md).
         cfg = (
             supabase_client.table("bot_config")
             .select("symbol, is_active, capital_allocation, managed_by")
             .eq("managed_by", "grid")
+            .eq("venue", "binance")
             .execute()
         )
         grid_config = cfg.data or []
