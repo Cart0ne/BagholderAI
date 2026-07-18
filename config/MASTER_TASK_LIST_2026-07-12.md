@@ -65,6 +65,8 @@ Contesto: Binance EU ha sospeso gli ordini spot dal **1-lug** (MiCA). Venue di g
 
 ## 🆕 CANALE TELEGRAM (attivo — non più "congelato")
 
+> 📋 **BRIEF DI SESSIONE CONSOLIDATO: [`config/2026-07-18_brief_telegram-session.md`](2026-07-18_brief_telegram-session.md)** — mette in un posto solo T.1/T.2/T.3 + infra canale + mappa codice + le 4 decisioni aperte + i drift da risolvere (v1 ritirato, .env stale). **Da leggere per primo** all'apertura della sessione Telegram.
+
 Contesto: il listener `/approve` è stato **riparato 1-lug** (era morto dal 2/6, `bfe3433`); il canale report è **privato ma aperto al pubblico** (anti-squat: canale attivo + iscritti = nome al sicuro — memoria `reference_telegram_channel_squat`).
 
 | # | Cosa | Chi | Note |
