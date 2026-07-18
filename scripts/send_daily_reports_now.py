@@ -17,9 +17,9 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from db.client import ReserveLedger, get_client
+from db.client import ReserveLedger, get_client, get_current_cycle
 from utils.telegram_notifier import SyncTelegramNotifier
-from commentary import get_tf_state, get_grid_state
+from commentary import get_tf_state, get_grid_state, get_yesterday_grid_pnl
 
 
 def main():
@@ -89,6 +89,14 @@ def main():
         p["buys_today"] = sum(1 for t in sym_today if t.get("side") == "buy")
         p["sells_today"] = sum(1 for t in sym_today if t.get("side") == "sell")
 
+    # T.2: day equity move (Grid) for the private report — see daily_report.py.
+    current_cycle = get_current_cycle(sb)
+    yest_grid_pnl = get_yesterday_grid_pnl(sb, current_cycle)
+    today_grid_move = (
+        round(grid_state["total_pnl"] - yest_grid_pnl, 2)
+        if yest_grid_pnl is not None else None
+    )
+
     report_data = {
         **grid_state,  # total_value, cash, holdings_value, initial_capital,
                        # total_pnl, realized_total, unrealized_total,
@@ -99,6 +107,8 @@ def main():
         "today_sells": today_sells,
         "today_fees": day_fees,
         "today_realized": day_realized,
+        "today_grid_move": today_grid_move,          # T.2
+        "today_grid_realized": round(day_realized, 2),  # T.2 (grid_today is grid-only)
         "reserves": reserves,
         "tf": tf_state,
     }

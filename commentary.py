@@ -133,6 +133,41 @@ def get_yesterday_pnl_pct(supabase_client):
         return None
 
 
+def get_yesterday_grid_pnl(supabase_client, cycle=None):
+    """T.2: fetch yesterday's Grid cumulative total_pnl from the daily_pnl
+    snapshot, so the daily report can show the *day's* equity move
+    (today's total_pnl − yesterday's), i.e. realized + the change in paper
+    (unrealized) P&L. Without this the report only shows realized-from-sells
+    and looks falsely flat on no-sell days.
+
+    We compare total_pnl (not total_value) on purpose: total_pnl =
+    total_value − grid_budget is invariant to the $25 Kraken phantom / any
+    venue-budget change, so the number stays honest across the restart that
+    removes the phantom (both sides cancel the budget).
+
+    Returns float or None (None → caller omits the day-move line and falls
+    back to the realized-only line; e.g. first day of a cycle, or a missed
+    snapshot yesterday — we never fabricate a baseline).
+    """
+    yesterday = str(date.today() - timedelta(days=1))
+    try:
+        q = (
+            supabase_client.table("daily_pnl")
+            .select("total_pnl, cycle")
+            .eq("date", yesterday)
+        )
+        if cycle:
+            q = q.eq("cycle", cycle)
+        result = q.order("created_at", desc=True).limit(1).execute()
+        if not result.data:
+            return None
+        val = result.data[0].get("total_pnl")
+        return float(val) if val is not None else None
+    except Exception as e:
+        logger.warning(f"Could not fetch yesterday's grid pnl: {e}")
+        return None
+
+
 def get_config_changes(supabase_client):
     """Fetch any config changes made in the last 24 hours."""
     cutoff = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()

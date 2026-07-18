@@ -297,12 +297,28 @@ class TelegramNotifier:
         tc_combined = tc + tf_trades_today
         tb_combined = tb + tf_buys_today
         ts_combined = ts + tf_sells_today
-        realized_emoji = "🟢" if tr_combined >= 0 else "🔴"
-        text += (
-            f"\n📅 <b>Today (combined):</b> {tc_combined} trades "
-            f"({tb_combined}B {ts_combined}S)\n"
-            f"Realized: {realized_emoji} ${tr_combined:+.2f} · Fees: ${fees:.2f}\n"
-        )
+        # T.2: show the day's real equity move (realized + paper) instead of
+        # only realized-from-sells, which looked falsely flat on no-sell days.
+        # Grid-scoped (daily_pnl stores the Grid baseline); falls back to the
+        # realized-only line when yesterday's snapshot is missing.
+        grid_move = data.get("today_grid_move")
+        if grid_move is not None:
+            move_emoji = "🟢" if grid_move >= 0 else "🔴"
+            grid_realized_today = float(data.get("today_grid_realized") or 0)
+            paper = round(grid_move - grid_realized_today, 2)
+            text += (
+                f"\n📅 <b>Today:</b> {tc_combined} trades "
+                f"({tb_combined}B {ts_combined}S) · Fees: ${fees:.2f}\n"
+                f"Day P&L (Grid): {move_emoji} ${grid_move:+.2f} "
+                f"(sells ${grid_realized_today:+.2f} · paper ${paper:+.2f})\n"
+            )
+        else:
+            realized_emoji = "🟢" if tr_combined >= 0 else "🔴"
+            text += (
+                f"\n📅 <b>Today (combined):</b> {tc_combined} trades "
+                f"({tb_combined}B {ts_combined}S)\n"
+                f"Realized: {realized_emoji} ${tr_combined:+.2f} · Fees: ${fees:.2f}\n"
+            )
 
         # === GRID section ===
         # Same shape as the TF block below: header line with total + P&L,

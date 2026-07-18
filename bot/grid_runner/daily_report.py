@@ -10,7 +10,12 @@ Refactor S76 (2026-05-14): extracted from grid_runner.py main loop.
 import logging
 from datetime import datetime, date
 
-from commentary import generate_daily_commentary, get_tf_state, get_cycle_start_date
+from commentary import (
+    generate_daily_commentary,
+    get_tf_state,
+    get_cycle_start_date,
+    get_yesterday_grid_pnl,
+)
 from config.settings import GRID_INSTANCES
 from db.client import get_current_cycle
 
@@ -64,6 +69,21 @@ def maybe_send_daily_report(
             float(t.get("realized_pnl", 0))
             for t in today_all_trades if t.get("realized_pnl")
         )
+
+        # T.2 (private report): the day's Grid equity move = realized + the
+        # change in paper (unrealized) P&L, so the report stops looking falsely
+        # flat on no-sell days. Computed as today_total_pnl − yesterday's
+        # snapshot total_pnl (both Grid, both phantom-invariant). None if no
+        # yesterday baseline → renderer falls back to the realized-only line.
+        grid_realized_today = sum(
+            float(t.get("realized_pnl", 0))
+            for t in today_all_trades
+            if t.get("managed_by") == "grid" and t.get("realized_pnl")
+        )
+        today_grid_move = None
+        yest_grid_pnl = get_yesterday_grid_pnl(trade_logger.client, current_cycle) if trade_logger else None
+        if yest_grid_pnl is not None:
+            today_grid_move = round(portfolio_summary["total_pnl"] - yest_grid_pnl, 2)
 
         # Enrich positions with today's trade counts + grid info
         for p in portfolio_summary.get("positions", []):
@@ -125,6 +145,8 @@ def maybe_send_daily_report(
             "today_sells": today_sells,
             "today_fees": day_fees,
             "today_realized": day_realized,
+            "today_grid_move": today_grid_move,        # T.2: day equity move (Grid), or None
+            "today_grid_realized": round(grid_realized_today, 2),  # T.2: sells-locked-in part
             "reserves": reserves,
             "tf": tf_state,  # 47e: TF section in daily reports
             "mode": mode_label,  # S108a: dynamic mode for report footers
