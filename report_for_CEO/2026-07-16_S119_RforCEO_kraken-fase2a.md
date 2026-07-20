@@ -15,8 +15,8 @@
 >   stessi numeri e stesso order-id (`OCILGP-2GRMI-D3WSNK`). Saldi tornano:
 >   $111,40 → $86,20 USD + $25 di BTC.
 >
-> **Il SELL è ancora pendente**: parte da solo quando BTC sale +2% sopra l'avg
-> (trigger ≈ **$65.271**; ora ~$63.470). Il bot resta acceso e sorvegliato; alla vendita
+> **Il SELL è ancora pendente**: parte da solo quando BTC supera il trigger fee-buffered
+> (trigger ≈ **$66.314** — *corretto 2026-07-20, vedi box in fondo; il report diceva $65.271*; ora ~$63.470). Il bot resta acceso e sorvegliato; alla vendita
 > arriva un Telegram `🔴 SELL BTC/USD`. **La 2b si sblocca solo dopo aver visto
 > registrare bene ANCHE una vendita reale** (brief). Nessuna urgenza.
 >
@@ -32,14 +32,23 @@
 > anche su venue kraken (etichetta hardcoded; holdings letti correttamente = 0).
 > Da ripulire in un micro-fix.
 >
-> **Prossimo passo:** aspettare il SELL (quando BTC supera avg × 1,02) → verifica
+> **Prossimo passo:** aspettare il SELL (quando BTC supera il trigger fee-buffered ≈ $66.314) → verifica
 > finale → poi Board decide il **nodo 5** (margine floor `profit_target_pct`,
 > proposta CC 0,4%, + parametri delle 3 monete) → runbook Fase 2b (switch reale $100).
 >
 > *Correzione 2026-07-17 (indagine S119b): il trigger SELL era erroneamente indicato
 > a ~$64.753 (prezzo puro × 1,02). L'avg **include la fee** (`buy_pipeline.py:304`) →
-> avg ≈ $63.991 → trigger reale ≈ **$65.271**. Margine netto a +2% ≈ **+1,19%** (non
-> +0,39%). Il runbook era già corretto. Dettaglio: `..._S119b_RforCEO_kraken-replay-avg-reconcile.md`.*
+> avg ≈ $63.991.*
+>
+> *⚠️ **Correzione 2026-07-20 — anche il $65.271 di S119b era sbagliato.** S119b usava
+> `avg×(1+sell_pct/100)` (il **commento** `sell_pipeline.py:316`), ma la formula
+> **eseguibile** del grid manuale è `grid_bot.py:876` = **fee-buffered**
+> `avg×(1+sell_pct/100+fee)/(1−fee)`. Con fee Kraken 0,8% → **trigger reale ≈ $66.314**
+> (avg $63.991 × 1,028/0,992). Il lotto (0,00039379 BTC) alla vendita vale **~$26,11 lordi**
+> → netto ~$25,90, profitto **~+$0,71 (+2,8%)**, non +1,19%. Confermato dal vivo: BTC ha
+> toccato max $65.600 il 20-lug e il bot NON ha venduto = è corretto (prezzo < trigger reale).
+> Su Binance (fee 0,1%) il cuscino è trascurabile e il numero semplificato "andava bene"; su
+> Kraken no. Dettaglio: `..._S119b_...` (box in alto).*
 
 **Data:** 2026-07-16 · **Brief sorgente:** `config/2026-07-13_S119_brief_kraken-fase2a.md`
 **Commit:** `2c57fb0` (fix S119) · precede `2cb315b` (BUSINESS_STATE update S119)

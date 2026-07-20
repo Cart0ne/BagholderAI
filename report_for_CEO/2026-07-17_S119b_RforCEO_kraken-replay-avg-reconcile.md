@@ -6,6 +6,21 @@
 
 > **TL;DR** — Q1: replay OK (safety confermata). Q2: **il codice include la fee nell'avg → il mio report S119 era sbagliato**, il runbook è giusto. Q3: cosmetico confermato (interroga Kraken, non Binance). **Quarto finding (conta per il nodo 5):** il floor conta la fee di buy 2 volte → ~0,8% troppo protettivo. **Riavvio sicuro: SÌ al prezzo attuale**, con un caveat sul buy-trigger.
 
+> ### ⚠️ CORREZIONE 2026-07-20 — QUESTO REPORT HA SBAGLIATO IL TRIGGER (traccia dell'errore)
+> La Q2 qui sotto conclude "trigger ≈ $65.271" citando **`sell_pipeline.py:316`** — ma quella
+> riga è un **commento** che semplifica la formula (`price >= avg×(1+sell_pct/100)`). La formula
+> **eseguibile** del grid manuale è **`grid_bot.py:876`**:
+> `sell_trigger = avg × (1 + sell_pct/100 + fee) / (1 − fee)` → **fee-buffered**. Con avg
+> $63.991 e fee Kraken **0,8%** → **trigger reale ≈ $66.314**, non $65.271. Il lotto da $25
+> (0,00039379 BTC) alla vendita vale **~$26,11 lordi** (netto ~$25,90, profitto **~+$0,71 /
+> +2,8%**, non +1,19%).
+> **Errore di metodo da non ripetere:** ho letto un **commento** invece della **riga eseguibile**.
+> Su Binance (fee 0,1%) il cuscino è ~0,2% e il numero semplificato coincideva quasi; su Kraken
+> (0,8%) diverge di ~1,6 punti. **Regola:** per un trigger, verificare sempre la formula che
+> *esegue* (`grid_bot.py` `check_price_and_execute`), non il commento che la descrive.
+> Verificato dal vivo 2026-07-20: BTC max $65.600, nessuna vendita → il bot è corretto. Le righe
+> Q2 sotto restano **come record dell'errore**.
+
 ---
 
 ## §8 (dovuto per primo) — Obiezione al brief
@@ -39,7 +54,7 @@ client.table("trades").select(...)
 
 ## Q2 — `avg_buy` include la fee di acquisto? 🟠 **SÌ — il report è sbagliato, il runbook è giusto**
 
-**Verdetto:** l'avg **include** la fee di buy. Il trigger SELL reale è **~$65.271**, non $64.753.
+**Verdetto:** l'avg **include** la fee di buy. Il trigger SELL reale è **~$66.314** *(corretto 2026-07-20 — questo report scriveva $65.271; vedi box in alto)*, non $64.753.
 
 **Codice:** `bot/grid/buy_pipeline.py:304`
 ```python
@@ -51,11 +66,11 @@ avg_buy_price = (old_avg*old_managed + cost_for_avg) / managed_after
 ```
 Primo buy: `= (0 + 25.19916) / 0.00039379 ≈ **$63.991**` (non $63.483,50).
 
-**Dove si applica `sell_pct`:** `sell_pipeline.py:316` ("gates on `price >= avg×(1+sell_pct/100)`"). Con avg=$63.991 e sell_pct=2% → **trigger ≈ $65.271**.
+**Dove si applica `sell_pct`:** ⚠️ *qui l'errore* — citavo `sell_pipeline.py:316`, che è un **commento** semplificato. La formula **eseguibile** è `grid_bot.py:876` = `avg×(1+sell_pct/100+fee)/(1−fee)`. Con avg=$63.991, sell_pct=2%, fee Kraken 0,8% → **trigger ≈ $66.314** *(non $65.271; corretto 2026-07-20)*.
 
 **Quale documento è sbagliato:** il **report S119** (`…_S119_RforCEO_kraken-fase2a.md`) che citava ~$64.753 (= 63.483,50 × 1,02, prezzo puro). È l'errore. Il **runbook §4** ("avg riflette prezzo + fee reale") è corretto. → il report va corretto (segnalato, non fixo qui).
 
-**Margine netto reale** (con avg fee-inclusive, sell a +2%): revenue lordo − cost_basis − sell_fee ≈ **+1,19% netto** su $25 (≈ +$0,30). *Non* +0,39% (quello sarebbe stato col trigger errato $64.753). Cioè: **la situazione reale è migliore** di quanto il numero sbagliato del report suggeriva.
+**Margine netto reale** (con avg fee-inclusive): revenue lordo − cost_basis − sell_fee. *(Corretto 2026-07-20: col trigger reale fee-buffered $66.314 il netto è **~+$0,71 / +2,8%** su $25, non +1,19%; questo report calcolava +1,19% sul trigger sbagliato $65.271. In ogni caso: **la situazione reale è migliore** del numero originale.)*
 
 ### Quarto finding (input diretto nodo 5) 🟠 — il floor doppia-conta la fee di buy
 `sell_pipeline.py:298-305`: `fee_floor = 2×fee_rate` e `min_price = avg × (1 + min_profit_pct/100 + fee_floor)`. Ma **avg include già 1× fee** (Q2). Il break-even netto vero è `avg × (1+fee) ≈ avg×1,008`; il floor sta a `avg×1,016`. → **il floor è ~0,8% (1× fee) più alto del break-even reale**: sovra-protettivo, non rischioso, ma blocca vendite nella banda [avg×1,008, avg×1,016) che sarebbero già in utile netto. **Per il nodo 5:** un margine netto di 0,4% andrebbe sopra il break-even vero `avg×(1+fee)`, non sopra `avg×(1+2×fee)`. La formula del floor S118 va rivista quando si chiude il nodo 5 (o il margine scelto tenendo conto del +0,8% latente). Verdetto: **finding reale, va in PROJECT_STATE §5.**

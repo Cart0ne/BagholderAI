@@ -126,9 +126,9 @@ Se invece parte il messaggio **🛑🔴 "FILL NON CONFERMATO — HALT"** → vai
 
 ---
 
-## 5. Cosa guardare — il SELL (quando BTC sale +2%)
+## 5. Cosa guardare — il SELL (quando BTC ≈ $66.314, +2% NETTO post-fee)
 
-Il SELL **non si forza**: parte da solo quando BTC supera avg × 1,02. Può
+Il SELL **non si forza**: parte da solo quando BTC supera il trigger **fee-buffered ≈ $66.314** (= avg $63.991 × (1+sell_pct/100+fee)/(1−fee), fee Kraken 0,8% — *non* avg×1,02: la formula è `grid_bot.py:876`, aggiornato 2026-07-20). A quel prezzo il lotto da $25 vale **~$26,11 lordi**. Può
 volerci ore o giorni — è previsto (brief §3). Lascia il bot su, sorvegliato.
 Quando scatta:
 
