@@ -123,8 +123,62 @@ def test_total_pnl_is_venue_invariant():
     assert state["total_value"] == 500.0, state["total_value"]
 
 
+# ----------------------------------------------------------------------
+# T.3 (fee half) — get_grid_state headline must be NET of fees, byte-identical
+# to the site hero (pnl-canonical.ts). Fees are money already spent, not held.
+# Canonical identity: total_value = budget − netInvested + holdings − fees.
+# ----------------------------------------------------------------------
+
+# One coin, one buy + one sell, real fees + skim + a live price. Clean scenario
+# (no dust-reset drift) so the correction isolates the FEE term.
+NET_OF_FEE_TRADES = [
+    {"symbol": "BTC/USDT", "side": "buy",  "amount": 1.0, "price": 100.0, "cost": 100.0,
+     "fee": 0.10, "fee_asset": "USDT", "realized_pnl": 0.0,  "created_at": "2026-07-01T00:00:00",
+     "config_version": "v3", "cycle": "testnet_2", "managed_by": "grid"},
+    {"symbol": "BTC/USDT", "side": "sell", "amount": 0.5, "price": 120.0, "cost": 60.0,
+     "fee": 0.06, "fee_asset": "USDT", "realized_pnl": 9.94, "created_at": "2026-07-02T00:00:00",
+     "config_version": "v3", "cycle": "testnet_2", "managed_by": "grid"},
+]
+
+
+def _run_with_trades():
+    fake = FakeSupabase({
+        "bot_config": BOT_CONFIG_ROWS,
+        "trades": NET_OF_FEE_TRADES,
+        "reserve_ledger": [
+            {"symbol": "BTC/USDT", "amount": "2.0", "config_version": "v3", "cycle": "testnet_2"},
+        ],
+    })
+    orig_cycle = commentary.get_current_cycle
+    orig_prices = commentary.fetch_binance_prices
+    commentary.get_current_cycle = lambda _c: "testnet_2"
+    commentary.fetch_binance_prices = lambda _syms: {"BTC/USDT": 110.0}
+    try:
+        return commentary.get_grid_state(fake)
+    finally:
+        commentary.get_current_cycle = orig_cycle
+        commentary.fetch_binance_prices = orig_prices
+
+
+def test_total_value_is_net_of_fees():
+    state = _run_with_trades()
+    # net_invested = 100 − 60 = 40 · holdings = 0.5 × 110 = 55 · fees = 0.16 · skim = 2
+    # total_value = 500 − 40 + 55 − 0.16 = 514.84  (NET of fees)
+    # cash        = 500 − 40 − 2      = 458.00
+    assert abs(state["total_value"] - 514.84) < 0.01, state["total_value"]
+    assert abs(state["cash"] - 458.00) < 0.01, state["cash"]
+    assert abs(state["total_pnl"] - 14.84) < 0.01, state["total_pnl"]
+    # The pre-fix gross formula (budget + DB-realized + unrealized) would read
+    # 500 + 9.94 + 5 = 514.94 → strictly higher by the (buy) fee. Guard against
+    # a regression back to gross-of-fee.
+    assert state["total_value"] < 514.94, (
+        f"total_value {state['total_value']} looks gross-of-fee (>= 514.94)"
+    )
+
+
 if __name__ == "__main__":
     test_grid_budget_excludes_kraken_row()
     test_no_phantom_kraken_position()
     test_total_pnl_is_venue_invariant()
-    print("PASS — T.3: get_grid_state filters grid budget to venue=binance (500, no $25 phantom).")
+    test_total_value_is_net_of_fees()
+    print("PASS — T.3: get_grid_state filters grid budget to venue=binance (500, no $25 phantom) + net-of-fee headline.")

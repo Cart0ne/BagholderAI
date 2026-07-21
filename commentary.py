@@ -605,17 +605,19 @@ def get_grid_state(supabase_client):
         total_unrealized = 0.0
         realized_total = 0.0
         fees_total = 0.0
+        net_invested_total = 0.0
         today_str = str(date.today())
 
         trades_by_sym = {}
         for t in grid_trades:
             trades_by_sym.setdefault(t["symbol"], []).append(t)
 
-        # Aggregate realized + fees across all Grid coins.
+        # Aggregate realized + fees + net-invested across all Grid coins.
         for sym, coin_trades in trades_by_sym.items():
             a = _analyze_coin_avg_cost(coin_trades, sym)
             realized_total += a["realized"]
             fees_total += a["fees"]
+            net_invested_total += a["net_invested"]
 
         # Per-coin breakdown for the report (only configured coins).
         for cfg_row in grid_config:
@@ -659,8 +661,20 @@ def get_grid_state(supabase_client):
                 "sells_today": coin_today_sells,
             })
 
-        total_value = grid_budget + realized_total + total_unrealized
-        cash = total_value - holdings_value - skim_total
+        # T.3 (Max 2026-07-21): net-of-fee headline, byte-identical to the site
+        # hero (pnl-canonical.ts computeCanonicalState). The old formula was
+        # gross-of-fee (budget + DB-realized + unrealized) and read ~$14 richer
+        # than bagholderai.lol — the fees are money already spent, not held.
+        # Canonical identity:  netWorth = budget − netInvested + holdings − fees
+        #   netInvested = Σ buy.cost − Σ sell.cost   (per-coin, _analyze_coin_avg_cost)
+        #   cash        = budget − netInvested − skim
+        # Using netInvested (not the DB realized sum) also sheds the ~$8 dust-reset
+        # drift the old path carried → un-parks the fee half of
+        # PARKED_daily_pnl_canonical_fase2b.md §3.B. Live only at the next bot
+        # restart. realized_total/unrealized_total below stay per-coin DISPLAY
+        # values (their DB-realized drift is the separate, still-parked Fix B).
+        total_value = grid_budget - net_invested_total + holdings_value - fees_total
+        cash = grid_budget - net_invested_total - skim_total
         total_pnl = total_value - grid_budget
 
         return {
