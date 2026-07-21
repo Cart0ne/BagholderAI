@@ -154,10 +154,15 @@ tolleranza ±2KB** (stessa regola di PROJECT_STATE §2; confermato Max 2026-06-2
 che il CEO (Claude su claude.ai) usa per i vincoli strategici, decisioni 
 Board, deadline non-tecniche, marketing, diary status.
 
-Il file è AGGIORNATO da CC SOLO SU ISTRUZIONE ESPLICITA di Max o del CEO 
-(in chat o via brief .md). NON modificare BUSINESS_STATE di propria 
-iniziativa, nemmeno per "manutenzione". Il contenuto è territorio strategico, 
-non tecnico.
+**Aggiornamento contenuti (nuovo da 2026-07-21, Max):** il **CEO aggiorna 
+BUSINESS_STATE direttamente** — ha i poteri/accesso al file. Il CEO ha però la 
+regola esplicita di **NON committare** (per non interferire con il git flow di 
+CC/Max): quindi è **CC che committa e pusha** gli edit del CEO — routine, non 
+serve che Max lo chieda. CC **non è autore dei contenuti**: NON scrive/modifica 
+il testo di BUSINESS_STATE di propria iniziativa (resta territorio strategico 
+del CEO/Max), lo tocca in scrittura solo se Max glielo chiede esplicitamente. 
+In sintesi: **CEO scrive i contenuti, CC fa il git (commit+push)**. La 
+compaction resta atto strategico che richiede l'ok esplicito di Max (vedi sotto).
 
 **Sezioni canoniche** (tipiche, possono variare leggermente nel tempo):
 1. Header (last updated, basato su)
