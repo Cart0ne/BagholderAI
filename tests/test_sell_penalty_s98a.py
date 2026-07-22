@@ -236,11 +236,11 @@ def test_c_penalty_raises_sell_trigger():
     bot.exchange = None
     bot._execute_percentage_buy(price=100.0)  # paper, avg=100
 
-    # Senza penalty il trigger = 100×(1.02+FEE)/(1−FEE) ≈ 102.1
-    base_trigger = 100.0 * (1 + 0.02 + GridBot.FEE_RATE) / (1 - GridBot.FEE_RATE)
-    # Con penalty=5% il trigger = 100×(1.07+FEE)/(1−FEE) ≈ 107.2
+    # Senza penalty il trigger = 100×1.02/(1−FEE) ≈ 102.1 (S121: NET, no double fee)
+    base_trigger = 100.0 * (1 + 0.02) / (1 - GridBot.FEE_RATE)
+    # Con penalty=5% il trigger = 100×1.07/(1−FEE) ≈ 107.1
     bot._sell_pct_penalty = 5.0
-    pen_trigger = 100.0 * (1 + 0.07 + GridBot.FEE_RATE) / (1 - GridBot.FEE_RATE)
+    pen_trigger = 100.0 * (1 + 0.07) / (1 - GridBot.FEE_RATE)
     print(f"  base trigger ≈ {base_trigger:.3f}, penalty trigger ≈ {pen_trigger:.3f}")
 
     # Un prezzo che scatterebbe SENZA penalty (tra i due trigger) NON deve vendere.

@@ -263,7 +263,7 @@ def test_b3_third_tick_normal_behavior():
 
     trades = bot.check_price_and_execute(current_price=74600.0)
 
-    # sell trigger ≈ avg × 1.016 / 0.999 ≈ 80807; 74600 < 80807 → no sell
+    # sell trigger ≈ avg × 1.015 / 0.999 ≈ 80727 (S121: NET, no double fee); 74600 << trigger → no sell
     # buy ref = 82143, buy_pct=1% → trigger = 82143 × 0.99 = 81322; 74600 < 81322 → buy?
     # Strategy A: holdings>0 + current<avg? 74600 < 79454 → BUY consentita
     # Però richiede cash sufficiente — bot in paper non ha cash configurato, salta.

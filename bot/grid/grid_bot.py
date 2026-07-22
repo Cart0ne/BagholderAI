@@ -37,6 +37,26 @@ from bot.grid import (
 logger = logging.getLogger("bagholderai.grid")
 
 
+def grid_sell_trigger_price(reference: float, threshold_pct: float, fee_rate: float) -> float:
+    """Net-margin grid sell trigger — SINGLE source of truth (S121, kraken-2b-bundle).
+
+    The avg-cost basis already includes the buy fee (buy_pipeline `cost_for_avg`
+    folds it in on EVERY venue), so to realize `threshold_pct`% NET of fees we
+    only need to recover the SELL fee:  reference × (1 + m) / (1 − fee).
+
+    S121 fix (Strada A, both venues): the old formula added the buy fee a SECOND
+    time — reference × (1 + m + fee) / (1 − fee) — so it sold ~1×fee too high. On
+    Kraken (taker 0.8%) the 2a $25 lot triggered at ~$66.3k instead of ~$65.8k;
+    on Binance (0.1%) the skew was ~0.1%. Both corrected here.
+
+    The min-profit floor (sell_pipeline) shares this exact shape so the two move
+    together: trigger ≥ floor ⇔ sell_pct ≥ profit_target_pct (no silent stall).
+    """
+    if reference <= 0 or fee_rate >= 1.0:
+        return 0.0
+    return reference * (1 + threshold_pct / 100) / (1 - fee_rate)
+
+
 @dataclass
 class GridState:
     """Current state of the grid bot for one symbol (avg-cost mode).
@@ -339,12 +359,18 @@ class GridBot:
 
         is_reset = "RESET" if old_state is not None else "NEW"
         buy_trigger = current_price * (1 - self.buy_pct / 100)
-        sell_trigger = current_price * (1 + self.sell_pct / 100)
+        # S121: show the fee-buffered net trigger the bot acts on (if you bought
+        # at center), not the naive center×(1+sell_pct). Matches execution/display.
+        sell_trigger = (
+            grid_sell_trigger_price(current_price, self.sell_pct, self.fee_rate)
+            if self.managed_by == "grid"
+            else current_price * (1 + self.sell_pct / 100)
+        )
         logger.info(
             f"Grid {is_reset}: {self.symbol} | "
             f"Center: {fmt_price(current_price)} | "
             f"Range: {fmt_price(buy_trigger)} (-{self.buy_pct}%) - "
-            f"{fmt_price(sell_trigger)} (+{self.sell_pct}%) | "
+            f"{fmt_price(sell_trigger)} (+{self.sell_pct}% net) | "
             f"Available capital: ${available_capital:.2f}"
         )
 
@@ -848,36 +874,18 @@ class GridBot:
                      or self.pending_liquidation)
             )
 
-            # 42a: for TF bots the sell threshold is the greed-decay TP
-            # of the current age tier (replaces sell_pct). Manual bots
-            # keep sell_pct unchanged. See get_effective_tp() docstring.
-            threshold_pct, _age_min, _tier = self.get_effective_tp()
+            # S121 (kraken-2b-bundle): sell trigger via current_sell_trigger() —
+            # the ONE source shared with every display (terminal/dashboard/
+            # Telegram/site), so they never show a different target than where the
+            # bot actually sells. Grid = fee-buffered net-margin (the buy fee is
+            # already in avg, recover only the sell fee); TF = greed-decay TP.
+            # Adaptive Sell Penalty + sell ladder reference folded in there.
+            # See grid_sell_trigger_price() for the S121 double-count fix.
             avg_cost = self.state.avg_buy_price
-            # Brief 70a Parte 2+3 (S70): Grid manual usa formula uniforme
-            # con fee buffer + sell graduale (reference = _last_sell_price
-            # del ciclo corrente, o avg_cost se primo sell del ciclo).
-            # Garantisce sell_pct% NETTO post-fee sopra il riferimento.
-            # TF/tf_grid invariato: la formula vecchia rispetta la
-            # calibrazione greed-decay esistente (vincolo brief).
-            if avg_cost > 0:
-                if self.managed_by == "grid":
-                    # Brief S98a (2026-06-06): Adaptive Sell Penalty. Alza la
-                    # soglia effettiva del danno-slippage accumulato. TF escluso
-                    # (ramo else): le sue uscite di emergenza non vanno penalizzate.
-                    # S118: fee buffer sulla fee di ISTANZA (per-venue). Su
-                    # binance fee_rate == FEE_RATE (0,1%, invariante); su
-                    # kraken è il taker tier LIVE (~0,8%) → il trigger copre
-                    # davvero il round-trip 2×fee. Stesso fee_rate usato dal
-                    # floor min-profit in sell_pipeline: i due punti DEVONO
-                    # muoversi insieme o il bot chiede vendite che il floor
-                    # poi blocca (stallo silenzioso).
-                    threshold_pct = threshold_pct + self._sell_pct_penalty
-                    reference = self._last_sell_price if self._last_sell_price > 0 else avg_cost
-                    sell_trigger = reference * (1 + threshold_pct / 100 + self.fee_rate) / (1 - self.fee_rate)
-                else:
-                    sell_trigger = avg_cost * (1 + threshold_pct / 100)
-            else:
-                sell_trigger = 0.0
+            sell_trigger = self.current_sell_trigger()
+            # threshold/age kept for the "no sell" debug log below (current_sell_
+            # trigger recomputes these internally — cheap, keeps one source).
+            threshold_pct, _age_min, _tier = self.get_effective_tp()
 
             should_sell = force_liquidate or (
                 avg_cost > 0 and current_price >= sell_trigger
@@ -1162,6 +1170,26 @@ class GridBot:
     def get_effective_tp(self) -> tuple:
         return sell_pipeline.get_effective_tp(self)
 
+    def current_sell_trigger(self) -> float:
+        """Sell trigger the bot will ACTUALLY act on — the ONE value used by both
+        the execution path AND every display (get_status → terminal/daily_report/
+        Telegram, plus the site widget) so they never diverge (S121).
+
+        Grid: fee-buffered net-margin via `grid_sell_trigger_price` on the live
+        reference (sell ladder `_last_sell_price`, else avg) + Adaptive Sell
+        Penalty. TF/tf_grid keep the greed-decay TP unchanged (existing
+        calibration — brief constraint, deliberately NOT fee-buffered).
+        """
+        avg_cost = self.state.avg_buy_price if self.state else 0.0
+        if avg_cost <= 0:
+            return 0.0
+        threshold_pct, _age_min, _tier = self.get_effective_tp()
+        if self.managed_by == "grid":
+            threshold_pct += self._sell_pct_penalty
+            reference = self._last_sell_price if self._last_sell_price > 0 else avg_cost
+            return grid_sell_trigger_price(reference, threshold_pct, self.fee_rate)
+        return avg_cost * (1 + threshold_pct / 100)
+
     # ------------------------------------------------------------------
     # Read-only utility methods (kept here — small, no extraction value).
     # ------------------------------------------------------------------
@@ -1176,10 +1204,7 @@ class GridBot:
         decimals = self._price_decimals(self.state.center_price)
         ref = self._pct_last_buy_price or self.state.avg_buy_price or self.state.last_price
         buy_trigger = ref * (1 - self.buy_pct / 100) if ref else 0
-        sell_trigger = (
-            self.state.avg_buy_price * (1 + self.sell_pct / 100)
-            if self.state.avg_buy_price > 0 else 0
-        )
+        sell_trigger = self.current_sell_trigger()  # S121: identical math to execution
 
         return {
             "symbol": self.symbol,
@@ -1188,7 +1213,7 @@ class GridBot:
             "center_price": self.state.center_price,
             "range": (
                 f"${buy_trigger:.{decimals}f} (-{self.buy_pct}% from last buy) - "
-                f"${sell_trigger:.{decimals}f} (+{self.sell_pct}% above avg)"
+                f"${sell_trigger:.{decimals}f} (+{self.sell_pct}% net, fee-buffered)"
             ),
             "last_price": self.state.last_price,
             "holdings": self.state.holdings,

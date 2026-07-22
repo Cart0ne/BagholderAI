@@ -646,8 +646,9 @@ def test_j_idle_recalibrate_skipped_above_avg():
 # ----------------------------------------------------------------------
 
 def test_l_sell_trigger_includes_fee_buffer_grid_only():
-    """Brief 70a Parte 2: Grid manual sell trigger include fee buffer.
-    Formula: avg × (1 + sell_pct/100 + FEE) / (1 - FEE) (uniforme).
+    """Brief 70a Parte 2 + S121 fix: Grid manual sell trigger, fee-buffered NET.
+    Formula (S121, no double-count): avg × (1 + sell_pct/100) / (1 - FEE).
+    L'avg include già la fee di buy → si recupera solo la fee di vendita.
     TF/tf_grid mantengono formula vecchia: avg × (1 + threshold/100).
     """
     print("=" * 70)
@@ -655,7 +656,7 @@ def test_l_sell_trigger_includes_fee_buffer_grid_only():
     print("=" * 70)
     from bot.grid.grid_bot import GridBot
 
-    # --- Grid manual: trigger = avg × (1.02 + 0.001) / 0.999
+    # --- Grid manual: trigger = avg × 1.02 / 0.999 (S121: NET, no double fee)
     bot = make_bot()
     bot.managed_by = "grid"
     bot.sell_pct = 2.0
@@ -663,7 +664,7 @@ def test_l_sell_trigger_includes_fee_buffer_grid_only():
     bot.idle_reentry_hours = 0.0
     bot._execute_percentage_buy(price=100.0)
     avg = bot.state.avg_buy_price
-    expected_trigger = avg * (1 + 0.02 + GridBot.FEE_RATE) / (1 - GridBot.FEE_RATE)
+    expected_trigger = avg * (1 + 0.02) / (1 - GridBot.FEE_RATE)
     print(f"  Grid: avg={avg:.4f}, expected trigger ≈ {expected_trigger:.4f}")
 
     # Below trigger: must NOT sell
@@ -690,7 +691,7 @@ def test_l_sell_trigger_includes_fee_buffer_grid_only():
     bot2._execute_percentage_buy(price=100.0)
     avg2 = bot2.state.avg_buy_price
     expected_trigger_tf = avg2 * 1.02
-    expected_trigger_grid = avg2 * (1 + 0.02 + GridBot.FEE_RATE) / (1 - GridBot.FEE_RATE)
+    expected_trigger_grid = avg2 * (1 + 0.02) / (1 - GridBot.FEE_RATE)
 
     # Price right between TF trigger and Grid trigger: TF must sell, Grid wouldn't
     mid_price = (expected_trigger_tf + expected_trigger_grid) / 2
@@ -707,7 +708,7 @@ def test_l_sell_trigger_includes_fee_buffer_grid_only():
 def test_m_sell_ladder_three_steps():
     """Brief 70a Parte 3: sell graduale — 3 lotti venduti a 3 prezzi crescenti.
     Step N+1 trigger usa _last_sell_price come reference (non avg).
-    Formula uniforme (decisione Max iii): reference × (1+sell_pct/100+FEE)/(1-FEE).
+    Formula uniforme (S121, no double-count): reference × (1+sell_pct/100)/(1-FEE).
     """
     print("=" * 70)
     print("TEST M: brief 70a — sell ladder 3 step crescenti")
@@ -727,8 +728,8 @@ def test_m_sell_ladder_three_steps():
     assert bot._last_sell_price == 0.0, "ladder reset at start"
     avg = bot.state.avg_buy_price
 
-    # Step 1 trigger: avg × 1.021 / 0.999
-    s1_trigger = avg * (1 + 0.02 + GridBot.FEE_RATE) / (1 - GridBot.FEE_RATE)
+    # Step 1 trigger: avg × 1.02 / 0.999 (S121: NET, no double fee)
+    s1_trigger = avg * (1 + 0.02) / (1 - GridBot.FEE_RATE)
     bot.check_price_and_execute(current_price=s1_trigger * 1.0001)
     sells = [t for t in bot.trade_logger.trades if t.get("side") == "sell"]
     assert len(sells) == 1, f"step 1 should fire 1 sell, got {len(sells)}"
@@ -736,8 +737,8 @@ def test_m_sell_ladder_three_steps():
     s1_price = bot._last_sell_price
     print(f"  Step 1: trigger @ {s1_trigger:.4f}, fill {s1_price:.4f}, ladder set ✓")
 
-    # Step 2 trigger: last_sell × 1.021 / 0.999 (NOT avg-based)
-    s2_trigger = s1_price * (1 + 0.02 + GridBot.FEE_RATE) / (1 - GridBot.FEE_RATE)
+    # Step 2 trigger: last_sell × 1.02 / 0.999 (NOT avg-based; S121 NET)
+    s2_trigger = s1_price * (1 + 0.02) / (1 - GridBot.FEE_RATE)
     # Price between s1_trigger and s2_trigger should NOT fire (ladder up)
     bot.check_price_and_execute(current_price=s1_trigger * 1.001)
     sells = [t for t in bot.trade_logger.trades if t.get("side") == "sell"]
@@ -753,7 +754,7 @@ def test_m_sell_ladder_three_steps():
     print(f"  Step 2: trigger @ {s2_trigger:.4f}, fill {s2_price:.4f}, ladder climbed ✓")
 
     # Step 3
-    s3_trigger = s2_price * (1 + 0.02 + GridBot.FEE_RATE) / (1 - GridBot.FEE_RATE)
+    s3_trigger = s2_price * (1 + 0.02) / (1 - GridBot.FEE_RATE)
     bot.check_price_and_execute(current_price=s3_trigger * 1.0001)
     sells = [t for t in bot.trade_logger.trades if t.get("side") == "sell"]
     assert len(sells) == 3, f"step 3 should fire, got {len(sells)} sells"

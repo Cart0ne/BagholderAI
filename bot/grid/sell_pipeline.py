@@ -295,19 +295,27 @@ def execute_percentage_sell(
     # passa dal floor: un'uscita d'emergenza non va bloccata da un target di
     # profitto (oggi latente perché profit_target_pct=0 ovunque; esplicitato
     # qui perché su kraken il floor diventa attivo sempre).
-    fee_floor = (
-        2.0 * float(getattr(bot, "fee_rate", 0.0) or 0.0)
-        if getattr(bot, "venue", "binance") == "kraken" else 0.0
-    )
-    if (not force_all
-            and (bot.min_profit_pct > 0 or fee_floor > 0)
-            and bot.state.avg_buy_price > 0):
-        min_price = bot.state.avg_buy_price * (1 + bot.min_profit_pct / 100 + fee_floor)
+    # S121 (kraken-2b-bundle) — double-count fix. avg already includes the buy
+    # fee (buy_pipeline cost_for_avg), so the true break-even is avg/(1−fee) and
+    # the floor for a NET margin m is avg×(1+m)/(1−fee) — the SAME shape as the
+    # sell trigger (grid_sell_trigger_price) so the two move together. The old
+    # kraken floor used avg×(1+m+2×fee): the buy fee counted TWICE (once already
+    # in avg) → ~0.8% over-protective; corrected here to /(1−fee). Binance kept
+    # byte-identical (no fee term, dormant unless profit_target_pct>0) — it never
+    # double-counted, so Strada A leaves it untouched.
+    is_kraken = getattr(bot, "venue", "binance") == "kraken"
+    fee_rate = float(getattr(bot, "fee_rate", 0.0) or 0.0)
+    floor_active = (bot.min_profit_pct > 0) or (is_kraken and fee_rate > 0)
+    if not force_all and floor_active and bot.state.avg_buy_price > 0:
+        if is_kraken and fee_rate < 1.0:
+            min_price = bot.state.avg_buy_price * (1 + bot.min_profit_pct / 100) / (1 - fee_rate)
+        else:
+            min_price = bot.state.avg_buy_price * (1 + bot.min_profit_pct / 100)
         if price < min_price:
             logger.info(
                 f"SKIP: pct sell at {fmt_price(price)} below min profit target "
-                f"(need {fmt_price(min_price)}, {bot.min_profit_pct:.1f}% above avg buy"
-                + (f" + {fee_floor * 100:.2f}% fee floor)" if fee_floor > 0 else ")")
+                f"(need {fmt_price(min_price)}, {bot.min_profit_pct:.1f}% net above avg buy"
+                + (", fee-buffered)" if is_kraken else ")")
             )
             return None
 

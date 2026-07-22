@@ -7,9 +7,9 @@ binance path stays byte-identical (§3 invariant):
   1. fee_rate dinamico: instance rate defaults to the class constant on
      binance; KrakenClient.taker_fee_rate reads the live tier, caches it,
      and falls back to the conservative 0.80% on API failure.
-  2. Floor min-profit FEE-AWARE (sell_pipeline): on kraken
-     min_price = avg × (1 + margine/100 + 2×fee); binance formula unchanged;
-     force_all (emergency exits) bypasses the floor.
+  2. Floor min-profit FEE-AWARE (sell_pipeline): on kraken (S121 double-count fix)
+     min_price = avg × (1 + margine/100) / (1 − fee) — was avg×(1+m+2×fee), the
+     buy fee counted twice; binance formula unchanged; force_all bypasses floor.
   3. Fix contabile buy-fee-in-quote (buy_pipeline): Kraken's USD BUY fee
      folds into avg + total_invested; binance base-coin fee path unchanged.
   4. Sell proceeds net of USD fee (sell_pipeline → total_received) on kraken.
@@ -161,31 +161,36 @@ def test_kraken_taker_fee_rate_rejects_malformed_tier():
 # 2. Floor min-profit fee-aware
 # ----------------------------------------------------------------------
 
-def test_floor_kraken_blocks_sell_inside_fee_band():
-    """avg=100, fee 0.8%/side → floor 101.6 (margine 0). 101.0 must be blocked."""
+def test_floor_kraken_blocks_sell_below_breakeven():
+    """S121: avg=100, fee 0.8% → break-even floor = avg/(1−fee) = 100.806
+    (margine 0). A sell at 100.5 is a real NET loss (100.5×0.992=99.7 < 100) →
+    blocked. Pre-S121 the floor was avg×(1+2×fee)=101.6 (buy fee double-counted)."""
     bot = make_bot(venue="kraken", fee_rate=0.008)
     bot.state.holdings = 1.0
     bot.state.avg_buy_price = 100.0
-    out = bot._execute_percentage_sell(101.0, sell_amount=0.5)
+    out = bot._execute_percentage_sell(100.5, sell_amount=0.5)
     assert out is None
     assert bot.state.holdings == 1.0  # untouched
 
 
-def test_floor_kraken_allows_sell_above_fee_band():
+def test_floor_kraken_allows_sell_just_above_breakeven():
+    """S121 regression: 101.0 nets a real profit (101×0.992=100.19 > cost 100) →
+    now allowed. Pre-S121 the double-counted floor (101.6) wrongly blocked it."""
     bot = make_bot(venue="kraken", fee_rate=0.008)
     bot.state.holdings = 1.0
     bot.state.avg_buy_price = 100.0
-    out = bot._execute_percentage_sell(102.0, sell_amount=0.5)
+    out = bot._execute_percentage_sell(101.0, sell_amount=0.5)
     assert out is not None
 
 
 def test_floor_kraken_includes_margin_on_top_of_fees():
-    """margine 0.4% + 1.6% fee → floor 102.0: 101.9 blocked, 102.1 ok."""
+    """S121: margine 0.4% NET + fee 0.8% → floor = avg×1.004/(1−0.008) = 101.21.
+    101.0 blocked, 101.5 ok. Pre-S121 the floor was avg×(1+0.004+0.016)=102.0."""
     bot = make_bot(venue="kraken", fee_rate=0.008, min_profit_pct=0.4)
     bot.state.holdings = 1.0
     bot.state.avg_buy_price = 100.0
-    assert bot._execute_percentage_sell(101.9, sell_amount=0.5) is None
-    assert bot._execute_percentage_sell(102.1, sell_amount=0.5) is not None
+    assert bot._execute_percentage_sell(101.0, sell_amount=0.5) is None
+    assert bot._execute_percentage_sell(101.5, sell_amount=0.5) is not None
 
 
 def test_floor_binance_formula_unchanged():
