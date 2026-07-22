@@ -46,7 +46,7 @@ from utils.telegram_notifier import SyncTelegramNotifier
 
 from config.settings import HardcodedRules
 
-from bot.sentinel.inputs.binance_btc import fetch_price
+from bot.sentinel.inputs.binance_btc import fetch_price, to_binance_symbol
 from bot.sherpa import board_debounce
 from bot.sherpa.board_parameter_rules import (
     BOARD_PARAM_KEYS,
@@ -394,18 +394,18 @@ def _fetch_active_manual_bots(supabase) -> list[dict]:
         .execute()
     )
     rows = res.data or []
-    # S118 (K.1 Fase 1) — HANDS-OFF sulle righe Kraken (decisione Board/Max
-    # 2026-07-11): se Sherpa gestisse una riga venue='kraken', la BOARD_TABLE
-    # (profit_target_pct=0 in ogni cella) azzererebbe il floor min-profit
-    # fee-aware al primo ciclo, e buy/sell_pct verrebbero riscritti con la
-    # calibrazione volatilità tarata su fee Binance 0,1% (Kraken costa 1,6%
-    # a giro) → churn in perdita. In più volatility.py legge klines Binance
-    # con naming 'BTC/USD'→'BTCUSD' inesistente. L'attivazione Sherpa-live su
-    # Kraken è decisione Board post-collaudo (valori non-zero in BOARD_TABLE
-    # + fix sorgente volatilità). Filtro in Python e null-safe di proposito:
-    # un .neq() query-side escluderebbe anche eventuali righe con venue NULL
-    # (semantica SQL a 3 valori).
-    return [r for r in rows if (r.get("venue") or "binance") != "kraken"]
+    # S122 (sherpa-on-kraken) — Sherpa ora GUIDA anche le righe venue='kraken'
+    # (decisione Board Opzione B, 2026-07-21). Il filtro hands-off della Fase 1
+    # (S118) è RIMOSSO perché entrambe le sue ragioni sono risolte:
+    #   (a) il floor NON si azzera più: il fee-fix S121 (ed1933d) fa sì che
+    #       profit_target_pct=0 significhi "floor al break-even net-of-fee",
+    #       non "floor spento" (il trigger fee-buffered protegge ogni vendita);
+    #   (b) la volatilità NON è più rotta su /USD: to_binance_symbol() mappa
+    #       'BTC/USD'→'BTCUSDT' (proxy Binance, decisione S112/CEO S122) →
+    #       _fetch_stdev restituisce un valore reale, non 0.0/fallback.
+    # `venue` resta nel select solo per telemetria/eventuale uso futuro; Sherpa
+    # non ne ha bisogno per la propria matematica (il fee-buffer vive nel grid).
+    return rows
 
 
 def _fetch_board_states(supabase) -> dict[str, dict]:
@@ -440,11 +440,12 @@ def _upsert_board_state(supabase, symbol: str, new_state: dict) -> None:
 
 
 def _fetch_symbol_price(symbol: str) -> Optional[float]:
-    """Convert 'BONK/USDT' -> 'BONKUSDT' and fetch the spot price.
-    Returns None on any error (network, unknown symbol). Sherpa never
-    blocks on a missing price.
+    """Convert 'BONK/USDT' -> 'BONKUSDT' and fetch the spot price. Kraken
+    '/USD' rows map to their '/USDT' twin (S122, shared normalizer). Returns
+    None on any error (network, unknown symbol). Sherpa never blocks on a
+    missing price.
     """
-    binance_symbol = symbol.replace("/", "")
+    binance_symbol = to_binance_symbol(symbol)
     try:
         return fetch_price(binance_symbol)
     except Exception as e:

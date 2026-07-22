@@ -21,6 +21,25 @@ _BASE = "https://api.binance.com"
 _TIMEOUT = 10  # seconds
 
 
+def to_binance_symbol(symbol: str) -> str:
+    """Normalize a bot_config symbol to a Binance spot symbol.
+
+    'BONK/USDT' -> 'BONKUSDT'. Kraken /USD pairs have no Binance twin, so
+    they map to their /USDT twin as a volatility/price PROXY (S122,
+    sherpa-on-kraken): 'BTC/USD' -> 'BTCUSDT'. Rationale: BTC/USDT and
+    BTC/USD realized volatility are effectively identical, and Sherpa already
+    reads Binance public data for regime/funding (decision S112, EU-ok).
+    Only /USD is remapped → the /USDT path is BYTE-IDENTICAL to before.
+
+    KNOWN LIMIT (not resolved, do not treat as fixed): the proxy holds
+    tightly on BTC; on SOL and especially BONK (Fase 3) the cross-venue
+    volatility divergence can be larger. Revisit when Kraken goes multi-coin.
+    """
+    if symbol.endswith("/USD"):
+        symbol = symbol[: -len("/USD")] + "/USDT"
+    return symbol.replace("/", "")
+
+
 def fetch_ticker_24hr(symbol: str = "BTCUSDT") -> dict:
     """GET /api/v3/ticker/24hr — last price, 24h change %.
 

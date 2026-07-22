@@ -32,7 +32,7 @@ import math
 import time
 from typing import Iterable
 
-from bot.sentinel.inputs.binance_btc import fetch_klines_1h
+from bot.sentinel.inputs.binance_btc import fetch_klines_1h, to_binance_symbol
 
 logger = logging.getLogger("bagholderai.sherpa.volatility")
 
@@ -46,9 +46,10 @@ _stdev_cache: dict[str, tuple[float, float]] = {}
 
 
 def _to_binance_symbol(symbol: str) -> str:
-    """'BONK/USDT' -> 'BONKUSDT'. Sherpa stores Grid symbols with the
-    slash; Binance REST wants them concatenated."""
-    return symbol.replace("/", "")
+    """Thin wrapper over the shared normalizer (S122): '/USDT' concatenated,
+    Kraken '/USD' mapped to the '/USDT' twin as a volatility proxy so
+    _fetch_stdev returns a real value instead of 0.0/fallback."""
+    return to_binance_symbol(symbol)
 
 
 def _log_returns_stdev(closes: list[float]) -> float:

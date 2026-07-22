@@ -346,7 +346,11 @@ def test_replay_binance_rows_unchanged():
 # Sherpa hands-off su venue='kraken'
 # ----------------------------------------------------------------------
 
-def test_sherpa_skips_kraken_rows_null_safe():
+def test_sherpa_now_drives_kraken_rows():
+    # S122 (sherpa-on-kraken): the Fase-1 hands-off filter was REMOVED — Sherpa
+    # now drives venue='kraken' rows too (Board Opzione B). Pre-S122 this
+    # returned only {BTC/USDT, SOL/USDT}; now the /USD row is included.
+    # Full coverage of the new behavior lives in test_sherpa_on_kraken_s122.py.
     from bot.sherpa.main import _fetch_active_manual_bots
     rows = [
         {"symbol": "BTC/USDT", "venue": "binance"},
@@ -356,7 +360,7 @@ def test_sherpa_skips_kraken_rows_null_safe():
     sb = _MockSupabase({"bot_config": rows})
     out = _fetch_active_manual_bots(sb)
     symbols = {r["symbol"] for r in out}
-    assert symbols == {"BTC/USDT", "SOL/USDT"}
+    assert symbols == {"BTC/USDT", "BTC/USD", "SOL/USDT"}
 
 
 # ----------------------------------------------------------------------
