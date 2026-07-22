@@ -742,6 +742,53 @@
     // that is NEVER summed into the paper testnet net worth above. Carries
     // forward to collaudo/regime: when the live grid runs on Kraken, this is
     // where its coins surface (the paper section empties as testnet retires).
+    // Kraken taker fee (tier-0, 0.8%) — mirrors the bot's fee_rate fallback
+    // (KrakenClient.FALLBACK_TAKER_FEE). Used ONLY for the display trigger math
+    // below, same fee-buffered formula the bot executes (grid_bot.py:876, S121).
+    var KRAKEN_FEE_RATE = 0.008;
+
+    // Separate "Last Kraken trades" table (S122, admin-only) — the real-money
+    // trade log, kept visually distinct from the paper grid above.
+    function krakenTradesTable() {
+      if (!krakenTradesData || !krakenTradesData.length) return '';
+      var body = krakenTradesData.slice(0, 25).map(function(t) {
+        var isBuy = t.side === 'buy';
+        var sideColor = isBuy ? '#5fb3ff' : 'var(--green)';
+        var w = new Date(t.created_at);
+        var whenStr = isNaN(w.getTime())
+          ? String(t.created_at || '').slice(0, 16).replace('T', ' ')
+          : (w.toLocaleDateString() + ' ' + w.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+        var hasRp = (t.realized_pnl != null && !isBuy);
+        var rpNum = Number(t.realized_pnl);
+        var rpStr = hasRp ? ((rpNum >= 0 ? '+' : '') + '$' + fmt(rpNum)) : '—';
+        var rpColor = hasRp ? (rpNum >= 0 ? 'var(--green)' : 'var(--red)') : 'var(--text-dim)';
+        var oid = t.exchange_order_id ? String(t.exchange_order_id) : '—';
+        return '<tr style="border-top:1px solid rgba(255,255,255,0.06);">' +
+          '<td style="padding:6px 10px;white-space:nowrap;color:var(--text-dim);font-size:0.82em;">' + whenStr + '</td>' +
+          '<td style="padding:6px 10px;font-weight:700;color:' + sideColor + ';">' + (isBuy ? 'BUY' : 'SELL') + '</td>' +
+          '<td style="padding:6px 10px;text-align:right;">' + fmtPrice(Number(t.price)) + '</td>' +
+          '<td style="padding:6px 10px;text-align:right;">' + Number(t.amount).toFixed(8) + '</td>' +
+          '<td style="padding:6px 10px;text-align:right;">$' + fmt(Number(t.cost)) + '</td>' +
+          '<td style="padding:6px 10px;text-align:right;color:var(--text-dim);">$' + fmt(Number(t.fee || 0)) + '</td>' +
+          '<td style="padding:6px 10px;text-align:right;color:' + rpColor + ';">' + rpStr + '</td>' +
+          '<td style="padding:6px 10px;font-family:monospace;font-size:0.72em;color:var(--text-dim);">' + oid + '</td>' +
+        '</tr>';
+      }).join('');
+      return '<div style="margin-top:18px;">' +
+        '<div class="section-title" style="font-size:0.95em;color:#7b61ff;">Last Kraken trades · real money</div>' +
+        '<div style="overflow-x:auto;border:1px solid rgba(123,97,255,0.25);border-radius:8px;">' +
+        '<table style="width:100%;border-collapse:collapse;font-size:0.9em;">' +
+        '<thead><tr style="text-align:left;color:var(--text-dim);font-size:0.72em;text-transform:uppercase;letter-spacing:0.05em;">' +
+          '<th style="padding:8px 10px;">Time</th><th style="padding:8px 10px;">Side</th>' +
+          '<th style="padding:8px 10px;text-align:right;">Price</th><th style="padding:8px 10px;text-align:right;">Amount</th>' +
+          '<th style="padding:8px 10px;text-align:right;">Cost</th><th style="padding:8px 10px;text-align:right;">Fee</th>' +
+          '<th style="padding:8px 10px;text-align:right;">Realized</th><th style="padding:8px 10px;text-align:right;">Order id</th>' +
+        '</tr></thead><tbody>' + body + '</tbody></table></div>' +
+        (krakenTradesData.length > 25
+          ? '<div class="stat-sub" style="margin-top:6px;">showing latest 25 of ' + krakenTradesData.length + '</div>' : '') +
+        '</div>';
+    }
+
     function renderKraken() {
       var host = document.getElementById('kraken-collaudo');
       var titleEl = document.getElementById('kraken-collaudo-title');
@@ -810,6 +857,23 @@
           : 'PAUSED — manual test order (bot not trading this row)';
         var statusColor = cfg.is_active ? 'var(--green)' : 'var(--yellow)';
 
+        // Grid mechanics (S122): where the bot will trade NEXT. Same live refs
+        // (bot_runtime_state) and fee-buffered net trigger the bot executes,
+        // with the Kraken fee (0.8%) instead of the paper 0.1%.
+        var kRt = runtimeStateBySymbol[sym] || {};
+        var kBuyPct = Number(cfg.buy_pct) || 0;
+        var kSellPct = Number(cfg.sell_pct) || 0;
+        var kPenalty = Number(kRt.sell_pct_penalty) || 0;
+        var kEffSell = kSellPct + kPenalty;
+        var kBuyRef = Number(kRt.buy_reference_price) || p.avgBuyPrice || 0;
+        var kSellRef = Number(kRt.last_sell_price) || p.avgBuyPrice || 0;
+        var kNextBuy = (kBuyRef > 0 && kBuyPct > 0) ? kBuyRef * (1 - kBuyPct / 100) : 0;
+        var kNextSell = (kSellRef > 0 && kSellPct > 0 && hasPos)
+          ? kSellRef * (1 + kEffSell / 100) / (1 - KRAKEN_FEE_RATE) : 0;
+        var kBuyDist = (kNextBuy > 0 && live > 0) ? ((live - kNextBuy) / kNextBuy * 100) : null;
+        var kSellDist = (kNextSell > 0 && live > 0) ? ((live - kNextSell) / kNextSell * 100) : null;
+        var kSellCol = (kSellDist !== null && kSellDist >= 0) ? 'var(--green)' : '#5fb3ff';
+
         var body;
         if (!traded) {
           body = '<div class="stat-sub" style="margin-top:8px;">No order yet · allocated $' + fmt(Number(cfg.capital_allocation || 0)) + ', awaiting first buy.</div>';
@@ -825,6 +889,17 @@
               '<div class="stat-box"><div class="stat-label">Fees paid</div><div class="stat-value" style="color:var(--text-dim);">−$' + fmt(a.fee) + '</div><div class="stat-sub">Kraken taker (real)</div></div>' +
               '<div class="stat-box"><div class="stat-label">Realized</div><div class="stat-value">' + (a.sells > 0 ? ('$' + fmt(p.realized)) : 'pending') + '</div><div class="stat-sub">' + a.buys + ' buy · ' + a.sells + ' sell</div></div>' +
             '</div>' +
+            '<div class="stats-row" style="margin-top:8px;">' +
+              '<div class="stat-box"><div class="stat-label">Grid buy / sell %</div><div class="stat-value">' +
+                (kBuyPct ? '−' + kBuyPct.toFixed(2) : '—') + ' / ' + (kSellPct ? '+' + kSellPct.toFixed(2) : '—') +
+                '</div><div class="stat-sub">' + (kPenalty > 0 ? '+' + kPenalty.toFixed(2) + ' penalty · ' : '') + 'set by Sherpa</div></div>' +
+              '<div class="stat-box"><div class="stat-label">Next buy if ↓</div><div class="stat-value" style="color:#5fb3ff;">' +
+                (kNextBuy > 0 ? fmtPrice(kNextBuy) : '—') + '</div><div class="stat-sub">' +
+                (kBuyDist !== null ? (kBuyDist >= 0 ? '+' : '') + fmt(kBuyDist) + '% from live' : '—') + '</div></div>' +
+              '<div class="stat-box"><div class="stat-label">Next sell if ↑</div><div class="stat-value" style="color:' + kSellCol + ';">' +
+                (kNextSell > 0 ? fmtPrice(kNextSell) : '—') + '</div><div class="stat-sub">' +
+                (kSellDist !== null ? (kSellDist >= 0 ? '+' : '') + fmt(kSellDist) + '% · net, fee-buffered' : 'net, fee-buffered') + '</div></div>' +
+            '</div>' +
             (a.lastOrder ? '<div class="stat-sub" style="margin-top:8px;">Last order id: <span style="font-family:monospace;">' + a.lastOrder + '</span></div>' : '');
         }
 
@@ -838,7 +913,7 @@
         '</div>';
       }).join('');
 
-      host.innerHTML = subtotal + '<div style="margin-top:14px;">' + cards + '</div>';
+      host.innerHTML = subtotal + '<div style="margin-top:14px;">' + cards + '</div>' + krakenTradesTable();
     }
 
     // G1 (S110): floor di acquisto del bot — rispecchia config/settings.py MIN_LAST_SHOT_USD ($5).
