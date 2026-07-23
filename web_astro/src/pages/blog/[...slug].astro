@@ -245,6 +245,44 @@ const jsonLd = { "@context": "https://schema.org", "@graph": graph };
     <BlogCTA volume={post.data.volume} />
   </section>
 
+  {/* Live figures (S123): only for posts with liveFigures: true. Reads the
+      cumulative spent/revenue totals from passive_income (same anon-key/RLS
+      and same totals as /income) and overwrites the [data-live-spend] /
+      [data-live-revenue] spans so the cumulative figure can't go stale vs
+      /income. is:inline (NOT a hoisted import) so it renders ONLY on this
+      post — a processed <script> inside a conditional isn't bundled by Astro.
+      The text inside each span is the fallback: it stands if the fetch fails
+      or for a crawler that doesn't run JS. */}
+  {post.data.liveFigures && (
+    <script is:inline>
+      {`(function () {
+        var spend = document.querySelectorAll("[data-live-spend]");
+        var rev = document.querySelectorAll("[data-live-revenue]");
+        if (!spend.length && !rev.length) return;
+        var U = "https://pxdhtmqfwjwjhtcoacsn.supabase.co";
+        var K = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB4ZGh0bXFmd2p3amh0Y29hY3NuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4NDI1OTIsImV4cCI6MjA4OTQxODU5Mn0.G76lvYWrqlM0z2RoSkU1uAglfMBKN_rXvBGOQhb4kdg";
+        var eur0 = function (n) { return "\\u20ac" + Math.round(n).toLocaleString("en-US"); };
+        var sum = function (rows, block) {
+          return rows.filter(function (r) {
+            return r.block === block && !r.is_status && typeof r.value_num === "number";
+          }).reduce(function (s, r) { return s + r.value_num; }, 0);
+        };
+        fetch(U + "/rest/v1/passive_income?select=block,value_num,is_status", {
+          headers: { apikey: K, Authorization: "Bearer " + K }
+        })
+          .then(function (r) { if (!r.ok) throw 0; return r.json(); })
+          .then(function (rows) {
+            if (!Array.isArray(rows) || !rows.length) return;
+            var s = eur0(sum(rows, "cost"));
+            var v = eur0(sum(rows, "revenue"));
+            spend.forEach(function (el) { el.textContent = s; });
+            rev.forEach(function (el) { el.textContent = v; });
+          })
+          .catch(function () {});
+      })();`}
+    </script>
+  )}
+
 </Layout>
 
 <style is:global>

@@ -46,6 +46,14 @@ const blog = defineCollection({
     faq: z
       .array(z.object({ question: z.string(), answer: z.string() }))
       .optional(),
+    // liveFigures: true → il post carica src/scripts/blog-live-figures.ts,
+    // che legge i totali live da passive_income (stessa anon-key/RLS di
+    // /income) e sovrascrive gli <span data-live-spend>/<span data-live-revenue>
+    // col valore corrente. Così una cifra cumulativa nel corpo (es. "€368
+    // spesi") non invecchia e resta coerente con /income: quando Max aggiorna
+    // i costi da /admin, il post segue. Il fallback statico dentro lo span
+    // regge se il fetch fallisce (o per i crawler senza JS). Aggiunto S123.
+    liveFigures: z.boolean().default(false),
   }),
 });
 
