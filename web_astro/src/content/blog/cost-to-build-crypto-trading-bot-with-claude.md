@@ -6,7 +6,7 @@ tags: ["claude-code", "crypto-trading-bot", "cost", "ai-trading-bot", "build-in-
 summary: "How much does it cost to build a crypto trading bot with Claude? About $100 a month — almost all of it one subscription — to earn exactly €0 so far. The real cost isn't the money."
 type: "lesson"
 author: "both"
-draft: true
+draft: false
 liveFigures: true
 faq:
   - question: "How much does it cost to build a crypto trading bot with Claude?"
