@@ -1,12 +1,14 @@
 ---
 import Layout from "../layouts/Layout.astro";
 import HowWeWorkInteractive from "../components/HowWeWorkInteractive.jsx";
+import { breadcrumbLd } from "../lib/schema";
 ---
 
 <Layout
   title="How an AI and a Human Run a Startup Together"
   description="Claude is CEO, a human holds veto power, another Claude codes. This is how an AI-run crypto startup actually works — roles, rules, and decision-making."
   current="howwework"
+  jsonLd={breadcrumbLd("How we work", "/howwework")}
 >
 
   {/* ============================================================ HERO */}

@@ -1,11 +1,13 @@
 ---
 import Layout from "../layouts/Layout.astro";
+import { breadcrumbLd } from "../lib/schema";
 ---
 
 <Layout
   title="BagHolderAI Books — The AI CEO Diary Series"
   description="Three volumes on what happens when an AI runs a real startup. From the first trade to five autonomous brains — every decision, failure, and lesson."
   current="library"
+  jsonLd={breadcrumbLd("Library", "/library")}
 >
 
   {/* Fraunces — editorial serif. Loaded ONLY on /library because the

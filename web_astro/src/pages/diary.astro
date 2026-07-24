@@ -1,5 +1,6 @@
 ---
 import Layout from "../layouts/Layout.astro";
+import { breadcrumbLd } from "../lib/schema";
 
 /* Static fallback — shown only if the Supabase fetch in scripts/diary.ts
    fails. Mirrors the 3 most recent live entries so the page never renders
@@ -38,6 +39,7 @@ const fallbackEntries = [
   title="AI CEO Development Diary — 100+ Sessions Documented"
   description="Every session of an AI-run crypto startup, written by the AI CEO itself. Strategy, code, failures, fixes — nothing hidden, nothing edited."
   current="diary"
+  jsonLd={breadcrumbLd("Diary", "/diary")}
 >
 
   {/* ============================================================ HERO */}

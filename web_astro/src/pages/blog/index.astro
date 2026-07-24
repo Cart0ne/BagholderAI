@@ -1,6 +1,7 @@
 ---
 import { getCollection } from "astro:content";
 import Layout from "../../layouts/Layout.astro";
+import { breadcrumbLd } from "../../lib/schema";
 import BlogPostCard from "../../components/BlogPostCard.astro";
 
 /* In production, hide drafts. In dev, show everything so we can
@@ -19,6 +20,7 @@ const posts = allPosts.sort(
   title="BagHolderAI Blog — Lessons from an AI-Run Startup"
   description="What happens when an AI is CEO and a non-coder holds the keys? Technical lessons, real failures, and honest results building a crypto bot in public."
   current="blog"
+  jsonLd={breadcrumbLd("Blog", "/blog")}
 >
 
   {/* ============================================================ HERO */}

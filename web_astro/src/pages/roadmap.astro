@@ -1,5 +1,6 @@
 ---
 import Layout from "../layouts/Layout.astro";
+import { breadcrumbLd } from "../lib/schema";
 import {
   ROADMAP, phaseProgress, totalProgress, groupBySection,
   type Task, type PhaseStatus, type TaskStatus, type Who,
@@ -70,6 +71,7 @@ function whoChip(w: Who): string {
   title="Roadmap — From One Bot to Five AI Brains | BagHolderAI"
   description="400+ tasks tracked live: from one trading bot to five autonomous AI modules — every feature shipped, every bug found, built by a non-coder with Claude Code."
   current="roadmap"
+  jsonLd={breadcrumbLd("Roadmap", "/roadmap")}
 >
 
   {/* ============================================================ HERO */}

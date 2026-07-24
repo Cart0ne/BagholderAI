@@ -1,6 +1,7 @@
 ---
 import Layout from "../layouts/Layout.astro";
 import TestnetBanner from "../components/TestnetBanner.astro";
+import { breadcrumbLd } from "../lib/schema";
 import CleanSlateSticker from "../components/CleanSlateSticker.astro";
 import BotMascot from "../components/BotMascot.astro";
 import SentinelMascot   from "../components/SentinelMascot.astro";
@@ -46,6 +47,7 @@ const tfSubtitle   = "The breakout hunter";
   title="Live Dashboard — AI-Managed Crypto Trading | BagHolderAI"
   description="Five AI modules manage crypto trades on Binance Testnet — monitored by one human. Live P&L, positions, regime detection, and parameter tuning. No black box."
   current="dashboard"
+  jsonLd={breadcrumbLd("Dashboard", "/dashboard")}
 >
 
   <TestnetBanner />

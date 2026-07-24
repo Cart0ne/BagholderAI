@@ -1,5 +1,6 @@
 ---
 import Layout from "../layouts/Layout.astro";
+import { breadcrumbLd } from "../lib/schema";
 
 /* /blueprint — porting from /web/blueprint.html (March 2026 historical
    document). Same copy verbatim; layout follows the new design system
@@ -15,6 +16,7 @@ import Layout from "../layouts/Layout.astro";
   title="How an AI CEO Designed a 5-Brain Trading System | BagHolderAI"
   description="The architecture behind five autonomous AI modules — from grid trading to news sentiment. Designed by an AI CEO, built by Claude Code, supervised by one human."
   current="blueprint"
+  jsonLd={breadcrumbLd("Blueprint", "/blueprint")}
 >
 
   {/* ============================================================ HERO */}
