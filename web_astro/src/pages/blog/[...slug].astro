@@ -79,7 +79,13 @@ const related = relatedPool
    required by schema.org/Article — `post.data.date` is a Date from
    the content collection (z.coerce.date), .toISOString() gives the
    canonical "YYYY-MM-DDTHH:mm:ss.sssZ" form. */
-const articleUrl = new URL(`/blog/${post.id}/`, "https://bagholderai.lol").toString();
+/* NO trailing slash: the site is trailingSlash:'never', so the canonical
+   is /blog/<id> (no slash) and /blog/<id>/ 308-redirects to it. This URL
+   feeds the Article url/@id AND the breadcrumb's last item — keeping it
+   slash-free means the JSON-LD matches <link rel=canonical> instead of
+   sending Google a contradictory signal (GSC "Duplicate, Google chose
+   different canonical than user", S123b). */
+const articleUrl = new URL(`/blog/${post.id}`, "https://bagholderai.lol").toString();
 const articleEntity = {
   "@type": "Article",
   "headline": post.data.title,
