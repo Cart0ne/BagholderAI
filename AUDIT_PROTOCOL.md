@@ -105,6 +105,7 @@ resta a una sessione fresh separata, vedi §3).
 | 2026-06-01 | 1 | Monthly automated technical integrity (codebase + DB + bot health + code patterns) | **APPROVED** (0 CRITICAL, 0 HIGH, 3 MED, 2 LOW) | `audits/reports/20260601_audit[A1].md` |
 | 2026-06-30 | 1 | Monthly automated technical integrity, recidiva-check inclusa | **CON RISERVE** (0 CRITICAL, 0 HIGH, 2 MED, 1 LOW) | `audits/reports/20260630_audit[A1].md` |
 | 2026-07-02 | 3 | Cruscotto tutti i canali (Cowork auto) — verifica CEO+Board S115 | **CON RISERVE** | Numeri grezzi OK, conclusioni corrette post-filtro bot (DE/FI)/self-traffic (IT). Nuovo prerequisito: leggere `audits/DATA_CAVEATS.md` + MASTER_TASK_LIST prima dell'analisi. Report locale `marketing/runs/2026-07-02/` |
+| 2026-07-29 | 1 | Monthly automated technical integrity (test + schema DB + fleet health + code scan + remediation-check 06-30) — primo A1 con denaro reale in esercizio (Kraken Fase 2b) | **APPROVED** (0 CRITICAL, 0 HIGH, 0 MED, 2 LOW) | `audits/reports/20260729_audit[A1].md` |
 
 ---
 
