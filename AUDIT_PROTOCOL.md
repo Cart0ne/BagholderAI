@@ -106,6 +106,7 @@ resta a una sessione fresh separata, vedi §3).
 | 2026-06-30 | 1 | Monthly automated technical integrity, recidiva-check inclusa | **CON RISERVE** (0 CRITICAL, 0 HIGH, 2 MED, 1 LOW) | `audits/reports/20260630_audit[A1].md` |
 | 2026-07-02 | 3 | Cruscotto tutti i canali (Cowork auto) — verifica CEO+Board S115 | **CON RISERVE** | Numeri grezzi OK, conclusioni corrette post-filtro bot (DE/FI)/self-traffic (IT). Nuovo prerequisito: leggere `audits/DATA_CAVEATS.md` + MASTER_TASK_LIST prima dell'analisi. Report locale `marketing/runs/2026-07-02/` |
 | 2026-07-29 | 1 | Monthly automated technical integrity (test + schema DB + fleet health + code scan + remediation-check 06-30) — primo A1 con denaro reale in esercizio (Kraken Fase 2b) | **APPROVED** (0 CRITICAL, 0 HIGH, 0 MED, 2 LOW) | `audits/reports/20260729_audit[A1].md` |
+| 2026-07-29 | 2 | Coerenza narrazione pubblica ↔ codice LIVE ↔ state files (Cowork on-demand). **Adempie in ritardo il gate §2(a)**: era obbligatorio PRIMA del go-live denaro reale del 22-lug, eseguito 7 giorni dopo | **CON RISERVE** (0 CRITICAL, 1 HIGH, 1 MED, 3 LOW) | `audits/reports/20260729_audit[A2].md`. H1 = /terms afferma "no real money" mentre il denaro reale è live (decisione CEO: reveal o softening). **M1 non confermato** dalla verifica CC sul sito live (deploy current; artefatto del ripiego `web_fetch` no-JS). L3 riclassificato 🟠 da CC: la fee sbagliata è nel codice del backtest, non solo nella prosa |
 
 ---
 
