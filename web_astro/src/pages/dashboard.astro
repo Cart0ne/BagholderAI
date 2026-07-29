@@ -9,33 +9,25 @@ import NewsKeeperMascot from "../components/NewsKeeperMascot.astro";
 import SherpaMascotV2   from "../components/SherpaMascotV2.astro";
 import MixerSVG         from "../components/MixerSVG.astro";
 import RadarSVG         from "../components/RadarSVG.astro";
-import {
-  mockSnapshot, mockGrid, mockTF,
-  mockTrades, mockCEOLog, fmtUsd, fmtSigned, fmtPct, fmtPrice, fmtTime, fmtDate,
-} from "../data/dashboard-mock.ts";
+import { mockGrid, mockTF, fmtUsd } from "../data/dashboard-mock.ts";
 
-const totalNW    = mockGrid.netWorth + mockTF.netWorth;
-const totalInit  = mockGrid.initial + mockTF.initial;
-const totalPnl   = totalNW - totalInit;
-const totalPct   = (totalPnl / totalInit) * 100;
+/* AUDIT A2 2026-07-29 — finding L1 (fallback SSR con dati mock stale).
+   Questa pagina NON server-rendera' piu' cifre dal mock: ogni valore esce come
+   placeholder ("—" / "…") e lo riempie dashboard-live.ts da Supabase, esattamente
+   come faceva gia' la §2 brain-pipeline. Motivo: il mock era fermo al 2026-05-27
+   (net worth $557,42, "May 27", CEO's log day 30-34 = fine aprile) e crawler +
+   visitatori no-JS lo leggevano come dato vero. La nota "refresh this mock at
+   every minor release" era un tapis roulant di manutenzione gia' fallito una
+   volta: rinfrescare i numeri avrebbe solo rimesso il cronometro a zero.
+   Il mock resta importato SOLO per il basis statico $600 (Grid $500 + TF $100),
+   che e' una costante di progetto, non una misura. */
+const heroInit = mockGrid.initial + mockTF.initial;
 
-/* Hero NET WORTH card — $600 basis = Grid $500 + TF $100, aggregate of both
-   funds (S97b, supersedes the S72 Grid-only $500 hero). TF is idle in the
-   current testnet cycle (0 trades) so it adds $100 cash and $0 P&L: the $
-   P&L is identical to Grid-only, only the % denominator becomes 600. Numbers
-   stay self-consistent (netWorth − P&L = started). The live JS hero in
-   dashboard-live.ts mirrors this same 600 basis. */
-const heroInit = totalInit;
-const heroNW   = totalNW;
-const heroPnl  = totalPnl;
-const heroPct  = totalPct;
-
-/* ====== "Today" snapshot — fotografia del giorno ====== */
-const todayPnl       = mockGrid.todayPnl + mockTF.todayPnl;
-const todayTrades    = mockGrid.todayTrades + mockTF.todayTrades;
-const todayBuys      = mockGrid.todayBuys + mockTF.todayBuys;
-const todaySells     = mockGrid.todaySells + mockTF.todaySells;
-const todayAllocated = mockGrid.todayAllocated + mockTF.todayAllocated;
+/* heroPnl/todayPnl sopravvivono ai soli ternari di colore (pos/neg) sulle
+   classi: il testo e' un placeholder, il colore parte neutro-positivo e
+   dashboard-live.ts lo riscrive insieme al valore. */
+const heroPnl  = 0;
+const todayPnl = 0;
 
 /* Sottotitoli statici per ora — in futuro popolati da Haiku ogni sera. */
 const gridSubtitle = "The cash machine";
@@ -97,15 +89,15 @@ const tfSubtitle   = "The breakout hunter";
         </div>
         <div id="hero-nw"
              class="mt-1 font-display text-[36px] font-extrabold leading-none tabular-nums text-text">
-          {fmtUsd(heroNW)}
+          —
         </div>
         <div id="hero-pnl"
              class={`mt-1.5 font-mono text-[12px] font-semibold tabular-nums
                      ${heroPnl >= 0 ? "text-pos" : "text-neg"}`}>
-          {fmtSigned(heroPnl)} · {fmtPct(heroPct)}
+          —
         </div>
         <div class="mt-2.5 font-mono text-[9px] uppercase tracking-[0.14em] text-text-muted">
-          started {fmtUsd(heroInit)} · day <span id="hero-day">{mockSnapshot.dayNumber}</span>
+          started {fmtUsd(heroInit)} · day <span id="hero-day">…</span>
         </div>
       </div>
     </div>
@@ -113,6 +105,18 @@ const tfSubtitle   = "The breakout hunter";
 
   {/* ============================================================ MAIN */}
   <main class="mx-auto max-w-4xl px-4 pb-24 sm:px-6">
+
+    {/* Onestà verso chi non esegue JS (audit A2 2026-07-29, L1): ogni cifra di
+        questa pagina arriva da Supabase a runtime. Senza JS restano i
+        placeholder — meglio un trattino che un numero inventato. */}
+    <noscript>
+      <div class="mb-6 rounded-2xl border border-border border-l-4 border-l-primary
+                  bg-surface px-5 py-4 font-mono text-[12px] leading-[1.6] text-text-dim">
+        Every figure on this page is fetched live from our database with
+        JavaScript. With JavaScript off you'll see dashes instead of numbers —
+        we'd rather show you nothing than show you stale numbers.
+      </div>
+    </noscript>
 
     {/* ============ TODAY SNAPSHOT — fotografia del giorno ============ */}
     <section class="reveal">
@@ -122,7 +126,7 @@ const tfSubtitle   = "The breakout hunter";
         </h2>
         <span id="today-date"
               class="font-mono text-[12px] uppercase tracking-[0.16em] text-text-muted">
-          {fmtDate(mockSnapshot.asOfIso)}
+          …
         </span>
       </div>
 
@@ -155,7 +159,7 @@ const tfSubtitle   = "The breakout hunter";
           <dd id="today-pnl"
               class={`font-display text-[24px] font-extrabold tabular-nums mt-0.5
                       ${todayPnl >= 0 ? "text-pos" : "text-neg"}`}>
-            {fmtSigned(todayPnl)}
+            —
           </dd>
         </div>
         <div class="px-4 py-3.5">
@@ -164,7 +168,7 @@ const tfSubtitle   = "The breakout hunter";
           </dt>
           <dd id="today-trades"
               class="font-display text-[24px] font-extrabold text-text tabular-nums mt-0.5">
-            {todayTrades}
+            —
           </dd>
         </div>
         <div class="px-4 py-3.5">
@@ -173,7 +177,7 @@ const tfSubtitle   = "The breakout hunter";
           </dt>
           <dd id="today-buys"
               class="font-display text-[24px] font-extrabold text-text-dim tabular-nums mt-0.5">
-            {todayBuys}
+            —
           </dd>
         </div>
         <div class="px-4 py-3.5">
@@ -182,7 +186,7 @@ const tfSubtitle   = "The breakout hunter";
           </dt>
           <dd id="today-sells"
               class="font-display text-[24px] font-extrabold text-text-dim tabular-nums mt-0.5">
-            {todaySells}
+            —
           </dd>
         </div>
         <div class="px-4 py-3.5">
@@ -191,7 +195,7 @@ const tfSubtitle   = "The breakout hunter";
           </dt>
           <dd id="today-allocated"
               class="font-display text-[24px] font-extrabold text-text tabular-nums mt-0.5">
-            {fmtUsd(todayAllocated)}
+            —
           </dd>
         </div>
       </dl>
@@ -862,17 +866,17 @@ const tfSubtitle   = "The breakout hunter";
                bg-surface shadow-sticker-sm p-6">
         <div class="w-[60px] shrink-0 text-center leading-none">
           <span class="block font-mono text-[9px] font-bold uppercase tracking-[0.18em] text-text-muted">day</span>
-          <span id="ceo-today-day" class="mt-1 block font-display text-[40px] font-extrabold leading-none text-pos">{mockCEOLog.today.dayNumber}</span>
-          <span id="ceo-today-date" class="mt-1.5 block font-mono text-[9px] uppercase tracking-[0.12em] text-text-muted">{fmtDate(mockCEOLog.today.date + "T00:00:00Z")}</span>
+          <span id="ceo-today-day" class="mt-1 block font-display text-[40px] font-extrabold leading-none text-pos">…</span>
+          <span id="ceo-today-date" class="mt-1.5 block font-mono text-[9px] uppercase tracking-[0.12em] text-text-muted">…</span>
         </div>
         <div>
           <div class="mb-2 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.16em] text-text-muted">
             <span>latest</span>
             <span class="text-border">·</span>
-            <span id="ceo-today-model" class="opacity-70">via {mockCEOLog.today.model}</span>
+            <span id="ceo-today-model" class="opacity-70">…</span>
           </div>
           <p id="ceo-today-text" class="text-text leading-[1.7] text-[15px] italic">
-            "{mockCEOLog.today.text}"
+            Loading the latest entry…
           </p>
         </div>
       </article>
@@ -887,16 +891,14 @@ const tfSubtitle   = "The breakout hunter";
            class="rounded-2xl border border-border bg-surface shadow-sticker-sm
                   max-h-[320px] overflow-y-auto
                   divide-y divide-border-soft">
-        {mockCEOLog.archive.map((e) => (
-          <article class="grid grid-cols-[auto_1fr] items-center gap-5 px-4 py-4">
-            <div class="w-[52px] shrink-0 text-center leading-none">
-              <span class="block font-mono text-[8.5px] font-bold uppercase tracking-[0.18em] text-text-muted">day</span>
-              <span class="mt-1 block font-display text-[32px] font-extrabold leading-none text-pos">{e.dayNumber}</span>
-              <span class="mt-1 block font-mono text-[8px] uppercase tracking-[0.1em] text-text-muted">{fmtDate(e.date + "T00:00:00Z")}</span>
-            </div>
-            <p class="text-text-dim text-[13px] leading-[1.6] italic">"{e.text}"</p>
-          </article>
-        ))}
+        {/* SSR = solo scheletro (audit A2 2026-07-29, L1): l'archivio vero lo
+            scrive dashboard-live.ts (innerHTML su #ceo-archive) leggendo
+            Supabase. Prima qui usciva mockCEOLog.archive — voci inventate
+            ferme al 27-mag (day 30-34, fine aprile) che crawler e visitatori
+            no-JS leggevano come se fossero il log vero. */}
+        <p class="px-4 py-4 font-mono text-[11px] text-text-muted">
+          Loading earlier entries…
+        </p>
       </div>
     </section>
 

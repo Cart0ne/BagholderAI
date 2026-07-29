@@ -12,13 +12,18 @@ const NEWSKEEPER = "#a855f7";
 ---
 
 <article class="bot-card sentinel-active tilt-l">
-  <span class="bot-pill testmode-sentinel">TEST</span>
+  <span class="bot-pill live-sentinel">LIVE</span>
 
   <div class="bot-head">
     <span class="bot-name sentinel">THE WATCHTOWER</span>
-    <span class="bot-rarity">DUO · LOCKED</span>
+    <span class="bot-rarity">DUO · LIVE</span>
   </div>
-  <div class="bot-subtitle">Sentinel × NewsKeeper · early warning</div>
+  {/* Sottotitolo asimmetrico per scelta (audit A2 2026-07-29, L2): Sentinel è
+     live E consumato da Sherpa; NewsKeeper v2 gira live ma il suo barometro NON
+     è cablato in Sentinel (zero riferimenti a newskeeper in bot/sentinel/) —
+     resta shadow. Stessa grammatica di /dashboard, che affianca il pallino
+     "live" a una pill separata "barometer · shadow". */}
+  <div class="bot-subtitle">Sentinel × NewsKeeper · early warning · barometer still shadow</div>
 
   <div class="bot-frame sentinel watchtower-frame">
     <div class="bot-scanlines"></div>

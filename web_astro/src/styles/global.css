@@ -244,6 +244,10 @@ body {
 /* LIVE → pastello pieno + testo bianco. TEST/locked → outline soft. */
 .bot-pill.live-grid { background: var(--color-bot-grid); color: #fff; }
 .bot-pill.live-tf   { background: var(--color-bot-tf);   color: #fff; }
+/* Sentinel/Sherpa live (audit A2 2026-07-29 L2): erano marcati TEST in home
+   mentre /dashboard li dava live — Sherpa scrive i 7 parametri dal S102b. */
+.bot-pill.live-sentinel { background: var(--color-bot-sentinel); color: #fff; }
+.bot-pill.live-sherpa   { background: var(--color-bot-sherpa);   color: #fff; }
 .bot-pill.soon      { border: 1px solid var(--color-border); color: var(--color-text-muted); }
 .bot-pill.testmode-sentinel {
   border: 1px solid var(--color-bot-sentinel); color: var(--color-bot-sentinel);
