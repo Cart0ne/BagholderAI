@@ -1,16 +1,18 @@
-# Report for CEO — Audit Area 1 + Area 2 (2026-07-29/30)
+# Report for CEO — Tornata audit completa: Area 1 + Area 2 + Area 3 (2026-07-29/30)
 
-**Sessione:** intervento s/n (nessun brief CEO — richiesta diretta di Max in chat)
-**Fonti:** `audits/reports/20260729_audit[A1].md` · `audits/reports/20260729_audit[A2].md`
-(entrambi prodotti da task Cowork indipendenti, gitignored: in git va solo la sintesi)
-**Commit:** `bd3ae1e` (sintesi A1) · `7f897c7` (compaction BUSINESS_STATE) · `7996e34` (sintesi A2) · `9159419` (fix L1+L2, **in attesa di ok Max per il push**)
-**Restart bot:** nessuno. Zero file del bot toccati in tutta la sessione.
+**Sessione:** intervento s/n (nessun brief CEO — richieste dirette di Max in chat)
+**Fonti:** `audits/reports/20260729_audit[A1].md` · `audits/reports/20260729_audit[A2].md` · `audits/reports/20260730_audit[A3].md`
+(tutti e tre prodotti da task Cowork indipendenti, gitignored: in git va solo la sintesi)
+**Commit:** `bd3ae1e` (sintesi A1) · `7f897c7` (compaction BUSINESS_STATE) · `7996e34` (sintesi A2) · `9159419` (fix L1+L2, **deploy verificato live**) · `6c5b5d7` (§10 + questo report) · `435a06a` (sintesi A3)
+**Restart bot:** nessuno. Zero file del bot toccati in tutta la tornata.
 
 ---
 
 ## 1. In una riga
 
-Due audit indipendenti nello stesso giorno: **A1 tecnico APPROVED** (il sistema regge), **A2 coerenza CON RISERVE** con un solo finding che pesa — la narrazione pubblica dice ancora "nessun denaro reale" mentre il denaro reale gira da una settimana. Due dei tre finding minori sono chiusi; il terzo l'ha chiuso il Board con una decisione.
+**Tutte e tre le aree auditate in ventiquattr'ore** — non era pianificato, è successo. **A1 tecnico APPROVED** (il sistema regge sotto denaro reale), **A2 coerenza CON RISERVE** (la narrazione pubblica non ha ancora recepito il denaro reale), **A3 marketing CON RISERVE** (ma con la notizia migliore del mese: è caduto il muro dello 0-click). Tre finding minori chiusi con codice, due chiusi da decisioni del Board, due respinti dopo verifica perché non stavano in piedi.
+
+**Il meta-risultato, che vale più dei singoli finding:** tre volte su tre un limite dell'ambiente dell'auditor ha prodotto un finding fuorviante. Verificarli prima di eseguire ha evitato due interventi inutili. Dettaglio in §10.
 
 ---
 
@@ -120,7 +122,51 @@ Per onestà va detto anche il rovescio: **questo non ribalta il verdetto S113.**
 
 ---
 
-## 4. Compaction BUSINESS_STATE (autorizzata in sessione)
+## 4. Audit Area 3 — strategia & marketing: **CON RISERVE**
+
+**1 CRITICAL (di processo), 2 HIGH, 2 MED, 2 LOW.** Cadenza mensile rispettata (28 giorni dal precedente).
+
+### 4.1 La notizia: è caduto il muro dello 0-click
+
+Per la prima volta il sito ha raccolto **click organici, e su entrambi i motori**, da query esattamente on-target:
+
+| Segnale | Valore | Ciclo precedente |
+|---|---|---|
+| Click Google | **1** (via `how-three-claudes-run-a-company`, pos 6,5, CTR 25% su 4 impr) | 0 |
+| Click Bing | **1** (query `build crypto trader with claude`, pos 5) | 0 |
+| Posizione media Google | **13,8** | 17,0 |
+| Dev.to | 370 views (+16%), 10 commenti (+3) | 319 views, 7 commenti |
+| Query Google | più pulite, meno rumore di terzi | — |
+
+Due cicli a zero click assoluti, questo a due. Il numero è minuscolo, ma **la direzione è la prima cosa buona che questi audit misurano da mesi**: le query che convertono sono precisamente quelle del cluster su cui abbiamo scritto ("claude + crypto trading bot"). Dev.to resta il canale più solido — l'unico dove arrivano commenti reali.
+
+Sul rovescio, niente di nuovo: **X piatto per il terzo ciclo** (11 like, 0 retweet su 85 post), e **CTR ancora sotto l'1%**.
+
+### 4.2 La riserva che pesa non è tecnica: **Umami down per il secondo mese**
+
+Il connettore Umami ha restituito **HTTP 401**, errore identico a quello del 2 luglio. Conseguenza: zero visibilità su pageviews, funnel e eventi CTA.
+
+Il punto non è il guasto — è che **la rigenerazione della chiave era la priorità #1 dell'audit precedente, marcata "impatto alto, sforzo basso", e a 28 giorni non è stata fatta**. Quindi siamo ciechi su funnel e conversioni **esattamente nel mese in cui i click hanno iniziato ad arrivare**: abbiamo il primo segnale di ingresso e nessuno strumento per vedere cosa fa quella gente una volta entrata.
+
+Serve Max: sono credenziali, l'auditor non le tocca e nemmeno io.
+
+### 4.3 Due raccomandazioni dell'auditor che ho respinto dopo verifica
+
+**La sua priorità #2 — "riscrivere title e meta di `/roadmap` e `/blueprint`, impatto ALTO, sforzo basso" — non l'ho eseguita.** Tre motivi, in ordine di peso:
+
+1. **È un doppione già archiviato.** L'audit A3 del 2 luglio aveva già esaminato questa stessa leva e l'aveva **declassata da "leva anti-0-click" a "igiene"**, proprio perché le query di `/roadmap` sono anonimizzate da Google. Sta scritto in PROJECT_STATE §9.
+2. **Il dato lo conferma.** Ho ricontato sull'evidenza grezza (`seo_gsc.md`): delle **163 impression totali, solo 13 hanno una query visibile** — il **92% è anonimo**. Non si ottimizza uno snippet per una query che non si può leggere.
+3. **La diagnosi non regge statisticamente.** "84 impression a posizione 7,7 con 0 click ⇒ snippet rotto" ignora la dimensione del campione: a quella posizione il CTR atteso è ~1,5-2%, quindi su 84 impression ci si aspettano **~1,5 click**. Osservarne zero è del tutto ordinario — non è un segnale, è rumore. E i title/meta attuali, che ho letto, sono già scritti bene.
+
+**I due draft Dev.to `-temp-slug` non sono CC-eseguibili.** L'auditor li assegna a me, ma l'import RSS di Dev.to **crea la bozza una volta sola e non si ri-sincronizza**: gli aggiornamenti lì sono manuali per design (vincolo noto e documentato). Vanno pubblicati a mano.
+
+### 4.4 Una cosa che l'auditor non ha visto
+
+Il click Google è arrivato sull'URL **con lo slash finale** (`…how-three-claudes-run-a-company/`), mentre la **stessa pagina risulta indicizzata anche senza slash** (3 impression, 0 click). È il duplicato canonical che il commit `7c4fbdf` ha corretto il 24 luglio; la finestra GSC si chiude il 27, quindi questi dati sono a cavallo del fix. **Non è una regressione** — ma va ri-guardato al prossimo ciclo per confermare che Google consolidi sulla versione senza slash. Se non lo fa, il fix non ha morso e ci stiamo dividendo l'autorità della pagina su due URL.
+
+---
+
+## 5. Compaction BUSINESS_STATE (autorizzata in sessione)
 
 Il file era a **59 KB**, sopra il trigger di 50 e fuori dalla tolleranza di 52. Su autorizzazione esplicita di Max: **59 KB → 36 KB**, 91 righe rimosse, **tutte archiviate integralmente** in `audits/BUSINESS_STATE_archive.md` con verifica automatica "0 righe perse" (ogni riga non vuota dell'originale è nel file nuovo o nell'archivio).
 
@@ -132,7 +178,7 @@ Tagliato: decisioni §4 del 1° luglio e precedenti (tenendo le portanti ancora 
 
 ---
 
-## 5. Decisions
+## 6. Decisions
 
 **DECISIONE:** non rinfrescare il mock della dashboard, smettere di server-renderizzare cifre.
 **RAZIONALE:** il piano di manutenzione "refresh a ogni release" era già fallito con due mesi di drift; i placeholder non invecchiano.
@@ -149,22 +195,61 @@ Tagliato: decisioni §4 del 1° luglio e precedenti (tenendo le portanti ancora 
 **ALTERNATIVE CONSIDERATE:** eseguire il redeploy per scrupolo.
 **FALLBACK SE SBAGLIATA:** se `/blog` risultasse davvero stale a qualcuno, redeploy+purge restano un'operazione di due minuti.
 
----
-
-## 6. Sul tavolo del CEO
-
-| # | Cosa | Stato |
-|---|---|---|
-| 1 | **H1 — reveal o softening di `/terms`** | Agganciato all'ufficializzazione sul sito (decisione Max). Finché è in hold, la pagina legale afferma una cosa falsa |
-| 2 | **Debito 62a a backlog?** | Non è nella MASTER_TASK_LIST. L'auditor A1 lo raccomanda prima dello scaling capitale di Fase 3 |
-| 3 | **Nessun ritentativo sulle scritture dei cervelli** | Emerso dalla mia verifica a 30 giorni, non dall'audit. Con Sherpa al volante del denaro reale, un blip del DB = una decisione non presa |
-| 4 | **Audit Area 3 in scadenza** | Ultimo 2 luglio; cadenza mensile → dovuto verso il 1° agosto |
-| 5 | **Frasi stale in BUSINESS_STATE §2/§3/§6/§7** | Territorio CEO, non le ho riscritte |
+**DECISIONE:** non eseguire la priorità #2 dell'A3 (riscrittura title/meta), contro una raccomandazione marcata "impatto alto, sforzo basso".
+**RAZIONALE:** è un doppione già declassato a igiene nel ciclo precedente; il 92% delle impression ha query anonime (non ottimizzabili) e 0 click su 84 impression a pos 7,7 è rumore statistico, non un segnale (attesi ~1,5 click). I title/meta attuali sono già buoni: riscriverli sarebbe churn con rischio di perdere posizione.
+**ALTERNATIVE CONSIDERATE:** eseguirla comunque perché costa poco — scartata: "costa poco" non è una ragione per fare una cosa che il ciclo prima avevamo concluso non serve.
+**FALLBACK SE SBAGLIATA:** se al prossimo ciclo le pagine forti restano a 0 click **con query visibili**, la leva torna valida e si riscrivono gli snippet in mezz'ora.
 
 ---
 
-## 7. Cosa non è stato fatto e perché
+## 7. Sul tavolo del CEO
 
-Non ho toccato `TestnetBanner` né `/terms` (H1 = decisione strategica di Max, agganciata al reveal). Non ho corretto `params.py` né il post sul backtest (L3 = Board dice basta backtest). Non ho eseguito il redeploy che l'auditor chiedeva per M1 (finding non confermato). Non ho riscritto i contenuti di BUSINESS_STATE (territorio CEO). Nessun restart dei bot: la sessione non ha toccato un solo file del bot, la flotta gira ancora sul codice che l'audit A1 ha certificato.
+| # | Cosa | Chi | Stato |
+|---|---|---|---|
+| 1 | **Chiave Umami da rigenerare** | **Max** (credenziali) | 🔴 **Aperta da 2 cicli.** Era priorità #1 il 02-07. Funnel e conversioni ciechi proprio ora che arrivano i primi click |
+| 2 | **H1 — reveal o softening di `/terms`** | Max/CEO | Agganciato all'ufficializzazione sul sito. Finché è in hold, la pagina legale afferma una cosa falsa |
+| 3 | **Debito 62a a backlog?** | CEO | Non è nella MASTER_TASK_LIST. L'auditor A1 lo raccomanda prima dello scaling capitale di Fase 3 |
+| 4 | **Nessun ritentativo sulle scritture dei cervelli** | CEO (brief) | Emerso dalla mia verifica a 30 giorni, non dall'audit. Con Sherpa al volante del denaro reale, un blip del DB = una decisione non presa |
+| 5 | **2 draft Dev.to `-temp-slug` da pubblicare** | **Max** (manuale per design) | Due pezzi già live sul blog restano a 0 views su Dev.to |
+| 6 | **Vercel Web Analytics come fonte di riserva?** | CEO/Max | Reso più urgente dalla cecità Umami su due cicli |
+| 7 | **Temi editoriali sul cluster che converte** | CEO | "claude + crypto trading bot" è l'unico posto da cui sono arrivati click: 1-2 pezzi nuovi lì |
+| 8 | **Frasi stale in BUSINESS_STATE §2/§3/§6/§7** | CEO | Territorio CEO, non le ho riscritte |
 
-Il commit `9159419` con i fix L1+L2 è **locale, non pushato**, in attesa dell'ok di Max — il push fa deploy sul sito pubblico.
+---
+
+## 8. Cosa non è stato fatto e perché
+
+Non ho toccato `TestnetBanner` né `/terms` (H1 = decisione strategica, agganciata al reveal). Non ho corretto `params.py` né il post sul backtest (L3 = Board dice basta backtest). Non ho eseguito il redeploy che l'A2 chiedeva per M1, né la riscrittura degli snippet che l'A3 chiedeva come priorità #2: **entrambi i finding non hanno superato la verifica**. Non ho pubblicato i draft Dev.to (manuali per design). Non ho riscritto i contenuti di BUSINESS_STATE (territorio CEO).
+
+Nessun restart dei bot in tutta la tornata: non è stato toccato un solo file del bot, la flotta gira ancora sul codice che l'audit A1 ha certificato.
+
+---
+
+## 9. Stato cadenze dopo questa tornata
+
+| Area | Ultimo | Prossimo | Nota |
+|---|---|---|---|
+| 1 — tecnica | 2026-07-30 | ~2026-08-28 (mensile) | APPROVED |
+| 2 — coerenza | 2026-07-29 | event-based, backstop ~2026-09-27 | Il gate §2(a) pre-go-live è stato **adempiuto in ritardo**: andava fatto prima del 22-lug |
+| 3 — marketing | 2026-07-30 | ~2026-08-29 (mensile) | CON RISERVE |
+
+Per la prima volta **tutte e tre le aree sono fresche contemporaneamente**.
+
+---
+
+## 10. Il meta-risultato: i limiti dell'auditor fanno parte del finding
+
+Vale la pena isolarlo, perché è la cosa più riutilizzabile di questa tornata. Tre audit, e in tutti e tre un vincolo dell'ambiente di esecuzione ha prodotto un finding fuorviante:
+
+| Audit | Limite dell'ambiente | Finding che ne è uscito | Realtà |
+|---|---|---|---|
+| A2 | Chrome non disponibile → fetch statica senza JS | **M1**: "deploy fermo al 18-lug, `/blog` stale con 7 post" | Deploy **current**: 14 post, breadcrumb su 7 pagine, roadmap allineata |
+| A2 | stessa causa | parte di **L1**: sottotitolo "shadow-only" | Già corretto in una sessione precedente: dice "advise live" |
+| A3 | Repo non connesso → non ha letto `DATA_CAVEATS.md` + MASTER_TASK_LIST | **Priorità #2** "impatto alto" | Doppione già declassato a igiene il ciclo prima; 92% query anonime |
+| A3 | stessa causa | Task Dev.to assegnato a CC | Non CC-eseguibile: update Dev.to manuali per design |
+
+Non è incompetenza degli auditor — è che ciascuno **dichiara onestamente il proprio limite** e poi trae conclusioni come se non ci fosse. La conclusione operativa, ora scritta in PROJECT_STATE §9:
+
+> Prima di eseguire una remediation da audit Cowork, verificare il finding contro la fonte viva (sito live, DB, evidenza grezza nella run folder) e contro §9. Costa minuti e in questa tornata ha evitato due interventi inutili.
+
+Un corollario per il protocollo, che vale una modifica: `AUDIT_PROTOCOL §1` rende **obbligatorio** per l'A3 leggere `DATA_CAVEATS.md` e la MASTER_TASK_LIST proprio per evitare i doppioni — ma se l'auditor gira senza repo connesso **non può fisicamente farlo**, e nessuno se ne accorge finché non si legge il report. Vale la pena rendere il repo un prerequisito verificato all'avvio, non un assunto.
