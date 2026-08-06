@@ -301,17 +301,32 @@ class TelegramNotifier:
         # only realized-from-sells, which looked falsely flat on no-sell days.
         # Grid-scoped (daily_pnl stores the Grid baseline); falls back to the
         # realized-only line when yesterday's snapshot is missing.
+        #
+        # T.4: split the move into market (measured) + trading (residual).
+        # The previous "sells $X · paper $Y" split showed realized on one side
+        # and (move − realized) on the other, so a profitable sell landed twice:
+        # once as a gain in sells, once as an equal loss in paper. The paper
+        # line then read like a market drop that never happened. Realized is
+        # still shown, but as "Locked in" — cash secured, not P&L earned today.
         grid_move = data.get("today_grid_move")
         if grid_move is not None:
             move_emoji = "🟢" if grid_move >= 0 else "🔴"
             grid_realized_today = float(data.get("today_grid_realized") or 0)
-            paper = round(grid_move - grid_realized_today, 2)
             text += (
                 f"\n📅 <b>Today:</b> {tc_combined} trades "
-                f"({tb_combined}B {ts_combined}S) · Fees: ${fees:.2f}\n"
-                f"Day P&L (Grid): {move_emoji} ${grid_move:+.2f} "
-                f"(sells ${grid_realized_today:+.2f} · paper ${paper:+.2f})\n"
+                f"({tb_combined}B {ts_combined}S) · Fees: ${fees:.2f} · "
+                f"Locked in: ${grid_realized_today:+.2f}\n"
+                f"Day P&L (Grid): {move_emoji} ${grid_move:+.2f}\n"
             )
+            market_move = data.get("today_market_move")
+            if market_move is not None:
+                trading_move = round(grid_move - market_move, 2)
+                market_emoji = "🟢" if market_move >= 0 else "🔴"
+                trading_emoji = "🟢" if trading_move >= 0 else "🔴"
+                text += (
+                    f"  ├ Market (open positions): {market_emoji} ${market_move:+.2f}\n"
+                    f"  └ Trading (net of fees): {trading_emoji} ${trading_move:+.2f}\n"
+                )
         else:
             realized_emoji = "🟢" if tr_combined >= 0 else "🔴"
             text += (

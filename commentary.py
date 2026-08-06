@@ -133,27 +133,34 @@ def get_yesterday_pnl_pct(supabase_client):
         return None
 
 
-def get_yesterday_grid_pnl(supabase_client, cycle=None):
-    """T.2: fetch yesterday's Grid cumulative total_pnl from the daily_pnl
-    snapshot, so the daily report can show the *day's* equity move
-    (today's total_pnl − yesterday's), i.e. realized + the change in paper
-    (unrealized) P&L. Without this the report only shows realized-from-sells
-    and looks falsely flat on no-sell days.
+def get_yesterday_grid_snapshot(supabase_client, cycle=None):
+    """T.2/T.4: fetch yesterday's Grid daily_pnl snapshot — the cumulative
+    total_pnl *and* the per-symbol positions held at yesterday's close.
+
+    total_pnl gives the day's equity move (today's total_pnl − yesterday's),
+    i.e. realized + the change in paper (unrealized) P&L; without it the
+    report only shows realized-from-sells and looks falsely flat on no-sell
+    days. The positions give yesterday's closing prices + quantities, which
+    T.4 needs to *measure* the market move instead of deducing it (see
+    compute_market_move).
 
     We compare total_pnl (not total_value) on purpose: total_pnl =
     total_value − grid_budget is invariant to the $25 Kraken phantom / any
     venue-budget change, so the number stays honest across the restart that
     removes the phantom (both sides cancel the budget).
 
-    Returns float or None (None → caller omits the day-move line and falls
-    back to the realized-only line; e.g. first day of a cycle, or a missed
-    snapshot yesterday — we never fabricate a baseline).
+    Returns {"total_pnl": float, "positions": list | None} or None.
+    None → caller omits the day-move line and falls back to the
+    realized-only line (e.g. first day of a cycle, or a missed snapshot
+    yesterday — we never fabricate a baseline). `positions` is None when the
+    snapshot predates the column being populated: the caller must then skip
+    the market/trading split rather than report a $0.00 market move.
     """
     yesterday = str(date.today() - timedelta(days=1))
     try:
         q = (
             supabase_client.table("daily_pnl")
-            .select("total_pnl, cycle")
+            .select("total_pnl, positions, cycle")
             .eq("date", yesterday)
         )
         if cycle:
@@ -161,11 +168,112 @@ def get_yesterday_grid_pnl(supabase_client, cycle=None):
         result = q.order("created_at", desc=True).limit(1).execute()
         if not result.data:
             return None
-        val = result.data[0].get("total_pnl")
-        return float(val) if val is not None else None
+        row = result.data[0]
+        val = row.get("total_pnl")
+        if val is None:
+            return None
+        # db/client.py stores positions as a json.dumps'd string.
+        positions = row.get("positions")
+        if isinstance(positions, str):
+            try:
+                positions = json.loads(positions)
+            except Exception:
+                positions = None
+        if positions is not None and not isinstance(positions, list):
+            positions = None
+        return {"total_pnl": float(val), "positions": positions}
     except Exception as e:
-        logger.warning(f"Could not fetch yesterday's grid pnl: {e}")
+        logger.warning(f"Could not fetch yesterday's grid snapshot: {e}")
         return None
+
+
+def get_yesterday_grid_pnl(supabase_client, cycle=None):
+    """Yesterday's Grid cumulative total_pnl, or None. Thin wrapper over
+    get_yesterday_grid_snapshot for callers that only need the baseline."""
+    snap = get_yesterday_grid_snapshot(supabase_client, cycle)
+    return snap["total_pnl"] if snap else None
+
+
+def _position_price(pos):
+    """Mark price of a position: the explicit live_price when present (live
+    state), else value/holdings (daily_pnl snapshots don't store the price).
+    Returns None when neither is derivable."""
+    price = pos.get("live_price")
+    if price is not None:
+        try:
+            price = float(price)
+            if price > 0:
+                return price
+        except (TypeError, ValueError):
+            pass
+    try:
+        holdings = float(pos.get("holdings") or 0)
+        value = float(pos.get("value") or 0)
+    except (TypeError, ValueError):
+        return None
+    if holdings <= 0:
+        return None
+    return value / holdings
+
+
+def compute_market_move(yesterday_positions, today_positions):
+    """T.4: the day's *measured* market move on the Grid — what the portfolio
+    would have done had the bot stayed still today.
+
+        market = Σ (price_today − price_yesterday) × quantity_yesterday
+
+    Why this exists: the report used to deduce the paper component as
+    (day move − realized), which double-counts every sell. Selling moves
+    profit *out* of unrealized and *into* realized, so a profitable sell
+    shows up as a gain on the realized side and an equal loss on the paper
+    side — making the paper line read like a market crash that never
+    happened. Measuring the market directly and leaving *trading* as the
+    residual (day move − market) fixes the attribution: trading then reads
+    as the counterfactual "how much the bot beat standing still", fees
+    included.
+
+    Quantities are yesterday's closing balance on purpose (opening balance
+    of the day): it makes the market leg a genuine do-nothing baseline. The
+    trade-off is that a coin sold at 9am is still marked at the 6pm price in
+    the market leg — the intraday timing lands in the trading residual. We
+    accept that: no intraday marks are stored (write-on-change, S79c).
+
+    Symbols held yesterday but absent from today's list are skipped (their
+    move falls into the residual) — this only happens if a coin is dropped
+    from bot_config mid-day. Symbols new today contribute nothing, which is
+    correct for an opening-balance baseline.
+
+    Returns float, or None when yesterday's positions are unknown (caller
+    must then omit the split rather than claim a $0.00 market move).
+    """
+    if yesterday_positions is None:
+        return None
+    today_by_symbol = {
+        p.get("symbol"): p for p in (today_positions or []) if p.get("symbol")
+    }
+    market = 0.0
+    skipped = []
+    for pos in yesterday_positions:
+        symbol = pos.get("symbol")
+        try:
+            qty = float(pos.get("holdings") or 0)
+        except (TypeError, ValueError):
+            qty = 0.0
+        if not symbol or qty <= 0:
+            continue
+        price_yesterday = _position_price(pos)
+        today_pos = today_by_symbol.get(symbol)
+        price_today = _position_price(today_pos) if today_pos else None
+        if price_yesterday is None or price_today is None:
+            skipped.append(symbol)
+            continue
+        market += (price_today - price_yesterday) * qty
+    if skipped:
+        logger.warning(
+            f"[market move] no price for {', '.join(skipped)} — "
+            "their move falls into the trading residual"
+        )
+    return round(market, 2)
 
 
 def get_config_changes(supabase_client):

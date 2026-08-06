@@ -19,7 +19,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from db.client import ReserveLedger, get_client, get_current_cycle
 from utils.telegram_notifier import SyncTelegramNotifier
-from commentary import get_tf_state, get_grid_state, get_yesterday_grid_pnl
+from commentary import (
+    get_tf_state,
+    get_grid_state,
+    get_yesterday_grid_snapshot,
+    compute_market_move,
+)
 
 
 def main():
@@ -89,13 +94,17 @@ def main():
         p["buys_today"] = sum(1 for t in sym_today if t.get("side") == "buy")
         p["sells_today"] = sum(1 for t in sym_today if t.get("side") == "sell")
 
-    # T.2: day equity move (Grid) for the private report — see daily_report.py.
+    # T.2/T.4: day equity move (Grid) + market/trading split for the private
+    # report — see daily_report.py and commentary.compute_market_move.
     current_cycle = get_current_cycle(sb)
-    yest_grid_pnl = get_yesterday_grid_pnl(sb, current_cycle)
-    today_grid_move = (
-        round(grid_state["total_pnl"] - yest_grid_pnl, 2)
-        if yest_grid_pnl is not None else None
-    )
+    yest_snapshot = get_yesterday_grid_snapshot(sb, current_cycle)
+    today_grid_move = None
+    today_market_move = None
+    if yest_snapshot is not None:
+        today_grid_move = round(grid_state["total_pnl"] - yest_snapshot["total_pnl"], 2)
+        today_market_move = compute_market_move(
+            yest_snapshot.get("positions"), grid_state.get("positions", [])
+        )
 
     report_data = {
         **grid_state,  # total_value, cash, holdings_value, initial_capital,
@@ -109,6 +118,7 @@ def main():
         "today_realized": day_realized,
         "today_grid_move": today_grid_move,          # T.2
         "today_grid_realized": round(day_realized, 2),  # T.2 (grid_today is grid-only)
+        "today_market_move": today_market_move,      # T.4
         "reserves": reserves,
         "tf": tf_state,
     }
