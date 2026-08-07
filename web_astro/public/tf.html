@@ -359,6 +359,10 @@
   </style>
   <!-- Brief 72a S72: shared canonical P&L (mirror dashboard, home, /grid). -->
   <script src="/lib/pnl-canonical.js?v=20260807"></script>
+  <style>
+    .tf-paused-banner { border:1px solid var(--amber); background:rgba(255,193,7,.07); border-radius:8px;
+      padding:9px 13px; margin:10px 0; font-family:var(--mono); font-size:11.5px; line-height:1.55; color:var(--text-dim); }
+  </style>
 </head>
 <body>
   <div class="container">
@@ -382,6 +386,19 @@
         <a class="active" href="/tf">TF</a>
         <a href="/admin">Admin</a>
       </nav>
+
+      <!-- S125: il TF e' fermo dal cutover Kraken. Senza questo avviso il
+           pannello sembra semplicemente vuoto — e un pannello vuoto si legge
+           come "rotto", non come "spento di proposito". -->
+      <div class="tf-paused-banner">
+        <strong style="color: var(--amber); text-transform: uppercase; letter-spacing: .1em;">⏸ Trend Follower fermo</strong>
+        — spento il 7 agosto 2026 al passaggio su Kraken (<code>ENABLE_TF=false</code>). Il collaudo a denaro reale e'
+        <em>solo grid</em>, una variabile alla volta. Il fondo TF non ha allocazioni su Kraken, quindi i numeri qui sotto
+        sono l'ultima fotografia dell'era testnet e non si aggiornano.
+        <br>Il salvataggio dei parametri e' <strong>disattivato</strong>: le scritture anonime su <code>trend_config</code> sono state chiuse
+        (S125) e questo pannello non passa ancora dalla Edge Function <code>config-write</code>, che oggi copre solo <code>bot_config</code>.
+        Rientra quando rientra il TF.
+      </div>
 
       <!-- Header -->
       <div class="top-bar">

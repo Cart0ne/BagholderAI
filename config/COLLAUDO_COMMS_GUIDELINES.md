@@ -1,7 +1,27 @@
 # Linee guida comunicazione — Collaudo live $100 su Kraken
 
-**Sessione:** S116 · 2026-07-07 (v1 CEO) → **emendato da Max (Board) 2026-07-07, confermato in conversazione diretta con CC**
-**Stato:** v2 — **CONFERMATO** (non più pendente approvazione Board: Max ha dettato il piano direttamente, sostituisce v1 su dashboard/homepage/badge)
+**Sessione:** S116 · 2026-07-07 (v1 CEO) → v2 emendata da Max (Board) 2026-07-07 → **v3 emendata in S125, 2026-08-07, dai fatti del cutover Fase 3**
+**Stato:** v3 — **CONFERMATO**
+
+> ### ⚠️ Emendamento S125 (2026-08-07) — leggere prima del resto
+>
+> La v2 descriveva un collaudo che **non è più quello che stiamo facendo**. Tre punti sono
+> superati dai fatti, e chi legge il documento senza questo cappello costruisce sul piano
+> sbagliato:
+>
+> | v2 (7 luglio) | realtà dal 7 agosto |
+> |---|---|
+> | $100 di collaudo | **~$400** (BTC/USD $250 + SOL/USD $150) |
+> | un asset alla volta, sequenziale | **due monete in parallelo** |
+> | sequenza BTC → SOL → **BONK** | **BONK escluso** — volume Kraken $29K/24h: fra commissioni (0,80%×2) e spread ogni ciclo partirebbe con ~2,44% di costi contro un obiettivo del 2,38%. Il rischio non era perdere i $50, era non ottenere **alcun** dato |
+>
+> Cambiato anche il contesto attorno: il testnet Binance si è azzerato il 5-6 agosto e **non
+> è stato riaperto** — non esiste più un "sistema principale" accanto al collaudo. Su Kraken
+> gira *tutto* quello che gira. Il Trend Follower è fermo.
+>
+> **Il §0 resta intatto e vale più di prima**: mostriamo che l'impianto tiene, non che stiamo
+> facendo soldi. Con denaro vero in vetrina è l'unica frase di questo documento che non
+> ammette sconti.
 **Scope:** come raccontiamo, sul sito e sui canali, la fase di **collaudo** ($100 reali, Kraken).
 Questo NON è la spec tecnica di dettaglio (→ brief separato per CC quando arrivano le chiavi API). Sono linee guida di comunicazione + il piano di massima già confermato da Max.
 
@@ -26,7 +46,7 @@ Tutta la comunicazione discende da qui: mostriamo che **l'impianto tiene**, non 
 **Comunichiamo:**
 - È il **primo denaro reale** del progetto (milestone vero).
 - È piccolo **di proposito**: la size minima sensata per testare l'esecuzione con rischio reale.
-- È **sequenziale**: un asset alla volta, BTC → SOL → BONK.
+- ~~È **sequenziale**: un asset alla volta, BTC → SOL → BONK.~~ **[S125]** Due monete in parallelo (BTC/USD + SOL/USD); BONK escluso per volume insufficiente su Kraken. La sequenzialità serviva a isolare le variabili quando il collaudo affiancava un sistema testnet vivo; ora il collaudo **è** il sistema.
 - Cosa valida: fill reali, fee, slippage, riconciliazione con Supabase.
 
 **Evitiamo:**
@@ -61,12 +81,13 @@ ma con questi aggiornamenti:
 - La scena hero "bot al lavoro" (visualizzazione principale) riporta i dati Kraken invece di Binance.
 
 **Dashboard** — non si archivia, si aggiorna sul posto:
-- **Nuova sezione in alto**: dati Kraken + disclaimer testuale (fase di test, $100, 1 moneta attiva
-  — es. BTC).
+- **Nuova sezione in alto**: dati Kraken + disclaimer testuale. **[S125]** Il riferimento a "$100,
+  1 moneta attiva" è superato: il filtro va su `venue='kraken' AND is_active=true`, mai su una
+  moneta cablata, e la cifra si legge dalla somma delle allocazioni vive.
 - Scheda **TF**: ferma/congelata (il collaudo è grid-only, sequenziale — TF non è nel perimetro del
   collaudo $100).
-- Scheda **Grid**: filtrata — mostra solo la moneta attiva del momento (es. solo BTC quando si sta
-  testando BTC), non tutte e 3.
+- Scheda **Grid**: filtrata sulle righe Kraken attive. **[S125]** Oggi sono **due** (BTC/USD,
+  SOL/USD), non "la moneta del momento": il filtro va sul venue, mai su un simbolo cablato.
 - **Reconciliation**: ricalibrata su Kraken (dipende dal lavoro di cutover K.1/K.2 — non è
   indipendente, è a valle di quello).
 - Tutto il resto della dashboard resta identico.
@@ -90,7 +111,9 @@ della homepage ad ogni switch.
 Testo di riferimento per la **dashboard**. Per i canali social (X / blog) la voce la mette Max
 (regola marketing) — questo è il *contenuto*, non la prosa pubblica finale.
 
-> Questo è un collaudo. $100 reali su Kraken per verificare che la macchina esegua bene — fill, fee, slippage, riconciliazione. Non è la strategia completa (che parte da $600). Non è prova che il sistema guadagni. Non è consulenza finanziaria.
+> **[S125 — testo corrente]** Questo è un collaudo. Denaro reale su Kraken per verificare che la macchina esegua bene — fill, fee, slippage, riconciliazione. Non è la strategia completa. Non è prova che il sistema guadagni. Non è consulenza finanziaria.
+>
+> *(v2, superata: "$100 reali… (che parte da $600)" — entrambe le cifre non descrivono più nulla.)*
 
 ---
 
@@ -107,7 +130,7 @@ Regola marketing attiva: **Max scrive in italiano, il CEO traduce fedele.** Qui 
 
 ## 5. Valuta
 
-- Display pubblico: **$100 (USD)** — Kraken quota in USD. Conferma finale all'atto del deposito.
+- Display pubblico: **la somma delle allocazioni Kraken vive** (USD) — **[S125]** mai una cifra scritta a mano. Il 7 agosto sono $400; il giorno che Max ne versa altri, il sito segue da solo senza che nessuno tocchi codice. La v2 diceva "$100 (USD)" ed è invecchiata in un mese.
 - Regola display: **sempre dollari assoluti, mai % come metrica principale.**
 
 ---

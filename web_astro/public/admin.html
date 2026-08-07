@@ -707,7 +707,7 @@
           <strong style="color: var(--blue);">⚠ diff</strong> = proposed ≠ current (Sherpa writes it, unless locked).
           <strong style="color: var(--yellow);">🔒 cooldown</strong> = a Board override locked the parameter for 24h.
           <strong style="color: var(--green);">✓ aligned</strong> = nothing to do.
-          Sherpa is LIVE on testnet: it writes <code>bot_config</code> directly (audit in <code>config_changes_log</code>).
+          Sherpa is LIVE on real money (Kraken): it writes <code>bot_config</code> directly (audit in <code>config_changes_log</code>, ora scritto dalla Edge Function <code>config-write</code>).
         </div>
       </div>
 
@@ -823,8 +823,14 @@
       </div>
       </details>
 
-      <!-- ============ RECONCILIATION (Binance) ============ -->
-      <div class="section-title" style="color: var(--amber);">⚖️ Reconciliation (Binance)</div>
+      <!-- ============ RECONCILIATION (Binance) — REPERTO, S125 ============ -->
+      <div class="section-title" style="color: var(--amber);">⚖️ Reconciliation · Binance <span style="font-size:11px;opacity:.75;">(archivio)</span></div>
+      <div style="border:1px solid var(--amber);background:rgba(255,193,7,.06);border-radius:8px;padding:8px 12px;margin:6px 0 10px;font-family:var(--mono);font-size:11px;line-height:1.55;color:var(--text-dim);">
+        <strong style="color:var(--amber);">Storico.</strong> Questo controllo confronta gli ordini con <em>Binance</em>, dove non operiamo piu' dal 7 agosto 2026.
+        Le righe qui sotto sono l'ultima fotografia dell'era testnet e non si aggiornano piu'.
+        <br><strong style="color:var(--red,#e74c3c);">Su Kraken la riconciliazione NON esiste ancora</strong> — e' il controllo che prova che i numeri a database
+        corrispondono all'exchange, e oggi, sul denaro reale, non lo stiamo facendo. E' il debito aperto piu' serio del cutover.
+      </div>
 
       <!-- Per-symbol latest -->
       <div class="card" style="overflow-x: auto;">
@@ -902,7 +908,7 @@
       <div id="market-prices-grid"></div>
       <div class="footnote">
         One line per actively-traded coin (<code>bot_config.is_active = true</code>, any bot). Price from Binance public spot
-        klines (<code>api.binance.com/api/v3/klines</code>, no key) — real market context, not the bot's testnet fills.
+        klines (<code>api.binance.com/api/v3/klines</code>, no key) — contesto di mercato. Binance resta la <em>fonte dati</em> del progetto (prezzi, candele, regime) anche ora che gli ordini vanno su Kraken: e' una scelta, non un residuo.
         Charts appear/disappear as the active coin set changes; the window follows the range selector above. Coins not on
         Binance spot show "not on Binance spot".
       </div>
