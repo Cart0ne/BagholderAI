@@ -68,7 +68,11 @@ function getCycle() {
     .catch(() => CYCLE_FALLBACK);
   return cyclePromise;
 }
-const GRID_INITIAL = 500, TF_INITIAL = 100, TOTAL_INITIAL = 600;
+/* S125 — base VIVA. Erano 500/100/600 cablati (dotazione testnet): la scena
+   diceva "basis $600" e calcolava il P&L per un ciclo solo, quindi mostrava
+   -$0,08 mentre dashboard e homepage dicevano +$0,5. Stessa cura del resto
+   del sito: somma delle allocazioni Kraken attive, lette a ogni caricamento. */
+let GRID_INITIAL = 400, TF_INITIAL = 0, TOTAL_INITIAL = 400;
 
 async function sbGet(path) {
   const r = await fetch(`${SB_URL}/rest/v1/${path}`, { headers: SB_HEADERS });
@@ -121,7 +125,25 @@ function useOfficeData() {
     let alive = true;
     async function load() {
       try {
-        const CQ = `&cycle=eq.${await getCycle()}`;
+        /* ERA, non ciclo singolo: il denaro reale parte il 17-lug sotto
+           'kraken_test' (l'ordine di prova) e prosegue sotto 'kraken_2b'. Un
+           filtro a ciclo esatto amputa il primo e unico giro completo mai
+           chiuso (+$0,71 netti), che e' proprio cio' che faceva divergere
+           questa scheda dalle altre superfici. */
+        const _cycle = await getCycle();
+        const CQ = `&cycle=like.${String(_cycle).split('_')[0]}*`;
+        /* Base = somma delle allocazioni Kraken vive, per fondo. */
+        try {
+          const cfg = await sbGet('bot_config?select=capital_allocation,managed_by&is_active=eq.true&venue=eq.kraken');
+          if (cfg && cfg.length) {
+            let g = 0, tf = 0;
+            cfg.forEach((r) => {
+              const a = Number(r.capital_allocation) || 0;
+              if (r.managed_by === 'tf' || r.managed_by === 'tf_grid') tf += a; else g += a;
+            });
+            GRID_INITIAL = g; TF_INITIAL = tf; TOTAL_INITIAL = g + tf;
+          }
+        } catch { /* restano i valori correnti */ }
         const [trades, skimRows, sparkRows, sentRows, costRows] = await Promise.all([
           sbGetAll(`trades?select=symbol,side,amount,cost,fee,fee_asset,created_at,managed_by&config_version=eq.v3${CQ}&order=created_at.asc`),
           sbGet(`reserve_ledger?select=symbol,amount&config_version=eq.v3${CQ}`),
@@ -474,7 +496,7 @@ function LabRoom() {
                 <span style={{ fontFamily: BH.display, fontWeight: 800, fontSize: 20, color: live.ready ? live.pctColor : BH.text }}>{live.totalPnlStr}</span>
                 <span style={{ fontFamily: BH.mono, fontSize: 8.5, fontWeight: 700, color: live.pctColor }}>{live.pctStr}</span>
               </div>
-              <div style={{ fontFamily: BH.mono, fontSize: 6.5, letterSpacing: '0.08em', textTransform: 'uppercase', color: BH.muted, margin: '3px 0 4px' }}>net worth {live.netWorthStr} · basis $600</div>
+              <div style={{ fontFamily: BH.mono, fontSize: 6.5, letterSpacing: '0.08em', textTransform: 'uppercase', color: BH.muted, margin: '3px 0 4px' }}>net worth {live.netWorthStr} · basis ${TOTAL_INITIAL}</div>
               <div style={{ fontFamily: BH.mono, fontSize: 6, letterSpacing: '0.1em', textTransform: 'uppercase', color: BH.muted, marginBottom: 1 }}>grid fund · 7d</div>
               {(() => {
                 const sp = sparkPath(live.spark, 150, 42, 12);   // minSpan $12 (2% of basis)
