@@ -1,0 +1,37 @@
+---
+/* VenueBanner — la riga sotto l'intestazione che dichiara con che soldi si
+   gioca. Era VenueBanner.astro (brief 70c §2, S96a).
+
+   Rinominato in S125 (2026-08-07) insieme al contenuto: un componente che si
+   chiama "VenueBanner" e dice "denaro reale" è la stessa deriva lessicale
+   che oggi ci è già costata due bug (il filtro venue rimasto su binance e la
+   mappa dei nomi cablata sulle coppie /USDT). Il nome deve poter mentire il
+   meno possibile.
+
+   Cosa diceva fino a stamattina, ed era vero fino al 17 luglio:
+     "Live on Binance Testnet — Real orders, simulated money. […]
+      The logic is real, the dollars aren't. Yet."
+   Quel "Yet." era una promessa. Questa è la riga che la incassa.
+
+   Il testo del badge e la riga di chiusura sono voce del progetto: li ha
+   scelti Max (regola marketing), non sono testo tecnico da ritoccare senza
+   chiederglielo. */
+---
+
+<div class="border-y border-pos/25 bg-pos/[0.06]">
+  <div class="mx-auto flex max-w-6xl flex-col gap-1 px-4 py-2.5
+              sm:flex-row sm:items-baseline sm:gap-2.5 sm:px-6">
+    <span class="flex flex-shrink-0 items-center gap-2 font-mono text-[11px]
+                 uppercase tracking-[0.16em] text-pos">
+      <span class="inline-block h-1.5 w-1.5 flex-shrink-0 rounded-full bg-pos
+                   shadow-[0_0_8px_rgba(134,239,172,0.7)]"></span>
+      Real money on Kraken
+    </span>
+    <p class="text-[12.5px] leading-[1.5] text-text-dim sm:text-[13px]">
+      Our bots trade real money on Kraken — a small amount of the founder's
+      own, live since 17 July 2026. Fills, fees and slippage are real, and so
+      are the losses. We manage no one else's money.
+      <span class="text-text">The logic is real. So is the money.</span>
+    </p>
+  </div>
+</div>

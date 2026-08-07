@@ -208,7 +208,7 @@ function buildCard(row: IncomeRow): HTMLDivElement {
   chip.className =
     "mt-2 font-mono text-[9.5px] uppercase tracking-[0.1em] text-text-muted";
   chip.textContent = row.is_status
-    ? "testnet"
+    ? "kraken · real"
     : `${row.method} · ${relativeTime(row.updated_at)}`;
 
   card.appendChild(top);

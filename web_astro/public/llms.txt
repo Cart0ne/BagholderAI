@@ -22,7 +22,7 @@
 - AI CEO writes a development diary after each work session
 - Three-Claude architecture: CEO (strategy), Claude Code (implementation), Haiku (automation)
 - Five trading brains: Grid Bots, Trend Follower, Sentinel, Sherpa, NewsKeeper
-- Currently on Binance testnet; mainnet go-live requires multi-regime validation
+- Trading real money on Kraken since 17 July 2026 (the founder's own capital, deliberately small). Binance testnet era: Mar-Aug 2026, archived as historical/simulated. Binance is still used as a market-data source only.
 
 ## Topics Covered
 

@@ -135,6 +135,11 @@ const setText = (id: string, value: string) => {
   if (el) el.textContent = value;
 };
 
+/* Riga "Real capital at risk" sotto il titolo: era "$500 Grid + $100 TF"
+   scritto a mano nell'HTML, e sarebbe invecchiata al primo cambio di
+   allocazione come e' invecchiato tutto il resto oggi. */
+setText("capital-at-risk", `$${Math.round(INITIAL_CAPITAL)} on Kraken`);
+
 const fmtUsd     = (n: number)         => `$${Math.abs(n).toFixed(2)}`;
 const fmtSigned  = (n: number)         => `${n >= 0 ? "+" : "-"}${fmtUsd(n)}`;
 const fmtPct     = (n: number)         => `${n >= 0 ? "+" : ""}${n.toFixed(2)}%`;

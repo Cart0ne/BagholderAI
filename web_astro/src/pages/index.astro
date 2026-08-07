@@ -4,7 +4,7 @@ import Layout from "../layouts/Layout.astro";
 import BotCardOriginal from "../components/BotCardOriginal.astro";
 import WatchtowerCard from "../components/WatchtowerCard.astro";
 import SherpaLockedCard from "../components/SherpaLockedCard.astro";
-import TestnetBanner from "../components/TestnetBanner.astro";
+import VenueBanner from "../components/VenueBanner.astro";
 import DisclaimerGate from "../components/DisclaimerGate.astro";
 import CleanSlateSticker from "../components/CleanSlateSticker.astro";
 import LabRoom from "../components/office/LabRoom.jsx";
@@ -28,10 +28,10 @@ const fmtBlogDate = (d: Date) =>
    current (same GEO rule as /income). TF shows no win/loss record — it
    hands its coins to Grid (scanning line in the card). */
 const botData = [
-  { variant: "grid"     as const, mode: "live"     as const, patience: 95, speed: 30, capital: 500, wins: 0, losses: 0,
+  { variant: "grid"     as const, mode: "live"     as const, patience: 95, speed: 30, capital: 400, wins: 0, losses: 0,
     description: "buys dips, sells rallies, in a fixed range" },
-  { variant: "tf"       as const, mode: "live"     as const, patience: 25, speed: 90, capital: 100, wins: 0, losses: 0,
-    description: "Scanning Tier 1-2 assets. Shitcoins excluded." },
+  { variant: "tf"       as const, mode: "paused"   as const, patience: 25, speed: 90, capital: 0, wins: 0, losses: 0,
+    description: "Paused since the Kraken cutover. The real-money trial is grid-only." },
   /* Only grid + tf are rendered as BotCardOriginal (see slice(0,2) below);
      Sentinel/NewsKeeper use WatchtowerCard and Sherpa uses SherpaLockedCard.
      The old vestigial sentinel/sherpa entries (mode 'testmode', "observing in
@@ -116,7 +116,7 @@ const volumes = [
           ]
         }}>
 
-  <TestnetBanner />
+  <VenueBanner />
 
   {/* S118 (K.3 prep): full-page disclaimer overlay for cutover windows.
       Hidden SSR; live-stats.ts unhides it when site_flags.disclaimer_mode
