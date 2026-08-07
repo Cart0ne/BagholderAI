@@ -97,15 +97,26 @@ function replayAvgCost(trades: CanonicalTrade[]): Record<string, SymState> {
          fee_native ≈ fee_usdt / price and subtract from qty_acquired so the
          replay matches the actual wallet. Paper trades have fee_asset='USDT'
          (default) → fee_native_est = 0 → legacy behaviour preserved. */
+      /* S125 (chiude il brief S122b, mai eseguito) — la fee in valuta QUOTE
+         entra nel costo di carico, come fa il motore.
+         Specchio di bot/grid/buy_pipeline.py:304
+           cost_for_avg = cost + fee if (synth_fee or quote_fee_live) else cost
+         Se la commissione e' presa nella moneta comprata (Binance mainnet),
+         e' gia' dentro qtyAcquired e sommarla al costo la conterebbe due
+         volte. Se e' presa in dollari (Kraken, e il synth del testnet) non
+         e' in nessuno dei due posti e sparisce dal costo medio.
+         Su Binance valeva lo 0,1% e non si vedeva; su Kraken vale lo 0,80%
+         e sposta il prezzo di vendita di ~$500 su BTC. */
       const feeNativeEst = (feeAsset === base && price > 0) ? fee / price : 0;
       const qtyAcquired = amt - feeNativeEst;
+      const costForAvg = (feeAsset === base) ? cost : cost + fee;
       const newH = s.holdings + qtyAcquired;
       if (newH > 0) {
         /* P2 formula: avg = total_cost_usdt / qty_net_acquired (mirror of
            bot/grid/buy_pipeline.py:215). On paper trades the formula
            collapses to the legacy (cost = price × amt, qty_acquired = amt)
            — numerically identical. */
-        s.avgBuyPrice = (s.avgBuyPrice * s.holdings + cost) / newH;
+        s.avgBuyPrice = (s.avgBuyPrice * s.holdings + costForAvg) / newH;
       }
       s.holdings = newH;
       s.totalInvested += cost;

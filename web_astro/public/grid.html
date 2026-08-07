@@ -694,12 +694,23 @@
         var feeAsset = ((t.fee_asset || 'USDT') + '').toUpperCase();
         if (t.side === 'buy') {
           // P2: fee_native_est sottratto da qty_acquired quando fee in base coin
+          /* S125 (chiude il brief S122b, mai eseguito) — la fee in valuta QUOTE
+             entra nel costo di carico, come fa il motore.
+             Specchio di bot/grid/buy_pipeline.py:304
+               cost_for_avg = cost + fee if (synth_fee or quote_fee_live) else cost
+             Se la commissione e' presa nella moneta comprata (Binance mainnet),
+             e' gia' dentro qtyAcquired e sommarla al costo la conterebbe due
+             volte. Se e' presa in dollari (Kraken, e il synth del testnet) non
+             e' in nessuno dei due posti e sparisce dal costo medio.
+             Su Binance valeva lo 0,1% e non si vedeva; su Kraken vale lo 0,80%
+             e sposta il prezzo di vendita di ~$500 su BTC. */
           var feeNativeEst = (feeAsset === base && price > 0) ? feeUsdt / price : 0;
           var qtyAcquired = amt - feeNativeEst;
+          var costForAvg = (feeAsset === base) ? cost : cost + feeUsdt;
           var newHoldings = s.holdings + qtyAcquired;
           if (newHoldings > 0) {
             // P2 formula: avg = total_cost_usdt / qty_net_acquired
-            s.avg_buy_price = (s.avg_buy_price * s.holdings + cost) / newHoldings;
+            s.avg_buy_price = (s.avg_buy_price * s.holdings + costForAvg) / newHoldings;
           }
           s.holdings = newHoldings;
           s.total_invested += cost;
@@ -904,7 +915,7 @@
           body =
             '<div class="stats-row" style="margin-top:10px;">' +
               '<div class="stat-box"><div class="stat-label">Holdings</div><div class="stat-value">' + (hasPos ? p.holdings.toFixed(8) : '0') + '</div><div class="stat-sub">' + sym.split('/')[0] + '</div></div>' +
-              '<div class="stat-box"><div class="stat-label">Avg buy</div><div class="stat-value">' + fmtPrice(p.avgBuyPrice) + '</div><div class="stat-sub">cost basis $' + fmt(p.openCost) + '</div></div>' +
+              '<div class="stat-box"><div class="stat-label">Avg cost</div><div class="stat-value">' + fmtPrice(p.avgBuyPrice) + '</div><div class="stat-sub">incl. buy fee · basis $' + fmt(p.openCost) + '</div></div>' +
               '<div class="stat-box"><div class="stat-label">Kraken live</div><div class="stat-value">' + fmtPrice(live) + '</div><div class="stat-sub">current value $' + fmt(p.mtm) + '</div></div>' +
             '</div>' +
             '<div class="stats-row" style="margin-top:8px;">' +
@@ -1357,7 +1368,7 @@
           '<div class="coin-grid">' +
             // PRICE — avg buy · current price · diff %
             '<div class="coin-section-label">Price</div>' +
-            '<div class="coin-stat"><div class="cs-label">Avg buy</div><div class="cs-value">' + (positionClosed ? '—' : fmtPrice(a.avgBuyPrice)) + '</div></div>' +
+            '<div class="coin-stat"><div class="cs-label">Avg cost <span style="opacity:.6;font-weight:400;">(incl. fee)</span></div><div class="cs-value">' + (positionClosed ? '—' : fmtPrice(a.avgBuyPrice)) + '</div></div>' +
             '<div class="coin-stat"><div class="cs-label">Current price</div><div class="cs-value">' + ((positionClosed || !livePrice) ? '—' : fmtPrice(livePrice)) + '</div></div>' +
             '<div class="coin-stat"><div class="cs-label">Diff %</div><div class="cs-value" style="color:' + diffColor + ';">' + diffStr + '</div></div>' +
             // CASH FLOW — cash · open cost basis · realized
