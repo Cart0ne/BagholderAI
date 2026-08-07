@@ -334,28 +334,16 @@ type AllTrade = Trade & {
   fee_asset?: string | null;
 };
 
-const fetchLivePrices = async (symbols: string[]): Promise<Record<string, number>> => {
-  if (!symbols.length) return {};
-  const binSyms = symbols.map(s => s.replace("/", ""));
-  try {
-    const r = await fetch(
-      `https://api.binance.com/api/v3/ticker/price?symbols=` +
-      encodeURIComponent(JSON.stringify(binSyms)),
-    );
-    if (!r.ok) throw new Error(`binance: ${r.status}`);
-    const arr = (await r.json()) as { symbol: string; price: string }[];
-    const out: Record<string, number> = {};
-    for (const t of arr) {
-      /* Binance returns "BTCUSDT" — convert back to "BTC/USDT". */
-      const sym = t.symbol.replace("USDT", "/USDT");
-      out[sym] = Number(t.price);
-    }
-    return out;
-  } catch (err) {
-    console.warn("[dashboard-live] binance prices failed:", err);
-    return {};
-  }
-};
+/* S125 — DELETED: a local copy of fetchLivePrices lived here and SHADOWED the
+   canonical import (aliased below as fetchLivePricesCanonical), so fixing the
+   shared library did nothing for this page. It hit Binance directly and mapped
+   symbols back with .replace("USDT", "/USDT"), which leaves a USD-quoted pair
+   untouched: "BTCUSD" never matched the "BTC/USD" key, holdings marked to ZERO
+   and the public dashboard published −$118.01 — precisely the net-invested plus
+   fees, i.e. the portfolio valued at nothing. Third copy of the same logic in
+   the repo; now there are two (this file and public/lib/pnl-canonical.js for
+   the private panels), and they are the ones to keep in step. */
+const fetchLivePrices = fetchLivePricesCanonical;
 
 (async () => {
   try {
@@ -378,8 +366,12 @@ const fetchLivePrices = async (symbols: string[]): Promise<Record<string, number
        cash and $0 P&L. The $ P&L therefore equals the Grid-only number; only
        the % denominator becomes 600. computeCanonicalState is the SAME
        function used by /home, /grid, /tf — single source of truth. */
-    const GRID_INITIAL = 500;
-    const TF_INITIAL = 100;
+    /* S125: were literals 500/100 of the testnet lineup. The hero % is
+       P&L / basis, so a stale basis silently misreports the headline: with
+       the Kraken era at $400 the old denominator understated the move by a
+       third. Live from bot_config, same rows as everything else. */
+    const GRID_INITIAL = ERA_BUDGET.grid;
+    const TF_INITIAL = ERA_BUDGET.tf;
     const TOTAL_INITIAL = GRID_INITIAL + TF_INITIAL;
 
     const gridTrades = (allTrades ?? []).filter(t => t.managed_by === "grid");
