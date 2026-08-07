@@ -39,21 +39,27 @@ const headers = {
    if the fetch fails (site degrades to the last known cycle, never breaks).
    Top-level await: page scripts are ES modules and everything downstream
    depends on CQ anyway. */
-const CYCLE_FALLBACK = "testnet_2";
-const CYCLE_START_FALLBACK = "2026-06-05T00:00:00Z";
+const CYCLE_FALLBACK = "kraken_2b";
+const CYCLE_START_FALLBACK = "2026-07-17T00:00:00Z";   // first real-money order
 /* S118: "most recently updated ACTIVE grid row" instead of the BTC/USDT
    literal — at the Kraken cutover the live row is BTC/USD and a symbol
-   literal would freeze the dashboard on the dead cycle. Same result today
-   (all grid rows share one cycle). */
+   literal would freeze the dashboard on the dead cycle.
+   S125: repointed binance -> kraken, same reasoning as live-stats.ts. The
+   binance rows went is_active=false at the Fase 3 cutover, so the old filter
+   matched ZERO rows and the dashboard sat on the dead testnet_2 — it was
+   still printing −$33.80 of simulated money hours after the cutover. */
 const CYCLE = await fetch(
-  // S119 (Fase 2a): venue=binance canonical for the public view during Kraken test/collaudo (all rows venue='binance' today → no-op).
-  `${SB_URL}/rest/v1/bot_config?select=cycle&managed_by=eq.grid&is_active=eq.true&venue=eq.binance&order=updated_at.desc&limit=1`,
+  `${SB_URL}/rest/v1/bot_config?select=cycle&managed_by=eq.grid&is_active=eq.true&venue=eq.kraken&order=updated_at.desc&limit=1`,
   { headers },
 )
   .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
   .then((rows: { cycle: string }[]) => rows?.[0]?.cycle || CYCLE_FALLBACK)
   .catch(() => CYCLE_FALLBACK);
-const CQ = `&cycle=eq.${CYCLE}`;
+/* Prefix, not equality: real money spans 'kraken_test' (the $25 proof order,
+   17 Jul) and 'kraken_2b'. cycle=eq.<one> would amputate the only completed
+   round trip the project has ever done with real money. Mirrors live-stats.ts. */
+const CYCLE_ERA = CYCLE.split("_")[0];
+const CQ = `&cycle=like.${CYCLE_ERA}*`;
 /* Two day anchors (S99). The rule is by CONTEXT, not by surface:
    - MONEY numbers reset per testnet cycle (clean slate). → CYCLE_START_ISO
    - PROJECT/diary numbers are continuous from the v3/site launch. → V3_LAUNCH_ISO
@@ -73,9 +79,35 @@ const CYCLE_START_ISO = await fetch(
       ? rows[0].created_at.slice(0, 10) + "T00:00:00Z"
       : CYCLE_START_FALLBACK)
   .catch(() => CYCLE_START_FALLBACK);
-/* Money basis of the current cycle: Grid $500 + TF $100 (S97b). Used by
-   the § 3 chart for the $-axis relabel, tooltip net worth and big number. */
-const INITIAL_CAPITAL = 600;
+/* Money basis of the current cycle. Used by the § 3 chart for the $-axis
+   relabel, tooltip net worth and big number.
+   S125: was the literal 600 (Grid $500 + TF $100 of the testnet lineup) and
+   went stale the moment the Kraken allocations moved. Now the sum of the live
+   Kraken allocations — same data-driven rule as the cycle and as the homepage
+   budget tile, so raising capital stays ONE update to bot_config. Fallback is
+   the CURRENT figure, not the retired $600. */
+const ERA_BUDGET = await fetch(
+  `${SB_URL}/rest/v1/bot_config?select=capital_allocation,managed_by&is_active=eq.true&venue=eq.kraken`,
+  { headers },
+)
+  .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+  .then((rows: { capital_allocation: string | number; managed_by: string | null }[]) => {
+    if (!rows?.length) return { grid: 400, tf: 0 };
+    let grid = 0, tf = 0;
+    for (const r of rows) {
+      const amt = Number(r.capital_allocation) || 0;
+      if (r.managed_by === "tf" || r.managed_by === "tf_grid") tf += amt; else grid += amt;
+    }
+    return { grid, tf };
+  })
+  .catch(() => ({ grid: 400, tf: 0 }));
+const INITIAL_CAPITAL = ERA_BUDGET.grid + ERA_BUDGET.tf;
+/* TF fund size FOR THIS ERA — 0 today: the Trend Follower is stopped
+   (ENABLE_TF=false, S125) and owns no Kraken row. The §3 chart used to add a
+   literal $100 of TF cash to every reconstructed day; against the $400 Kraken
+   basis that would float the whole net-worth line $100 too high, for a fund
+   that holds nothing. Derived, so it comes back on its own when TF returns. */
+const TF_ERA_BUDGET = ERA_BUDGET.tf;
 
 const sbq = async <T>(table: string, params: string): Promise<T> => {
   const r = await fetch(`${SB_URL}/rest/v1/${table}?${params}`, { headers });
@@ -520,16 +552,15 @@ async function renderInstruments() {
     /* TF budget is the canonical fund size for the TF section (not the
        sum of active allocations, which fluctuates). Falls back to 100. */
     const TF_BUDGET = Number(trendCfg?.[0]?.tf_budget ?? 100);
-    /* GRID budget is the sum of grid coin allocations (fixed by design:
-       BTC + SOL + BONK = $500 in v3). S119b: filter to venue='binance' —
-       the Kraken collaudo row (BTC/USD, venue='kraken', is_active=false,
-       cycle='kraken_test') carries a $25 capital_allocation but its trades
-       live in a separate cycle, so counting it here inflated the public Grid
-       budget/net worth by exactly $25 while nothing offset it. The public
-       view stays binance-canonical during the Kraken test/collaudo (same
-       decision as the S119 cycle-fetch pin); Fase 2b flips it deliberately. */
+    /* GRID budget = sum of the live grid allocations. S119b pinned this to
+       venue='binance' because back then the Kraken row was a $25 collaudo
+       whose trades lived in a separate cycle: counting it inflated the public
+       Grid budget by $25 with nothing to offset it. S125 flips the pin — the
+       binance rows are is_active=false and Kraken IS the fleet now, so the
+       old filter summed to $0 and the whole Grid section went to nonsense.
+       Same rows the cycle fetch and the homepage budget tile read. */
     const GRID_BUDGET = (configs ?? [])
-      .filter(c => c.managed_by === "grid" && (c.venue ?? "binance") === "binance")
+      .filter(c => c.managed_by === "grid" && (c.venue ?? "binance") === "kraken")
       .reduce((s, c) => s + Number(c.capital_allocation || 0), 0);
 
     /* Brief 46b filter: which managed_by values count for which section. */
@@ -1101,7 +1132,9 @@ type DailyPnlRow = {
        holdings_value = sum(open_amount * last_seen_price)
      Used only for the cumulative MTM line; bars use realized only. ----- */
   function reconstructTFForDay(dateStr: string): number {
-    const TF_BUDGET = 100;
+    /* S125: was a literal 100. See TF_ERA_BUDGET at the top — the TF fund is
+       stopped and owns nothing in the Kraken era, so this is 0 today. */
+    const TF_BUDGET = TF_ERA_BUDGET;
     const endOfDay = dateStr + "T23:59:59";
     const inWindow = tfTrades.filter(t => t.created_at <= endOfDay);
     /* No TF trades yet this cycle → the TF fund is its untouched cash
