@@ -101,6 +101,17 @@ sbq<{ disclaimer_mode: boolean; disclaimer_text: string }[]>(
   .then((rows) => {
     const flag = rows?.[0];
     if (!flag?.disclaimer_mode) return;
+    /* S125 — scorciatoia di anteprima: `?preview` salta il velo senza toglierlo
+       a tutti. Serve a guardare la homepage vera DURANTE una finestra di
+       cutover, che e' esattamente quando non la si puo' vedere e quando
+       servirebbe di piu'. Non e' una misura di sicurezza e non finge di
+       esserlo: il velo e' una tenda di cortesia, non una serratura (i dati
+       sotto sono comunque leggibili in sola lettura dal database pubblico).
+       Il meccanismo si ripete a ogni cambio moneta, quindi resta. */
+    if (new URLSearchParams(location.search).has("preview")) {
+      console.info("[disclaimer] bypass ?preview — il velo e' attivo per tutti gli altri");
+      return;
+    }
     const gate = document.getElementById("disclaimer-gate");
     if (!gate) return;
     const text = document.getElementById("disclaimer-gate-text");
