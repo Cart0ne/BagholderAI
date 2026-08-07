@@ -1,0 +1,309 @@
+---
+import Layout from "../layouts/Layout.astro";
+
+/* /history — l'archivio congelato delle ere chiuse (S125, 2026-08-07).
+ *
+ * PERCHE' ESISTE
+ * Il 7 agosto il progetto e' passato interamente a denaro reale su Kraken e i
+ * contatori pubblici sono ripartiti dalla storia vera (5 ordini, 21 giorni).
+ * Cinque mesi di numeri precedenti non potevano restare mescolati a quelli —
+ * sommare soldi finti e soldi veri in un unico totale non significa niente —
+ * ma nemmeno sparire. Decisione del Board (Max): "capitolo chiuso, non
+ * rimosso", raccontato come tale.
+ *
+ * PERCHE' I NUMERI SONO SCRITTI QUI DENTRO E NON LETTI DAL DATABASE
+ * Sono ere CHIUSE: non cambiano piu'. Una pagina che li ricalcola a ogni
+ * caricamento puo' solo rompersi (e' successo tre volte oggi con i filtri
+ * rimasti indietro). Congelati significa congelati.
+ * Fonti: era paper dal backup pre-reset del 2026-05-08
+ * (/Volumes/Archivio/bagholderai_backups/2026-05-08_pre-reset-s67/trades.jsonl,
+ * 1.192 righe); testnet 1 e 2 dalla tabella `trades` viva, cicli testnet_1 e
+ * testnet_2. Tutte e tre ricalcolate con LA STESSA formula avg-cost del sito
+ * di oggi (src/lib/pnl-canonical.ts), non con i valori salvati allora.
+ */
+
+const eras = [
+  {
+    key: "paper",
+    name: "Paper",
+    range: "30 Mar → 8 May 2026",
+    days: 40,
+    trades: 1192,
+    wl: "461 / 130",
+    symbols: 56,
+    fees: 17.21,
+    feePerTrade: 0.0144,
+    net: 47.57,
+    published: 69.05,
+    endedBy: "by choice",
+    what: "No exchange at all: orders were simulated inside our own code. The Trend Follower roamed 56 coins because nothing punished it for trying.",
+    ended: "Closed deliberately when the bots were wired to Binance's test exchange — the first time an order left the building.",
+  },
+  {
+    key: "testnet_1",
+    name: "Testnet 1",
+    range: "8 May → 27 May 2026",
+    days: 20,
+    trades: 64,
+    wl: "20 / 3",
+    symbols: 6,
+    fees: 1.88,
+    feePerTrade: 0.0294,
+    net: 10.06,
+    published: null,
+    endedBy: "wiped",
+    what: "Real orders on Binance's test exchange, simulated funds. Six coins. The first era where a fill could be refused by someone other than us.",
+    ended: "Binance reset the test exchange without notice. Balances back to default, order history gone. $520.83 of open positions ceased to exist.",
+  },
+  {
+    key: "testnet_2",
+    name: "Testnet 2",
+    range: "5 Jun → 6 Aug 2026",
+    days: 63,
+    trades: 255,
+    wl: "113 / 13",
+    symbols: 4,
+    fees: 7.80,
+    feePerTrade: 0.0306,
+    net: 45.13,
+    published: null,
+    endedBy: "wiped",
+    what: "The longest era, and the one where the machine took shape: four grids, three advisory brains, the nightly reconciliation, the public dashboard.",
+    ended: "Binance reset the exchange again, between 5 and 6 August. Same ending as Testnet 1 — which is why there is no Testnet 3.",
+  },
+];
+
+const fmt = (n: number) => `$${n.toFixed(2)}`;
+---
+
+<Layout
+  title="History — the closed eras | BagHolderAI"
+  description="Five months of BagHolderAI before real money: the paper era and two Binance testnet eras, with their figures recomputed under today's accounting. Closed chapters, kept on the record."
+  current="history"
+>
+
+  {/* ============================================================ HERO */}
+  <section class="mx-auto max-w-4xl px-4 pt-10 pb-6 sm:px-6 sm:pt-14 sm:pb-8">
+
+    <h1 class="font-display text-[34px] font-extrabold leading-[1.04] tracking-[-0.02em]
+               text-text sm:text-[42px]">
+      The closed <span class="text-primary">eras</span>.
+    </h1>
+
+    <p class="mt-3 max-w-2xl text-[14.5px] leading-[1.55] text-text-dim sm:text-[15px]">
+      Before 17 July 2026 no real money was ever at stake. Three eras came
+      first — one simulated by us, two on an exchange that reset itself twice.
+      They are over, the figures are frozen, and none of them count towards
+      anything you see on the dashboard.
+    </p>
+
+    <div class="mt-5 flex flex-wrap items-center gap-3 font-mono text-[10.5px]
+                uppercase tracking-[0.16em] text-text-muted">
+      <span class="inline-flex items-center gap-1.5">
+        <span class="inline-block h-1.5 w-1.5 rounded-full bg-sand"></span>
+        simulated funds
+      </span>
+      <span class="text-border">·</span>
+      <span>30 mar — 6 aug 2026</span>
+      <span class="text-border">·</span>
+      <span>1,511 orders</span>
+    </div>
+  </section>
+
+  {/* ============================================================ MAIN */}
+  <main class="mx-auto max-w-4xl px-4 pb-24 sm:px-6">
+
+    <div class="rounded-2xl border border-border bg-surface
+                px-5 py-7 shadow-sticker sm:px-8 sm:py-9">
+
+      {/* ============ 1 — THE TABLE ============ */}
+      <section class="mt-2">
+        <h2 class="font-display text-[20px] font-extrabold tracking-[-0.01em] text-text mb-5">
+          1 · The four eras, side by side
+        </h2>
+
+        <p class="text-[14.5px] leading-[1.7] text-text-dim mb-4">
+          All four are measured with the <em>same</em> formula — the one the
+          site uses today — so the columns can honestly be compared. That is
+          not how they were measured at the time, and section 3 is about the
+          difference.
+        </p>
+
+        <div class="overflow-x-auto rounded-xl border border-border-soft bg-bg/40">
+          <table class="w-full font-mono text-[12.5px]">
+            <thead class="border-b border-border-soft">
+              <tr class="text-text-muted uppercase tracking-[0.1em] text-[10px]">
+                <th class="px-3 py-2.5 text-left">Era</th>
+                <th class="px-3 py-2.5 text-left">Period</th>
+                <th class="px-3 py-2.5 text-right">Days</th>
+                <th class="px-3 py-2.5 text-right">Orders</th>
+                <th class="px-3 py-2.5 text-right">Win / loss</th>
+                <th class="px-3 py-2.5 text-right">Fees</th>
+                <th class="px-3 py-2.5 text-right">Net result</th>
+              </tr>
+            </thead>
+            <tbody>
+              {eras.map((e) => (
+                <tr class="border-b border-border-soft/60 last:border-0">
+                  <td class="px-3 py-2.5 text-text">{e.name}</td>
+                  <td class="px-3 py-2.5 text-text-dim">{e.range}</td>
+                  <td class="px-3 py-2.5 text-right text-text-dim">{e.days}</td>
+                  <td class="px-3 py-2.5 text-right text-text-dim">{e.trades.toLocaleString("en-US")}</td>
+                  <td class="px-3 py-2.5 text-right text-text-dim">{e.wl}</td>
+                  <td class="px-3 py-2.5 text-right text-text-dim">{fmt(e.fees)}</td>
+                  <td class="px-3 py-2.5 text-right text-pos">+{fmt(e.net)}</td>
+                </tr>
+              ))}
+              <tr class="border-t border-border">
+                <td class="px-3 py-2.5 text-text">Kraken</td>
+                <td class="px-3 py-2.5 text-text-dim">17 Jul 2026 → today</td>
+                <td colspan="4" class="px-3 py-2.5 text-text-muted italic">real money — still open</td>
+                <td class="px-3 py-2.5 text-right">
+                  <a href="/dashboard" class="text-primary hover:text-primary-hover
+                     border-b border-primary/30 hover:border-primary transition-colors">dashboard</a>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p class="mt-3 text-[12px] leading-[1.6] text-text-muted">
+          "Net result" is what was actually banked, after fees, over the life of
+          the era. Testnet 1 and 2 also ended holding open positions ($520.83
+          and $301.58 at cost) which the exchange resets simply deleted — those
+          are not counted as gains or losses, because nothing was ever settled.
+        </p>
+      </section>
+
+      {/* ============ 2 — WHAT EACH ONE WAS ============ */}
+      <hr class="mt-12 border-t border-border-soft" />
+      <section class="mt-8">
+        <h2 class="font-display text-[20px] font-extrabold tracking-[-0.01em] text-text mb-5">
+          2 · What each one was, and how it ended
+        </h2>
+
+        {eras.map((e) => (
+          <div class="mb-6 last:mb-0">
+            <div class="mb-1.5 flex flex-wrap items-baseline gap-2">
+              <span class="font-display text-[15px] font-extrabold text-text">{e.name}</span>
+              <span class="font-mono text-[11px] text-text-muted">{e.range}</span>
+              <span class={`font-mono text-[9.5px] uppercase tracking-[0.12em] rounded-full px-2 py-0.5 ${
+                e.endedBy === "wiped" ? "bg-neg-soft text-neg" : "bg-sand-soft text-sand"
+              }`}>{e.endedBy === "wiped" ? "wiped by the exchange" : "closed by us"}</span>
+            </div>
+            <p class="text-[14.5px] leading-[1.7] text-text-dim">{e.what}</p>
+            <p class="mt-1.5 text-[13.5px] leading-[1.65] text-text-muted">{e.ended}</p>
+          </div>
+        ))}
+      </section>
+
+      {/* ============ 3 — THE CORRECTION ============ */}
+      <hr class="mt-12 border-t border-border-soft" />
+      <section class="mt-8">
+        <h2 class="font-display text-[20px] font-extrabold tracking-[-0.01em] text-text mb-5">
+          3 · The same era, counted twice
+        </h2>
+
+        <p class="text-[14.5px] leading-[1.7] text-text-dim mb-4">
+          When the paper era closed in May 2026, we published its result as
+          <span class="font-mono text-text">+$69.05</span>. Recomputed today,
+          over exactly the same 1,192 orders, it comes to
+          <span class="font-mono text-text">+$47.57</span> — twenty-one dollars
+          lower.
+        </p>
+
+        <p class="text-[14.5px] leading-[1.7] text-text-dim mb-4">
+          Nothing about the past changed. The accounting did. That era counted
+          profit with a FIFO queue that had three bugs we had not found yet, and
+          it did not consistently subtract trading fees from the result. Both
+          were fixed later — the fee unification in May, the average-cost
+          rewrite in June — and every figure on this page uses the corrected
+          method.
+        </p>
+
+        <aside class="my-5 border-l-4 border-sand bg-sand-soft/50 rounded-r-xl
+                      py-2.5 pl-4 text-[13px] italic leading-[1.6] text-text-dim">
+          The number got smaller every time the measurement got honest. We would
+          rather publish the correction than the flattering version — it is the
+          only part of a track record that is actually worth reading.
+        </aside>
+      </section>
+
+      {/* ============ 4 — THE FEE LESSON ============ */}
+      <hr class="mt-12 border-t border-border-soft" />
+      <section class="mt-8">
+        <h2 class="font-display text-[20px] font-extrabold tracking-[-0.01em] text-text mb-5">
+          4 · What the archive shows that no single era could
+        </h2>
+
+        <p class="text-[14.5px] leading-[1.7] text-text-dim mb-4">
+          Read in sequence, the four eras say one thing very clearly: the bots
+          traded less and less, and it was the cost of trading that slowed them
+          down.
+        </p>
+
+        <div class="overflow-x-auto rounded-xl border border-border-soft bg-bg/40">
+          <table class="w-full font-mono text-[12.5px]">
+            <thead class="border-b border-border-soft">
+              <tr class="text-text-muted uppercase tracking-[0.1em] text-[10px]">
+                <th class="px-3 py-2.5 text-left">Era</th>
+                <th class="px-3 py-2.5 text-right">Orders / day</th>
+                <th class="px-3 py-2.5 text-right">Fee per order</th>
+                <th class="px-3 py-2.5 text-right">Coins traded</th>
+              </tr>
+            </thead>
+            <tbody>
+              {eras.map((e) => (
+                <tr class="border-b border-border-soft/60">
+                  <td class="px-3 py-2.5 text-text">{e.name}</td>
+                  <td class="px-3 py-2.5 text-right text-text-dim">{(e.trades / e.days).toFixed(1)}</td>
+                  <td class="px-3 py-2.5 text-right text-text-dim">${e.feePerTrade.toFixed(4)}</td>
+                  <td class="px-3 py-2.5 text-right text-text-dim">{e.symbols}</td>
+                </tr>
+              ))}
+              <tr>
+                <td class="px-3 py-2.5 text-text">Kraken</td>
+                <td class="px-3 py-2.5 text-right text-text-dim">0.2</td>
+                <td class="px-3 py-2.5 text-right text-neg">$0.2702</td>
+                <td class="px-3 py-2.5 text-right text-text-dim">2</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p class="mt-4 text-[14.5px] leading-[1.7] text-text-dim">
+          Thirty orders a day on paper, where a trade cost a penny and a half.
+          One order every five days on Kraken, where it costs twenty-seven
+          cents. The strategy did not change between those two rows — the price
+          of being wrong did.
+        </p>
+      </section>
+
+      {/* ============ 5 — WHERE THE DATA COMES FROM ============ */}
+      <hr class="mt-12 border-t border-border-soft" />
+      <section class="mt-8">
+        <h2 class="font-display text-[20px] font-extrabold tracking-[-0.01em] text-text mb-5">
+          5 · Where these numbers come from
+        </h2>
+
+        <p class="text-[14.5px] leading-[1.7] text-text-dim mb-4">
+          The paper era lives in a database export taken the day it closed, 8
+          May 2026 — 1,192 orders. Testnet 1 and 2 are still in the live
+          database under their own cycle tags, untouched. All three were
+          replayed with the same average-cost engine the dashboard runs on, so
+          the comparison is like-for-like.
+        </p>
+
+        <p class="text-[14.5px] leading-[1.7] text-text-dim">
+          These figures are frozen on purpose. They describe finished periods
+          and will not move again — unlike everything on the
+          <a href="/dashboard" class="text-primary hover:text-primary-hover
+             border-b border-primary/30 hover:border-primary transition-colors">dashboard</a>,
+          which is real money and changes while you read it.
+        </p>
+      </section>
+
+    </div>{/* /sheet */}
+
+  </main>
+</Layout>
