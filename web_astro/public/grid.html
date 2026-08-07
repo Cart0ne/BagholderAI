@@ -315,7 +315,7 @@
     footer .sub { color: rgba(255,255,255,0.3); }
   </style>
   <!-- Brief 72a S72: shared canonical P&L (mirror dashboard, home, /tf). -->
-  <script src="/lib/pnl-canonical.js?v=20260629"></script>
+  <script src="/lib/pnl-canonical.js?v=20260807"></script>
 </head>
 <body>
   <div class="container">
@@ -402,9 +402,20 @@
     var SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB4ZGh0bXFmd2p3amh0Y29hY3NuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4NDI1OTIsImV4cCI6MjA4OTQxODU5Mn0.G76lvYWrqlM0z2RoSkU1uAglfMBKN_rXvBGOQhb4kdg';
     var ADMIN_HASH = '8a308134250d16e95b79019171e5cb37ed436a14e2800f22b98e0fa20ac6f9eb'; // sha256 of the real admin password (set ~session 53)
     var COLORS = { 'BTC/USDT': '#378ADD', 'SOL/USDT': '#5DCAA5', 'BONK/USDT': '#EF9F27' };
-    var SHORT = { 'BTC/USDT': 'BTC', 'SOL/USDT': 'SOL', 'BONK/USDT': 'BONK' };
-    // Decimal precision per coin to surface sub-step dust without rounding it away
-    var DUST_DECIMALS = { 'BTC/USDT': 8, 'SOL/USDT': 6, 'BONK/USDT': 6 };
+    /* S125 — nome breve RICAVATO dal simbolo, non piu' una mappa cablata.
+       Era { 'BTC/USDT':'BTC', 'SOL/USDT':'SOL', 'BONK/USDT':'BONK' }: al
+       passaggio a Kraken, SHORT['BTC/USD'] tornava undefined. Le due righe che
+       la usavano si comportavano DIVERSAMENTE — il disegno delle schede aveva
+       il ripiego `|| sym` (identificativi tipo cfg-BTC/USD-buy_pct), l'aggancio
+       degli ascoltatori no (cercava cfg-undefined-buy_pct). Risultato: i campi
+       si scrivevano ma nessuno se ne accorgeva e "Save changes" restava spento.
+       Deriva lessicale dopo un rename, la stessa famiglia gia' vista dopo i
+       rename a DB. Ricavarlo elimina la classe di bug, non l'istanza. */
+    function shortOf(sym) { return String(sym || '').split('/')[0]; }
+
+    // Decimali per coin: chiave sulla MONETA, non sulla coppia, cosi' BTC/USD
+    // e BTC/USDT condividono la precisione invece di cadere sul default.
+    var DUST_DECIMALS_BY_COIN = { BTC: 8, SOL: 6, BONK: 6, ETH: 6 };
 
     // === AUTH ===
     async function sha256(msg) {
@@ -952,11 +963,11 @@
           // Brief 78b (S78 fase 2): SWEEP/LAST SHOT con slippage positivo lascia cashLeft<0;
           // fisiologico, non bug. cashLeft è già negativo, mostriamo |cashLeft| come "over".
           // G1 (S110): condizione su cashLeft<0 (buysLeft ora è sempre ≥0 per il guard).
-          alerts.push({ type: 'red', text: SHORT[sym] + ' is tapped out (swept) — $' + fmt(Math.abs(analysis.cashLeft)) + ' over by slippage' });
+          alerts.push({ type: 'red', text: shortOf(sym) + ' is tapped out (swept) — $' + fmt(Math.abs(analysis.cashLeft)) + ' over by slippage' });
         } else if (analysis.buysLeft === 0) {
-          alerts.push({ type: 'red', text: SHORT[sym] + ' is tapped out — $' + fmt(analysis.cashLeft) + ' cash, below $' + fmt(MIN_LAST_SHOT) + ' min buy' });
+          alerts.push({ type: 'red', text: shortOf(sym) + ' is tapped out — $' + fmt(analysis.cashLeft) + ' cash, below $' + fmt(MIN_LAST_SHOT) + ' min buy' });
         } else if (analysis.buysLeft === 1) {
-          alerts.push({ type: 'yellow', text: SHORT[sym] + ' has only 1 buy left ($' + fmt(analysis.cashLeft) + ' remaining)' });
+          alerts.push({ type: 'yellow', text: shortOf(sym) + ' has only 1 buy left ($' + fmt(analysis.cashLeft) + ' remaining)' });
         }
       });
 
@@ -1154,8 +1165,8 @@
         var usd = a.netHoldings * livePrice;
         if (usd >= DUST_MIN_NOTIONAL_USD) return;
         dustTotalUsd += usd;
-        var decimals = DUST_DECIMALS[cfg.symbol] || 6;
-        var short = SHORT[cfg.symbol] || cfg.symbol;
+        var decimals = DUST_DECIMALS_BY_COIN[shortOf(cfg.symbol)] || 6;
+        var short = shortOf(cfg.symbol);
         dustParts.push(short + ': ' + a.netHoldings.toFixed(decimals));
       });
       var dustBreakdown = dustParts.length ? dustParts.join(' · ') : '—';
@@ -1204,7 +1215,7 @@
       var el = document.getElementById('coin-cards');
       el.innerHTML = configData.map(function(cfg) {
         var sym = cfg.symbol;
-        var short = SHORT[sym] || sym;
+        var short = shortOf(sym);
         var color = COLORS[sym] || '#888';
         var a = analyzeCoin(sym, cfg);
 
@@ -1394,7 +1405,7 @@
 
       // Mark original values and attach change listeners
       configData.forEach(function(cfg) {
-        var short = SHORT[cfg.symbol];
+        var short = shortOf(cfg.symbol);
         GRID_CONFIG_FIELDS.forEach(function(field) {
           var input = document.getElementById('cfg-' + short + '-' + field);
           if (input) {
@@ -1584,7 +1595,7 @@
         var feeCell = '<td style="color:var(--text-dim);">−$' + feeVal.toFixed(4) + '</td>';
         return '<tr class="' + cls + '">' +
           '<td>' + t.side.toUpperCase() + '</td>' +
-          '<td>' + (SHORT[t.symbol] || t.symbol) + '</td>' +
+          '<td>' + shortOf(t.symbol) + '</td>' +
           '<td>' + fmtPrice(t.price) + '</td>' +
           '<td>' + fmtUsd(t.cost) + '</td>' +
           feeCell +
