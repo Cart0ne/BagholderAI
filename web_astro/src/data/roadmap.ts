@@ -41,8 +41,8 @@ export interface RoadmapData {
 }
 
 export const ROADMAP: RoadmapData = {
-  version: "Versione 1.53 — Luglio 2026",
-  lastUpdated: "2026-07-18",
+  version: "Versione 1.54 — Agosto 2026",
+  lastUpdated: "2026-08-07",
   phases: [
     {
       id: 0,
@@ -187,19 +187,22 @@ export const ROADMAP: RoadmapData = {
     {
       id: 6,
       title: "Go Live",
-      timeframe: "No fixed date — market-condition gated",
-      status: "planned",
-      description: "Only after the full Sentinel-first sequence is complete: Grid stable on testnet ✓, Sentinel Sprint 1 audit PASS ✓, Sentinel Sprint 2 built + APPROVED ✓, Sherpa reworked per-coin (Sprint 2) + second Brain Analysis, then Sherpa LIVE on testnet one parameter at a time (sell_pct, then buy_pct). Mainnet starts with €100. Go-live depends on observed market conditions (bear + bull + lateral), not a calendar date (Board decision S82, 2026-05-23 — supersedes the earlier late-June/July target).",
+      timeframe: "Real money live since 17 July 2026",
+      status: "active",
+      description: "This phase is no longer a plan — it happened. The bots have been trading real money on Kraken since 17 July 2026, starting with a single $25 order placed by hand and confirmed on the exchange before anything was automated. The Sentinel-first sequence that gated it is complete: grid stable on testnet ✓, Sentinel Sprint 1 audit PASS ✓, Sprint 2 built + APPROVED ✓, Sherpa reworked per-coin and LIVE ✓. Scale so far: $25 proof order → $100 autonomous on BTC/USD → $400 across BTC and SOL (7 August). Deliberately small: the point is to verify that the machine executes correctly — fills, fees, slippage, reconciliation — not to make money. The Binance testnet chapter closed on 5-6 August when the exchange reset itself for the third time; those figures stay published, labelled as historical and simulated.",
       tasks: [
         { text: "Venue pivot to Kraken (MiCA): dormant exchange adapter behind a flag", status: "done", who: "AI", comment: "S112b (2026-06-30). Binance EU suspended spot orders on July 1 (MiCA). New venue: Kraken, USD pairs. Adapter shipped dormant — testnet behaviour untouched." },
         { text: "Kraken API plumbing check: clock, pairs, auth, real fees, validate-only orders", status: "done", who: "AI", comment: "2026-07-11. 18 checks, 0 failures, zero real orders. Reality check included: the real taker fee for a fresh account is 0.80% per market order (we assumed 0.40%) — exactly why the bot will read its fee live instead of trusting a constant." },
         { text: "Cutover Fase 1: grid wired to the Kraken adapter (per-row venue), dynamic live fee, fee-aware profit floor", status: "done", who: "AI", comment: "S118 (2026-07-11). All pre-work done with bots running, zero testnet diff (290/290 tests green). The sell floor now covers the REAL 1.6% round-trip fee read live from the account tier. Full dress rehearsal on the real account: 28 validate-only checks, 0 failures. Real orders still gated behind an explicit consent flag — money moves only in Fase 2." },
-        { text: "GO/NO-GO decision based on data", status: "todo", who: "MAX" },
-        { text: "Deposit initial capital (€100-200, NOT €500)", status: "todo", who: "MAX" },
-        { text: "Switch from paper to live (config flag)", status: "todo", who: "AI" },
+        { text: "GO/NO-GO decision based on data", status: "done", who: "MAX", comment: "Board decision S121 (2026-07-21). GO, with the smallest form of yes available: one coin, $100, real money, everything else unchanged. The alternative on the table was a longer observation window on testnet — rejected because the testnet had already proven it could not answer the only remaining question, which was whether real fills behave like simulated ones." },
+        { text: "Deposit initial capital", status: "done", who: "MAX", comment: "Funded on Kraken in USD (the venue quotes USD, not EUR — the €100/€600 figures in the original plan were pre-Kraken). Deliberately below the €100-200 band at first: $25 for the proof order in July, then topped up as each phase closed." },
+        { text: "Switch from paper to live (config flag)", status: "done", who: "AI", comment: "S118. The switch is an explicit consent flag (ALLOW_REAL_MONEY), not a config value: a grid on a Kraken row refuses to start without it. API keys alone are not consent — they were generated for plumbing tests weeks earlier. Withdraw permission is off on the key." },
+        { text: "Fase 2a — one real order, placed and confirmed by hand", status: "done", who: "AI", comment: "2026-07-17 → 07-21. A $25 BTC/USD buy, then the matching sell four days later at +$0.71 net of fees. Small on purpose: the goal was to watch one full round trip touch the real exchange and land correctly in the database. It also caught the thing no testnet could: the real taker fee is 0.80%, double the published rate we had been assuming." },
+        { text: "Fase 2b — first autonomous real trade ($100, BTC/USD)", status: "done", who: "AI", comment: "S122 (2026-07-22). First buy placed by the bot itself, unattended, 21:14 UTC: $33.33 of BTC at $65,699.90. Same session shipped the fee double-counting fix on both venues and handed the Kraken rows to Sherpa. New cycle kraken_2b so the measurement starts clean." },
+        { text: "Fase 3 — scale to $400, two coins, Binance testnet retired", status: "done", who: "AI", comment: "S125 (2026-08-07). BTC/USD raised to $250 and SOL/USD opened at $150; the four Binance testnet grids switched off and the Trend Follower paused, so the whole system now runs on real money or not at all. Trigger was the testnet resetting itself on 5-6 August — opening a fourth simulated era would have restarted a fiction destined to be wiped again. SOL's first real buy landed 90 seconds after the row went in, and confirmed the 0.80% fee independently of BTC." },
         { text: "Intensive monitoring (first week)", status: "todo", who: "MAX" },
         { text: "VPS migration for stability", status: "todo", who: "BOTH" },
-        { text: "Gradual scale: €200 → €350 → €500", status: "todo", who: "MAX" },
+        { text: "Gradual scale beyond $400", status: "todo", who: "MAX" },
       ],
     },
     {

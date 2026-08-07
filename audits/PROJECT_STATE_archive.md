@@ -1157,3 +1157,44 @@ Dettaglio sotto-moduli `grid_runner/` rimosso da §2 (la mappa resta, con i due 
     liquidation.py           _force_liquidate + _consume_initial_lots + _deactivate (~355)
     lifecycle.py             fetch_price + _print_status + _build_portfolio_summary (~88)
 ```
+
+---
+
+## Rimosso in sessione S125 (2026-08-07) — compaction: i due blocchi S124 sono diventati storia col cutover
+
+Il cutover Kraken Fase 3 di oggi (4 grid Binance spenti, `testnet_2` chiuso di
+fatto) rende chiuse due voci che in PROJECT_STATE occupavano ~4KB come problemi
+aperti. Restano in §5/§4 come righe brevi con puntatore qui.
+
+### §5 — 🔴 [S124] RESET BINANCE TESTNET — testo integrale
+
+> 🔴 **[S124] RESET BINANCE TESTNET — DB e wallet divergono, i 4 grid binance girano su holdings inesistenti.** Rilevato 06-ago. **Finestra**: reconcile 05-ago 01:00 UTC `OK matched=79` → 06-ago 01:00 UTC `WARN_BINANCE_EMPTY matched=0` (log `$HOME/cron_reconcile.log` sul Mini). **Wallet reale vs DB**: BTC 0,99844 vs 0,00077689 · SOL 6,0 vs 0,812187 · **BONK 18.446 vs 33.137.599** · ETH 1,0 vs 0,016184 · USDT 10.101,69. Tutti valori di dotazione tondi = airdrop di default post-reset. **Storico ordini azzerato**: Binance vede 4 trade su BTC/USDT (tutti del 6-ago, post-reset) e **0** su SOL/BONK/ETH; il DB ha 255 trade su `testnet_2` dal 05-giu. **Conseguenze**: (a) i numeri Grid (report serale, sito, `daily_pnl`, P&L −28,84) restano internamente coerenti ma **non corrispondono a nulla sull'exchange**; (b) i BUY/SELL continuano a passare perché il wallet è ora **più ricco** di quanto il DB creda — nessun errore visibile; (c) **eccezione BONK: il DB crede di avere 33,1M BONK, il wallet ne ha 18.446 → il primo SELL BONK fallirà per insufficient balance**; (d) il fix T.4 di oggi calcolerà market/trading su posizioni fantasma (il calcolo è corretto, i dati sotto no). **La detection esisteva già** (`reconcile_binance.py` logga "probable testnet reset, awaiting new data") ma è un WARN in un log che nessuno legge, e il cron chiude `exit=0` → nessun segnale. Stesso pattern del 03-giu (→ `testnet_2` il 05-giu) e del reset che chiuse `testnet_1`. **Decisione a Max/CEO: aprire `testnet_3`** (§6). **Kraken `kraken_2b` non impattato** (venue+riga separati, denaro reale). Nessuna azione presa di iniziativa.
+
+**Come si è chiuso (S125):** non aprendo `testnet_3`. Board 06-ago (S124): il
+testnet si abbandona, i bot passano tutti su Kraken con denaro reale, Binance
+resta solo come **fonte dati** (prezzi, klines Sentinel, proxy volatilità
+Sherpa). Il 07-ago le 4 righe binance sono state messe `is_active=false`: la
+divergenza DB↔wallet non ha più un consumatore, e il SELL BONK che sarebbe
+fallito non verrà mai tentato. I 255 trade `testnet_2` restano a DB come
+storico etichettato.
+
+### §6 — 🔴 [S124] Domanda aperta "Aprire testnet_3?" — testo integrale
+
+> 🔴 **[S124] Aprire `testnet_3`? — decisione dovuta, il reset è già avvenuto (§5).** Il wallet Binance è tornato alla dotazione di default; il DB continua la contabilità di `testnet_2` (Day 63, dal 05-giu). Precedenti: `testnet_1` chiuso dal reset di fine maggio → `testnet_2` aperto il 05-giu, cioè **si è sempre aperto un cycle nuovo**. Cosa serve decidere: (a) **quando** aprire `testnet_3` (subito = misura pulita da domani; più tardi = giorni di numeri finti in mezzo); (b) **cosa fare dei numeri pubblici** — il sito/diario raccontano un P&L `testnet_2` che l'exchange non ha più (il cycle è data-driven, cambiarlo aggancia SUBITO il sito, vedi memoria `reference_cycle_constants_bump`); (c) se **allineare le holdings** al wallet reale o ripartire da zero; (d) **BONK**: il primo SELL fallirà comunque finché DB e wallet divergono. Nota di processo: la detection esisteva ma è muta (WARN in log, `exit=0`) — valutare un segnale su `/admin` (non Telegram, memoria `feedback_no_telegram_alerts`), così il prossimo reset non passa inosservato per un giorno. **Nessuna azione presa di iniziativa** (tocca i numeri pubblici = territorio CEO/Board).
+
+**Risposta (Board, 06-ago S124):** no. Nessun `testnet_3`. Motivo scritto in
+BUSINESS_STATE §4: *"aprire un testnet_3 ricomincerebbe una contabilità finta
+destinata a essere azzerata di nuovo"*. Il punto (d) decade con lo spegnimento.
+Il punto della detection muta resta aperto ma cambia natura: non serve più
+sorvegliare i reset del testnet, serve semmai un segnale su `/admin` quando la
+riconciliazione Kraken diverge — voce nuova, non questa.
+
+### §4 — Decisione 2026-08-06 (S124) T.4 Day P&L — testo integrale
+
+> **2026-08-06 (S124) — Day P&L: il mercato si MISURA, il trading è il residuo (T.4).** DECISIONE (Max, "vai"): il report privato scomponeva il movimento del giorno in `sells $X · paper $Y` con **paper dedotto** come `(move − realized)` (`telegram_notifier.py:308`). Ma vendere sposta il profitto latente **fuori** dall'unrealized e **dentro** al realized: ogni vendita in utile finiva quindi due volte, come guadagno nei sells e come perdita uguale nel paper → la riga paper leggeva come un crollo di mercato mai avvenuto. Caso reale 06-ago: move −1,50 reso come "sells +1,53 · paper −3,03" mentre il mercato aveva tolto **−2,13** e il bot aveva **aggiunto +0,63**. Fix: `market = Σ (prezzo_oggi − prezzo_ieri) × quantità_IERI` misurato dagli snapshot `daily_pnl`, `trading = move − market` come residuo. RAZIONALE: il residuo assorbe sempre l'errore di attribuzione — metterci il trading (poche operazioni) danneggia meno che metterci il mercato (tutte le posizioni); e con le quantità di ieri il residuo **diventa il counterfactual** "quanto il bot ha battuto lo stare fermo", coerente con `counterfactual_log`. Realized resta in header come **"Locked in"** (cassa messa al sicuro, non P&L guadagnato oggi). ALTERNATIVE: quantità di oggi (Market −1,90 / Trading +0,40 — attribuisce al trading anche il calo intraday sulle monete vendute); due righe che non sommano (scartata, confonde). FALLBACK: `git revert f98afbc` (nessuna migration, campo solo in memoria). Protezioni: snapshot senza `positions` → nessuna scomposizione invece di un falso "Market $0.00"; simbolo sparito da `bot_config` → escluso + warning. **Report pubblico non toccato** (non usava quella riga). 13 test verdi, incl. i numeri del 06-ago pinnati.
+
+**Nota S125:** il fix è rimasto a terra dal 06-ago (Max: "lo faremo un'altra
+volta") ed è entrato in volo solo col restart del 07-ago 13:00 UTC. Il primo
+report serale che lo usa è quello del 07-ago — ed è anche il primo su due sole
+righe Kraken, quindi la scomposizione market/trading si misura su un
+portafoglio nuovo, non sul confronto con i giorni testnet.
