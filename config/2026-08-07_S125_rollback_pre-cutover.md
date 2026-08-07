@@ -69,3 +69,51 @@ e si indaga. **La posizione resta in pancia — non si liquida niente per fretta
 
 **Sito:** `UPDATE site_flags SET disclaimer_mode = false WHERE id = 1;` toglie la
 pagina d'attesa (zero deploy).
+
+---
+
+## Appendice — chiusura delle scritture anonime (S125, 2026-08-07)
+
+**Perché:** la chiave `anon` di Supabase è pubblicata nel sorgente del sito
+(`live-stats.ts`, `grid.html:402`, …) e il database aveva politiche RLS che le
+concedevano **UPDATE/INSERT senza condizioni** su 9 tabelle — incluse quelle che
+governano i bot, ora su denaro reale. La password di `/grid` è un controllo
+lato browser: nasconde l'interfaccia, non chiude la porta.
+
+**Verificato prima di toccare:** i bot sul Mac Mini usano `SUPABASE_KEY` in
+formato `sb_secret_…` (chiave segreta ⇒ bypassa RLS). È l'UNICA variabile
+Supabase nel loro `.env`. **Nessun bot dipende da queste politiche.**
+
+**Costo accettato:** i pulsanti "Save" di `/grid` e `/tf` smettono di
+funzionare finché non esiste il portiere lato server (Max, 2026-08-07: *"non
+devo modificare i parametri"*). Falliscono in modo rumoroso, non silenzioso:
+`sbPatch` già alza `no rows updated (RLS policy?)` quando PostgREST torna 200
+con lista vuota.
+
+**Lasciata APERTA di proposito:** `passive_income anon update` — è l'editor di
+`/admin` per le cifre di costi/ricavi pubblicate su `/income`. Non muove
+denaro; va dietro lo stesso portiere nella fase successiva.
+
+### Come si torna indietro (ricrea le politiche identiche)
+
+```sql
+CREATE POLICY anon_update_bot_config ON public.bot_config
+  FOR UPDATE TO anon USING (true);
+CREATE POLICY "trend_config anon update" ON public.trend_config
+  FOR UPDATE TO anon USING (true) WITH CHECK (true);
+CREATE POLICY "anon insert" ON public.config_changes_log
+  FOR INSERT TO anon WITH CHECK (true);
+CREATE POLICY sherpa_board_state_insert ON public.sherpa_board_state
+  FOR INSERT TO anon WITH CHECK (true);
+CREATE POLICY sherpa_board_state_update ON public.sherpa_board_state
+  FOR UPDATE TO anon USING (true) WITH CHECK (true);
+CREATE POLICY sentinel_scores_insert ON public.sentinel_scores
+  FOR INSERT TO anon WITH CHECK (true);
+CREATE POLICY sherpa_proposals_insert ON public.sherpa_proposals
+  FOR INSERT TO anon WITH CHECK (true);
+CREATE POLICY newskeeper_signals_insert ON public.newskeeper_signals
+  FOR INSERT TO anon WITH CHECK (true);
+```
+
+Le politiche di sola lettura (`SELECT`) non sono state toccate: il sito
+pubblico deve continuare a leggere.
