@@ -55,15 +55,24 @@ const { class: cls = "" } = Astro.props;
        unfiltered limit=1 became NON-DETERMINISTIC the moment a second venue
        row (Kraken) exists with a different cycle. */
     const cfg = await q<{ cycle: string }[]>(
-      // S119 (Fase 2a): pin the public view to venue=binance. During the Kraken
-      // test/collaudo (Board decision S119) binance is the canonical public venue
-      // — without the filter, activating a Kraken row would make this jump onto
-      // its near-empty cycle and flash "Fresh start". All current rows are
-      // venue='binance' (migration default NOT NULL), so this is a no-op today.
-      "bot_config?select=cycle&managed_by=eq.grid&is_active=eq.true&venue=eq.binance&order=updated_at.desc&limit=1",
+      // S125: repointed binance -> kraken with every other cycle read. The
+      // binance rows went is_active=false at the Fase 3 cutover, so the old
+      // filter matches nothing.
+      "bot_config?select=cycle&managed_by=eq.grid&is_active=eq.true&venue=eq.kraken&order=updated_at.desc&limit=1",
     );
     const cycle = cfg?.[0]?.cycle;
     if (!cycle) return;
+
+    /* S125 — this sticker is a TESTNET object and must never fire on real
+       money. It exists because Binance wiped the test exchange every few
+       weeks and the counters restarted: "fresh start" was the honest, even
+       cheerful, way to say a reset had happened to us. On Kraken nothing
+       gets wiped, and the same words would read as "we reset our own
+       numbers" — the precise opposite of the truth, on the one page where
+       we now claim real money.
+       Left armed rather than deleted: if a testnet era ever returns, the
+       sticker comes back on its own. Today it simply never shows. */
+    if (!cycle.startsWith("testnet")) return;
 
     const first = await q<{ created_at: string }[]>(
       `trades?select=created_at&config_version=eq.v3&cycle=eq.${cycle}` +

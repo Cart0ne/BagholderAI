@@ -207,7 +207,7 @@ const volumes = [
             live snapshot
           </span>
           <span class="font-mono text-[9px] font-bold uppercase tracking-[0.12em]
-                       text-text-muted">testnet · live</span>
+                       text-text-muted">kraken · live</span>
         </div>
 
         <div class="relative grid grid-cols-2 gap-2.5 sm:grid-cols-4">
@@ -233,8 +233,13 @@ const volumes = [
           <div class="rounded-2xl bg-primary-soft px-4 py-3.5">
             <div class="font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-primary/80">budget</div>
             <div class="mt-0.5 flex flex-col font-mono font-bold tabular-nums text-text">
-              <span class="text-[28px] leading-none">$600</span>
-              <span class="mt-0.5 text-[11px] font-bold uppercase tracking-[0.1em] text-text-muted">testnet</span>
+              {/* S125: was the literal $600 of the testnet lineup. Now filled by
+                  live-stats.ts from the sum of the live Kraken allocations, so
+                  raising capital is one DB update and the tile follows. The SSR
+                  value is the current figure, not a placeholder zero — non-JS
+                  readers get a true number rather than an empty shop window. */}
+              <span id="stat-budget" class="text-[28px] leading-none">$400</span>
+              <span class="mt-0.5 text-[11px] font-bold uppercase tracking-[0.1em] text-text-muted">real money</span>
             </div>
           </div>
           {/* S117: nudged down-left so it clears the Total P&L tile's per-fund

@@ -569,10 +569,10 @@
     async function getCycle() {
       if (CYCLE_CACHE) return CYCLE_CACHE;
       try {
-        var rows = await sbGet('bot_config', 'select=cycle&managed_by=eq.grid&is_active=eq.true&venue=eq.binance&order=updated_at.desc&limit=1'); // S118: active grid row, no symbol literal. S119b: pin venue=binance so the paper section never follows a live Kraken row's cycle (Kraken lives in its own section below).
-        CYCLE_CACHE = (rows && rows[0] && rows[0].cycle) || 'testnet_2';
+        var rows = await sbGet('bot_config', 'select=cycle&managed_by=eq.grid&is_active=eq.true&venue=eq.kraken&order=updated_at.desc&limit=1'); // S125: repointed binance -> kraken. The panel is Kraken-only now (Board: "nella dashboard privata il testnet puo' morire"); the testnet history lives on the public frozen-history page.
+        CYCLE_CACHE = (rows && rows[0] && rows[0].cycle) || 'kraken_2b';
       } catch (e) {
-        CYCLE_CACHE = 'testnet_2';
+        CYCLE_CACHE = 'kraken_2b';
       }
       return CYCLE_CACHE;
     }

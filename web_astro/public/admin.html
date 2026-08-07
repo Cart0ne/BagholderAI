@@ -1147,10 +1147,10 @@
     async function getCycle() {
       if (CYCLE_CACHE) return CYCLE_CACHE;
       try {
-        var rows = await sbFetch('bot_config?select=cycle&managed_by=eq.grid&is_active=eq.true&venue=eq.binance&order=updated_at.desc&limit=1'); // S118: active grid row, no symbol literal. S119b: pin venue=binance so admin money queries stay on the paper cycle, not a live Kraken row's, in Fase 2b.
-        CYCLE_CACHE = (rows && rows[0] && rows[0].cycle) || 'testnet_2';
+        var rows = await sbFetch('bot_config?select=cycle&managed_by=eq.grid&is_active=eq.true&venue=eq.kraken&order=updated_at.desc&limit=1'); // S118: active grid row, no symbol literal. S125: repointed binance -> kraken (the binance rows went is_active=false at the Fase 3 cutover, so this matched zero rows and froze the panel on the dead testnet_2).
+        CYCLE_CACHE = (rows && rows[0] && rows[0].cycle) || 'kraken_2b';
       } catch (e) {
-        CYCLE_CACHE = 'testnet_2';
+        CYCLE_CACHE = 'kraken_2b';
       }
       return CYCLE_CACHE;
     }

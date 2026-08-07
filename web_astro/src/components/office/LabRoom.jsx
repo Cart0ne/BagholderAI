@@ -57,11 +57,13 @@ const SB_HEADERS = { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` };
    bot_config SET cycle=...` (reset or Kraken live switch) and the scene board
    follows — no more bump ritual. S118: most recently updated ACTIVE grid row
    (no symbol literal — at the cutover the live row is BTC/USD). */
-const CYCLE_FALLBACK = "testnet_2";
+const CYCLE_FALLBACK = "kraken_2b";
 let cyclePromise = null;
 function getCycle() {
-  // S119 (Fase 2a): venue=binance is the canonical public cycle during the Kraken test/collaudo (all rows venue='binance' today → no-op).
-  cyclePromise ??= sbGet("bot_config?select=cycle&managed_by=eq.grid&is_active=eq.true&venue=eq.binance&order=updated_at.desc&limit=1")
+  // S125: repointed binance -> kraken. The binance rows are is_active=false since the
+  // Fase 3 cutover, so the old filter matched zero rows and fell through to the literal,
+  // freezing the scene board on the dead testnet_2.
+  cyclePromise ??= sbGet("bot_config?select=cycle&managed_by=eq.grid&is_active=eq.true&venue=eq.kraken&order=updated_at.desc&limit=1")
     .then((rows) => (rows && rows[0] && rows[0].cycle) || CYCLE_FALLBACK)
     .catch(() => CYCLE_FALLBACK);
   return cyclePromise;

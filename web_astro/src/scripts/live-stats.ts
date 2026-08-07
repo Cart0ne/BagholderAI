@@ -44,30 +44,49 @@ const sbqCount = async (table: string, params: string): Promise<number> => {
   return Number.isNaN(n) ? 0 : n;
 };
 
-/* Current cycle — DATA-DRIVEN since S117 (2026-07-11): read from
-   bot_config.cycle so a testnet reset — or the Kraken live switch — needs
-   ONE `UPDATE bot_config SET cycle=...` and every site surface follows.
-   S118: the row is "the most recently updated ACTIVE grid row" instead of
-   the literal BTC/USDT — at the Kraken cutover the live row is BTC/USD and
-   a symbol literal would silently freeze the site on the dead cycle
-   (lexical-drift family, S70/S72).
-   S119 (Fase 2a): pin to venue='binance'. During the Kraken test/collaudo
-   (Board decision S119) binance is the canonical public venue — the S118
-   "most-recently-updated active row" rule coincided with binance ONLY because
-   every row shares one cycle today; activating a Kraken row (its UPDATE becomes
-   the newest write) would make the whole site jump onto the near-empty Kraken
-   cycle. The explicit venue filter makes the public view robust, not lucky.
-   All rows are venue='binance' today (migration default NOT NULL) → no-op now.
+/* Which era the public numbers describe — DATA-DRIVEN since S117, repointed
+   to Kraken in S125 (2026-08-07, cutover Fase 3).
+
+   History of this line, because it has been wrong twice in the same way:
+   S117 replaced a hardcoded cycle string with a bot_config read; S118 replaced
+   a hardcoded SYMBOL ("BTC/USDT") with "most recently updated active grid row",
+   because at the cutover the live row becomes BTC/USD; S119 pinned it to
+   venue='binance' so activating a Kraken row could not drag the whole site
+   onto a near-empty cycle while binance was still the canonical public venue.
+
+   S125 inverts that last pin. The four binance rows are is_active=false: the
+   old filter now matches ZERO rows, falls through to the literal fallback,
+   and would freeze the site on the dead testnet_2 — showing 255 orders and
+   −$30.47 of SIMULATED money underneath a "real money" badge. Not an empty
+   shop window: a full one with the wrong label.
+
+   TWO cycles, not one. Real money started on 2026-07-17 under cycle
+   'kraken_test' (the $25 hand-placed proof order) and continues under
+   'kraken_2b'. A cycle=eq.<one> filter would amputate the first four days,
+   including the only completed round trip the project has ever done with real
+   money. So the trade filter is a PREFIX derived from the live cycle name
+   ("kraken_2b" -> "kraken*"), which also picks up whatever comes next without
+   another edit here.
+
+   Known weakness, deliberately accepted for now: `trades` has no `venue`
+   column, and `mode` is 'live' for all 319 rows including the whole Binance
+   testnet (it means "sent to an exchange", not "real money"). The cycle NAME
+   is therefore the only handle the site has on "is this real money" — a
+   convention, not a constraint. A cycle christened off-pattern would be
+   miscounted. Worth a real column when the schema is next touched.
+
    Top-level await: the page scripts are ES modules, and every query below
    depends on CQ anyway. */
-const CYCLE_FALLBACK = "testnet_2";   // used only if the bot_config fetch fails
+const CYCLE_FALLBACK = "kraken_2b";   // used only if the bot_config fetch fails
 const CYCLE = await sbq<{ cycle: string }[]>(
   "bot_config",
-  "select=cycle&managed_by=eq.grid&is_active=eq.true&venue=eq.binance&order=updated_at.desc&limit=1",
+  "select=cycle&managed_by=eq.grid&is_active=eq.true&venue=eq.kraken&order=updated_at.desc&limit=1",
 )
   .then((rows) => rows?.[0]?.cycle || CYCLE_FALLBACK)
   .catch(() => CYCLE_FALLBACK);
-const CQ = `&cycle=eq.${CYCLE}`;
+/* "kraken_2b" -> "kraken" -> PostgREST wildcard (`*`, not SQL `%`). */
+const CYCLE_ERA = CYCLE.split("_")[0];
+const CQ = `&cycle=like.${CYCLE_ERA}*`;
 
 /* ---------- 0. disclaimer gate (S118, K.3 prep) ----------
    site_flags.disclaimer_mode=true → swap the homepage for the disclaimer
@@ -136,8 +155,47 @@ const todayStartUtcIso = new Date(
   ),
 ).toISOString();
 
-const GRID_BUDGET = 500;
-const TF_BUDGET   = 100;
+/* Budget — LIVE from bot_config since S125, was hardcoded 500/100.
+
+   Total P&L is measured against the money put in, so a wrong budget is a
+   wrong headline. The literals were right for the $600 testnet lineup and
+   went stale the moment the Kraken allocations moved ($100 -> $250 on BTC,
+   +$150 for SOL on 2026-08-07). Reading the live rows means raising capital
+   is ONE `UPDATE bot_config SET capital_allocation=...` — the same
+   data-driven rule the cycle already follows — instead of a code edit
+   nobody remembers to make.
+
+   Split by managed_by, mirroring the fund partition below: 'grid' is the
+   Grid fund, 'tf'/'tf_grid' the TF fund. TF sits at 0 today (it is stopped
+   and owns no Kraken row), which is correct rather than missing — and the
+   per-fund split line hides itself when a fund has neither budget nor
+   trades, instead of printing a meaningless "TF +$0.00".
+
+   Fallback keeps the site honest if the fetch dies: the CURRENT allocations,
+   not the retired $500/$100. */
+type BudgetRow = { capital_allocation: string | number; managed_by: string | null };
+let GRID_BUDGET = 250 + 150;
+let TF_BUDGET   = 0;
+try {
+  const rows = await sbq<BudgetRow[]>(
+    "bot_config",
+    "select=capital_allocation,managed_by&is_active=eq.true&venue=eq.kraken",
+  );
+  if (rows?.length) {
+    let g = 0, tf = 0;
+    for (const r of rows) {
+      const amt = Number(r.capital_allocation) || 0;
+      if (r.managed_by === "tf" || r.managed_by === "tf_grid") tf += amt;
+      else g += amt;
+    }
+    GRID_BUDGET = g;
+    TF_BUDGET   = tf;
+  }
+} catch { /* keep the fallback */ }
+
+/* Budget tile on the homepage — same figure, so the hero can never disagree
+   with the denominator of the P&L printed next to it. */
+setText("stat-budget", `$${Math.round(GRID_BUDGET + TF_BUDGET)}`);
 
 Promise.all([
   sbFetchAll<TradeFull>(
@@ -209,10 +267,17 @@ Promise.all([
   if (splitEl) {
     const fmt = (v: number) => `${v >= 0 ? "+" : "-"}$${Math.abs(v).toFixed(2)}`;
     const g = gridState.totalPnL, tf = tfState.totalPnL;
-    splitEl.innerHTML =
-      `<span class="${g >= 0 ? "text-pos" : "text-neg"}">Grid ${fmt(g)}</span>` +
-      `<br>` +
-      `<span class="${tf >= 0 ? "text-pos" : "text-neg"}">TF ${fmt(tf)}</span>`;
+    const lines = [
+      `<span class="${g >= 0 ? "text-pos" : "text-neg"}">Grid ${fmt(g)}</span>`,
+    ];
+    /* S125: the TF fund is stopped and holds no Kraken row, so its budget and
+       trade count are both zero. Printing "TF +$0.00" would read as a bot
+       that traded to a dead heat rather than one that is switched off. Show
+       the line only when there is something to show. */
+    if (TF_BUDGET > 0 || tfTrades.length > 0) {
+      lines.push(`<span class="${tf >= 0 ? "text-pos" : "text-neg"}">TF ${fmt(tf)}</span>`);
+    }
+    splitEl.innerHTML = lines.join("<br>");
   }
 
   const tsign = todayPnl >= 0 ? "+" : "-";

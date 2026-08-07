@@ -452,12 +452,12 @@ const tfSubtitle   = "The breakout hunter";
                to 'kraken_test' in Fase 2b and diverge from the rest of the page. */
             const cycle = await fetch(
               SB_URL + "/rest/v1/bot_config?select=cycle&managed_by=eq.grid" +
-                "&is_active=eq.true&venue=eq.binance&order=updated_at.desc&limit=1",
+                "&is_active=eq.true&venue=eq.kraken&order=updated_at.desc&limit=1",
               { headers: { apikey: SB_KEY, Authorization: "Bearer " + SB_KEY } },
             )
               .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
-              .then((rows: Array<{ cycle: string }>) => rows?.[0]?.cycle || "testnet_2")
-              .catch(() => "testnet_2");
+              .then((rows: Array<{ cycle: string }>) => rows?.[0]?.cycle || "kraken_2b")
+              .catch(() => "kraken_2b");
             const url =
               SB_URL +
               "/rest/v1/trades?config_version=eq.v3&managed_by=eq.grid&cycle=eq." + cycle +

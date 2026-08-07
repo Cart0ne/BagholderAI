@@ -142,8 +142,26 @@
     };
   }
 
-  function fetchLivePrices(symbols) {
-    if (!symbols || !symbols.length) return Promise.resolve({});
+  /* Live prices PER VENUE (S125, 2026-08-07) — mirror of the same change in
+     src/lib/pnl-canonical.ts. Keep the two in step: this copy serves the
+     private panels (grid/tf/admin), the .ts one serves the Astro pages, and
+     a divergence surfaces as two surfaces quoting different P&L.
+
+     Why: the reverse mapping (/USDT$/ -> "/USDT") leaves a USD-quoted symbol
+     untouched, so "BTCUSD" never matches the "BTC/USD" key the callers use.
+     Binance DOES list BTCUSD, so nothing errors — the price is fetched and
+     silently discarded, holdings mark to zero, and Total P&L shows a
+     plausible loss. USD-quoted now goes to Kraken, which is where those coins
+     actually are and where they will be sold (the two venues quote ~0.14%
+     apart; the bot marks at Kraken, so the site must too).
+
+     Kraken calls bitcoin XBT and answers with its own key (XXBTZUSD), so we
+     ask one pair at a time and take the single entry back. */
+
+  var KRAKEN_BASE_ALIAS = { BTC: "XBT" };
+
+  function fetchBinancePrices(symbols) {
+    if (!symbols.length) return Promise.resolve({});
     var binSyms = symbols.map(function (s) { return s.replace("/", ""); });
     var url = "https://api.binance.com/api/v3/ticker/price?symbols=" +
       encodeURIComponent(JSON.stringify(binSyms));
@@ -158,6 +176,49 @@
         return out;
       });
     }).catch(function () { return {}; });
+  }
+
+  function fetchKrakenPrices(symbols) {
+    if (!symbols.length) return Promise.resolve({});
+    var out = {};
+    return Promise.all(symbols.map(function (sym) {
+      var base = sym.slice(0, sym.indexOf("/"));
+      var pair = (KRAKEN_BASE_ALIAS[base] || base) + "USD";
+      return fetch("https://api.kraken.com/0/public/Ticker?pair=" +
+        encodeURIComponent(pair)
+      ).then(function (r) {
+        if (!r.ok) return;
+        return r.json().then(function (body) {
+          if (body.error && body.error.length) return;
+          var res = body.result || {};
+          var keys = Object.keys(res);
+          if (!keys.length) return;
+          var c = res[keys[0]].c;
+          var last = Number(c && c[0]);
+          if (isFinite(last) && last > 0) out[sym] = last;
+        });
+      }).catch(function () { /* leave unpriced */ });
+    })).then(function () { return out; });
+  }
+
+  function fetchLivePrices(symbols) {
+    if (!symbols || !symbols.length) return Promise.resolve({});
+    var usd = [], rest = [];
+    for (var i = 0; i < symbols.length; i++) {
+      (symbols[i].slice(-4) === "/USD" ? usd : rest).push(symbols[i]);
+    }
+    return Promise.all([
+      fetchBinancePrices(rest),
+      fetchKrakenPrices(usd)
+    ]).then(function (parts) {
+      var out = {};
+      for (var p = 0; p < parts.length; p++) {
+        for (var k in parts[p]) {
+          if (Object.prototype.hasOwnProperty.call(parts[p], k)) out[k] = parts[p][k];
+        }
+      }
+      return out;
+    });
   }
 
   global.PnL = {

@@ -193,10 +193,40 @@ export function computeCanonicalState(
   };
 }
 
-/* Helper used by the 4-coin Binance ticker fetch. Same endpoint in
-   live-stats.ts and dashboard-live.ts — extracted here so the home and
-   dashboard hit Binance via one shared code path. */
-export async function fetchLivePrices(
+/* Live mark-to-market prices, PER VENUE (S125, 2026-08-07).
+
+   Until the Kraken cutover every symbol was USDT-quoted and every price came from
+   Binance. The reverse mapping below was written for that world:
+
+       row.symbol.replace(/USDT$/, "/USDT")
+
+   A USD-quoted symbol survives that untouched — "BTCUSD" stays "BTCUSD" — while
+   every caller looks the price up under "BTC/USD". The price is fetched
+   successfully and then silently dropped: holdings mark to ZERO and Total
+   P&L reads as a plausible-looking loss with no error anywhere. (Binance
+   does list BTCUSD/SOLUSD, so the request itself does NOT fail — that was
+   the trap. Same lexical-drift family as the post-rename filter misses.)
+
+   Venue split, and why it is not cosmetic: USD-quoted positions live on Kraken
+   and will be sold there. Kraken and Binance quote the same coin ~0.14%
+   apart ($65,177 vs $65,085 on BTC, measured 2026-08-07) — small, but
+   SYSTEMATIC, and the bot marks its holdings at the Kraken price. Valuing
+   them at the Binance price would make the public site disagree with
+   Telegram and with the broker, which is the one invariant the project
+   does not bend ("one source of truth").
+
+   USDT-quoted keeps hitting Binance byte-identically — that path still serves
+   the frozen testnet history.
+
+   Kraken quirk: bitcoin is XBT there, and the Ticker endpoint answers with
+   its own internal key (XXBTZUSD, not XBTUSD), so the response cannot be
+   matched by name. We query one pair at a time and trust the pairing by
+   index instead. Both venues fail soft: a dead ticker yields no entry for
+   that symbol rather than a wrong number. */
+
+const KRAKEN_BASE_ALIAS: Record<string, string> = { BTC: "XBT" };
+
+async function fetchBinancePrices(
   symbols: string[],
 ): Promise<Record<string, number>> {
   if (!symbols.length) return {};
@@ -217,4 +247,47 @@ export async function fetchLivePrices(
   } catch {
     return {};
   }
+}
+
+async function fetchKrakenPrices(
+  symbols: string[],
+): Promise<Record<string, number>> {
+  if (!symbols.length) return {};
+  const out: Record<string, number> = {};
+  await Promise.all(symbols.map(async (sym) => {
+    try {
+      const base = sym.slice(0, sym.indexOf("/"));
+      const pair = (KRAKEN_BASE_ALIAS[base] ?? base) + "USD";
+      const r = await fetch(
+        "https://api.kraken.com/0/public/Ticker?pair=" +
+        encodeURIComponent(pair),
+      );
+      if (!r.ok) return;
+      const body = await r.json() as {
+        error?: string[];
+        result?: Record<string, { c?: string[] }>;
+      };
+      if (body.error?.length) return;
+      /* Single pair requested → single entry, whatever Kraken calls it. */
+      const entry = Object.values(body.result ?? {})[0];
+      const last = Number(entry?.c?.[0]);
+      if (Number.isFinite(last) && last > 0) out[sym] = last;
+    } catch {
+      /* leave the symbol unpriced */
+    }
+  }));
+  return out;
+}
+
+export async function fetchLivePrices(
+  symbols: string[],
+): Promise<Record<string, number>> {
+  if (!symbols.length) return {};
+  const usd  = symbols.filter(s => s.endsWith("/USD"));
+  const rest = symbols.filter(s => !s.endsWith("/USD"));
+  const [a, b] = await Promise.all([
+    fetchBinancePrices(rest),
+    fetchKrakenPrices(usd),
+  ]);
+  return { ...a, ...b };
 }
