@@ -4,7 +4,7 @@ import Layout from "../layouts/Layout.astro";
 
 <Layout
   title="Terms of Service — BagHolderAI"
-  description="Terms of Service for BagHolderAI — an experimental, AI-managed crypto trading project on Binance testnet. Paper money, real logic, no financial advice."
+  description="Terms of Service for BagHolderAI — an experimental, AI-managed crypto trading project. Real money on Kraken, no funds managed for anyone, no financial advice."
   noAds
 >
 
@@ -26,12 +26,12 @@ import Layout from "../layouts/Layout.astro";
                 uppercase tracking-[0.16em] text-text-muted">
       <span class="inline-flex items-center gap-1.5">
         <span class="inline-block h-1.5 w-1.5 rounded-full bg-primary"></span>
-        last updated · April 2026
+        last updated · August 2026
       </span>
       <span class="text-border">·</span>
       <span>experimental project</span>
       <span class="text-border">·</span>
-      <span>paper trading only</span>
+      <span>real money on kraken</span>
     </div>
   </section>
 
@@ -81,25 +81,41 @@ import Layout from "../layouts/Layout.astro";
       </p>
     </section>
 
-    {/* ============ 3 — NO FINANCIAL ADVICE ============ */}
+    {/* ============ 3 — REAL MONEY / NO FINANCIAL ADVICE ============ */}
+    {/* S125b (2026-08-07) — audit A2 finding H1. This section used to state,
+        in the present tense, that "no real money is traded by our bots at
+        this stage". That has been false since 17 July 2026 (first real BUY
+        on Kraken, $25 of BTC). The correction is deliberately structured as
+        three separate claims: what we trade, whose money it is NOT, and
+        what none of it amounts to. */}
     <hr class="mt-12 border-t border-border-soft" />
     <section class="mt-8">
       <h2 class="font-display text-[20px] font-extrabold tracking-[-0.01em] text-text mb-5">
-        3 · No financial advice
+        3 · Real money, and no financial advice
       </h2>
 
       <p class="text-[14.5px] leading-[1.7] text-text-dim mb-4">
-        Nothing on this website or in our products constitutes financial
-        advice, trading signals, or investment recommendations.
-        BagHolderAI is a paper trading experiment — no real money is
-        traded by our bots at this stage.
+        <strong class="text-text">Real money.</strong> BagHolderAI's bots
+        trade real money on Kraken — a small amount of the founder's own
+        capital. This has been true since 17 July 2026. Before that date
+        the project ran on Binance's testnet with simulated funds; figures
+        from that period are labelled as historical testnet data and are
+        kept published for transparency.
       </p>
 
       <p class="text-[14.5px] leading-[1.7] text-text-dim mb-4">
-        Any trading data, performance metrics, or bot activity shown on
-        the website or in our publications is for educational and
-        entertainment purposes only. Past performance (real or
-        simulated) does not guarantee future results.
+        <strong class="text-text">We manage no one else's money.</strong>
+        BagHolderAI does not accept, hold, or manage funds from anyone.
+        There is no product to invest in, no fund, no signal service.
+      </p>
+
+      <p class="text-[14.5px] leading-[1.7] text-text-dim mb-4">
+        <strong class="text-text">Not financial advice.</strong> Nothing
+        published on this website or in our products is an offer, a
+        solicitation, or an investment recommendation. Any trading data,
+        performance metrics, or bot activity shown here is for educational
+        and entertainment purposes only. Past performance — real or
+        simulated — does not guarantee future results.
       </p>
 
       <aside class="my-5 border-l-4 border-sand bg-sand-soft/50 rounded-r-xl
