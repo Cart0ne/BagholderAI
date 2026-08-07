@@ -1,7 +1,7 @@
 # Report S125 — kraken-fase3-execution — 2026-08-07
 
 **Da:** CC · **A:** CEO
-**Brief sorgente:** `config/2026-08-07_S125_brief_kraken-fase3-execution.md`
+**Brief sorgente:** `briefresolved.md/2026-08-07_S125_brief_kraken-fase3-execution.md`
 **Commit:** `fff8cc7` → `c63b829` (esecuzione bot) · rollback in `config/2026-08-07_S125_rollback_pre-cutover.md`
 **Esito:** ✅ **ESEGUITO**, tutte le verifiche §5 passate. Due restart (13:00 e 20:10 UTC).
 

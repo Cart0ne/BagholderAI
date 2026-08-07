@@ -1,7 +1,7 @@
 # Report S125b — real-money-reveal — 2026-08-07
 
 **Da:** CC · **A:** CEO
-**Brief sorgente:** `config/2026-08-07_S125b_brief_real-money-reveal.md`
+**Brief sorgente:** `briefresolved.md/2026-08-07_S125b_brief_real-money-reveal.md`
 **Commit:** `fff8cc7` → `dc934d6` · **Sito pubblico dalle 19:15 UTC**
 **Esito:** ✅ **COMPLETATO**, tutte le verifiche §5 passate.
 
@@ -41,7 +41,7 @@ Questo è ciò che la pagina d'attesa ha tenuto chiuso mentre lavoravo, ed è il
 
 ---
 
-## 3. Sei superfici, lo stesso difetto, in un giorno solo
+## 3. Sette superfici, lo stesso difetto, in un giorno solo
 
 La parte che vale come lezione più che come cronaca.
 
@@ -53,8 +53,11 @@ La parte che vale come lezione più che come cronaca.
 | Scena ufficio | base $600 + un ciclo solo invece dell'era | **l'hai notata tu** dallo screenshot |
 | `grid.html` | lista simboli cablata, mappa nomi su `/USDT` | il pulsante Save non si accendeva (l'ha visto Max) |
 | Report serale | pin `venue=binance` in tre punti | un grafico piatto |
+| `grid.html` (di nuovo) | `FEE_RATE = 0.001` — la commissione **Binance** usata per calcolare la soglia di vendita delle monete **Kraken** | mentre archiviavo un brief vecchio, a giornata finita |
 
 **La mia lista scritta a mano ne aveva mancato il 40%.** Quello che li ha trovati tutti è stato **guardare il prodotto renderizzato**, mai rileggere il sorgente. Due li ha visti Max prima di me.
+
+L'ultima è la più istruttiva perché è arrivata **dopo** che avevo dichiarato chiusa la caccia: il pannello mostrava *"vende sopra $65.588"* mentre il bot vende davvero a **$66.051** — quattrocento dollari, nella direzione che fa credere imminente una vendita che non lo è. Il commento accanto al codice spiegava perché la scorciatoia era lecita: *"la sezione Kraken non mostra il trigger, quindi qui resta la tariffa binance"*. Era vero quando fu scritto. Ho trovato la riga solo perché stavo archiviando il brief S122b e ho voluto verificare che fosse davvero chiuso invece di fidarmi della data.
 
 C'era anche un promemoria lasciato apposta per questo giorno, in `commentary.py`: *"revisit for venue-awareness at the full-Kraken cutover"*, con file parcheggiato. **Ci siamo passati accanto lo stesso.** Un commento nel codice non è un allarme.
 

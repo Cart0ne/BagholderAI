@@ -1248,10 +1248,18 @@
         // S121: NET-margin, no double-count. avg already includes the buy fee
         // (bot cost_for_avg) → recover only the SELL fee (/(1−FEE)); the old
         // "+ FEE" in the numerator added the buy fee a second time. Mirrors
-        // grid_sell_trigger_price() in bot/grid/grid_bot.py. FEE_RATE = the
-        // paper/binance taker (0.001); the Kraken collaudo section shows no
-        // trigger, so this stays the binance rate.
-        var FEE_RATE = 0.001;
+        // grid_sell_trigger_price() in bot/grid/grid_bot.py.
+        //
+        // S125 — la commissione ora dipende dal VENUE della riga, e la nota
+        // qui sopra era il motivo per cui prima non serviva: "la sezione
+        // Kraken non mostra il trigger, quindi qui resta la tariffa binance".
+        // Da oggi le schede principali SONO le monete Kraken, e 0,001 (taker
+        // Binance) contro 0,008 (taker Kraken tier-0) sposta la soglia di
+        // ~0,7%: su BTC il pannello avrebbe detto "vende sopra $65.588"
+        // mentre il bot vende davvero a $66.051. Quattrocento dollari, nella
+        // direzione che fa credere imminente una vendita che non lo e' —
+        // sul cruscotto con cui si sorveglia denaro vero.
+        var FEE_RATE = (cfg.venue || 'binance') === 'kraken' ? KRAKEN_FEE_RATE : 0.001;
         var buyPct = Number(cfg.buy_pct) || 0;
         var sellPct = Number(cfg.sell_pct) || 0;
         // Brief 74b Bug 2 (S74b 2026-05-12): prefer the bot's live

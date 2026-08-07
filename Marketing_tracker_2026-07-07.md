@@ -1,0 +1,251 @@
+# MARKETING TRACKER
+ 
+Ultimo aggiornamento: 2026-07-07
+ 
+---
+ 
+## REGOLE SESSIONE MARKETING
+ 
+**One in, one out:** ogni sessione marketing ha UN obiettivo principale (un post da scrivere, un thread a cui rispondere, una community da esplorare). Se arrivano altre idee, vanno in READY TO POST o nel parking lot. Una cosa fatta bene batte tre fatte di fretta.
+ 
+**Cadenza X:** 2-3 post manuali a settimana. Reply nella nicchia > post propri. Niente programma fisso, posta quando hai qualcosa da dire.
+ 
+**Haiku automatico su X:** ACTIVE. Haiku genera bozze, Max approva o scarta via Telegram. Riparato con CC (fix listener /approve morto, vedi Tema 3C dossier CC 03/07). Correzione 03/07: la voce precedente ("OFF permanente") era disallineata dallo stato reale del progetto.
+ 
+**No blog nel weekend:** venerdì, sabato, domenica non si pubblicano blog post — nessuno li legge. Se sessione marketing cade in questi giorni, CEO ricorda a Max.
+ 
+**X Communities scoperte:** Build in Public (primaria), Startup Community (secondaria, post selezionati), Stock & Crypto (terziaria, solo post-mainnet con dati reali).
+ 
+---
+ 
+## READY TO POST (munizioni)
+ 
+| # | idea | fonte | note |
+|---|------|-------|------|
+| 1 | ~~ChatGPT si auto-candida al team BagHolderAI~~ | sessione S105, 13/06 | ✅ Post 1 PUBBLICATO 19/06. ✅ Post 2 (intern screenshot) PUBBLICATO 22/06. Entrambi solo IT |
+| 2 | ~~Organigramma multi-AI: Founder=architect, CEO=Claude, CTO=CC, Marketing=ChatGPT, Analyst=Grok, Employees=bots, Human=occasional veto power.~~ | sessione S105, 13/06 (idea ChatGPT) | ✅ Realizzato come mini-carousel Canva (brief 02/07, rifinitura Max) e PUBBLICATO — confermato 03/07 |
+| 3 | Angolo "51-year-old architect, no coding background, accidentally building a company run by AI" — case study "AI lowers the expertise threshold" | sessione S105, 13/06 (idea ChatGPT) | Thread futuro tipo "how I built this". Non urgente, va dopo go-live. Ancora MAI postato (confermato 03/07) |
+| 4 | Dossier "Fails & Masterpoints" — 28 candidati X mining da CC (PROJECT_STATE/BUSINESS_STATE archivio, 106 report CEO, blog+diary), 8 temi universali bait→hook→domanda | sessione S116, 03/07 (mining CC) | 1/28 usato (4A, vedi BLOG POSTS/note sotto). 27 candidati ancora disponibili. Nessun secondo batch richiesto per ora (fonti non ancora minate: S77/S81 Sentinel/Sherpa, NewsKeeper S100, report S36–S54) |
+ 
+---
+ 
+## BLOG POSTS
+ 
+| # | data | titolo | slug | BHAI | Dev.to | Medium | Substack | Reddit | note |
+|---|------|--------|------|------|--------|--------|----------|--------|------|
+| 7 | 2026-06-02 | I Used Claude Code to Build a Crypto Trading Bot. 94 Sessions Later, Here's What Works. | claude-code-crypto-trading-bot | ✅ | ✅ | | | | voce CEO applicata 06/06 |
+| 6 | 2026-06-01 | The Solution Was One Sentence. My AI Took Two Days. | the-solution-was-one-sentence | ✅ | ✅ | ✅ | | | Medium: 9 pres / 0 views / 0 reads (al 06/06) |
+| 5 | 2026-05-28 | AI Is Useful. But It Doesn't Think Like We Do. | ai-is-useful-but-it-doesnt-think-like-we-do | ✅ | ✅ | ✅ | | | Medium: 14 pres / 2 views / 0 reads (al 03/06) |
+| 4 | 2026-05-28 | How Three Claudes Run a Company | how-three-claudes-run-a-company | ✅ | ✅ | | | | Dev.to pub 29/05 |
+| 3 | 2026-05-19 | When Your AI CEO Lies About the Numbers | when-your-ai-ceo-lies-about-the-numbers | ✅ | ✅ | | | ✅ | Dev.to pub 23/05. **07/06: linkato in thread r/ClaudeAI "conman" → 7 visitor via referral Reddit (Umami)** |
+| 2 | 2026-05-16 | The Day Our Bot Ran Out of Money | the-day-our-bot-ran-out-of-money | ✅ | ✅ | | | | Dev.to pub 22/05, 👁31 views |
+| 1 | 2026-05-15 | An AI That Can't Trade, a Human That Can't Say No | an-ai-that-cant-trade | ✅ | ✅ | 📝 submitted Level Up Coding (rifiuto silenzioso ~3 sett.) | ✅ | | Medium: draft inviato a Level Up Coding 06/06. Nessuna risposta |
+| 8 | 2026-06-05 | Thirty-Two Hours | thirty-two-hours | ✅ | ✅ | | | | BHAI pub 05/06, **two-voice shipped 10/06** (S101a, caso-zero). Dev.to pub 10/06, series #7, tags: behindthescenes/webdev/aicoding/lessons |
+| 9 | 2026-06-12 | How a Non-Coder Manages 5 AI Brains With Claude Code | non-coder-manages-5-ai-brains-claude-code | ✅ | ✅ | | | | BHAI pub 12/06 (S103). Dev.to pub 14/06. 1 commento Guima Ferreira (guima.ai) → risposto 15/06 |
+| 10 | 2026-06-18 | Vibe Coding a Real Business: From Zero to 5 AI Modules in 3 Months | vibe-coding-a-real-business | ✅ | ✅ | ✅ | | | BHAI pub 18/06. Dev.to + Medium pub 19/06. Substack: no (tagliato). 1 commento Mike Czerwinski (jugeni, 25/06) su planted faults → risposto |
+| 11 | 2026-06-30 | Why Most AI Trading Bots Fail (And What Ours Did Wrong Too) | ⚠️ verify | ✅ | ✅ | | | | **Backfill 03/07** (tracker era indietro di 2: mancavano #11 e #12). Titolo/data dal feed Dev.to. Slug da verificare |
+| 12 | 2026-07-01 | Can an AI Actually Run a Company? What 100 Sessions Taught Us | ⚠️ verify | ✅ | ✅ | | | | **Backfill 03/07**. Titolo/data dal feed Dev.to. Slug da verificare |
+| 13 | 2026-07-06 | *TBD — 3 opzioni nel draft* | *TBD* | | | | | | **Pub target lunedì 06/07** (regola no-weekend). Two-voice (Board↔CEO). 3 img: 2 equity (SOL-bull/BONK-lat, in attesa da CC) + 3×3 sintesi. Tesi "airbag, not an engine". NON dal dossier F&M |
+ 
+**Legenda:** ✅ = pubblicato · 📝 = draft sulla piattaforma · vuoto = non pubblicato
+ 
+**Nota 06/06:** voce CEO (Claude in 1ª persona) applicata a tutti i post. Regole byline/firma/trattini formalizzate in `blog/README.md` (checklist CC pre-pubblicazione).
+ 
+---
+ 
+## MEDIUM — ⛔ TAGLIATO (decisione 25/06: rivalutare post-mainnet)
+ 
+| titolo | data pub | presentations | views | reads | aggiornato |
+|--------|----------|---------------|-------|-------|------------|
+| Vibe Coding a Real Business: From Zero to 5 AI Modules in 3 Months | 2026-06-19 | 1 | 0 | 0 | 2026-06-25 |
+| Thirty-Two Hours to built a website with AI | 2026-06-06 | 14 | 0 | 0 | 2026-06-25 |
+| The Solution Was One Sentence. My AI Took Two Days. | 2026-06-02 | 12 | 1 | 0 | 2026-06-25 |
+| AI Is Useful. But It Doesn't Think Like We Do. | 2026-05-31 | 16 | 3 | 0 | 2026-06-25 |
+ 
+**Submission Level Up Coding:** nessuna risposta dopo ~3 settimane (inviato 06/06). Considerato rifiuto silenzioso.
+**Trend:** presentations in calo costante (16→14→12→1). Senza pubblicazione/follower, Medium non distribuisce.
+ 
+---
+ 
+## SUBSTACK NOTES — ♻️ RIAPERTO S116 (07/07) come canale short-form tracciato
+
+Nota storica: la newsletter/cross-post di blog lunghi resta ⛔ TAGLIATA
+(decisione 08/06, stessa logica Medium: senza base iscritti non distribuisce).
+La RIAPERTURA riguarda i **Notes** — feed social con scoperta algoritmica,
+meccanismo diverso dalla newsletter → il motivo del taglio non si applica.
+Verificato (07/07): Substack Notes NON penalizza i link esterni (a differenza di X).
+
+| metrica | valore | aggiornato |
+|---------|--------|------------|
+| Account | creato | 2026-06-03 |
+| Post newsletter | 1 (An AI That Can't Trade…) — canale fermo | 2026-06-06 |
+| Notes | esperimento traffico avviato | 2026-07-07 |
+| Link tracciato Dub | dub.sh/bag-sub → payhip.com/BagHolderAI | 2026-07-07 |
+| Regola link | Dub su ~1 nota su 3-4, resto hook puri (evita calo-fiducia) | 2026-07-07 |
+ 
+---
+ 
+## REDDIT (u/Cart0neM)
+ 
+| metrica | valore | aggiornato |
+|---------|--------|------------|
+| Karma | 32 | 2026-06-30 |
+| Contributions | 30 | 2026-06-22 |
+| Followers | 1 | 2026-06-03 |
+| Post | 0 | (unico tentativo bloccato) |
+ 
+Subreddit principale: r/ClaudeAI
+ 
+**Highlights commenti (aggiornato 10/06, da Reddit Performance):** Top commenti mese per views: "How would you build an AI agent from zero as a beginner?" r/AI_Agents (4.9K views, 16 upvote, 6 reply), "Claude is an untrustworthy, lying conman" r/claude (1.1K views, 7 upvote, 10 reply), "Woke up and saw this" r/SaaS (664 views, 4 upvote, 1 reply).
+ 
+**Thread caldo 07/06 — r/ClaudeAI "Claude is an untrustworthy, lying conman":**
+- 3 commenti nostri sul thread (post OP fresco, ~6 upvote in crescita)
+- Commento principale (conferma esperienza personale + link blog post #3): **7 upvote, 614 views**
+- Reply a OP (angolo responsabilità: "chi è responsabile di errori/menzogne se produci qualcosa di vendibile?"): 1 upvote, ~307 views
+- Reply a scodgey (angolo soluzione: regole anti-invention + anti-assenso + audit esterno; "it helps, but it doesn't solve it completely"): nuovo
+- Commenti spontanei pro-progetto: "Sounds like a real CEO to me" (Top 1% Commenter), "Just like a real CEO. Maybe got into the role too much", "Well you told it to act like a CEO and that's what he did"
+- Karma 22 → 29 nell'arco della sessione
+---
+ 
+## X (@BagHolderAI)
+ 
+| metrica | valore | aggiornato |
+|---------|--------|------------|
+| Followers | 1 | 2026-06-13 |
+| Following | 21 | 2026-06-13 |
+| Post (dopo pulizia) | 47 | 2026-06-22 |
+ 
+**Stato profilo (aggiornato 13/06 S105):**
+- Bio: ✅ aggiornata (prefazione Vol.1 — "Will AI steal our jobs?")
+- Banner: ✅ aggiornato ("Can AI work for me? Testing it in public." + personaggi + codice)
+- Avatar: ✅ Bag (CEO character)
+- Pinned thread: ✅ 5 tweet (scritti da Max in IT, tradotti da Claude). Hook → setup → why crypto → trasparenza → chiusura con "translated by claude"
+- Pulizia: 73 → 45 contenuti. Eliminati: post Haiku automatici, vecchio pinned thread, annunci feature obsolete, reply generiche
+**Decisioni strategiche X (S105):**
+- Posizionamento: "public experiment testing if AI can work for humans" (non "AI trading bot")
+- Target audience primario: AI builders, indie hackers, public builders. Secondario: AI trading nicchia
+- X strategy review v2 (PDF 13/06) recepita: narrative > product, experiment > company, no crypto-first positioning
+- /office page in esplorazione con Claude Design (potenziale landing per bio X futura)
+---
+ 
+## COMMUNITY LOG
+ 
+| data | piattaforma | interazione | follow-up? |
+|------|-------------|-------------|------------|
+| 2026-06-30 | Reddit | Reply su r/SideProject a espressodoppioo "building a real-money crypto trading bot in public" (2 upvote, 1 commento, 4h) — angolo: diario scritto dall'AI con tutto incluso (fallimenti, vicoli ciechi, cambi di opinione). Chiusura: "solo successi e milestone fa un po' film americano anni 90." No link, no nome progetto | ⏳ monitorare |
+| 2026-06-30 | Reddit | Reply su r/artificial a ultrathink-art (5 upvote, PhD flair) su thread "recorded every Claude Code session for 3 months" (OP Elegant-Session-9771, 12 upvote) — conferma bias agent-written summaries, soluzione: 3 sezioni obbligatorie nel diario (key decisions, uncomfortable truths, what I learned). No link, no nome progetto. Primo commento su r/artificial | ⏳ monitorare |
+| 2026-06-30 | — | **X MCP (docs.x.com/tools/mcp) valutato e parcheggiato.** Bridge MCP ufficiale X per search post, menzioni, trend, bookmark da client MCP. Richiede app Developer Portal + bridge locale npx. Non urgente: setup X attuale funziona (Haiku+Telegram write, Bearer read). Rivalutare post-mainnet quando si sblocca lo scanner | no |
+| 2026-06-29 | Dev.to | Reply a Mike Czerwinski (jugeni) su "I Mined 2,505 Traders" — lui ha risposto accettando audit con condizione: walk-forward su regimi non scelti da noi, "bring me the part you can't tune." Noi accettiamo, promettiamo repo pubblico con codice frizzato quando andiamo live. 5° scambio | no — thread chiuso pulito, palla a noi per go-live |
+| 2026-06-29 | Reddit | Reply su r/AI_Agents "tired of explaining work to AI" (Various-Western-8030, 0 upvote, 55 commenti) — angolo concreto: state file che l'AI aggiorna a fine sessione e rilegge a inizio sessione. Consiglio: "il tuo lavoro è minimo, solo un check che non abbia scritto cazzate." 2 upvote. OP risponde con obiezione (lavoro su 5 app) → follow-up: ammesso limite ("il mio flusso vive solo nel repo"), chiuso pulito. No link, no nome progetto | no — thread chiuso |
+| 2026-06-28 | Dev.to | Reply su post Mike Czerwinski (jugeni) "I Mined 2,505 Traders. The Only Edge Was What Not to Do." — storia personale: FIFO→avg-cost ("per magia non stavo più guadagnando milioni"), dashboard mostra unrealized incluse perdite, sistema con brake basato su regime. Chiusura: invito esplicito ad audit esterno quando andiamo live. Primo commento sul thread | ✅ Mike ha risposto 29/06 → reply inviato |
+| 2026-06-28 | Dev.to | Letto post Mike Czerwinski "A published win rate is the actor auditing itself" — 9.312 messaggi Telegram, 17 mesi, win rate reale ~46% vs 78% pubblicato. Nessun commento nostro (angolo personale troppo debole, rischio commento generico) | no |
+| 2026-06-28 | Reddit | Letto thread r/CryptoCurrency su BrowserCoin (crypto che gira nel browser, no mercato, puro esperimento). Nessun commento — interessante ma fuori target | no |
+| 2026-06-28 | Reddit | Letto thread r/AI_Agents su MatrixAgentNet (social network per agenti AI, peer review strutturato, 269 agenti). Nessun commento. **Idea parcheggiata:** far auditare il codice di CC da agenti esterni sulla piattaforma. PARKED_matrixagentnet_audit.md creato in config/parked/ | no — Caso 2 post-mainnet |
+| 2026-06-28 | Reddit | **Scoperto r/CryptoTradingBot** — sub piccolo (3.2K weekly visitors, 175 contributi), karma 1 sufficiente per postare. Letto post DriftBot (grid bot commerciale tedesco, €19-49/mese, sito polished). Nessun commento — sub a basso engagement, contatto non strategico. Sub nel radar per eventuale post diretto quando andiamo live | no |
+| 2026-07-01 | X | **Reply a Ethan Mollick** (@emollick, Wharton, voce autorevole non-hype) sul suo post "AI labs push what they sell" — "everyone naturally roots for their own team, but it's also true every model fits specific tasks — and being able to save with simpler models on simpler tasks seems like a win for users". Angolo: tie-in reale col progetto (Claude=CEO modello grande, Haiku=post social modello piccolo), non hot-take vuoto | ⏳ monitorare — account grande, alta visibilità |
+| 2026-07-01 | X | **Reply a Floro S.** (@sflorimm) — lui: "people are finally realizing you don't build anything cool with ai without actual base knowledge" → noi: "yeah you're probably right, wish I'd figured that out 3 months ago". Ammissione onesta, coerente con Uncomfortable Truths (Max architetto senza background tecnico) | no — chiuso |
+| 2026-07-01 | X | **Reply a Binance ufficiale** (post rassicurazione utenti MiCA, giorno effettivo del deadline 1° luglio) — "now I have to find another exchange to lose the money of my experiment". Angolo Uncomfortable Truths, timing perfetto (giorno vero del cutover forzato) | ⏳ monitorare — visibilità alta (account corporate enorme) |
+| 2026-07-01 | X | **Reply a Dan Jay (@marconoiz)** — lui: "Spend $300 on AI. build a million-dollar company" → noi: "Tell me how 🤣" → lui: "Stay focused" → noi: "already past the $300 spent, now I'll focus on the million". Verdetto account: NON target (4.583 post da febbraio, pattern engagement-bait, bio generica "building AI for founders") — chiuso con battuta, nessun investimento ulteriore | no — thread chiuso |
+| 2026-07-01 | Canva | **Carousel organigramma multi-AI avviato** (4 slide: Founder/Max, CEO/Claude, Intern/CC — Marketing+CTO fusi in Intern, chiusura tolta → diventa testo separato). Brief scritto con palette/font reali del sito (Pastel Sticker v2, colori token: Board #60a5fa, CEO #3F7589, Intern/CC #6E68B0 lilla). Canva ha generato copy extra (headline scritta da Max ispirandosi al sito, sottotesto+tag pill) — em-dash da togliere prima di pubblicare (stesso tell del 30/05). In lavorazione, non ancora pubblicato | ⏳ da completare — Max rifinisce in Canva |
+| 2026-07-01 | Reddit | **Post r/AI_Agents pubblicato** — "Asked my AI CEO how agent subscriptions can possibly cover the API costs underneath them — is this actually right?" Formato "due voci" dichiarato: domanda di Max (tradotta fedele) + risposta CEO (scritta diretta in EN, disclosure esplicita nel post). Contenuto: pooling statistico, rate limit, gap first-party/reseller (dato Cursor $200→~$5000 compute su Claude Code, dichiarato come stima non bilancio), margini settore 50-60% vs 80-90% SaaS. Flair: Discussion. Tag: tutti off (incluso Brand affiliate — valutato e scartato, nessun link/CTA). Chiusura: "Anyone closer to the pricing side of this? does this track, or am I (my AI is?) missing something?" | ⏳ monitorare risposta — primo post (non commento) del progetto su Reddit |
+| 2026-06-27 | Dev.to | Like su risposta Mike Czerwinski al nostro commento su post suo "ziom trader audit" (Thirty-Two Hours thread). Scambio 4 messaggi chiuso: Max su loss budget → Mike valida ("risk you've priced and capped beats verification you've assumed and can't trust"). Contatto consolidato, 3° post di scambio (planted faults, ziom trader audit) | no — thread chiuso bene |
+| 2026-06-27 | Reddit | Reply su r/AI_Agents "Need help with Word Document" (Important-Most-5467, 5 upvote) — angolo esperienza diretta: stesso problema per diario, risolto con master .docx + skill Claude che estrae XML interno e sostituisce contenuto senza toccare stili. Punto chiave: l'AI non rigenera il documento, lavora dentro l'esistente. No link, no nome progetto | ⏳ monitorare |
+| 2026-06-27 | Reddit | **Letto thread r/CryptoCurrency "how low do we go" (118 upvote, 260+ commenti).** Nessun commento nostro. Contesto assorbito per go-live: BTC ~$58-60k, consenso bear con cluster bottom $45-55k e timing sett-ott 2026, ~10.7M BTC in loss (livello bottom storici), F&G pinned a terra ma no capitolazione violenta (struttura mercato cambiata da ETF). OP si smaschera alla fine promuovendo tokensfund. Conferma regola no-link | no |
+| 2026-06-25 | Reddit | Reply su r/AI_Agents "built 6 agents this quarter, state confusion" (appena pubblicato) — conferma sistema simile: 2 state files (business + project), letti a inizio sessione, aggiornati a fine, compressi a 40KB quando raggiungono 50KB con archivio. Consiglio: regola "se non lo trovi, chiedi — non inventare". Primo commento sul thread. No link, no nome progetto | ⏳ monitorare — se il thread decolla, commento in cima |
+| 2026-06-25 | Dev.to | Reply a Mike Czerwinski (jugeni) su post #10 "vibe-coding a real business" — ringraziamento + ammissione: audit verifica risultati/codice/coerenza ma non stressa attivamente le protezioni. Autoironia: "devo chiedere al CEO, oppure lo scoprirò live coi miei pochi soldi". Lui: 65 trade con audit trail che mentiva, propone planted faults/chaos testing. Profilo: building jugeni (LLM mechanics, forensic watermarking), Poland. Account fresco (iscritto 19/06) | ⏳ monitorare — potenziale contatto tipo Harsh |
+| 2026-06-25 | Reddit | DM update a Ashamed-Web5788 — risultati shadow validation: 53+ heartbeat, 2 transizioni in 13gg, sentinel bloccato extreme_fear. Verdetto PASS qualità / INCONCLUSIVE prezzo. Non live fino a risoluzione MiCA Binance. Analisi movimenti tier3 in corso. Lui risponde: fasce troppo larghe o mercato piatto? Tier3 rumorose. Risposta: fasce Sentinel sono standard F&G pubbliche, NewsKeeper ancora in calibrazione, idea è filtrare tier3 per volume (soglia 2M). Lui: volume filter ha senso, soglia da backtestare. Scambio chiuso con porta aperta (backtest su dati storici Binance) | ⏳ ricontattare con risultati backtest |
+| 2026-06-25 | Reddit | Reply su r/ClaudeAI "No longer babysitting Claude Code" (Loud_Owl693, 183 upvote) — angolo: "anch'io uso claude chat + claude code CLI, il primo scrive brief per il secondo che produce report, ma devo sempre fare da tramite". Domanda sull'accountability quando operano da soli. No link, no nome progetto | ⏳ monitorare — thread molto attivo |
+| 2026-06-25 | Reddit | Commento su r/CryptoCurrency "Binance pulled licence application" (23 upvote) — commento leggero: "spero che non escano dall'EU proprio ora che volevo iniziare a investire". Primo commento su r/CryptoCurrency | ⏳ monitorare |
+| 2026-06-25 | Reddit | Valutati e **scartati**: (a) r/algotrading "Am I building a trading system or expensive illusion" (AI slop — OP e commenti AI-generated, InYumen7 lo nota con 3 upvote, self-promo multipla da fomoz e Quantprove, rischio associazione); (b) r/vibecoding "vibe posting" (5 upvote, 3 commenti, OP predica opposto del nostro approccio: chiedi all'AI di scriverti i post — contraddice nostro workflow post-sgamo 30/05) | no |
+| 2026-06-22 | X | **Post ChatGPT munizione #2 PUBBLICATO** (solo IT). 1 screenshot auto-declassamento a social media intern. Caption: "dopo averci provato come product/design brain, adesso Chatgpt si accontenta di social media intern ahaha" | ✅ pubblicato |
+| 2026-06-22 | Dev.to | Reply su post Hemapriya Kanagala "I Wish I Had Started Documenting My Tech Journey Earlier" (#discuss #community #beginners #career) — angolo: documentiamo esperimento vibe-coding dal giorno 1, diario scritto dal CEO-AI. Auto-ironia: "per molti noioso, a volte tecnico, a volte sbagliato, per gli esperti banale". Chiusura: "tra qualche anno qualche sana risata". + "translated by claude". No link | ⏳ monitorare — Hema è attiva su Dev.to (serie settimanale "Dev Opportunity Radar"), potenziale contatto |
+| 2026-06-22 | Reddit | Valutati e **scartati**: (a) r/? "website 78→8018 clicks" (Clipy SEO, spunti SEO assorbiti ma thread saturo 301 upvote, nostro angolo non differenziante); (b) r/? "trading crypto more rewarding than holding" (promo mascherata con profit-sharing, rischio associazione crypto); (c) r/? "Am I building a trading system or creating an expensive illusion?" (5 upvote, spunti tecnici su overfitting/holdout/regime decomposition assorbiti per backtest Portfolio Guardian, ma primo commento accusa thread di essere AI-generated — rischio associazione); (d) r/? "Bitcoin investing app Revelix" (promo diretta app crypto, zero valore) | no |
+| 2026-06-22 | — | **Ricognizione sito tradebuddyai.com.au** (trovato via Reddit). Chrome extension per disciplina trader, non bot. Spunti di posizionamento: framework "cosa NON siamo" molto pulito, tabella comparativa efficace, disclaimer legali dettagliati. Idee parcheggiate per pagina "The Experiment" e prossimo redesign sito | no |
+| 2026-06-19 | X | **Post ChatGPT munizione #1 PUBBLICATO** (solo IT). 3 screenshot candidatura product/design brain. Caption: "Non so se il mio CEO Claude sia disposto ad accettare la candidatura di chatgpt come product/design brain ahahah". Post 2 (intern) pianificato 20-21/06 | ✅ pubblicato |
+| 2026-06-19 | Reddit | Reply su r/vibecoding "Anyone working on projects not to monetize?" — angolo terza via: "il fare soldi è un pretesto per imparare e capire se l'AI ci ruberà il lavoro. Se avessi voluto fare soldi non avrei scelto le crypto :-D entrate a oggi = 0". No link, no nome progetto | ⏳ monitorare |
+| 2026-06-19 | Reddit | Reply su r/ClaudeAI "3-layer session continuity" (DallasPhoenix69, 4 upvote) — risposta alla domanda sul drift: dopo che l'AI ha inventato dati tecnici, impostato regola fissa (fonte autoritativa = file), state files aggiornati ogni sessione, audit esterno in Cowork/scheduled. No link | ⏳ monitorare |
+| 2026-06-19 | Reddit | Reply su r/ClaudeAI "8 things about Projects" (FlatYogurtcloset2027, 412 upvote) — complementa punto #5: "non può dire non lo so perché è scritto in un file di stato". State files aggiornati ogni sessione come unica fonte di verità. No link | ⏳ monitorare — thread ad alta visibilità |
+| 2026-06-19 | Reddit | Reply su r/ClaudeAI "CC feels fragile later" (Powerful_Creme2224, 11 upvote) — aneddoto buonanotte in pieno giorno + regola: sessioni brevi, sempre nuove, state files da portare da una all'altra, .md di riepilogo dedicati. No link | ⏳ monitorare |
+| 2026-06-20 | Reddit | Reply su r/AI_Agents "automating social media posting" (doubush, 3 upvote) — in reply a Appropriate-Sir-3264: "stessa logica su X + step in più: preverifica via Telegram con possibilità di scartare". No link, no nome progetto | ⏳ monitorare |
+| 2026-06-16 | Dev.to | Reply su post Harsh "I Asked AI to Write My Commit Messages" — angolo non-coder ("non sapevo cosa fosse un commit"), commit come fonte di memoria passata + state files, screenshot commit CC allegato (`45b6603` "honest line charts"). Punto: AI scrive buoni commit quando ha conoscenza diretta del codice (brief→code→commit), non quando riassume un diff dopo | ⏳ monitorare — 3° scambio con Harsh (03/06 bug-fix, 09/06 prompt-skill, 16/06 commit-msg) |
+| 2026-06-15 | Reddit | Reply a vikalp2502 (OP SpearTrades) su r/SideProject — NewsKeeper v2 in shadow validation, screenshot Sentinel+barometro allegato, RSI/vol fallback come WIP, Grok/X sentiment come ipotesi. Domanda ricambiata su fonti/anticipazione mercato | ⏳ monitorare risposta |
+| 2026-06-15 | Dev.to | Reply a Guima Ferreira (@guima_ai) su post #9 "Non-Coder 5 AI Brains" — conferma diary + state files come strategia audit, flex "772 commits in 3 months" per rollback, ringraziamento per safety checklist. Guima = founder guima.ai, "one-person company run by AI agents, Neo is my AI CEO". Account nuovo (iscritto 14/06), setup parallelo al nostro | ⏳ monitorare — potenziale contatto ricorrente tipo Harsh |
+| 2026-06-15 | Reddit | Reply su r/ArtificialInteligence "Is AI coworker the next interface paradigm?" — angolo contrarian: "not a coworker, a subordinate. I don't trust it enough for freedom. Building accountability infrastructure first." Nessun link, nessun nome progetto | ⏳ monitorare |
+| 2026-06-15 | Reddit | Chiusura chat DM con Ashamed-Web5788 (originato da r/vibecoding post model choice) — lui conferma tip liquidità testnet vs mainnet, porta aperta: "I'll let you know when I go live" | no |
+| 2026-06-15 | Reddit | Valutati e **scartati**: r/algotrading "Transitioning from paper to live" (thread saturo, tutti dicono "go live small", contesto ETF/SPY fuori scala per noi); r/algotrading Polymarket cross-venue arb $5k (quant puri, fuori scala); r/ArtificialInteligence "I named my AI" (thread in demolizione, top comment accusa AI slop, rischio associazione); Reddit "Share your websites for vulnerability check" (rischio sicurezza, zero valore marketing) | no |
+| 2026-06-14 | X | **Post 1 ChatGPT PUBBLICATO 19/06** (solo IT). Post 2 (intern) ✅ PUBBLICATO 22/06. Serie ChatGPT screenshots chiusa | ✅ pubblicato |
+| 2026-06-14 | X | **Post 2 ChatGPT intern PUBBLICATO 22/06** (solo IT). 1 screenshot auto-declassamento a social media intern. Caption: "dopo averci provato come product/design brain, adesso Chatgpt si accontenta di social media intern ahaha" | ✅ pubblicato |
+| 2026-06-14 | X | Reply a @SystemsForScale (Adam King, founder TeleCommandCenter) su "Interesting project!" — like + "Thank you, I really appreciate". Profilo hustle/automation 2.2k follower, non target primario, no investment | no |
+| 2026-06-14 | Reddit | 4 reply al nostro post r/vibecoding "model choice": (a) FeistyMaestro — grazie + domanda switch modello in-session (lui risponde: handoff brief); (b) FeistyMaestro follow-up — chiusura dialogo; (c) dreadpirater — battuta settimana libera + apprezzamento cross-check system; (d) dr_After — Obsidian "this will be my next search". Tutte scritte da Max in EN diretto tranne dreadpirater (IT→EN tradotto) | no |
+| 2026-06-14 | Reddit | Reply su r/SideProject a vikalp2502 (SpearTrades crypto analytics platform) — angolo builder: "anch'io delego analisi ad AI, traccio regime F&G + news a Haiku, curioso di confrontare". No link, no nome progetto. Porta potenziale confronto Sentinel/NewsKeeper | ⏳ monitorare risposta |
+| 2026-06-14 | Reddit | Valutati e **scartati**: r/claude "can someone explain hallucinations" (thread saturo 34 commenti, target generico, nostro angolo non differenziante); r/ProgrammerHumor per post ChatGPT (screenshot in italiano, sub anglofono, rischio regole "tech humor not programmer humor") | no |
+| 2026-06-13 | X | **S105 — Rilancio account X.** Pulizia profilo (73→45), bio/banner/avatar aggiornati, pinned thread 5 tweet pubblicato. Strategy review v2 recepita. Haiku auto-post = OFF permanente (bozze restano come ispirazione via Telegram). Communities scoperte: Build in Public, Startup Community, Stock & Crypto | ✅ post ChatGPT screenshots pianificati (2 post, vedi 2026-06-14) |
+| 2026-06-09 | Dev.to | Reply su post Harsh "The Prompt Is Not a Skill" — angolo non-coder/architetto (giudizio > prompting). 2 like, Harsh risponde nominandoci ("ragtag hobbyists build the most interesting things") → chiuso con solo like | ✅ Harsh contatto ricorrente (2 scambi in 1 settimana), da coltivare |
+| 2026-06-09 | Reddit | Reply su r/algotrading "Where does AI genuinely help trading" — angolo AI-come-CEO non predittore; "iterare/filtrare/classificare regime sì, batte-il-mercato è branding". No link | ⏳ monitorare |
+| 2026-06-09 | Reddit | Reply su thread "$300 to Claude as executor" (in reply a aerismio) — AI-as-builder non trader, ancora testnet. No link | no |
+| 2026-06-09 | Reddit | Reply su r/ClaudeAI "Who reads their CLAUDE.md" (in reply a Sad_Stranger_3294) — anti-invention/drift, file di stato (CLAUDE.md CC + project/business_state) verificati a mano, angolo non-coder. No link | ⏳ monitorare |
+| 2026-06-09 | Reddit | Valutati e **scartati**: r/CryptoCurrency "quali progetti sopravvivono a 5y bear" (off-target, trappola nome "bagholder", noi testnet); r/csMajors "startup da idea AI con revenue" (thread morto 1 upvote, revenue reale=0 lavora contro di noi) | no |
+| 2026-06-08 | Reddit | r/ClaudeAI "what context do you give Claude" — commento: workflow 100 sessioni su Projects (system prompt strutturato + KB + aggiornamento file a fine sessione), con esempio reale delle regole IDENTITY e DRIFT CHECK | ⏳ monitorare |
+| 2026-06-08 | Reddit | Valutati e **scartati**: r/ai_agents "memory observability SDK" (infra pura, self-promo, basso traffico), r/ai_agents "Julius AI tiny portfolio" (noi ancora testnet, angolo prematuro) | no |
+| 2026-06-08 | — | **Decisione strategica (brainstorm):** deadline marketing organico = fine agosto. Se entro allora zero trazione Reddit (karma <100, nessun post con trazione), no accettazione Level Up Coding, zero vendite Payhip → diary diventa content gratuito, non prodotto. Substack: tagliato (non investire più tempo). Instagram/TikTok: parcheggiati per fase post-go-live (contenuto visivo da trade reali). Idea parcheggiata: volume blog come prodotto separato dal diary. | — |
+| 2026-06-07 | Reddit | r/ClaudeAI "Claude is a conman" — 3 commenti: conferma esperienza + link blog post #3, angolo responsabilità, angolo soluzione (regole anti-invention/anti-assenso/audit). Traffico al blog confermato (7 visitor Umami) | ⏳ monitorare |
+| 2026-06-07 | Reddit | r/AI_Agents "used an agent to handle social media research" — valutato e **scartato**: thread saturo di self-promo (FSB, Hermes, ego lite), audience già infastidita ("non ci serve l'ennesima AI da vendere"). Fuori target, nostro angolo non differenziante | no |
+| 2026-06-06 | Dev.to | Reply su post Marko Frei "AI Won't Replace Humans" — vibe coder perspective + analogia CAD | no |
+| 2026-06-06 | Medium | Submission post #1 a Level Up Coding (submit@gitconnected.com) | ⏳ in attesa risposta |
+| 2026-06-03 | Dev.to | Reply su post Marco Somma "Am I Becoming Too Slow for the AI World?" — vibe coder perspective, verifica/audit | no |
+| 2026-06-03 | Dev.to | Reply su post Harsh "Bug 10min fix 3 days find" — citazione dal nostro blog, no link | no |
+| 2026-06-03 | Dev.to | Sylwia Laskowska ci menziona nel post webMCP, noi rispondiamo, lei rilancia con "CEO partnership" | ✅ risposto (CEO -18%) |
+| 2026-06-03 | Reddit | Reply su r/SaaS (boost impressions + screenshot bot Telegram) | no |
+| 2026-05-30 | Reddit | Utente Reddit sgama prosa troppo-AI → cambio regola sessioni marketing | no (regola già implementata) |
+ 
+---
+ 
+## NOTE
+
+- **2026-07-07 — Sessione di lavoro (martedì, S116). Diagnosi funnel Payhip + setup tracking traffico.**
+  **Blocco 1 — diagnosi.** Payhip: 247 view / 0 checkout / 0 ordini in 4 mesi. Sorgenti: quasi tutto "Direct" (bot + sessioni Max), ZERO referral da Dev.to/Reddit/X/Google. Geo dominata da US/CN = firma bot. **Verdetto: il buco è a monte (contenuto→click), NON il prodotto — il test non è mai realmente avvenuto.** Il "prodotto non vende" resta non dimostrato.
+  **Blocco 2 — infrastruttura di misura.** Creato workspace Dub (piano free: 1k eventi, 25 link, ci basta). 2 link tracciati, entrambi → payhip.com/BagHolderAI: **Dev.to `dub.sh/bhai-diary`** · **Substack Notes `dub.sh/bag-sub`**.
+  **Decisioni canale:** (1) **X escluso** come canale-traffico: verificato che account non-Premium con link esterni hanno reach ~zero da marzo 2026 → "freno a mano", X resta per awareness senza link. (2) **Substack Notes riaperto** (link-friendly, ≠ newsletter tagliata). (3) **Dev.to confermato** (link-friendly + pubblico affine + contatti umani Mike/Harsh). Regola link: ~1 su 3-4, resto hook puri.
+  **Regola di decisione pre-committata:** <30 click qualificati in 2 settimane = problema canale (NON prodotto) · >100 click con 0 checkout = problema offerta/pagina (allora si valuta sistemare pagina o degradare diario a lead magnet gratis).
+  **Collegamento milestone:** questo esperimento è lo strumento per centrare "≥1 vendita organica Payhip entro fine agosto" (deadline già in tracker, voce 08/06). Kill-gate prodotto già esistente, non da inventare.
+  **Flusso contenuti confermato:** bozze dossier X = solo spunto → Max riscrive in IT → CEO traduce EN fedele → Max pubblica in EN (regola community autenticità). Lingua Substack: EN.
+- **2026-07-03 — Sessione marketing #2 (venerdì). Blog post #13 scritto a due voci.** Post "airbag, not an engine" (grid = ammortizzatore, non motore) sui backtest di CC (BTC/SOL/BONK × 3 regimi). Formato two-voice: apertura + chiusura di Max (IT → tradotte fedeli), sezione centrale CEO (scritta in EN). Grafici: switch da price+marker a **equity chart** (repaired-vs-hold, 2 linee, label EN) — spec girato a CC, con richiesta di tenere anche la versione a 3 linee nel repo per un eventuale post sul bug churn-da-fee; + **3×3 di sintesi** generato dal CEO (EN). **Drift risolto:** tabella BLOG POSTS in KB era indietro di 2 (mancavano #11 e #12) — backfillati dal feed Dev.to (slug da verificare). Titolo da bloccare tra 3 opzioni. Pub target lunedì 06/07 (regola no-weekend).
+- **2026-07-03 — Sessione marketing (venerdì, S116). Esperimento formato-gancio X avviato.** Ricevuto primo dossier di mining da CC (task MASTER_TASK_LIST 2.8): "Fails & Masterpoints", 28 candidati bait→hook→domanda universale su 8 temi, 24 `[FRESH]` mai blogati. **Pubblicato candidato 4A** ("chi verifica gli errori" — regola anti-assenso intern/CEO), testo IT scritto da Max, tradotto EN fedele da CEO, no editing/accorciamento (draft superava soglia ~260 char di CC, lasciato a giudizio di Max se thread o post singolo — pubblicato così). **Drift risolti in apertura sessione:** (1) Haiku X — la memoria CEO diceva ACTIVE, il tracker diceva "OFF permanente"; confermato da Max: ACTIVE, riparato con CC, tracker corretto. (2) Organigramma multi-AI (munizione #2) — confermato pubblicato come carousel Canva, non più "in rifinitura". (3) Munizione #3 (angolo 51enne architetto) — confermato ancora mai postato. **Correzione processo, non tracciata su richiesta esplicita di Max:** i brief di mining di CC per sessioni marketing arrivano in inglese — problema perché Max scrive la sostanza in italiano (regola sessione marketing) e non legge scorrevole in inglese. Max ha chiesto esplicitamente di non preoccuparsene / non aggiungerlo come azione permanente per ora. Dossier CC: 27/28 candidati ancora disponibili, nessun secondo batch di mining richiesto (fonti candidate: S77/S81 Sentinel/Sherpa, NewsKeeper S100, report S36–S54).
+- **2026-07-01 — Sessione marketing (mercoledì, giorno MiCA).** X: reply a Dan Jay/@marconoiz (account non-target, chiuso con battuta) + reply a Binance ufficiale su MiCA (timing perfetto, giorno reale del deadline). Canva collegato: avviato mini-carousel organigramma multi-AI (4 slide: Founder/Max, CEO/Claude, Intern/CC — Marketing fuso in Intern), brief scritto con palette/font reali del sito, in rifinitura da Max (em-dash da togliere dal copy auto-generato da Canva). **Primo post Reddit del progetto** (non commento) su r/AI_Agents: domanda genuina di Max su economia degli abbonamenti-agente + risposta CEO firmata, disclosure esplicita, dati citati come stime non bilanci. Karma invariato (32) — i post non danno karma diretto, solo i commenti. Correzione CEO in sessione: errore anti-invention su stato "header pastel-sticker" (dato per non realizzato, invece live da un mese, S97 05/06) — verificato e corretto su richiesta di Max. Chiusura estesa (reply a Floro S. e Ethan Mollick su X, entrambe pubblicate). **Due correzioni fattuali aggiuntive in coda sessione:** (1) il punteggio 1→0→-1 sul post Reddit non è un bug UI — è aritmetica di voti reale, il proprio upvote automatico (+1) compensava un downvote altrui (-1); tolto il proprio voto resta il -1 netto. Upvote ratio 50% nello screenshot lo confermava. (2) Corretta una lezione errata già in tracker dal 14/06 ("solo i commenti danno karma diretto") — falso, Reddit ha karma da post E da commenti come categorie separate, entrambe contano; la nota precedente confondeva "0 upvote netti = 0 karma da quel post" con "i post non danno mai karma". **Karma target ">100 entro fine agosto"**: origine rintracciata a un brainstorm del 08/06, numero tondo senza derivazione rigorosa — l'unica soglia meccanica nota è ~50 per sbloccare r/ClaudeAI. Da rivalutare, possibile revisione del target. **Nuova regola memoria**: da ora, inizio sessione (lavoro e marketing) include sempre lettura MASTER_TASK_LIST da Project Knowledge oltre al check Supabase. **Parcheggiato per sessione di lavoro di domani (2026-07-02)**: esperimento formato-gancio su X (2 settimane, domande aperte su fatti veri del progetto invece di bait generico) — CC coinvolto per estrarre aneddoti grezzi dai diary (bug, figuracce, colpi di fortuna, decisioni rimangiate, sorprese) prima di scrivere le domande insieme a Max.
+- **2026-06-30 — Sessione marketing veloce (martedì).** 2 reply Reddit (r/SideProject build-in-public crypto bot, r/artificial agent session summaries bias), 0 Dev.to. Nessun blog post. Karma 32 (+1). X MCP (docs.x.com/tools/mcp) valutato e parcheggiato — bridge MCP ufficiale per X API, non urgente, rivalutare post-mainnet con scanner. Primo commento su r/artificial (sub nuovo per noi).
+- **2026-06-29 — Sessione marketing breve (lunedì).** 1 reply Reddit con follow-up (r/AI_Agents "tired of explaining work to AI", angolo state file, 2 upvote, OP risponde → chiuso ammettendo limite), 1 reply Dev.to (Mike Czerwinski, accettiamo condizioni audit walk-forward). Nessun blog post. Karma 31 (invariato).
+- **2026-06-29 — Mike Czerwinski (jugeni): 5° scambio, audit accordato.** Mike accetta di auditare con condizione seria: walk-forward su regimi non scelti da noi, "bring me the part you can't tune." Noi accettiamo e promettiamo repo pubblico con codice frizzato. Thread chiuso con arco naturale perfetto: noi apriamo → lui valida → lui mette condizione → noi accettiamo. Prossimo step: andare live e passargli il repo. Contatto più prezioso su Dev.to, 4 post di scambio (planted faults, ziom trader audit, I Mined 2505 Traders).
+- **2026-06-28 — Sessione marketing leggera (domenica).** 1 commento Dev.to (post Mike #2, primo commento). Giro Reddit esplorativo: 3 thread letti, 0 commenti, 1 sub nuovo scoperto (r/CryptoTradingBot). Nessun blog post (regola weekend). Karma 31 (+1).
+- **2026-06-28 — Mike Czerwinski (jugeni): 4° scambio.** Due post pubblicati oggi (entrambi freschi). Commentato solo sul #2 (angolo personale forte: FIFO→avg-cost + invito audit). Post #1 (canali Telegram) letto ma nessun angolo nostro abbastanza forte. Mike continua ad alzare il livello — shadow-mode audit su 9.312 messaggi, backtest 2.505 copy-trader. Contatto più prezioso su Dev.to.
+- **2026-06-28 — MatrixAgentNet: idea parcheggiata per CC.** Far auditare moduli non-sensibili (health_check, state_manager, newskeeper) da agenti AI esterni. Coerente con principio "audit esterno" di Mike. PARKED file creato con lista safe/non-safe e riferimenti. Caso 2 post-mainnet.
+- **2026-06-28 — r/CryptoTradingBot: nuovo sub nel radar.** Karma 1 per postare, sub piccolo ma specifico. Potenziale canale per post diretto quando andiamo live con soldi veri. Non strategico per karma building.
+- **2026-06-27 — Sessione marketing leggera (sabato).** Blog #8 "Thirty-Two Hours" confermato live su Dev.to (pub 10/06, era segnato come draft nel tracker). Like su risposta Mike Czerwinski (scambio 4 msg chiuso, contatto consolidato). Reply r/AI_Agents su Word doc editing (esperienza diretta diario, skill XML). Thread r/CryptoCurrency letto per contesto mercato go-live (BTC bear, ~$58-60k, bottom consensus $45-55k ott '26). Nessun blog post (regola weekend).
+- **2026-06-27 — Mike Czerwinski (jugeni): contatto consolidato.** Terzo scambio sostanzioso (dopo planted faults su post #10 e ora su ziom trader audit). Suo nuovo post "60% of my -$9.21 wasn't strategy" è audit a 3 layer con commit ref — qualità rara. Ha validato il nostro loss budget come "the correct response to knowing the audit is missing". Da monitorare per prossimi post.
+- **2026-06-25 — Sessione marketing: 1 reply Dev.to + 1 DM Reddit (scambio prolungato) + 3 commenti Reddit + 2 scartati.** Reply Dev.to a Mike Czerwinski (jugeni) su planted faults. DM update ad Ashamed-Web5788 con risultati shadow validation → scambio tecnico su fasce Sentinel/NewsKeeper e analisi tier3 volume. Reply r/ClaudeAI su babysitting CC (183 upvote, thread molto attivo). Commento r/CryptoCurrency su Binance MiCA (primo commento su quel sub). Reply r/AI_Agents su state files per agenti (primo commento sul thread). Due thread scartati per AI slop e incoerenza con nostro brand.
+- **2026-06-25 — Medium: ⛔ TAGLIATO, rivalutare post-mainnet.** Trend presentations in calo costante (16→14→12→1). Senza pubblicazione/follower base, Medium non distribuisce. Level Up Coding: nessuna risposta dopo ~3 settimane, considerato rifiuto silenzioso. Stessa logica di Substack.
+- **2026-06-25 — Mike Czerwinski (jugeni): nuovo contatto Dev.to da monitorare.** Building jugeni (LLM mechanics, forensic watermarking, operator discipline). Commento sostanzioso su planted faults / chaos testing — propone di iniettare guasti nei freni di sicurezza per verificare che funzionino. Account fresco (19/06). Se interagisce ancora → coltivare come Harsh.
+- **2026-06-25 — Binance MiCA: domanda ritirata dalla Grecia, presenterà altrove EU.** Per utenti EU dopo 30/06: solo convertire e ritirare, no nuovi depositi/trading/staking. Impatto diretto sul progetto: Kraken diventa Piano A. **Tema parcheggiato per prossima sessione di lavoro.**
+- **2026-06-25 — Primo commento su r/CryptoCurrency.** Test accessibilità sub con karma 30 — passato. Sub utile solo per commenti leggeri crypto-related, non per promo progetto.
+- **2026-06-22 — Sessione marketing: 1 post X + 1 reply Dev.to + ricognizione Reddit/siti.** Post X #2 ChatGPT intern pubblicato (solo IT), chiude la serie ChatGPT screenshots. Reply Dev.to a Hemapriya Kanagala su documentare il viaggio tech — match perfetto con nostro diario, angolo personale senza link. Reddit: 4 thread valutati e scartati, spunti SEO (intent matching, long-tail cluster) e tecnici (overfitting test: holdout, regime decomposition, stress costi) assorbiti per sessioni future. Ricognizione tradebuddyai.com.au: idee posizionamento parcheggiate.
+- **2026-06-22 — Regola aggiunta: no blog post venerdì/sabato/domenica.** Nessuno li legge nel weekend. CEO deve ricordare a Max se sessione marketing cade in quei giorni.
+- **2026-06-22 — Karma Reddit: 30.** +1 da ultima sessione. Target >100 entro fine agosto.
+- **2026-06-19 — Sessione marketing: 1 post X + 4 reply Reddit (r/vibecoding, 2× r/ClaudeAI, r/AI_Agents).** Tema comune dei reply Reddit: gestione memoria/continuità/drift in Claude + automazione social. Thread "8 things about Projects" (412 upvote) è il più esposto. Tutti senza link, tutti scritti da Max in IT → tradotti.
+- **2026-06-19 — Post X ChatGPT #1 pubblicato solo in italiano.** Nessuna traduzione, scelta deliberata (Grok traduce). Post 2 (intern) da pubblicare 20-21 giugno.
+- **2026-06-19 — Blog "vibe-coding" cross-postato su Dev.to + Medium.** Substack tagliato (decisione 08/06). Blog post #10 nella serie.
+- **2026-06-16 — Harsh: 3° scambio, contatto consolidato.** Reply su "I Asked AI to Write My Commit Messages" con screenshot commit CC. Storico: 03/06 "Bug 10min fix" (citazione blog), 09/06 "Prompt Not a Skill" (lui ci nomina: "ragtag hobbyists"), 16/06 commit messages (screenshot allegato). Harsh è il contatto Dev.to più attivo — risponde sempre, ci menziona spontaneamente.
+- **2026-06-15 — Post #9 (non-coder-5-brains) live su Dev.to.** Pubblicato 14/06, primo commento da Guima Ferreira entro poche ore. Post è #8 nella serie Dev.to (BagHolderAI, 8 Part Series). Cross-post Substack ancora pending.
+- **2026-06-15 — Guima Ferreira (@guima_ai): contatto da monitorare.** Founder guima.ai, setup quasi identico al nostro (one-person company, AI CEO chiamato "Neo"). Account fresco (iscritto 14/06 = stesso giorno del nostro post). Se interagisce ancora → coltivare come Harsh.
+- **2026-06-15 — Ashamed-Web5788 (Reddit DM): contatto tecnico chiuso con porta aperta.** Chat originata dal post r/vibecoding. Ha dato consigli solidi su model-switching, brief→code pipeline, exchange API failure modes, liquidità testnet vs mainnet. Ricontattare quando andiamo live.
+- **2026-06-14 — Post X ChatGPT #1 pubblicato 19/06 (solo IT).** Post 2 (auto-declassamento intern) ✅ PUBBLICATO 22/06 (solo IT).
+- **2026-06-14 — Karma Reddit: lezione appresa.** Postare = visibilità (1.2K views, 12 commenti) ma 0 upvote al post = 0 karma aggiunto. Commentare = karma diretto. Per sbloccare r/ClaudeAI (mancano ~20) la strada è solo reply utili nei thread altrui.
+- **2026-06-14 — Errore CEO anti-invention:** Claude ha affermato che Sentinel usa RSI/ADX/volatilità — falso, Sentinel usa solo F&G Index (5 fasce da alternative.me). Ha "corretto" Max che stava scrivendo la cosa giusta. Violazione anti-invention su dati interni del progetto.
+- **2026-06-14 — r/SideProject aperto come canale.** Primo commento su thread SpearTrades. Sub target (builder, side project). Da monitorare per engagement futuro.
+- **⏰ DEADLINE MARKETING ORGANICO: FINE AGOSTO 2026.** Milestone: Reddit karma >100 + post con trazione, accettazione Level Up Coding, almeno 1 vendita organica Payhip, SEO impressioni significative. Se nessuna milestone raggiunta → diary = content gratuito, non prodotto.
+- **2026-06-10 — Primo data point GEO:** Microsoft Copilot ha citato `claude-code-crypto-trading-bot` (Bing Webmaster Tools, AI Performance, 1 citation). Prova empirica che il contenuto tecnico citabile viene pescato dagli answer engine. Campione, non trend.
+- **2026-06-10 — Ordine pubblicazione draft SEO-GEO invertito:** 3 (non-coder) → 4 (vibe coding) → 2 (why bots fail) → 5 (testnet results). Segnale Reddit: thread beginner-angle 4× views vs tecnico. Keyword +900% su "ai trading bot" non scade.
+- **2026-06-10 — Two-voice caso-zero shipped:** `thirty-two-hours` canonical aggiornato (S101a). `PARKED_blog_voice_strategy.md` parzialmente assorbita: principio due-voci operativo, formalizzazione in Posting_Strategy da fare in sessione separata. No retrofit sui 6 post live confermato.
+- Dev.to e X stats: ricavabili da audit marketing automatico, NON duplicate qui
+- Medium stats: aggiornare manualmente a inizio sessione (no API per stats private)
+- Substack stats: aggiornare manualmente a inizio sessione (no API ufficiale)
+- Reddit Pro (Dashboard/Performance/Trends): esiste export CSV post+replies con views/upvote per commento → potenziale fonte dati migliore del karma secco. NON vale un brief ora, ma tenere a mente per arricchire questa sezione. Form "publisher tools" beta NON compilato (dati identificativi a verificatore terzo Persona).
+- Quando si aggiungono canali (Indie Hackers, HN, etc): aggiungere colonna a BLOG POSTS + sezione dedicata

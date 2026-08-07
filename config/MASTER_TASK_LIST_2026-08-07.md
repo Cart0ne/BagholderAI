@@ -1,7 +1,12 @@
 # BagHolderAI — Master Task List
 
-**Data:** 18 giugno 2026 (creata) · **Ultimo aggiornamento:** 18 luglio 2026 (**S120 canale Telegram**: T.1 contenuti ✅ **SHIPPED+LIVE** — publisher `telegram_publisher.py` cron 10min sul Mini con status+pin/diario/regime F&G/rassegna stampa; T.2/T.3 fix daily report **CODED, pending restart** bot; alert trade parcheggiato. Prec. 12-lug: K.1 Fase 1 ✅ SHIPPED S118)
-**Regola:** niente nuovi task salvo bug fix e il **cutover Kraken** (forzato da MiCA, Board-approved). Si finisce quello che c'è.
+**Data:** 18 giugno 2026 (creata) · **Ultimo aggiornamento:** **7 agosto 2026 (S125 — CUTOVER COMPLETO + REVEAL PUBBLICO)**
+
+> **Il progetto ha cambiato stato.** Non è più "un sistema su testnet che si prepara al denaro reale": è **un sistema che tratta denaro reale e lo dichiara pubblicamente** (sito live dalle 19:15 UTC del 7-ago). Il testnet Binance non esiste più — si è azzerato il 5-6 agosto e non è stato riaperto. Su Kraken gira tutto: BTC/USD $250 + SOL/USD $150. Il Trend Follower è fermo.
+>
+> Di conseguenza **la Fase 1 di questa lista è chiusa** e le priorità si sono spostate: il lavoro che conta ora non è "arrivare al denaro reale" ma **rendere affidabile ciò che già lo tratta** — a partire dalla riconciliazione, che su Kraken non esiste.
+
+**Regola:** niente nuovi task salvo bug fix e ciò che rende sicuro il denaro reale. Si finisce quello che c'è.
 
 ---
 
@@ -11,12 +16,51 @@ Contesto: Binance EU ha sospeso gli ordini spot dal **1-lug** (MiCA). Venue di g
 
 | # | Cosa | Dipende da | Chi | Stato |
 |---|---|---|---|---|
-| K.1 | **CUTOVER Kraken — Fasi 0-4 (Max, 11-lug)**. Chiavi API ✅ (Withdraw OFF). **Fase 0 ✅**: plumbing 18/18 — fee taker 0,80% tier-0. **Fase 1 ✅ SHIPPED S118 (11-12 lug)**: venue per-riga + cablaggio hot-path + fee dinamica + floor fee-aware + fix contabile + hands-off Sherpa + gate `ALLOW_REAL_MONEY` + bonifica cycle-fetch + disclaimer-toggle. Invariante binance: zero diff (290 test). **⚠️ Review avversaria S118 → 2 BLOCKER da fixare PRIMA della Fase 2** (`config/2026-07-12_S118_review-findings.md`, PROJECT_STATE §5): 🔴 KrakenClient normalizza ogni ordine reale come non-eseguito (serve follow-up `fetch_order`); 🟠 cycle-fetch sito non venue-robusto. + 2 MEDIUM (`_alert_rejection` su validate; fallback cycle) + 2 LOW. **Fase 2 spezzata da Max in 2a+2b (12-lug); ⚠️ $100 GIÀ su Kraken (fermi).** **Fase 2a**: risolvere i 2 blocker + 2 medium (review) + nuovi test; accettazione = **ordine reale minimo ~$3-5 sorvegliato** (prova il fix critical, i test verdi non bastano). **Fase 2b**: nodo 5 (parametri, margine floor 0,4%) → runbook finestra coordinata (insert righe kraken → is_active flip → disclaimer on → `ALLOW_REAL_MONEY=true` → restart) → grid sui $100 caricati. **Fase 3** collaudo. **Fase 4** deployment | 2a: fix+test · 2b: switch+Max | CC + Max | **Fase 1 ✅ · 2 blocker aperti · 2a prossima** |
+| ~~K.1~~ | ✅ **CUTOVER Kraken COMPLETATO** — Fasi 0/1/2a/2b/3 tutte chiuse. Denaro reale dal **17-lug** (ordine di prova $25 confermato a mano), autonomo dal **22-lug**, sistema intero su Kraken dal **7-ago** ($250 BTC + $150 SOL, testnet abbandonato). I 2 blocker della review S118 risolti in Fase 2a (fill via `fetch_order`+halt, cycle-fetch venue-robusto). Storico: `briefresolved.md/`, report in `report_for_CEO/resolved/` | — | CC + Max | ✅ **CHIUSO S125** |
+| ~~K.1-old~~ | *(testo storico)* **CUTOVER Kraken — Fasi 0-4 (Max, 11-lug)**. Chiavi API ✅ (Withdraw OFF). **Fase 0 ✅**: plumbing 18/18 — fee taker 0,80% tier-0. **Fase 1 ✅ SHIPPED S118 (11-12 lug)**: venue per-riga + cablaggio hot-path + fee dinamica + floor fee-aware + fix contabile + hands-off Sherpa + gate `ALLOW_REAL_MONEY` + bonifica cycle-fetch + disclaimer-toggle. Invariante binance: zero diff (290 test). **⚠️ Review avversaria S118 → 2 BLOCKER da fixare PRIMA della Fase 2** (`config/2026-07-12_S118_review-findings.md`, PROJECT_STATE §5): 🔴 KrakenClient normalizza ogni ordine reale come non-eseguito (serve follow-up `fetch_order`); 🟠 cycle-fetch sito non venue-robusto. + 2 MEDIUM (`_alert_rejection` su validate; fallback cycle) + 2 LOW. **Fase 2 spezzata da Max in 2a+2b (12-lug); ⚠️ $100 GIÀ su Kraken (fermi).** **Fase 2a**: risolvere i 2 blocker + 2 medium (review) + nuovi test; accettazione = **ordine reale minimo ~$3-5 sorvegliato** (prova il fix critical, i test verdi non bastano). **Fase 2b**: nodo 5 (parametri, margine floor 0,4%) → runbook finestra coordinata (insert righe kraken → is_active flip → disclaimer on → `ALLOW_REAL_MONEY=true` → restart) → grid sui $100 caricati. **Fase 3** collaudo. **Fase 4** deployment | 2a: fix+test · 2b: switch+Max | CC + Max | **Fase 1 ✅ · 2 blocker aperti · 2a prossima** |
 | K.2 | **WebSocket `executions` Kraken** — feed fill real-time (oggi polling: regge, ma è il pezzo "nuovo di paradigma") | dopo K.1 | CC | fast-follow |
-| K.3 | **Frontend cutover** — homepage (live-snapshot Kraken + badge "real money, real Kraken" + scena hero aggiornata) + dashboard (sezione disclaimer in alto, TF congelata, Grid filtrato a moneta attiva, reconciliation Kraken) + pagina-disclaimer toggle per le finestre di setup (piano confermato Max 2026-07-07, `config/COLLAUDO_COMMS_GUIDELINES.md`) | dopo K.1 | CC (design) + CEO (copy) | pending |
-| K.4 | **Nonce Kraken** — alzare "Nonce Window" lato account + valutare subaccount/chiave per-coin (grid = 1 processo per coin, nonce per-chiave) | al cutover | Max + CC | pending |
-| 1.3 | **Sessione go-live experiment** — formalizzare rampa/rabbocco/verdetto/Victory Lap (da `config/APPROVED_golive_experiment_design.md`). Venue Kraken USD; lineup **BTC $250 / SOL $150 / BONK $100** (grid) + **TF $100** (dalle /USD) | K.1 | CEO + Max | **PENDING** |
-| 1.8 | **Board approval call** (go/no-go €100 reali) | 1.3 + cutover | Max | **PENDING** |
+| ~~K.3~~ | ✅ **Frontend cutover FATTO S125 (7-ago)** — homepage + dashboard su Kraken, badge "real money on kraken", riga "The logic is real. So is the money.", `/history` per le ere chiuse, `/terms` sanata (chiude finding H1 audit A2), guidelines emendate a v3, pannelli privati Kraken-only. **7 superfici** avevano numeri o filtri cablati sul venue vecchio. Dettaglio: `report_for_CEO/2026-08-07_S125b_RforCEO_real-money-reveal.md` | — | CC | ✅ **CHIUSO** |
+| ~~K.3-old~~ | *(testo storico)* **Frontend cutover** — homepage (live-snapshot Kraken + badge "real money, real Kraken" + scena hero aggiornata) + dashboard (sezione disclaimer in alto, TF congelata, Grid filtrato a moneta attiva, reconciliation Kraken) + pagina-disclaimer toggle per le finestre di setup (piano confermato Max 2026-07-07, `config/COLLAUDO_COMMS_GUIDELINES.md`) | dopo K.1 | CC (design) + CEO (copy) | pending |
+| ~~K.4~~ | ✅ **Nonce Kraken CHIUSO** — Max ha impostato la Nonce Window a **10.000 ms** sulla chiave; il codice usa già numerazione al microsecondo (`kraken_client.py:68-73`). Nota: la finestra si imposta **solo alla creazione** della chiave, non è modificabile dopo. Subaccount per-coin: non serve, i 2 processi convivono | — | Max ✅ | ✅ **CHIUSO** |
+| 1.3 | **Sessione go-live experiment** — rampa/rabbocco/verdetto/Victory Lap (da `config/APPROVED_golive_experiment_design.md`). ⚠️ **Parzialmente superata dai fatti**: il lineup previsto era BTC $250 / SOL $150 / **BONK $100** + TF $100; la realtà è BTC $250 + SOL $150, **BONK escluso** (volume Kraken $29K/24h) e **TF fermo**. Resta da formalizzare: **quando si rabbocca, con che criterio, e cosa dichiara "riuscito" il collaudo** — oggi non c'è una soglia scritta | — | CEO + Max | **PENDING, da riscrivere** |
+| ~~1.8~~ | ✅ **Board approval** — dato da Max il **21-lug (S121)**, Opzione B: 1 moneta / $100 / tutto il resto invariato. Il go-live è avvenuto | — | Max ✅ | ✅ **CHIUSO** |
+
+---
+
+## 🔴 FASE 1b — RENDERE AFFIDABILE IL DENARO REALE (nuova, S125)
+
+Il cutover è fatto. Questa è la lista di ciò che manca perché il sistema che tratta denaro vero sia **verificabile**, non solo funzionante. Ordinata per gravità.
+
+| # | Cosa | Perché adesso | Chi | Stato |
+|---|---|---|---|---|
+| **R.1** | **Riconciliazione Kraken** — oggi `scripts/reconcile_binance.py` parla solo con Binance, e persino le colonne di `reconciliation_runs` sono Binance-shaped (`binance_count`, `unmatched_binance_count`). Serve: script che interroghi Kraken + colonne venue-agnostiche + cron. **E spegnere o riconvertire il cron attuale**, che alle 03:00 interroga un exchange su cui non operiamo | È il controllo che prova che i trade a DB corrispondono agli ordini veri. Sul testnet era una formalità; **sul denaro reale è l'unica cosa che separa "i conti tornano" da "crediamo che tornino"**. Dichiarato anche dentro `/admin` | CC | 🔴 **PRIORITÀ 1** |
+| **R.2** | **`trades` non ha colonna `venue`** — e `mode` non serve a distinguere: vale `'live'` per **tutte e 319** le operazioni, testnet incluso (significa "mandato a un exchange", non "soldi veri"). Oggi l'unico appiglio è la **stringa del ciclo**: contiamo come reale ciò che si chiama `kraken*` | Convenzione sui nomi, non un dato. Il 7-ago è costata **due guasti veri** (report serale sul portafoglio morto, superfici pubbliche congelate). Un ciclo battezzato fuori-schema verrebbe contato male | CC | 🟠 alla prossima migrazione |
+| **R.3** | **Cap di rifiuto sullo slippage del fill, per-venue** — bug ETH bad-tick aperto da S122: fill accettati a **+15%** di slippage senza rifiuto, solo un avviso dopo | Il gate BONK si è allontanato (BONK escluso), ma BTC e SOL girano a **denaro reale** senza quel cap, e il book SOL è meno profondo di quello BTC | CC | 🟠 aperto |
+| **R.4** | **`trend_config` dietro il portiere** — la Edge Function `config-write` copre solo `bot_config`, quindi il Save di `/tf` è spento | Non urge: il TF è fermo. Rientra quando rientra lui (~50 colonne in allowlist) | CC | 🟡 con il TF |
+| **R.5** | **`passive_income`** è l'ultima tabella con scrittura anonima aperta (editor `/admin` per le cifre di `/income`) | Non muove denaro, ma è la stessa porta. Stesso portiere | CC | 🟡 coda |
+| **R.6** | **`bot_state_snapshots.last_trade_at` riporta l'ultimo *recalibrate*, non l'ultimo trade** | Cosmetico, ma falsa ogni lettura di "da quanto non opera questo bot" — ha già ingannato una preparazione di brief | CC | 🟡 coda |
+
+---
+
+## 🧪 ESPERIMENTO XRP — MISURARE LA COMMISSIONE MAKER (nuovo, S125)
+
+**Perché è il lavoro col maggior effetto sui numeri fra tutti quelli in lista.**
+
+Oggi paghiamo **0,80% taker** a ogni operazione. Il dato del 7-ago: **+$0,87 di guadagno latente contro $0,94 di commissioni** — il mercato ci ha dato ottantasette centesimi, il broker ne ha presi novantaquattro. E l'archivio delle ere lo dice in modo ancora più netto: **30 ordini al giorno** sul paper a $0,0144 di commissione, **0,2 al giorno** su Kraken a $0,2702. La strategia non è cambiata; è cambiato il prezzo di sbagliare.
+
+Il listino Kraken dà la **maker fee a 0,25%** — un terzo. Se si conferma, a parità di tutto il resto quella riga da −$0,07 diventa **+$0,58**.
+
+⚠️ **Il listino è già stato smentito una volta**: dichiarava 0,40% taker, sul fill reale abbiamo pagato **0,7999%**. Quindi non si progetta niente su un numero letto: **si misura**.
+
+| # | Cosa | Stima | Chi | Stato |
+|---|---|---|---|---|
+| **X.1** | **Un singolo ordine limite su XRP/USD, sorvegliato, per leggere l'addebito reale.** Nient'altro: nessuna macchina, nessuna integrazione. Serve solo a rispondere "quanto ci addebitano davvero quando siamo maker?" | ~30 min | CC + Max | 🆕 **PRONTO** — non dipende da nulla |
+| **X.2** | **Decisione dopo X.1**: se la maker fee è confermata, vale la pena costruire la gestione degli ordini in attesa? Cambia il motore del grid da "market order" a "limite + gestione code" | — | Max + CEO | 🆕 dipende da X.1 |
+| **X.3** | **Macchina completa di gestione ordini in attesa** (piazzamento, riprezzamento, cancellazione, fill parziali, timeout) | **settimane**, non ore | CC | 🔲 solo se X.2 dice sì |
+
+> **Da tenere separati X.1 e X.3.** Il primo è una misura da mezz'ora che produce un dato; il terzo è un cambio di paradigma del motore. Confonderli è il modo migliore per non fare nessuno dei due.
+>
+> **Escluso dal Board (7-ago): il margine.** Proposto e ritirato nella stessa sessione — il bot non ha modello contabile per la leva (le posizioni a margine non compaiono in `fetch_balance()`), e il DCA del grid *è* il comportamento che viene liquidato.
 
 ---
 
