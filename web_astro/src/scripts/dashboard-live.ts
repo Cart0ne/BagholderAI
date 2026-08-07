@@ -139,6 +139,10 @@ const setText = (id: string, value: string) => {
    scritto a mano nell'HTML, e sarebbe invecchiata al primo cambio di
    allocazione come e' invecchiato tutto il resto oggi. */
 setText("capital-at-risk", `$${Math.round(INITIAL_CAPITAL)} on Kraken`);
+/* Le due didascalie del grafico §2 dicevano "$600" scritto a mano — la
+   stessa cifra che il grafico NON usa piu' come base. */
+setText("chart-basis-a", `$${Math.round(INITIAL_CAPITAL)}`);
+setText("chart-basis-b", `$${Math.round(INITIAL_CAPITAL)}`);
 
 const fmtUsd     = (n: number)         => `$${Math.abs(n).toFixed(2)}`;
 const fmtSigned  = (n: number)         => `${n >= 0 ? "+" : "-"}${fmtUsd(n)}`;
@@ -1483,16 +1487,16 @@ type DailyPnlRow = {
     const cumLabelEl = document.getElementById("cumul-label");
     if (cumLabelEl) {
       cumLabelEl.textContent = lineGran === "daily"
-        ? "Portfolio value · Grid + TF"
-        : "Portfolio value · Grid + TF (weekly)";
+        ? "Portfolio value"
+        : "Portfolio value (weekly)";
     }
     const barLabelEl = document.getElementById("bar-label");
     if (barLabelEl) {
       barLabelEl.textContent = barGran === "weekly"
-        ? "Weekly realized · Grid + TF stacked"
+        ? "Weekly realized"
         : barGran === "monthly"
-          ? "Monthly realized · Grid + TF stacked"
-          : "Daily realized · Grid + TF stacked";
+          ? "Monthly realized"
+          : "Daily realized";
     }
 
     /* ----- Render Cumulative line ----- */

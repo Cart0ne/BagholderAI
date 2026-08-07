@@ -67,12 +67,20 @@ def get_current_cycle(client=None, symbol: Optional[str] = None) -> str:
             .execute().data or []
         )
         tagged = [r for r in rows if r.get("cycle")]
-        # S119: public/global cycle = venue='binance' canonical (fallback: all
-        # tagged rows, so a hypothetical binance-less DB still resolves).
-        binance = [r for r in tagged if (r.get("venue") or "binance") == "binance"]
-        canonical = binance or tagged
-        active = [r for r in canonical if r.get("is_active")]
-        pool = active or canonical
+        # S125: il pin venue='binance' e' RIMOSSO. Esisteva (S119) perche'
+        # durante il collaudo Kraken il venue pubblico canonico era Binance, e
+        # senza pin l'attivazione di una riga Kraken avrebbe fatto saltare
+        # l'intero sistema su un ciclo quasi vuoto. Dal cutover del 07-ago quel
+        # motivo e' capovolto: le righe binance sono is_active=false, quindi
+        # `canonical = binance or tagged` sceglieva le 4 righe SPENTE e
+        # `pool = active or canonical` ci ricadeva sopra, restituendo
+        # 'testnet_2'. Conseguenza concreta: lo snapshot giornaliero di
+        # denaro reale sarebbe stato archiviato sotto il ciclo morto —
+        # invisibile al grafico e mescolato all'archivio testnet.
+        # Regola nuova, venue-agnostica: il ciclo globale e' quello della riga
+        # ATTIVA aggiornata piu' di recente, su qualunque venue.
+        active = [r for r in tagged if r.get("is_active")]
+        pool = active or tagged
         if pool:
             val = max(pool, key=lambda r: str(r.get("updated_at") or ""))["cycle"]
         else:

@@ -327,6 +327,66 @@ def fetch_binance_prices(symbols):
         return {}
 
 
+def fetch_kraken_prices(symbols):
+    """Prezzi live dal ticker PUBBLICO Kraken (nessuna chiave) per le coppie /USD.
+
+    Kraken chiama il bitcoin XBT e risponde con una sua chiave interna
+    (XXBTZUSD, non XBTUSD), quindi la risposta non e' abbinabile per nome:
+    si chiede una coppia alla volta e si prende l'unica voce che torna.
+    Non solleva mai — un simbolo senza prezzo resta senza prezzo, che a valle
+    significa "valutato al costo" invece di un numero inventato.
+    """
+    if not symbols:
+        return {}
+    import json as _json
+    import urllib.request
+    import urllib.parse
+    alias = {"BTC": "XBT"}
+    out = {}
+    for sym in symbols:
+        try:
+            base = sym.split("/")[0]
+            pair = alias.get(base, base) + "USD"
+            url = ("https://api.kraken.com/0/public/Ticker?pair="
+                   + urllib.parse.quote(pair))
+            req = urllib.request.Request(url, headers={"User-Agent": "BagHolderAI/1.0"})
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                body = _json.loads(resp.read().decode())
+            if body.get("error"):
+                continue
+            result = body.get("result") or {}
+            if not result:
+                continue
+            entry = next(iter(result.values()))
+            last = float((entry.get("c") or [0])[0])
+            if last > 0:
+                out[sym] = last
+        except Exception as e:
+            logger.warning(f"Could not fetch Kraken price for {sym}: {e}")
+    return out
+
+
+def fetch_live_prices(symbols):
+    """Prezzi live PER VENUE (S125, 2026-08-07).
+
+    Prima esisteva solo fetch_binance_prices, e la sua rimappatura
+    `.replace("USDT", "/USDT")` lasciava intatto un simbolo /USD: "BTCUSD" non
+    combaciava mai con la chiave "BTC/USD" cercata a valle. Binance QUELLE
+    coppie le ha, quindi nulla andava in errore — il prezzo arrivava e veniva
+    scartato, le monete restavano valutate al costo e il report serale del
+    07-ago dava unrealized 0 con $117,77 di posizioni aperte.
+
+    Le /USD vanno a Kraken perche' e' li' che quelle monete stanno davvero e
+    dove verranno vendute: i due venue quotano ~0,14% diversi e il sito marca a
+    Kraken, quindi il bot deve fare uguale o report e dashboard divergono.
+    """
+    usd = [s for s in symbols if s.endswith("/USD")]
+    rest = [s for s in symbols if not s.endswith("/USD")]
+    prices = fetch_binance_prices(rest)
+    prices.update(fetch_kraken_prices(usd))
+    return prices
+
+
 def _analyze_coin_avg_cost(coin_trades, symbol=""):
     """
     S69: avg-cost replay (running weighted average), specchio della logica
@@ -483,7 +543,7 @@ def get_tf_state(supabase_client):
         skim_total = sum(skim_by_sym.values())
 
         # Fetch live prices for active TF symbols
-        live_prices = fetch_binance_prices(sorted(active_set))
+        live_prices = fetch_live_prices(sorted(active_set))
 
         # === DASHBOARD-IDENTICAL FORMULA (web_astro/dashboard-live.ts) ===
         # netWorth = budget + realized + unrealized
@@ -627,10 +687,10 @@ def get_grid_state(supabase_client):
     Never raises — returns a safe-default dict on error.
     """
     safe_default = {
-        "total_value": 500.0,
-        "cash": 500.0,
+        "total_value": 400.0,
+        "cash": 400.0,
         "holdings_value": 0.0,
-        "initial_capital": 500.0,
+        "initial_capital": 400.0,
         "total_pnl": 0.0,
         "realized_total": 0.0,
         "unrealized_total": 0.0,
@@ -649,14 +709,17 @@ def get_grid_state(supabase_client):
         # denominator (the $ P&L itself cancels out). Same fix as the public site
         # (GRID_BUDGET venue-filtered, commit f6388b6, S119b). Also drops the
         # phantom zero BTC/USD position from `positions`.
-        # NB: pin to "binance" mirrors the S119 Board decision (binance canonical
-        # while collaudo runs); revisit for venue-awareness at the full-Kraken
-        # cutover (parked PARKED_daily_pnl_canonical_fase2b.md).
+        # S125 — il "revisit" promesso qui sopra e' ARRIVATO: cutover completo
+        # su Kraken il 07-ago, righe binance is_active=false. Il pin era ancora
+        # su binance, quindi il report serale del 07-ago ha misurato il
+        # portafoglio testnet_2 MORTO ($500 iniziali, $539,54 di valore) invece
+        # dei $400 reali su Kraken, e ha archiviato quel numero come snapshot
+        # del giorno. Chiude il parcheggio PARKED_daily_pnl_canonical_fase2b.md.
         cfg = (
             supabase_client.table("bot_config")
             .select("symbol, is_active, capital_allocation, managed_by")
             .eq("managed_by", "grid")
-            .eq("venue", "binance")
+            .eq("venue", "kraken")
             .execute()
         )
         grid_config = cfg.data or []
@@ -666,7 +729,7 @@ def get_grid_state(supabase_client):
         # when paused).
         grid_budget = sum(float(c.get("capital_allocation") or 0) for c in grid_config)
         if grid_budget <= 0:
-            grid_budget = 500.0  # fallback if config is empty
+            grid_budget = 400.0  # S125: era 500 (dotazione testnet); ora Kraken
 
         # 2. trades: all Grid trades, ascending order.
         tr = (
@@ -702,7 +765,7 @@ def get_grid_state(supabase_client):
 
         # 4. Live prices for active Grid symbols.
         active_syms = sorted({c["symbol"] for c in grid_config if c.get("is_active")})
-        live_prices = fetch_binance_prices(active_syms)
+        live_prices = fetch_live_prices(active_syms)
 
         # === DASHBOARD-IDENTICAL FORMULA ===
         # Same identity as get_tf_state and dashboard-live.ts (S69 avg-cost):
