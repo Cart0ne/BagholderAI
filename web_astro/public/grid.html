@@ -344,8 +344,8 @@
       <div style="border: 1px solid var(--green); background: rgba(134,239,172,0.06);
                   border-radius: 8px; padding: 8px 12px; margin: 10px 0;
                   font-family: var(--mono); font-size: 11px; line-height: 1.5; color: var(--text-dim);">
-        <span style="color: var(--green); text-transform: uppercase; letter-spacing: 0.12em;">⚠ Testnet data</span>
-        — Binance test exchange. Prices are synthetic and balances are reset periodically without notice. No real money is at risk.
+        <span style="color: var(--red, #e74c3c); text-transform: uppercase; letter-spacing: 0.12em;">● Real money · Kraken</span>
+        — live orders with the founder's own capital, since 17 Jul 2026. Fills, fees and slippage are real. The Binance testnet era ended 6 Aug 2026 and is archived, not shown here.
       </div>
 
       <!-- Header -->
@@ -525,16 +525,20 @@
     var krakenConfigData = [];
     var krakenTradesData = [];
 
-    async function fetchLivePrices() {
+    // S125 — una sola strada per i prezzi, e per-venue.
+    // Prima: lista cablata ['BTCUSDT','SOLUSDT','BONKUSDT'] (le tre monete del
+    // testnet) PIU' una fetchKrakenPrices separata che chiedeva solo XBTUSD.
+    // Con SOL/USD in campo la seconda moneta reale sarebbe rimasta senza
+    // prezzo, quindi senza valutazione. Ora deleghiamo a window.PnL, che
+    // manda /USD a Kraken e /USDT a Binance — la stessa funzione che usa la
+    // dashboard pubblica, cosi' i due cruscotti non possono divergere.
+    // Chiamata DOPO il caricamento delle config: i simboli sono quelli veri,
+    // non un elenco scritto a mano che invecchia a ogni cambio di moneta.
+    async function fetchLivePrices(symbols) {
+      if (!symbols || !symbols.length) return;
       try {
-        var symbols = ['BTCUSDT', 'SOLUSDT', 'BONKUSDT'];
-        var res = await fetch('https://api.binance.com/api/v3/ticker/price?symbols=' + encodeURIComponent(JSON.stringify(symbols)));
-        var data = await res.json();
-        data.forEach(function(t) {
-          // Convert BTCUSDT → BTC/USDT
-          var sym = t.symbol.replace('USDT', '/USDT');
-          livePrices[sym] = Number(t.price);
-        });
+        var got = await window.PnL.fetchLivePrices(symbols);
+        Object.keys(got).forEach(function(k) { livePrices[k] = got[k]; });
       } catch (e) {
         console.warn('Live prices unavailable:', e);
       }
@@ -603,8 +607,7 @@
         //   - last_sell_price     → ladder anchor for "Next sell if ↑"
         //   - stop_buy_active     → "STOP-BUY ACTIVE" badge (Bug 1)
         //   - managed_holdings / phantom_holdings → testnet artefacts
-        sbGet('bot_runtime_state', 'select=*'),
-        fetchLivePrices()
+        sbGet('bot_runtime_state', 'select=*')
       ]);
 
       var failed = settled.filter(function(r) { return r.status === 'rejected'; });
@@ -617,12 +620,21 @@
         return;
       }
 
-      // S119b: split by venue. The whole paper pipeline (alerts, overview,
-      // cards, avg-cost) runs on venue='binance' only → the Kraken collaudo
-      // row's $25 allocation no longer inflates totalAlloc/net worth here.
+      // S125 — pannello KRAKEN-ONLY. Fino a ieri era l'opposto: la pipeline
+      // principale girava su venue='binance' e il denaro reale stava in un
+      // riquadro in fondo, perche' Kraken era il collaudo e Binance il
+      // sistema. Da oggi i ruoli sono invertiti e questo e' il cruscotto con
+      // cui si sorveglia denaro vero: le monete Kraken salgono in cima, con
+      // l'editor dei parametri attaccato.
+      // Il testnet non viene retrocesso, viene tolto (decisione Max: "nella
+      // dashboard privata il testnet puo' morire"). I suoi numeri non sono
+      // persi: vivono nella pagina di storia congelata, che e' il posto dove
+      // sono veri. krakenConfigData resta vuoto -> la vecchia sezione
+      // separata si nasconde da sola, senza codice morto da rimuovere.
       var _allGridConfig = settled[0].value || [];
-      configData = _allGridConfig.filter(function(c) { return (c.venue || 'binance') === 'binance'; });
-      krakenConfigData = _allGridConfig.filter(function(c) { return (c.venue || 'binance') !== 'binance'; });
+      configData = _allGridConfig.filter(function(c) { return (c.venue || 'binance') === 'kraken'; });
+      krakenConfigData = [];
+      await fetchLivePrices(configData.map(function(c) { return c.symbol; }));
       tradesData = settled[1].value;
       pnlData = settled[2].value;
       var skimRows = settled[3].value;
@@ -1040,7 +1052,11 @@
     }
 
     function renderOverview() {
-      var INITIAL_CAPITAL = 500;
+      // S125: era 500 cablato (il fondo Grid del testnet). Ora la somma delle
+      // allocazioni vive — alzare il capitale resta un solo UPDATE a DB.
+      var INITIAL_CAPITAL = configData.reduce(function(s, c) {
+        return s + (Number(c.capital_allocation) || 0);
+      }, 0) || 400;
       var totalAlloc = configData.reduce(function(s, c) { return s + Number(c.capital_allocation); }, 0);
       var unalloc = INITIAL_CAPITAL - totalAlloc;
 
@@ -1437,61 +1453,106 @@
       if (btn) btn.disabled = !hasChanges;
     }
 
+    /* S125 — il salvataggio passa dal PORTIERE (Edge Function config-write).
+       Prima questa funzione scriveva su bot_config direttamente dal browser
+       con la chiave `anon`, che e' pubblicata nel sorgente del sito: chiunque
+       poteva cambiare i parametri di bot che oggi muovono denaro reale. Le
+       policy di scrittura anonima sono state rimosse; questa e' l'unica via.
+
+       Il segreto NON sta nella pagina: lo digita Max al primo salvataggio e
+       vive in sessionStorage, cioe' muore con la scheda. (Per tenerlo sul
+       dispositivo basta cambiare sessionStorage in localStorage qui sotto —
+       piu' comodo, ma chiunque metta le mani sul browser puo' scrivere.)
+
+       La password che apre il pannello e' un'ALTRA cosa: nasconde
+       l'interfaccia, la sua impronta e' pubblica da mesi, e ora non protegge
+       piu' niente di prezioso. Non vanno mai fatte coincidere. */
+    var WRITE_SECRET_KEY = 'bh_write_secret';
+    var CONFIG_WRITE_URL = SB_URL + '/functions/v1/config-write';
+
+    function getWriteSecret(force) {
+      var s = force ? null : sessionStorage.getItem(WRITE_SECRET_KEY);
+      if (!s) {
+        s = window.prompt('Password di scrittura (quella su Supabase, non quella del pannello):');
+        if (!s) return null;
+        sessionStorage.setItem(WRITE_SECRET_KEY, s);
+      }
+      return s;
+    }
+
     async function saveConfig(symbol, short) {
       var btn = document.getElementById('save-' + short);
       var status = document.getElementById('status-' + short);
-      btn.disabled = true;
-      status.textContent = 'Saving...';
-      status.style.color = 'var(--yellow)';
 
-      var data = {};
-      var changes = [];
+      /* SOLO i campi cambiati. Prima ne mandava tutti e dieci a ogni
+         salvataggio: con Sherpa che ne governa sette, toccare l'allocazione
+         significava riscrivergli sopra i parametri appena calcolati,
+         riportandoli a quelli visti all'apertura della pagina. */
+      var changes = {};
       var invalidField = null;
       GRID_CONFIG_FIELDS.forEach(function(f) {
         if (invalidField) return;
         var input = document.getElementById('cfg-' + short + '-' + f);
-        if (!input) return;
-        // Normalize comma to dot for decimal fields (iOS Italian locale fix)
-        var rawVal = input.value;
-        var normVal = typeof rawVal === 'string' ? rawVal.replace(',', '.') : rawVal;
+        if (!input || input.value === input.dataset.original) return;
+        var normVal = String(input.value).replace(',', '.');  // iOS locale italiana
         var newVal = parseFloat(normVal);
         if (isNaN(newVal)) { invalidField = f; return; }
-        data[f] = newVal;
-        if (input.value !== input.dataset.original) {
-          changes.push({ symbol: symbol, parameter: f, old_value: input.dataset.original, new_value: normVal, changed_by: 'manual-ceo' });
-        }
+        changes[f] = newVal;
       });
 
       if (invalidField) {
-        status.textContent = 'Invalid number in ' + invalidField;
+        status.textContent = 'Numero non valido in ' + invalidField;
         status.style.color = 'var(--red)';
-        btn.disabled = false;
+        return;
+      }
+      if (!Object.keys(changes).length) {
+        status.textContent = 'Niente da salvare';
+        status.style.color = 'var(--text-dim)';
         return;
       }
 
-      try {
-        await sbPatch('bot_config', 'symbol', symbol, data);
+      var secret = getWriteSecret(false);
+      if (!secret) { status.textContent = 'Annullato'; status.style.color = 'var(--text-dim)'; return; }
 
-        // Log each changed field to config_changes_log (best-effort)
-        var auditOk = true;
-        if (changes.length > 0) {
-          try {
-            await Promise.all(changes.map(function(c) { return sbInsert('config_changes_log', c); }));
-          } catch (logErr) {
-            console.warn('config_changes_log write failed:', logErr);
-            auditOk = false;
-          }
+      btn.disabled = true;
+      status.textContent = 'Salvataggio...';
+      status.style.color = 'var(--yellow)';
+
+      try {
+        var res = await fetch(CONFIG_WRITE_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ secret: secret, symbol: symbol, changes: changes })
+        });
+        var out = await res.json().catch(function() { return {}; });
+
+        if (res.status === 401) {
+          /* Segreto sbagliato: lo buttiamo, cosi' il prossimo tentativo lo
+             richiede invece di ripetere in eterno quello errato. */
+          sessionStorage.removeItem(WRITE_SECRET_KEY);
+          status.textContent = 'Password di scrittura errata';
+          status.style.color = 'var(--red)';
+          btn.disabled = false;
+          return;
+        }
+        if (!res.ok || !out.ok) {
+          /* Il portiere rifiuta anche i valori assurdi, non solo gli
+             sconosciuti: qui arriva il perche', in chiaro. */
+          status.textContent = 'Rifiutato — ' + (out.error || ('HTTP ' + res.status));
+          status.style.color = 'var(--red)';
+          btn.disabled = false;
+          return;
         }
 
-        status.textContent = auditOk ? 'Saved ✓' : 'Saved (audit log failed)';
-        status.style.color = auditOk ? 'var(--green)' : 'var(--yellow)';
+        status.textContent = out.auditOk ? 'Salvato ✓' : 'Salvato (registro fallito)';
+        status.style.color = out.auditOk ? 'var(--green)' : 'var(--yellow)';
         GRID_CONFIG_FIELDS.forEach(function(f) {
           var input = document.getElementById('cfg-' + short + '-' + f);
           if (input) { input.dataset.original = input.value; input.classList.remove('changed'); }
         });
         setTimeout(function() { loadAll(); }, 1000);
       } catch (e) {
-        status.textContent = 'Error — ' + e.message;
+        status.textContent = 'Errore — ' + e.message;
         status.style.color = 'var(--red)';
         btn.disabled = false;
       }
