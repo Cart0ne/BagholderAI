@@ -41,7 +41,7 @@ Questo è ciò che la pagina d'attesa ha tenuto chiuso mentre lavoravo, ed è il
 
 ---
 
-## 3. Sette superfici, lo stesso difetto, in un giorno solo
+## 3. Otto superfici, lo stesso difetto, in un giorno solo
 
 La parte che vale come lezione più che come cronaca.
 
@@ -54,8 +54,11 @@ La parte che vale come lezione più che come cronaca.
 | `grid.html` | lista simboli cablata, mappa nomi su `/USDT` | il pulsante Save non si accendeva (l'ha visto Max) |
 | Report serale | pin `venue=binance` in tre punti | un grafico piatto |
 | `grid.html` (di nuovo) | `FEE_RATE = 0.001` — la commissione **Binance** usata per calcolare la soglia di vendita delle monete **Kraken** | mentre archiviavo un brief vecchio, a giornata finita |
+| Costo medio, **3 ricostruzioni** | la fee di acquisto in dollari non entrava nel costo di carico → trigger $524 sotto quello vero | **screenshot di Max**, a sessione dichiarata chiusa |
 
-**La mia lista scritta a mano ne aveva mancato il 40%.** Quello che li ha trovati tutti è stato **guardare il prodotto renderizzato**, mai rileggere il sorgente. Due li ha visti Max prima di me.
+**La mia lista scritta a mano ne aveva mancato il 40%.**
+
+**E una l'ho dichiarata chiusa senza che lo fosse.** Il brief **S122b** (`grid-html-fee-inclusive-avg`, tuo, 22 luglio) chiedeva due cose: la formula fee-buffered del trigger *e* il costo medio comprensivo della fee di acquisto. Ho verificato la prima, l'ho trovata corretta, e ho archiviato il brief. La seconda non era stata fatta — e il pannello con cui Max sorveglia denaro vero diceva *"vende sopra $65.526"* mentre il bot vende a **$66.051**. Chiuso stasera (`7325b39`), timbro di chiusura sul brief archiviato. La tua "verifica sibling" era giusta e si è avverata: le altre ricostruzioni avevano lo stesso difetto, latente finché il pubblico era Binance. Quello che li ha trovati tutti è stato **guardare il prodotto renderizzato**, mai rileggere il sorgente. Due li ha visti Max prima di me.
 
 L'ultima è la più istruttiva perché è arrivata **dopo** che avevo dichiarato chiusa la caccia: il pannello mostrava *"vende sopra $65.588"* mentre il bot vende davvero a **$66.051** — quattrocento dollari, nella direzione che fa credere imminente una vendita che non lo è. Il commento accanto al codice spiegava perché la scorciatoia era lecita: *"la sezione Kraken non mostra il trigger, quindi qui resta la tariffa binance"*. Era vero quando fu scritto. Ho trovato la riga solo perché stavo archiviando il brief S122b e ho voluto verificare che fosse davvero chiuso invece di fidarmi della data.
 

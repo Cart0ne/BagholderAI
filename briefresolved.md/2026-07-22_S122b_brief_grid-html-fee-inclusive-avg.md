@@ -1,5 +1,33 @@
 # Brief S122b — grid-html-fee-inclusive-avg — 2026-07-22
 
+> ## ✅ CHIUSO — 2026-08-07 (S125), commit `7325b39`
+>
+> **Scelta UX: opzione (A)** — costo medio fee-inclusive ovunque — **con l'etichetta cambiata**.
+> La tua obiezione (*"un Avg buy che include la fee non è un prezzo a cui hai comprato"*) era
+> fondata, ma il difetto stava nell'etichetta, non nel numero: il riquadro ora dice
+> **"Avg cost (incl. fee)"**. Così l'obiezione si dissolve invece di essere scambiata con un
+> pannello dove il riquadro mostra una cosa e il calcolo sotto ne usa un'altra (opzione B).
+>
+> **Fatto:** la fee in valuta quote entra nel costo di carico in **tutte e tre** le
+> ricostruzioni JS (`grid.html`, `pnl-canonical.js`, `pnl-canonical.ts`), gated sulla valuta
+> della fee per non conteggiarla due volte sul ramo Binance. Verificato contro il motore:
+> costo medio $64.231,79 → **$64.745,65**, trigger → **$66.051**, entrambi identici al bot.
+>
+> **La tua "verifica sibling" era giusta e si è avverata.** Scrivevi: *"se altre ricostruzioni
+> JS replicano `cost` senza fee quote hanno lo stesso bug latente; Binance è canonico sul
+> pubblico quindi non morde lì oggi, ma annotalo."* Dal 7 agosto il pubblico **è** Kraken:
+> mordeva. Corretto anche lì.
+>
+> ⚠️ **Nota di processo, a mio carico.** Questo brief è rimasto aperto **16 giorni** e la
+> mattina del 7-ago l'ho archiviato dichiarandolo chiuso senza che lo fosse: avevo verificato
+> la formula fee-buffered del trigger — corretta — e mi ero fermato, senza rileggere che il
+> brief chiedeva l'altra metà (il costo medio). L'ha scoperto Max mandando uno screenshot del
+> pannello la sera stessa. **Archiviare senza rileggere la richiesta è chiudere un ticket
+> guardando solo la parte che ci si ricorda.**
+
+---
+
+
 **Tipo:** FIX **display-only**. Nessun tocco al motore/bot, nessun DB, **nessun restart**. Solo frontend (`grid.html` + eventuali gemelli JS).
 **Da:** CEO · **Per:** CC (Intern) · **Esegue:** CC
 **Contesto:** Fase 2b **live** su Kraken (S122). Il fix nodo-5 del **motore** è corretto e verificato dal vivo: `grid_sell_trigger_price()` = `reference × (1+sell_pct/100)/(1−fee)` (niente doppio-conteggio) su avg fee-inclusive → esecuzione reale a **~$67.563** (1,2% netto vero). **Il residuo è SOLO nel cruscotto del collaudo**, che mostra numeri ~0,8% sballati sulla riga Kraken. Trovato leggendo il codice vivo (non copie stantie).
