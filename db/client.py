@@ -288,11 +288,18 @@ class DailyPnLTracker:
             "cycle": get_current_cycle(self.client),  # S96a clean slate
         }
 
-        # Use ignore_duplicates=True so only the first bot to insert wins.
-        # If the row already exists (another bot beat us), result.data is empty → return False.
+        # S125: la chiave di conflitto passa da "date" a "date,cycle".
+        # Con UNIQUE(date) esisteva UNA riga al giorno per tutto il sistema: dal
+        # 22-lug al 6-ago un grid Binance arrivava sempre primo e lo snapshot
+        # del bot Kraken veniva scartato in silenzio — 63 giorni di testnet_2 e
+        # ZERO righe Kraken, cioe' il grafico §2 della dashboard senza nulla da
+        # disegnare. Per-ciclo, ogni era tiene la propria serie e due venue in
+        # parallelo smettono di escludersi a vicenda.
+        # ignore_duplicates resta: fra i bot dello STESSO ciclo il primo vince,
+        # che e' il coordinamento voluto (un report al giorno, non tre).
         result = (
             self.client.table("daily_pnl")
-            .upsert(data, on_conflict="date", ignore_duplicates=True)
+            .upsert(data, on_conflict="date,cycle", ignore_duplicates=True)
             .execute()
         )
         return bool(result.data)  # True = newly inserted, False = already existed

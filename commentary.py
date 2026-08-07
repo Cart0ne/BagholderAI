@@ -709,6 +709,18 @@ def get_grid_state(supabase_client):
         # denominator (the $ P&L itself cancels out). Same fix as the public site
         # (GRID_BUDGET venue-filtered, commit f6388b6, S119b). Also drops the
         # phantom zero BTC/USD position from `positions`.
+        # S125 — ERA, non ciclo singolo. Il sito pubblica tutta la storia del
+        # denaro reale (cycle LIKE 'kraken%': l'ordine di prova da $25 del
+        # 17-lug sotto 'kraken_test' PIU' 'kraken_2b'), mentre qui si filtrava
+        # sul solo ciclo corrente. Risultato: report -$0,10 e dashboard +$0,46
+        # sullo stesso portafoglio, cioe' due superfici con due numeri — la
+        # regola che il progetto non piega ("one source of truth"). Allineato
+        # al sito: e' il sito a dire la verita' dichiarata da /terms e dal
+        # banner ("denaro reale dal 17 luglio"), non la lavagna per-ciclo.
+        # La convenzione clean-slate resta viva fra ERE diverse (testnet vs
+        # kraken), non fra i cicli interni alla stessa era.
+        era_prefix = (cycle or "").split("_")[0] + "%"
+
         # S125 — il "revisit" promesso qui sopra e' ARRIVATO: cutover completo
         # su Kraken il 07-ago, righe binance is_active=false. Il pin era ancora
         # su binance, quindi il report serale del 07-ago ha misurato il
@@ -736,7 +748,7 @@ def get_grid_state(supabase_client):
             supabase_client.table("trades")
             .select("symbol, side, amount, price, cost, fee, fee_asset, realized_pnl, created_at")
             .eq("config_version", "v3")
-            .eq("cycle", cycle)
+            .like("cycle", era_prefix)
             .eq("managed_by", "grid")
             .order("created_at", desc=False)
             .execute()
@@ -753,7 +765,7 @@ def get_grid_state(supabase_client):
             supabase_client.table("reserve_ledger")
             .select("symbol, amount")
             .eq("config_version", "v3")
-            .eq("cycle", cycle)
+            .like("cycle", era_prefix)
             .execute()
         )
         skim_by_sym = {}
