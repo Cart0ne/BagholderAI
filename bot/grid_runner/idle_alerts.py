@@ -12,6 +12,21 @@ The recalibrate still executes in-memory (logger + log_event capture it
 for audit); only the Telegram noise is suppressed. The unlock-timer flow
 (brief 75b) or a profitable sell will re-emit a clear "buys re-enabled"
 message via the stop-buy reset paths.
+
+Suppression policy #2 (S126, 2026-08-09): alerts flagged `skipped_above_avg`
+are NOT sent. That flag means the brief s70 FASE 2 guard fired — price is
+above avg cost, so the recalibrate was deliberately skipped and the buy
+reference is UNCHANGED. Nothing happened, so there is nothing to announce.
+Until now these fell through to the `else` branch below and were rendered
+as "IDLE RE-ENTRY — new reference: $X", where $X was the OLD reference:
+a non-event announced as an action, every idle window, forever. BTC/USD
+emitted that message every 2h from 2026-07-28 to 2026-08-09 while frozen
+at a 12-day-old reference of $63,497.90.
+
+The skip is still fully auditable — grid_bot logs it via logger.info AND
+log_event(event="idle_recalibrate_skipped") into bot_events_log — and the
+in-memory alert is still appended (tests + callers read it). Only the
+Telegram echo is silenced, consistently with the stop-buy policy above.
 """
 
 from utils.formatting import fmt_price
@@ -35,6 +50,10 @@ def send_idle_alerts(notifier, alerts, stop_buy_active: bool = False) -> None:
         # only the Telegram echo is silenced.
         return
     for alert in alerts:
+        if alert.get("skipped_above_avg"):
+            # Non-event: guard fired, reference unchanged, no action taken.
+            # Audit lives in bot_events_log (idle_recalibrate_skipped).
+            continue
         sym = alert["symbol"]
         base = sym.split("/")[0] if "/" in sym else sym
         if alert.get("recalibrate"):

@@ -1533,6 +1533,70 @@ def test_cc_idle_alerts_suppressed_when_stop_buy_active():
     print(f"  default (no flag): 2/2 messages sent ✓ (backward-compat)")
 
 
+def test_cc2_skipped_above_avg_alerts_never_sent_to_telegram():
+    """S126 (2026-08-09): an alert flagged `skipped_above_avg` means the
+    brief s70 FASE 2 guard fired — price above avg cost, recalibrate
+    deliberately skipped, buy reference UNCHANGED. Nothing happened, so
+    nothing must be sent.
+
+    Regression guard on a 3-month-old reporting bug: test J (above) proved
+    the *logic* was right (ref unchanged) but nobody checked what reached
+    Telegram. The skip alert carries `recalibrate: False`, so it fell into
+    the re-entry branch of send_idle_alerts and was announced as
+    "IDLE RE-ENTRY — new reference: $X" — where $X was the OLD, unchanged
+    reference. BTC/USD emitted that every 2h for 12 days while frozen.
+
+    Behaviour is NOT changed (Max, 2026-08-09: the guard is correct as per
+    the rules we set) — only the misleading Telegram echo is suppressed.
+    """
+    from bot.grid_runner.idle_alerts import send_idle_alerts
+    print("=" * 70)
+    print("TEST CC2: S126 — skipped_above_avg alerts never reach Telegram")
+    print("=" * 70)
+
+    class MockNotifier:
+        def __init__(self):
+            self.sent = []
+        def send_message(self, msg):
+            self.sent.append(msg)
+
+    # The exact shape grid_bot appends on the skip path, with the real
+    # BTC/USD numbers from 2026-08-09 06:15 UTC.
+    skip_alert = {
+        "symbol": "BTC/USD", "elapsed_hours": 2.0,
+        "reference_price": 63497.9, "recalibrate": False,
+        "skipped_above_avg": True,
+    }
+
+    # Case 1: skip alert alone → zero messages.
+    n1 = MockNotifier()
+    send_idle_alerts(n1, [skip_alert])
+    assert len(n1.sent) == 0, (
+        f"skipped_above_avg must send nothing, got {len(n1.sent)}: {n1.sent}"
+    )
+    print("  skip alert alone: 0 messages sent ✓ (non-event stays silent)")
+
+    # Case 2: the legit paths must still fire — a real recalibrate and a
+    # real re-entry (Path A) are actions and stay verbose.
+    real_recalibrate = {"symbol": "SOL/USD", "elapsed_hours": 2.0,
+                        "reference_price": 75.95, "recalibrate": True}
+    real_reentry = {"symbol": "BONK/USDT", "elapsed_hours": 6.0,
+                    "reference_price": 0.0000068}  # Path A: no recalibrate key
+    n2 = MockNotifier()
+    send_idle_alerts(n2, [skip_alert, real_recalibrate, real_reentry])
+    assert len(n2.sent) == 2, (
+        f"expected 2 messages (skip filtered out), got {len(n2.sent)}: {n2.sent}"
+    )
+    assert "RECALIBRATE" in n2.sent[0] and "SOL" in n2.sent[0]
+    assert "RE-ENTRY" in n2.sent[1] and "BONK" in n2.sent[1]
+    # The frozen reference must appear nowhere.
+    assert not any("63,497" in m or "63497" in m for m in n2.sent), (
+        f"stale reference leaked into Telegram: {n2.sent}"
+    )
+    print("  mixed batch: 2/3 sent ✓ (real recalibrate + real re-entry kept)")
+    print("  stale $63,497.90 reference absent from all messages ✓")
+
+
 def test_bb_profitable_sell_clears_unlock_timestamp():
     """Brief 75b: a profitable sell must clear BOTH `_stop_buy_active`
     (39b's original event-based reset) AND `_stop_buy_activated_at`
