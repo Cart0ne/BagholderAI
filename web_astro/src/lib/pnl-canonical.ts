@@ -14,9 +14,12 @@
        fees       = Σ trades.fee                        (USDT-equivalent, already canonical)
 
    - Net Realized Profit (post-fees):
-       netRealized = Σ(sell.revenue − avg × qty) − fees (avg-cost replay, NOT
-                     the stored realized_pnl field — Fix A 2026-06-29; excl.
-                     unrealized)
+       netRealized = Σ(sell.revenue − avg × qty) − Σ SELL fees
+                     (avg-cost replay, NOT the stored realized_pnl field —
+                     Fix A 2026-06-29; excl. unrealized). Solo le fee di
+                     VENDITA: quelle di acquisto sono gia' dentro avg dal fix
+                     fee-inclusive-avg (S122b/S125), sottrarle qui le
+                     conterebbe due volte e romperebbe l'identita' sotto.
 
    Inputs are filtered by the caller (managed_by, symbol-set, ecc.).
    This module assumes the trade rows have ALREADY been narrowed to the
@@ -70,6 +73,7 @@ type SymState = {
   totalReceived: number;
   realized: number;
   fees: number;
+  feesSell: number;
 };
 
 function replayAvgCost(trades: CanonicalTrade[]): Record<string, SymState> {
@@ -83,7 +87,7 @@ function replayAvgCost(trades: CanonicalTrade[]): Record<string, SymState> {
     const s = (out[sym] ||= {
       holdings: 0, avgBuyPrice: 0,
       totalInvested: 0, totalReceived: 0,
-      realized: 0, fees: 0,
+      realized: 0, fees: 0, feesSell: 0,
     });
     const amt = Number(t.amount || 0);
     const cost = Number(t.cost || 0);
@@ -131,6 +135,7 @@ function replayAvgCost(trades: CanonicalTrade[]): Record<string, SymState> {
          consistent (realized + unrealized − fees ≡ totalPnL by construction).
          See report_for_CEO/2026-06-29_realized-pnl-avg-cost-drift_report_for_ceo.md. */
       s.realized += cost - s.avgBuyPrice * amt;
+      s.feesSell += fee;
       s.holdings -= amt;
       s.totalReceived += cost;
       if (s.holdings <= 1e-9) {
@@ -159,6 +164,7 @@ export function computeCanonicalState(
   let netInvested = 0;
   let holdingsMtm = 0;
   let fees = 0;
+  let feesSell = 0;
   let realized = 0;
   let unrealized = 0;
   const perCoin: CanonicalState["perCoin"] = [];
@@ -167,6 +173,7 @@ export function computeCanonicalState(
     const s = bySym[sym];
     netInvested += (s.totalInvested - s.totalReceived);
     fees += s.fees;
+    feesSell += s.feesSell;
     realized += s.realized;
     const px = livePrices[sym] ?? 0;
     const mtm = s.holdings > 0 && px > 0 ? s.holdings * px : 0;
@@ -196,7 +203,16 @@ export function computeCanonicalState(
      holds by construction. (Previously this read the stored realized_pnl
      field, which drifted ~$8 high from the bot's dust-reset on sell-out —
      see the Fix A note in replayAvgCost.) */
-  const netRealized = realized - fees;
+  /* S125b — si sottraggono SOLO le fee di VENDITA.
+     Le fee di ACQUISTO sono gia' dentro il costo di carico dal fix
+     fee-inclusive-avg (brief S122b): sottrarre qui l'intero monte fee le
+     contava una seconda volta, e rompeva l'identita' dichiarata due righe
+     sopra — misurata rotta di $1,10 su kraken_2b il 09-ago, con il pannello
+     che mostrava -$0,74 invece del guadagno vero incassato, +$0,36.
+     Regressione introdotta dal fix del costo medio: prima l'avg era al lordo
+     e sottrarre tutto era corretto. Segnalata da Max ("perche' mostra sempre
+     lo stesso valore?"), che cercava tutt'altro. */
+  const netRealized = realized - feesSell;
 
   return {
     cash, holdingsMtm, skim, fees, realized, unrealized,

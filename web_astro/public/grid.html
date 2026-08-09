@@ -1200,7 +1200,11 @@
           '<div class="stat-sub">residuals below $5 min_notional · ' + dustBreakdown + '</div>' +
         '</div>';
 
-      // Brief 71a — Net Realized Profit (post-fees). Σ realized_pnl − Σ fees.
+      // Brief 71a — Net Realized Profit (post-fees).
+      // S125b: la didascalia diceva "Σ realized_pnl − Σ fees" ed era sbagliata
+      // due volte — non usa la colonna realized_pnl (usa il replay avg-cost,
+      // Fix A) e non sottrae tutte le fee (solo quelle di vendita: le altre
+      // sono gia' nel costo di carico). Ora dice cosa fa davvero.
       // Brief 72a S72: ora arriva da canonical (window.PnL) — STESSA fonte
       // di /dashboard hero. Se i 2 numeri divergono sulla rete pubblica,
       // controlla che entrambe le superfici stiano usando lo stesso filtro
@@ -1218,7 +1222,7 @@
           '<div class="stat-value" style="color:' + netRealColor + ';">' +
             netRealSign + '$' + fmt(Math.abs(netRealized)) +
           '</div>' +
-          '<div class="stat-sub">= Σ realized_pnl − Σ fees · excludes unrealized · twin of the value on /dashboard</div>' +
+          '<div class="stat-sub">profitto incassato sui giri chiusi, al netto delle commissioni · le fee di acquisto sono gia\' nel costo medio · esclude il latente</div>' +
         '</div>';
     }
 

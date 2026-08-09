@@ -21,8 +21,10 @@
        fees       = Σ trades.fee  (USDT-equivalent)
 
    - Net Realized Profit (post-fees):
-       netRealized = Σ(sell.revenue − avg × qty) − fees   (avg-cost replay,
-                     NOT the stored realized_pnl field — Fix A 2026-06-29)
+       netRealized = Σ(sell.revenue − avg × qty) − Σ SELL fees
+                     (avg-cost replay, NOT the stored realized_pnl field —
+                     Fix A 2026-06-29). Solo le fee di VENDITA: quelle di
+                     acquisto sono gia' dentro avg (S122b/S125).
 
    Brief 72a P2 (S72): when fee_asset == base_coin (live BUY), Binance
    scales fee from base balance — qty_acquired = filled − fee_native,
@@ -45,7 +47,7 @@
         out[sym] = {
           holdings: 0, avgBuyPrice: 0,
           totalInvested: 0, totalReceived: 0,
-          realized: 0, fees: 0
+          realized: 0, fees: 0, feesSell: 0
         };
       }
       var s = out[sym];
@@ -83,6 +85,7 @@
            Total P&L mutually consistent. Mirror of web_astro/src/lib/pnl-
            canonical.ts. See report 2026-06-29_realized-pnl-avg-cost-drift. */
         s.realized += cost - s.avgBuyPrice * amt;
+        s.feesSell += fee;
         s.holdings -= amt;
         s.totalReceived += cost;
         if (s.holdings <= 1e-9) {
@@ -99,6 +102,7 @@
     var netInvested = 0;
     var holdingsMtm = 0;
     var fees = 0;
+    var feesSell = 0;
     var realized = 0;
     var unrealized = 0;
     var perCoin = [];
@@ -108,6 +112,7 @@
       var s = bySym[sym];
       netInvested += (s.totalInvested - s.totalReceived);
       fees += s.fees;
+      feesSell += s.feesSell;
       realized += s.realized;
       var px = (livePrices && livePrices[sym]) || 0;
       var mtm = (s.holdings > 0 && px > 0) ? s.holdings * px : 0;
@@ -137,7 +142,16 @@
        with openCost/unrealized → netRealized + unrealized ≡ totalPnL by
        construction. (Was the stored realized_pnl field, ~$8 high from the bot's
        dust-reset on sell-out — see the Fix A note in the sell branch.) */
-    var netRealized = realized - fees;
+    /* S125b — si sottraggono SOLO le fee di VENDITA.
+     Le fee di ACQUISTO sono gia' dentro il costo di carico dal fix
+     fee-inclusive-avg (brief S122b): sottrarre qui l'intero monte fee le
+     contava una seconda volta, e rompeva l'identita' dichiarata due righe
+     sopra — misurata rotta di $1,10 su kraken_2b il 09-ago, con il pannello
+     che mostrava -$0,74 invece del guadagno vero incassato, +$0,36.
+     Regressione introdotta dal fix del costo medio: prima l'avg era al lordo
+     e sottrarre tutto era corretto. Segnalata da Max ("perche' mostra sempre
+     lo stesso valore?"), che cercava tutt'altro. */
+    var netRealized = realized - feesSell;
     return {
       cash: cash,
       holdingsMtm: holdingsMtm,
