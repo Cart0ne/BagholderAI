@@ -20,6 +20,8 @@
 | [CLAUDE.md](CLAUDE.md) | Istruzioni progetto (intern). OVERRIDE su tutto |
 | [PROJECT_STATE.md](PROJECT_STATE.md) | Stato tecnico — dove eri rimasto (owner: CC) |
 | [BUSINESS_STATE.md](BUSINESS_STATE.md) | Vincoli strategici / Board (owner: CEO/Max; CC scrive solo su istruzione) |
+| `config/MASTER_TASK_LIST_<data>.md` (la più recente) | Elenco vivo dei task aperti/chiusi (regola 2026-07-01) |
+| [config/SEQUENZA_post-golive_v1.md](config/SEQUENZA_post-golive_v1.md) | **Ordine dei lavori vigente** (Board+CEO, 09-ago): riconciliazione Kraken → XRP maker fee → Sentinel/NewsKeeper + marketing come attività. Aggiunta ai must-read in S127 |
 | [config/validation_and_control_system.md](config/validation_and_control_system.md) | Validation & Control System — milestone viva, aggiornare a ogni brief shipped |
 | [web_astro/STYLEGUIDE.md](web_astro/STYLEGUIDE.md) | **Prima** di toccare pagine del sito — palette, pattern, lezioni dolorose |
 
@@ -72,7 +74,8 @@
 
 | File | Contenuto |
 |---|---|
-| [config/MASTER_TASK_LIST_2026-07-01.md](config/MASTER_TASK_LIST_2026-07-01.md) | Master Task List — fonte dei task (item 4.12/4.13/4.14, 1.x pre-mainnet…) |
+| [config/MASTER_TASK_LIST_2026-08-07.md](config/MASTER_TASK_LIST_2026-08-07.md) | Master Task List — fonte dei task (la data nel nome = ultimo aggiornamento; usare sempre la più recente) |
+| [config/SEQUENZA_post-golive_v1.md](config/SEQUENZA_post-golive_v1.md) | Sequenza post-go-live (09-ago): ordine dei 3 lavori + criterio "fatto" + marketing da residuo ad attività + parcheggiati |
 | [config/APPROVED_golive_experiment_design.md](config/APPROVED_golive_experiment_design.md) | Design dell'esperimento go-live APPROVED (collaudo €100 → €600) |
 
 ## 6. Brief attivi / in coda (`config/`) — transient, qui per non perderli

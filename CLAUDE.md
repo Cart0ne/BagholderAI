@@ -26,6 +26,10 @@ ALL'INIZIO di ogni sessione, leggi:
   data nel nome del file = ultimo aggiornamento) — l'elenco vivo dei task 
   aperti/chiusi (Fasi 0-4 + backlog congelato + bug aperti). Regola 
   formalizzata 2026-07-01.
+- la sequenza lavori vigente (`config/SEQUENZA_post-golive_*.md`, la 
+  versione più alta) — l'ordine dei lavori e il criterio di "fatto" 
+  decisi da Board + CEO. Se il brief ricevuto salta l'ordine della 
+  sequenza, segnalalo a Max. Aggiunta S127 (2026-09-16).
 
 Se c'è discrepanza tra il brief ricevuto e i file di stato (es. il brief 
 assume codice in uno stato superato), FERMA e segnala a Max.
