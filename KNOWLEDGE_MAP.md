@@ -74,7 +74,7 @@
 
 | File | Contenuto |
 |---|---|
-| [config/MASTER_TASK_LIST_2026-08-07.md](config/MASTER_TASK_LIST_2026-08-07.md) | Master Task List — fonte dei task (la data nel nome = ultimo aggiornamento; usare sempre la più recente) |
+| [config/MASTER_TASK_LIST_2026-09-16.md](config/MASTER_TASK_LIST_2026-09-16.md) | Master Task List — fonte dei task (la data nel nome = ultimo aggiornamento; usare sempre la più recente) |
 | [config/SEQUENZA_post-golive_v1.md](config/SEQUENZA_post-golive_v1.md) | Sequenza post-go-live (09-ago): ordine dei 3 lavori + criterio "fatto" + marketing da residuo ad attività + parcheggiati |
 | [config/APPROVED_golive_experiment_design.md](config/APPROVED_golive_experiment_design.md) | Design dell'esperimento go-live APPROVED (collaudo €100 → €600) |
 
