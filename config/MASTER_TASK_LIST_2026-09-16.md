@@ -2,7 +2,7 @@
 
 **Data:** 18 giugno 2026 (creata) · **Ultimo aggiornamento:** **16 settembre 2026 (S127 — ripartenza dopo 11 giorni di bot fermi; nuova R.7 "Mac Mini autonomo")** · prec. 7 agosto 2026 (S125 — cutover completo + reveal pubblico)
 >
-> **Ordine dei lavori vigente: [`config/SEQUENZA_post-golive_v1.md`](SEQUENZA_post-golive_v1.md)** (Board+CEO, 09-ago) — R.1 riconciliazione → X.1 XRP maker fee → Sentinel/NewsKeeper. **Ordine emendato da Max il 16-set (S127): R.7 automatismi Mac Mini → R.1 riconciliazione → X.1 commissioni (XRP maker fee) → brain.**
+> **Ordine dei lavori vigente: [`config/SEQUENZA_post-golive_v1.md`](SEQUENZA_post-golive_v1.md)** (Board+CEO, 09-ago) — R.1 riconciliazione → X.1 XRP maker fee → Sentinel/NewsKeeper. **Ordine emendato da Max il 16-set (S127): R.7 automatismi Mac Mini → R.1 riconciliazione → X.1 commissioni (XRP maker fee) → brain (Sentinel/NewsKeeper) + **A.1 analisi della strategia**.**
 
 > **Il progetto ha cambiato stato.** Non è più "un sistema su testnet che si prepara al denaro reale": è **un sistema che tratta denaro reale e lo dichiara pubblicamente** (sito live dalle 19:15 UTC del 7-ago). Il testnet Binance non esiste più — si è azzerato il 5-6 agosto e non è stato riaperto. Su Kraken gira tutto: BTC/USD $250 + SOL/USD $150. Il Trend Follower è fermo.
 >
@@ -65,6 +65,14 @@ Il listino Kraken dà la **maker fee a 0,25%** — un terzo. Se si conferma, a p
 > **Da tenere separati X.1 e X.3.** Il primo è una misura da mezz'ora che produce un dato; il terzo è un cambio di paradigma del motore. Confonderli è il modo migliore per non fare nessuno dei due.
 >
 > **Escluso dal Board (7-ago): il margine.** Proposto e ritirato nella stessa sessione — il bot non ha modello contabile per la leva (le posizioni a margine non compaiono in `fetch_balance()`), e il DCA del grid *è* il comportamento che viene liquidato.
+
+---
+
+## 🔍 ANALISI STRATEGIA (nuova, S127) — blocco 3, insieme a Sentinel/NewsKeeper
+
+| # | Cosa | Chi l'ha chiesto | Chi | Stato |
+|---|---|---|---|---|
+| **A.1** | **🆕 Analisi della strategia dopo 1+ mese di denaro reale (Max, 16-set)** — capire, sull'andamento **reale** del mercato, se esistevano strategie più redditizie di quella che abbiamo fatto girare. Si fa **insieme a Sentinel/NewsKeeper** (blocco 3 dell'ordine). **Paletti (CC, S127)**: (a) **campione piccolo** — BTC reale dal 22-lug, SOL dal 7-ago, ~20 vendite in tutto, e **11 giorni di blackout (5→16 set) da escludere o marcare**; (b) **niente caccia alla strategia migliore col senno di poi** (trappola S115, overfit N=1): confronto contro **alternative semplici fissate PRIMA di guardare i numeri** — hold dal primo acquisto, DCA a rate fisse, grid a parametri statici senza Sherpa, grid con commissione maker 0,25%, `sell_pct` più largo — poi verifica su **regimi diversi** (walk-forward: è la condizione di Mike Czerwinski); (c) **commissioni allo 0,80% reale** (il backtest pubblico usava 0,40%, §5 L3). **Strumenti già esistenti**: harness `scripts/backtest/` (fee Kraken, flag repaired), `trades` + `daily_pnl` Kraken per il "fatto davvero", counterfactual tracker. **Output**: report per CEO/Board — e con ogni probabilità materiale per un post (onestà sui numeri) | Max, 16-set | CC (analisi) + CEO/Board (lettura) | 🆕 in coda — blocco 3 |
 
 ---
 
