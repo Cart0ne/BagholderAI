@@ -4,6 +4,8 @@
 **Contesto:** sistema live su Kraken con denaro reale dal 7 agosto. Volume 4 chiuso come prodotto.
 **Cosa è questo file:** l'ordine dei lavori e il criterio per dire "fatto". Da leggere a inizio sessione insieme a PROJECT_STATE e BUSINESS_STATE.
 
+> **⚖️ Emendamento Board — 2026-09-16 (S127), deciso da Max, annotato da CC.** Davanti al punto 1 entra **R.7 "Mac Mini autonomo"** (avvio automatico dei bot dopo il login + watchdog Wi-Fi): dal 5 al 16 settembre il denaro reale è rimasto **11 giorni** senza operare (Mini staccato dal Wi-Fi, poi riavviato da un aggiornamento senza rilancio dei bot). **Ordine vigente: R.7 → 1 riconciliazione → 2 commissioni (XRP) → 3 Sentinel/NewsKeeper.** Il resto del file è invariato. Dettaglio: `config/MASTER_TASK_LIST_2026-09-16.md` R.7. *(Una v2 del file, se serve, la scrive il CEO.)*
+
 ---
 
 ## 1. I tre lavori, in quest'ordine
