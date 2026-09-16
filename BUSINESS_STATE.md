@@ -26,6 +26,9 @@ BagHolderAI è un progetto sperimentale dove un'AI (Claude) gestisce un micro-bu
 
 ## 2. Marketing In-Flight
 
+### S125 — annuncio denaro reale (09-ago)
+- **Annuncio "denaro reale" pubblicato su X + Substack Notes il 9 agosto**, con **carosello a 4 slide** — primo contenuto visivo costruito su dati reali (concept: tabella §4 di `/history`, *"what one order costs"*). Testo IT di Max, traduzione fedele del CEO, nessun link. Dettaglio + correzioni CEO al carosello nel marketing tracker (community log 2026-08-09). *(Riga dal blocco CEO `2026-08-09_marketing_tracker_update.md`, inserita da CC il 2026-09-16 su richiesta di Max.)*
+
 ### S119 — primo denaro reale + segnale distribuzione (17-lug)
 - **Primo click organico da Google (17-lug).** GSC 3 mesi: **1 click · 417 impressioni · posizione media 15,1 · CTR 0,2%**. È il primo in assoluto. Lettura onesta: da pagina 2 lo 0,2% è il CTR atteso — il click dice più di chi ha scrollato che di noi. **Ma è il secondo strumento indipendente** che conferma la diagnosi S116: Payhip 247 view / 0 checkout, Google 417 impressioni / 1 click. Due misure, una diagnosi: **non arriva nessuno**. Il buco è a monte, non nel prodotto.
 - **Nessun annuncio del test da $25** (vedi §4). Deroga alla regola no-post-ven/sab/dom: **valutata e non usata**.

@@ -1,6 +1,6 @@
 # MARKETING TRACKER
  
-Ultimo aggiornamento: 2026-07-07
+Ultimo aggiornamento: 2026-08-09 (blocco CEO S125 `2026-08-09_marketing_tracker_update.md`, inserito da CC il 2026-09-16) · prec. 2026-07-07
  
 ---
  
@@ -24,7 +24,7 @@ Ultimo aggiornamento: 2026-07-07
 |---|------|-------|------|
 | 1 | ~~ChatGPT si auto-candida al team BagHolderAI~~ | sessione S105, 13/06 | ✅ Post 1 PUBBLICATO 19/06. ✅ Post 2 (intern screenshot) PUBBLICATO 22/06. Entrambi solo IT |
 | 2 | ~~Organigramma multi-AI: Founder=architect, CEO=Claude, CTO=CC, Marketing=ChatGPT, Analyst=Grok, Employees=bots, Human=occasional veto power.~~ | sessione S105, 13/06 (idea ChatGPT) | ✅ Realizzato come mini-carousel Canva (brief 02/07, rifinitura Max) e PUBBLICATO — confermato 03/07 |
-| 3 | Angolo "51-year-old architect, no coding background, accidentally building a company run by AI" — case study "AI lowers the expertise threshold" | sessione S105, 13/06 (idea ChatGPT) | Thread futuro tipo "how I built this". Non urgente, va dopo go-live. Ancora MAI postato (confermato 03/07) |
+| 3 | Angolo "51-year-old architect, no coding background, accidentally building a company run by AI" — case study "AI lowers the expertise threshold" | sessione S105, 13/06 (idea ChatGPT) | **🔓 SBLOCCATA (09/08).** Era marcata *"va dopo go-live"* dal 13 giugno. Ora ha anche un finale che non aveva: quella cosa muove denaro reale e ha chiuso il primo ciclo da sola in 27 ore. ~~Thread futuro tipo "how I built this". Non urgente, va dopo go-live. Ancora MAI postato (confermato 03/07)~~ |
 | 4 | Dossier "Fails & Masterpoints" — 28 candidati X mining da CC (PROJECT_STATE/BUSINESS_STATE archivio, 106 report CEO, blog+diary), 8 temi universali bait→hook→domanda | sessione S116, 03/07 (mining CC) | 1/28 usato (4A, vedi BLOG POSTS/note sotto). 27 candidati ancora disponibili. Nessun secondo batch richiesto per ora (fonti non ancora minate: S77/S81 Sentinel/Sherpa, NewsKeeper S100, report S36–S54) |
  
 ---
@@ -132,6 +132,7 @@ Subreddit principale: r/ClaudeAI
  
 | data | piattaforma | interazione | follow-up? |
 |------|-------------|-------------|------------|
+| 2026-08-09 | X + Substack Notes | **ANNUNCIO DENARO REALE + primo carosello da dati reali.** Post: testo IT di Max (*"Dopo 4 mesi, finalmente live con denaro vero. Adesso non si scherza più... o forse sì"*) → CEO traduce fedele (*"After 4 months, finally live with real money. No more messing around... or maybe not"*). **No link** (account non-Premium = reach ~zero): le 4 immagini sono il contenuto. **Carosello 4 slide (Claude Design)**, concept = tabella §4 di `/history`: *"what one order costs"* — ordini/giorno che crollano (29,8 → 3,2 → 4,0 → **0,2**) contro costo per ordine che sale ($0,0144 → **$0,2702**). Mascotte che si accumulano slide dopo slide (1→2→4→5 bot): il sistema diventa più intelligente e più lento nello stesso movimento. Slide 4 in arancione con badge REAL MONEY, **nessun verde-successo**, e i campi non ancora disponibili dichiarati *"in progress · live on the dashboard"* invece di riempiti. **Stesso contenuto anche su Substack Notes (activity).** **Correzioni CEO applicate prima della pubblicazione** (precedente da tenere): (1) **rimossi `WIN / LOSS` e `NET RESULT`** dalle slide 1-3 — il win rate è **tautologico** (la strategia è *"never sell at loss"* per costruzione; Mike Czerwinski l'aveva già smontato a luglio: *"un contatore di sopravvivenza"*), e tre `NET RESULT` positivi di fila (+$47,57 · +$10,06 · +$45,13) facevano leggere le ere come chiuse in utile mentre i reset hanno **cancellato $520,83 e $301,58 di posizioni aperte**; entrambe le colonne venivano dalla tabella §1, il carosello è la §4: fuori tema oltre che fuorvianti; (2) **aggiunto `one order every five days`** sotto lo `0.2` della slide 4: da solo sembrava un errore di battitura. | ⏳ monitorare — primo contenuto visivo da dati reali |
 | 2026-06-30 | Reddit | Reply su r/SideProject a espressodoppioo "building a real-money crypto trading bot in public" (2 upvote, 1 commento, 4h) — angolo: diario scritto dall'AI con tutto incluso (fallimenti, vicoli ciechi, cambi di opinione). Chiusura: "solo successi e milestone fa un po' film americano anni 90." No link, no nome progetto | ⏳ monitorare |
 | 2026-06-30 | Reddit | Reply su r/artificial a ultrathink-art (5 upvote, PhD flair) su thread "recorded every Claude Code session for 3 months" (OP Elegant-Session-9771, 12 upvote) — conferma bias agent-written summaries, soluzione: 3 sezioni obbligatorie nel diario (key decisions, uncomfortable truths, what I learned). No link, no nome progetto. Primo commento su r/artificial | ⏳ monitorare |
 | 2026-06-30 | — | **X MCP (docs.x.com/tools/mcp) valutato e parcheggiato.** Bridge MCP ufficiale X per search post, menzioni, trend, bookmark da client MCP. Richiede app Developer Portal + bridge locale npx. Non urgente: setup X attuale funziona (Haiku+Telegram write, Bearer read). Rivalutare post-mainnet quando si sblocca lo scanner | no |
@@ -202,6 +203,16 @@ Subreddit principale: r/ClaudeAI
  
 ## NOTE
 
+- **2026-08-09 — Sessione S125 (domenica). Il marketing cambia status, non metodo.**
+  Non era una sessione marketing: è nata come sessione di lavoro (cutover Kraken + reveal) e il marketing è entrato in coda. Decisioni rilevanti per questa area:
+  - **Volume 4 chiuso come prodotto** (decisione Max). Il diario `.docx` si ferma, le **entry Supabase continuano** — verificato che il poster X e il canale Telegram leggono `diary_entries`, non il volume, quindi la macchina di contenuti non si rompe. Era per quello che si era fermata: `Latest diary: Session 122 (384.6h old) — STALE`.
+  - **Il marketing passa da residuo ad attività**: entra nel conto dei blocchi di sessione invece di essere quello che si fa se resta tempo.
+  - **Creato `MARKETING_RUNBOOK_v1`** — la procedura in una pagina, da aprire per *fare*. Questo tracker resta il registro storico. Il runbook contiene: il ciclo dei tre gesti settimanali, le regole di canale in tabella secca, cosa non fare più, e la lista delle porte che il go-live ha sbloccato.
+  - **Diagnosi messa a verbale**: il marketing di questo progetto non ha mai fallito, non è mai stato fatto. 69 bozze pronte dal 3 luglio con il campo "pubblicato" vuoto su tutte e 69, infrastruttura funzionante. Il collo di bottiglia ha una causa strutturale precisa — **la regola di autenticità mette Max nel percorso critico di ogni post**, quindi una sua settimana pesante è una settimana di silenzio per costruzione. La regola si tiene (è l'unico vantaggio competitivo reale), ma il costo va a bilancio quando si pianifica.
+  - **Fuori dalla regola** e quindi muovibili sempre: audit con Mike, DM ai contatti tecnici, contenuto visivo, risposte brevi di cortesia.
+  - **Soglia numerica**: l'unica reale è **~50 karma Reddit** per sbloccare r/ClaudeAI (siamo a 35, solo i commenti fanno karma). Il *"karma >100"* che gira da giugno è un numero tondo senza derivazione — si ignora.
+
+  **⚠️ Debito marketing n.1 — Mike Czerwinski.** Ha accettato di auditare il sistema ponendo lui la condizione (*walk-forward su regimi non scelti da noi, "bring me the part you can't tune"*), gli abbiamo detto sì e promesso il repo col codice congelato **quando andiamo live**. Siamo live. **La palla è nostra dal 29 giugno.** Costo: un messaggio.
 - **2026-07-07 — Sessione di lavoro (martedì, S116). Diagnosi funnel Payhip + setup tracking traffico.**
   **Blocco 1 — diagnosi.** Payhip: 247 view / 0 checkout / 0 ordini in 4 mesi. Sorgenti: quasi tutto "Direct" (bot + sessioni Max), ZERO referral da Dev.to/Reddit/X/Google. Geo dominata da US/CN = firma bot. **Verdetto: il buco è a monte (contenuto→click), NON il prodotto — il test non è mai realmente avvenuto.** Il "prodotto non vende" resta non dimostrato.
   **Blocco 2 — infrastruttura di misura.** Creato workspace Dub (piano free: 1k eventi, 25 link, ci basta). 2 link tracciati, entrambi → payhip.com/BagHolderAI: **Dev.to `dub.sh/bhai-diary`** · **Substack Notes `dub.sh/bag-sub`**.
