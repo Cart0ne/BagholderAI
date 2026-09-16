@@ -3,6 +3,8 @@
 Panoramica dei due tool di analytics attivi sul sito, cosa misurano, perché
 coesistono, e cosa aspettarsi di scoprire.
 
+> **⚠️ Aggiornamento 2026-09-16 (S127, decisione Max): Umami è uscito dalle fonti dell'audit A3.** Le API key di Umami Cloud richiedono un piano a pagamento (verificato da Max). Lo script Umami resta sul sito finché non si decide altrimenti, ma nessun connettore lo legge più. Fonti automatiche del traffico: **Vercel Web Analytics** (da verificare l'accesso ai dati via API sul piano Hobby: 404 il 16-set) + GSC + Bing. I custom event CTA oggi non sono misurati. Dettaglio: `audits/DATA_CAVEATS.md` §3.
+
 ## TL;DR
 
 | Tool                 | Misura                          | Può essere bloccato da adblocker? |

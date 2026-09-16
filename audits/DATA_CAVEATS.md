@@ -28,11 +28,18 @@ ottimizzare title/meta è igiene, non una leva. Le leve vere stanno altrove
    *dopo* aver escluso **DE + FI + IT**. Riferimento: giugno 2026 → **~3
    visitatori** esterni.
 
-3. **API declassata a fonte MANUALE.** Da ~giugno 2026 le API key di Umami
-   Cloud sono riservate ai piani a pagamento → il connettore automatico
-   (`scripts/umami_stats.py`) riceve **401**. Per gli audit A3 Umami si legge
-   **a mano** dalla dashboard (screenshot + filtri paese applicati come sopra).
-   **Non tentare di rigenerare/toccare la chiave** (fuori scope, non risolve).
+3. **UMAMI È FUORI DALLE FONTI DELL'AUDIT A3 (decisione Max, 2026-09-16, S127).**
+   Le API key di Umami Cloud richiedono un **piano a pagamento** — verificato da
+   Max sul pannello il 16-set (la chiave attuale risponde `401 "Invalid API
+   key."`). **Non segnalare Umami come finding** (né CRITICAL né altro), non
+   chiedere di rigenerare la chiave, non cercare `umami.md` nella run folder.
+   Traffico e referral si leggono da **Vercel Web Analytics** (pannello Vercel;
+   l'API dati ha risposto 404 sul team Hobby il 16-set — se non c'è accesso
+   automatico, dichiararlo come fonte manuale), le ricerche da **GSC + Bing**
+   (connettori automatici). Limite noto: i custom event CTA (`buy-click`,
+   `preview-download`…) esistevano solo su Umami → oggi **non misurati**.
+   ~~Da ~giugno 2026 le API key di Umami Cloud sono riservate ai piani a
+   pagamento → fonte manuale dalla dashboard.~~ (testo S115a, superato)
 
 ---
 
