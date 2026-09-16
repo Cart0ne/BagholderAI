@@ -2,6 +2,7 @@
 
 **Creato:** 2026-06-22, con la procedura collaudata durante il restart post-blackout del 22-giu (boot 18:07, restart bot 18:20).
 **Aggiornato:** 2026-06-27 (S110e) — NewsKeeper **v1 ritirato** (processo spento + righe `polarity NULL` cancellate: ridondante, v2 ha passato il verdetto). Il runbook ora lancia **2 processi** (orchestrator + NewsKeeper v2), non 3.
+**Aggiornato:** 2026-09-16 (S127, cold start post-blackout di rete 5→14 set) — **flag e mappa allineati allo stato "solo denaro reale"** (S125): 2 grid Kraken, TF spento, `ALLOW_REAL_MONEY=true` obbligatorio, `SHERPA_TELEGRAM_ENABLED` tolto (Max). Le tabelle §0/§5 sotto descrivono ancora lo stack testnet a 4 grid: **vale la riga flag di §1 e il comando di §3**.
 **Scopo:** trasformare il riavvio dei bot da "ricostruzione a memoria dei comandi" a checklist copia-incollabile. Serve in due casi: **(A) cold start** dopo blackout/reboot del Mac Mini (tutto giù), **(B) restart graceful** per ricaricare codice nuovo (bot ancora vivi).
 
 > Regola di governance (CLAUDE.md §5, S105b): **CC riavvia i bot SOLO se Max lo chiede esplicitamente.** Pull e push restano autonomi di CC; il restart no. Questo runbook documenta *come* farlo quando Max lo chiede, non autorizza CC a farlo di iniziativa.
@@ -32,7 +33,12 @@ I 7 figli dell'orchestrator NON vanno lanciati a mano: li spawna l'orchestrator.
 - **API key Haiku:** `ANTHROPIC_API_KEY` **NON** è nell'ambiente shell né nel `.env` di root. Vive in **`config/.env`**, caricata da `load_dotenv` in [config/settings.py:14](settings.py#L14). NewsKeeper v2 la prende importando `config.settings` → all'avvio deve loggare `haiku=ready`. Se loggano `haiku=...` falso, degradano LOUDLY al fallback regex: vuol dire che `config/.env` manca o è incompleto.
 - **Volume montato:** il repo runtime è su `/Volumes/Archivio/bagholderai`. Se `/Volumes/Archivio` non è montato, niente parte. Verifica: `ls /Volumes/Archivio/bagholderai` deve elencare il repo.
 - **caffeinate:** ogni processo si lancia sotto `caffeinate -i` (impedisce l'idle sleep del Mac di ucciderlo). `nohup … &` lo stacca dalla sessione SSH.
-- **Flag env orchestrator** (catturati dal restart S106a/S108, verificati 22-giu): `ENABLE_TF=true ENABLE_SENTINEL=true ENABLE_SHERPA=true SHERPA_MODE=live SHERPA_TELEGRAM_ENABLED=true`. ⚠️ `SHERPA_TELEGRAM_ENABLED=true` è ancora attivo ma **da togliere a un restart futuro** (PROJECT_STATE §1): se Max conferma, ometterlo.
+- **Flag env orchestrator — VIGENTI da S127 (2026-09-16):** `ENABLE_TF=false ENABLE_SENTINEL=true ENABLE_SHERPA=true SHERPA_MODE=live ALLOW_REAL_MONEY=true`.
+  - ⚠️ **`ALLOW_REAL_MONEY=true` è obbligatorio** (dal S122): senza, i grid Kraken partono "sani" ma **non tradano, in silenzio**. Verifica a log grid: `LIVE MODE: KRAKEN — REAL MONEY, REAL ORDERS`.
+  - ⚠️ **`SHERPA_MODE=live` è obbligatorio**: senza, Sherpa torna in silenzio a `dry_run`. Verifica a log: `Sherpa starting (Sprint 1, mode=live)`.
+  - `ENABLE_TF=false` dal S125 (TF fermo). `SHERPA_TELEGRAM_ENABLED` **tolto** in S127 su decisione Max (default del codice = false).
+  - ~~Storico 22-giu: `ENABLE_TF=true ENABLE_SENTINEL=true ENABLE_SHERPA=true SHERPA_MODE=live SHERPA_TELEGRAM_ENABLED=true`~~
+- **In un restart graceful** i flag si ricatturano comunque dal processo vivo (§4): questa riga vale per il cold start, quando non c'è niente da cui catturarli.
 - **NewsKeeper v2 entrypoint:** `-m bot.newskeeper_v2` (il package ha `__main__.py`). _(v1 era `-m bot.newskeeper.main`, ritirato S110e — non più in uso.)_
 
 ---
@@ -64,18 +70,21 @@ Il pre-check §2 mostra 0 processi. Non c'è nulla da fermare: si lancia e basta
 ssh max@Mac-mini-di-Max.local 'cd /Volumes/Archivio/bagholderai
 TS=$(date +%Y%m%d_%H%M%S)
 # 1) Orchestrator (spawna i 7 figli)
-ENABLE_TF=true ENABLE_SENTINEL=true ENABLE_SHERPA=true SHERPA_MODE=live SHERPA_TELEGRAM_ENABLED=true \
-  nohup caffeinate -i venv/bin/python3.13 -m bot.orchestrator > logs/orchestrator_restart_$TS.log 2>&1 &
+ENABLE_TF=false ENABLE_SENTINEL=true ENABLE_SHERPA=true SHERPA_MODE=live ALLOW_REAL_MONEY=true \
+  nohup caffeinate -i venv/bin/python3.13 -m bot.orchestrator > logs/orchestrator_restart_$TS.log 2>&1 < /dev/null &
 echo "orchestrator wrapper pid=$!"
 sleep 1
 # 2) NewsKeeper v2 barometro  (v1 ritirato S110e — non si lancia più)
-nohup caffeinate -i venv/bin/python3.13 -m bot.newskeeper_v2 >> logs/newskeeper_v2.out 2>&1 &
+echo "=== $(date) cold start ===" >> logs/newskeeper_v2_boot.log
+nohup caffeinate -i venv/bin/python3.13 -m bot.newskeeper_v2 >> logs/newskeeper_v2_boot.log 2>&1 < /dev/null &
 echo "newskeeper_v2 wrapper pid=$!"
-sleep 4
+sleep 12
 tail -14 logs/orchestrator_restart_$TS.log'
 ```
 
-Atteso nel log orchestrator: `Brain flags: TF=True SENTINEL=True SHERPA=True`, 4 `Grid bot spawned`, `Trend Follower spawned`, `Sentinel spawned`, `Sherpa spawned`, 2 `Telegram message sent`.
+Atteso nel log orchestrator (S127): `Brain flags: TF=False SENTINEL=True SHERPA=True`, `[RECONCILER] No TF orphans detected`, **2** `Grid bot spawned` (`BTC/USD` + `SOL/USD`, `venue=kraken`), `Sentinel spawned`, `Sherpa spawned`, 2 `Telegram message sent`. Nei log grid: `LIVE MODE: KRAKEN — REAL MONEY` + `Boot reconcile OK`. NewsKeeper v2: `haiku=ready`.
+
+⚠️ **Contare gli errori dalla riga di avvio, non per orario**: i log non hanno la data, un filtro tipo `^20:1[6-9]` pesca anche tutti i giorni precedenti (errore fatto in S126 e di nuovo in S127). Ancorarsi all'ultima riga `LIVE MODE: KRAKEN` / `Sherpa starting` / `Sentinel starting`.
 
 ---
 
