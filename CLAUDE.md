@@ -262,12 +262,16 @@ insieme alla domanda sul pull, verifica che **TUTTI** i processi attesi sul
 Mac Mini siano up — non solo orchestrator + grid bot. Fai `ssh 
 max@Mac-mini-di-Max.local 'ps aux'` (+ `launchctl list | grep bagholderai`) 
 e confronta con l'inventario atteso:
-- **Orchestrator-managed**: orchestrator + figli (4 grid BTC/SOL/BONK/ETH + 
-  TF + Sentinel + Sherpa)
+- **Orchestrator-managed**: orchestrator + figli (2 grid Kraken a denaro 
+  reale BTC/USD + SOL/USD, Sentinel, Sherpa). TF spento di proposito 
+  (`ENABLE_TF=false`): la sua assenza NON è un guasto (aggiornato 2026-09-19)
 - **Standalone (non-managed)**: NewsKeeper v2; listener `x_poster_approve` 
   (LaunchAgent `com.bagholderai.xposter-approve`)
 - **Cron sani** (crontab presente + ultimo run non in errore nei log): 
-  x_poster `--cron` 20:30 Rome, reconcile_binance 03:00 Rome
+  x_poster `--cron` 20:30 Rome, reconcile_binance 03:00 Rome (interroga 
+  ancora Binance, vedi R.1), telegram_publisher ogni 10 min, x_scanner 
+  sabato 08:00, supabase_metrics_recorder ogni 30 min 
+  (`logs/supabase_metrics.jsonl`, una riga `ok:false` = Supabase bloccato)
 - **In-process (no crontab)**: db_maintenance 04:00 UTC gira dentro 
   l'orchestrator (`bot/db_maintenance.py`, chiamato da `orchestrator.py`) — 
   verificare riga `[maintenance]` recente nel log orchestrator, non il crontab
@@ -291,9 +295,12 @@ verificare i processi su + l'effetto a DB.
  [6] PROJECT CONTEXT
 ═══════════════════════════════════════════
 
-- Trading bot crypto con paper trading su Binance testnet
-- 3 grid instances: BTC/USDT, SOL/USDT, BONK/USDT
-- Stack: Python, Supabase (DB), Telegram (notifications), Vercel (dashboard)
+- Trading bot crypto a denaro reale su Kraken (dalla Fase 2b, S122); prima 
+  paper trading su Binance testnet
+- 2 grid attivi: BTC/USD, SOL/USD (TF spento via flag)
+- Stack: Python, Supabase (DB, piano FREE), Telegram (notifications), 
+  Vercel (sito + dashboard)
+- Host dei bot: Mac Mini, repo ufficiale `/Volumes/Archivio/bagholderai`
 - Lingua preferita per la comunicazione: italiano
 
 ═══════════════════════════════════════════
