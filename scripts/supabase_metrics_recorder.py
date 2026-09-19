@@ -16,8 +16,8 @@ written too (ok=false) — during a block that failure IS the data point.
 
 Usage:
     python3.13 scripts/supabase_metrics_recorder.py [out_file]
-    (default out_file: $HOME/supabase_metrics.jsonl — cron can't write
-    to /Volumes/Archivio, see scripts/cron_reconcile.sh)
+    (default out_file: $HOME/supabase_metrics.jsonl; the Mini cron passes
+    /Volumes/Archivio/bagholderai/logs/supabase_metrics.jsonl)
 """
 
 import base64
