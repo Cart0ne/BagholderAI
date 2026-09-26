@@ -49,8 +49,11 @@ RETENTION_POLICY: dict[str, dict] = {
     # decisions against actual market state), 60 days for proposals
     # (so the 7-day weekly counterfactual report always has a full
     # comparison window even when run a few weeks late).
-    "sentinel_scores":     {"days": 30, "date_column": "created_at"},
-    "sherpa_proposals":    {"days": 60, "date_column": "created_at"},
+    # S129 (2026-09-26, Max): both raised to 120 days — regime history for
+    # the strategy analysis (A.1). DB 64 MB of 500 MB; insert rate unchanged,
+    # so no extra disk IO beyond slightly larger indexes (~+7 MB rows).
+    "sentinel_scores":     {"days": 120, "date_column": "created_at"},
+    "sherpa_proposals":    {"days": 120, "date_column": "created_at"},
 }
 
 
