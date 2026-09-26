@@ -12,6 +12,7 @@ import logging
 import time
 
 from db.event_logger import log_event
+from bot.sherpa.config_writer import WRITABLE_PARAMETERS as SHERPA_WRITABLE_PARAMETERS
 
 logger = logging.getLogger("bagholderai.config")
 
@@ -244,7 +245,15 @@ class SupabaseConfigReader:
 
         # Send one consolidated Telegram alert per symbol (Bug 3), outside lock
         for symbol, param_changes in by_symbol.items():
-            self._send_config_changes(symbol, param_changes)
+            # 2026-09-26 (Max, S127: "togliamo i messaggi di sherpa"): the
+            # params Sherpa tunes stay off Telegram (~12 alerts/day). They are
+            # still in the event below + config_changes_log; any other field
+            # (capital, is_active, ...) keeps alerting.
+            alert_changes = [
+                c for c in param_changes if c[0] not in SHERPA_WRITABLE_PARAMETERS
+            ]
+            if alert_changes:
+                self._send_config_changes(symbol, alert_changes)
             # 43a: one structured event per symbol, grouping all diffs. Avoids
             # per-field event spam when the CEO edits several params in one save.
             log_event(
