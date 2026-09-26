@@ -11,6 +11,7 @@
 
 1. **Cosa è successo davvero?** Quanto abbiamo guadagnato o perso, contando le commissioni, e come si confronta col semplice "compro e tengo".
 2. **Quanto ci è costato il reset "zona morta" che non scattava?** (bug trovato il 26-set, PROJECT_STATE §5.) In quali giorni era bloccato e quali vendite abbiamo mancato.
+   **Ipotesi di Max da verificare (26-set):** *soprattutto in regimi di paura o laterali, se il grid non ricalibra si perdono piccole vendite profittevoli.* Va controllata anche l'ipotesi opposta: nei rialzi forti la "scala" delle vendite (vendere solo sopra l'ultima vendita) potrebbe averci **protetto** dal vendere troppo presto. Il risultato conta solo diviso per regime.
 3. **Esistevano strategie semplici che avrebbero reso di più?** Solo quelle dell'elenco del §4, fissato **prima** di guardare i risultati.
 
 ## 2. Cosa abbiamo in mano (verificato il 26-set)
@@ -30,11 +31,13 @@
 - **Periodi da marcare:** 17-lug ordine di prova · 22-lug avvio BTC $100 · 7-ago passaggio a $250 + SOL · **5→16 set blackout** (bot fermi 11 giorni) · 17-18 set blocchi Supabase (4 operazioni SOL ricostruite a mano) · 26-set ~7 ore ferme dopo l'aggiornamento macOS.
 - **Accantonamento profitti:** BTC mette da parte il 30% di ogni guadagno. Nel confronto va trattato allo stesso modo in tutte le alternative.
 
-**Dati che stanno scadendo:** il database cancella da solo le proposte di Sherpa dopo 60 giorni (la più vecchia oggi è del 28-lug) e i punteggi di Sentinel dopo 30 (agosto è già perso). Per l'analisi non sono indispensabili: il regime di mercato si ricostruisce dall'indice Fear & Greed pubblico. Una copia di sicurezza prima della sessione costa però pochi minuti (vedi §3, passo 0).
+**Dati in scadenza — ✅ SALVATI il 26-set** in `audits/a1_snapshot_20260926/` (fuori da git, **copia sia sul Mini sia sul MacBook**, 10 MB): proposte Sherpa dal 28-lug (716, **col regime di mercato di ogni momento**), punteggi Sentinel dal 27-ago (3.424; agosto prima del 27 era già perso), eventi e fotografie di stato degli ultimi 7 giorni, segnali NewsKeeper dal 28-giu, più una fotografia congelata di operazioni (64), registro modifiche (636), resoconti giornalieri, accantonamenti e config. **Conservazione portata da 30/60 a 120 giorni** (Max, 26-set): vale dal prossimo riavvio dell'orchestrator, che va fatto **entro il 25-ott**, altrimenti i punteggi Sentinel successivi alla copia iniziano a scadere.
 
 ## 3. Come procediamo
 
-**Passo 0 — Mettere al sicuro i dati** (5 minuti, sola lettura). Si copiano su file le proposte di Sherpa e i punteggi di Sentinel ancora presenti, prima che scadano.
+**Passo 0 — Mettere al sicuro i dati. ✅ FATTO il 26-set** (vedi §2).
+
+**Passo 0b — Misura diretta delle vendite mancate** (non serve il simulatore, quindi è la prova più solida). Per ogni ora dei 2 mesi, con moneta in mano: il prezzo era sopra la soglia "prezzo medio + margine" (vendibile col reset) ma sotto la soglia della scala (bloccato), per più delle ore di zona morta in vigore? Quelle sono le vendite che il bug ha impedito. Si contano e si dividono per regime, usando il regime registrato da Sherpa. È il primo numero per l'ipotesi di Max.
 
 **Passo 1 — Ricostruire "il fatto davvero".** Operazione per operazione dal database, confrontata col registro movimenti Kraken. Per ogni giorno: liquidità + moneta posseduta × prezzo = valore del conto. Da qui esce la curva vera. Il controllo database contro Kraken è anche una prima prova della riconciliazione R.1.
 
@@ -83,4 +86,4 @@
 
 1. **Lo staking di SOL** (qualche centesimo a settimana) entra nel "compra e tieni"? *Proposta: sì, ma in una riga separata.*
 2. **L'elenco del §4** va bene, o c'è un'alternativa che vuoi vedere? Va fissato **prima** di guardare i numeri.
-3. **Passo 0** (copia di sicurezza dei dati in scadenza): lo faccio subito o a inizio sessione?
+3. ~~Passo 0~~ — fatto il 26-set.
