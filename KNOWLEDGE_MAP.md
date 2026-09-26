@@ -74,7 +74,8 @@
 
 | File | Contenuto |
 |---|---|
-| [config/MASTER_TASK_LIST_2026-09-16.md](config/MASTER_TASK_LIST_2026-09-16.md) | Master Task List — fonte dei task (la data nel nome = ultimo aggiornamento; usare sempre la più recente) |
+| [config/MASTER_TASK_LIST_2026-09-26.md](config/MASTER_TASK_LIST_2026-09-26.md) | Master Task List — fonte dei task (la data nel nome = ultimo aggiornamento; usare sempre la più recente) |
+| [config/2026-09-26_S129_piano_A1_analisi-strategia.md](config/2026-09-26_S129_piano_A1_analisi-strategia.md) | Piano A.1 (S129): analisi dei 2 mesi a denaro reale Kraken — 3 domande, taratura del simulatore sulla realtà, 7 alternative fissate prima, limiti. Primo task della sessione successiva |
 | [config/SEQUENZA_post-golive_v1.md](config/SEQUENZA_post-golive_v1.md) | Sequenza post-go-live (09-ago): ordine dei 3 lavori + criterio "fatto" + marketing da residuo ad attività + parcheggiati |
 | [config/APPROVED_golive_experiment_design.md](config/APPROVED_golive_experiment_design.md) | Design dell'esperimento go-live APPROVED (collaudo €100 → €600) |
 
