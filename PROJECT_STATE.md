@@ -36,7 +36,7 @@ bot/
   exchanges/               S112b→S118: ExchangeClient ABC + factory + BinanceClient(delega)/KrakenClient. **CABLATO nell'hot-path grid da S118** dietro `bot_config.venue` (default binance = delega verbatim, zero diff); KrakenClient ha taker_fee_rate() dinamico + validate passthrough
   exchange_orders.py       market-order wrapper, fee USDT canonical (S67)
   health_check.py          daily health check
-  db_maintenance.py        daily 04:00 UTC retention (sentinel 30gg, sherpa 60gg)
+  db_maintenance.py        daily 04:00 UTC retention (sentinel 120gg, sherpa 120gg — S129)
   grid/                    Brain #1 — Grid (post brief 70a)
     grid_bot.py              public API + GridState + `_last_sell_price` ladder + FEE_RATE 0.001 + trigger fee-buffered + 75b `_stop_buy_activated_at` + auto-reset block
     state_manager.py         init_avg_cost_state_from_db (replay anche `_last_sell_price`)
