@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  BagHolderAI - Autostart dei bot dopo un riavvio del Mac Mini (R.7, S129 2026-09-27)
+
+  WHY THIS EXISTS
+  ---------------
+  Settembre 2026: tre riavvii del Mini (14-set, 26-set, 27-set) e ogni volta i
+  bot a denaro reale sono rimasti fermi finche' qualcuno non li ha rilanciati a
+  mano (fino a 2 giorni). Con FileVault il Mini dopo un riavvio aspetta la
+  password di Max: al login questo agent attende 5 minuti (rete + Archivio) e
+  chiama scripts/start_bots.sh auto, che lancia solo cio' che manca e non
+  parte senza rete.
+
+  - RunAtLoad, NIENTE KeepAlive: un solo tentativo per login. Un bot che muore
+    dopo l'avvio NON viene rilanciato (respawn a denaro reale = decisione separata).
+  - AbandonProcessGroup: senza, launchd uccide i processi lanciati dallo script
+    (orchestrator, NewsKeeper) quando il job termina.
+  - Log su disco interno (~/Library/Logs): launchd non puo' aprire log su
+    /Volumes/Archivio (lezione listener /approve). Lo script aspetta Archivio.
+  - Interruttore: se esiste ~/.bagholderai_no_autostart l'agent non avvia nulla.
+
+  INSTALL (Mac Mini):
+    cp config/launchd/com.bagholderai.autostart.plist ~/Library/LaunchAgents/
+    launchctl load -w ~/Library/LaunchAgents/com.bagholderai.autostart.plist
+    (RunAtLoad: parte subito; coi bot gia' vivi deve loggare "bot gia' vivi")
+  STATUS / LOG:
+    launchctl list | grep autostart ; tail ~/Library/Logs/bagholderai-autostart.log
+  UNINSTALL:
+    launchctl unload -w ~/Library/LaunchAgents/com.bagholderai.autostart.plist
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.bagholderai.autostart</string>
+
+    <!-- Attende 5 min, poi fino a 30 min che Archivio sia montato, poi esegue lo script. -->
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>-c</string>
+        <string>S=/Volumes/Archivio/bagholderai/scripts/start_bots.sh; echo "$(date '+%F %T') [autostart] login: attendo 5 min"; sleep 300; for i in $(seq 1 30); do [ -x "$S" ] &amp;&amp; exec "$S" --auto; echo "$(date '+%F %T') [autostart] Archivio non montato ($i/30)"; sleep 60; done; echo "$(date '+%F %T') [autostart] RINUNCIO: Archivio mai montato"; exit 1</string>
+    </array>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>AbandonProcessGroup</key>
+    <true/>
+
+    <key>StandardOutPath</key>
+    <string>/Users/max/Library/Logs/bagholderai-autostart.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/max/Library/Logs/bagholderai-autostart.log</string>
+</dict>
+</plist>
