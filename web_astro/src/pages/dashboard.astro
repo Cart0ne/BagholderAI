@@ -907,16 +907,19 @@ const tfSubtitle   = "The breakout hunter";
     </section>
 
     {/* ============ RECONCILIATION — brief 70c §5 ============ */}
-    {/* Trust statement: every trade above is verified against Binance.
-        Data populated client-side from `reconciliation_runs` (latest run
-        per symbol) by dashboard-reconciliation.ts. */}
+    {/* Reconciliation of the RETIRED Binance testnet bots only (latest run per
+        symbol from `reconciliation_runs`, hydrated by dashboard-reconciliation.ts).
+        S129 (audit A2-20260927 H1): the old claim "every trade on this dashboard
+        is reconciled against Binance. Zero discrepancies." was false for the
+        real-money Kraken bots, which have no automatic reconciliation yet (R.1).
+        When R.1 ships, this section switches to Kraken. */}
     <section class="reveal mt-10 sm:mt-12">
       <div class="mb-3 flex items-baseline gap-3">
         <h2 class="font-display text-[20px] sm:text-[22px] font-extrabold tracking-[-0.01em] text-text">
           5 · Reconciliation
         </h2>
         <span class="font-mono text-[12px] uppercase tracking-[0.16em] text-text-muted">
-          binance ↔ db
+          old binance testnet ↔ db
         </span>
       </div>
 
@@ -933,21 +936,21 @@ const tfSubtitle   = "The breakout hunter";
           </thead>
           <tbody class="divide-y divide-border-soft">
             <tr>
-              <td class="px-4 py-3 font-mono text-[12px] font-semibold text-text">BTC</td>
+              <td class="px-4 py-3 font-mono text-[12px] font-semibold text-text">BTC <span class="font-normal text-text-muted">· testnet</span></td>
               <td class="px-4 py-3" id="recon-btc-status">—</td>
               <td class="px-4 py-3" id="recon-btc-verified">—</td>
               <td class="px-4 py-3" id="recon-btc-drift">—</td>
               <td class="px-4 py-3" id="recon-btc-ts">—</td>
             </tr>
             <tr>
-              <td class="px-4 py-3 font-mono text-[12px] font-semibold text-text">SOL</td>
+              <td class="px-4 py-3 font-mono text-[12px] font-semibold text-text">SOL <span class="font-normal text-text-muted">· testnet</span></td>
               <td class="px-4 py-3" id="recon-sol-status">—</td>
               <td class="px-4 py-3" id="recon-sol-verified">—</td>
               <td class="px-4 py-3" id="recon-sol-drift">—</td>
               <td class="px-4 py-3" id="recon-sol-ts">—</td>
             </tr>
             <tr>
-              <td class="px-4 py-3 font-mono text-[12px] font-semibold text-text">BONK</td>
+              <td class="px-4 py-3 font-mono text-[12px] font-semibold text-text">BONK <span class="font-normal text-text-muted">· testnet</span></td>
               <td class="px-4 py-3" id="recon-bonk-status">—</td>
               <td class="px-4 py-3" id="recon-bonk-verified">—</td>
               <td class="px-4 py-3" id="recon-bonk-drift">—</td>
@@ -958,8 +961,11 @@ const tfSubtitle   = "The breakout hunter";
       </div>
 
       <p class="mt-3 text-[13px] leading-[1.55] text-text-dim">
-        Every trade on this dashboard is reconciled against Binance.
-        <span id="recon-claim-tail" class="text-pos font-semibold">Zero discrepancies.</span>
+        This table only checks the old paper-money bots on the Binance testnet,
+        retired on 7 August 2026.
+        <span class="font-semibold text-text">The real-money bots on Kraken are not reconciled automatically yet</span>:
+        so far we have matched Kraken balances against our database by hand.
+        An automatic Kraken check is planned.
       </p>
     </section>
 
