@@ -9,7 +9,7 @@
   bot a denaro reale sono rimasti fermi finche' qualcuno non li ha rilanciati a
   mano (fino a 2 giorni). Con FileVault il Mini dopo un riavvio aspetta la
   password di Max: al login questo agent attende 5 minuti (rete + Archivio) e
-  chiama scripts/start_bots.sh auto, che lancia solo cio' che manca e non
+  chiama scripts/start_bots.py --auto, che lancia solo cio' che manca e non
   parte senza rete.
 
   - RunAtLoad, NIENTE KeepAlive: un solo tentativo per login. Un bot che muore
@@ -34,12 +34,27 @@
     <key>Label</key>
     <string>com.bagholderai.autostart</string>
 
-    <!-- Attende 5 min, poi fino a 30 min che Archivio sia montato, poi esegue lo script. -->
+    <!-- Attende 5 min, poi fino a 30 min che Archivio sia montato, poi esegue lo script.
+         Python di Homebrew e non /bin/bash: sotto launchd bash non ha il permesso macOS
+         (TCC) di leggere /Volumes/Archivio, questo python si' (come il listener /approve).
+         Dopo un upgrade di Homebrew Python il permesso potrebbe andare ri-concesso. -->
     <key>ProgramArguments</key>
     <array>
-        <string>/bin/bash</string>
+        <string>/opt/homebrew/bin/python3.13</string>
         <string>-c</string>
-        <string>S=/Volumes/Archivio/bagholderai/scripts/start_bots.sh; echo "$(date '+%F %T') [autostart] login: attendo 5 min"; sleep 300; for i in $(seq 1 30); do [ -x "$S" ] &amp;&amp; exec "$S" --auto; echo "$(date '+%F %T') [autostart] Archivio non montato ($i/30)"; sleep 60; done; echo "$(date '+%F %T') [autostart] RINUNCIO: Archivio mai montato"; exit 1</string>
+        <string>import os, sys, time
+S = "/Volumes/Archivio/bagholderai/scripts/start_bots.py"
+say = lambda m: print(time.strftime("%Y-%m-%d %H:%M:%S"), "[autostart]", m, flush=True)
+say("login: attendo 5 min")
+time.sleep(300)
+for i in range(1, 31):
+    if os.path.exists(S):
+        os.execv(sys.executable, [sys.executable, S, "--auto"])
+    say(f"Archivio non montato ({i}/30)")
+    time.sleep(60)
+say("RINUNCIO: Archivio mai montato")
+sys.exit(1)
+</string>
     </array>
 
     <key>RunAtLoad</key>
