@@ -1,9 +1,11 @@
 #!/bin/zsh
-# Brief 71a Task 2 — nightly Binance reconciliation wrapper.
+# Nightly reconciliation wrapper — KRAKEN since R.1 (S129, 2026-09-27).
 #
-# Runs reconcile_binance.py --write so every overnight produces a fresh
-# row in `reconciliation_runs` for the public /dashboard reconciliation
-# table. Scheduled via crontab at 03:00 Europe/Rome (= 01:00 UTC),
+# Runs reconcile_kraken.py --write: one row per real-money symbol
+# (venue='kraken') in `reconciliation_runs`, shown in /admin
+# "Reconciliation · Kraken". Until 2026-09-27 this ran reconcile_binance.py
+# (brief 71a, S71) against the Binance testnet, retired on 7 Aug 2026 and
+# returning only WARN_BINANCE_EMPTY since; that script stays in the repo, unused. Scheduled via crontab at 03:00 Europe/Rome (= 01:00 UTC),
 # BEFORE the bot's daily retention at 04:00 UTC.
 #
 # Install on Mac Mini (one-time):
@@ -37,7 +39,7 @@ TS="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
   }
   # shellcheck disable=SC1091
   source venv/bin/activate
-  python3.13 scripts/reconcile_binance.py --write
+  python3.13 scripts/reconcile_kraken.py --write
   rc=$?
   echo "===== $TS reconcile exit=$rc ====="
 } >> "$LOG" 2>&1

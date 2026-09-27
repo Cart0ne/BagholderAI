@@ -277,8 +277,9 @@ e confronta con l'inventario atteso:
   caricato (`launchctl list`; gira una volta al login, poi resta con pid `-`: 
   è normale) + ultime righe di `~/Library/Logs/bagholderai-autostart.log`
 - **Cron sani** (crontab presente + ultimo run non in errore nei log): 
-  x_poster `--cron` 20:30 Rome, reconcile_binance 03:00 Rome (interroga 
-  ancora Binance, vedi R.1), telegram_publisher ogni 10 min, x_scanner 
+  x_poster `--cron` 20:30 Rome, reconcile 03:00 Rome (**Kraken** dal S129, R.1:
+  `cron_reconcile.sh` → `reconcile_kraken.py --write`, log `~/cron_reconcile.log`,
+  esito in `/admin` › "Reconciliation · Kraken" — uno status ≠ OK va segnalato), telegram_publisher ogni 10 min, x_scanner 
   sabato 08:00, supabase_metrics_recorder ogni 30 min 
   (`logs/supabase_metrics.jsonl`, una riga `ok:false` = Supabase bloccato)
 - **In-process (no crontab)**: db_maintenance 04:00 UTC gira dentro 
