@@ -75,8 +75,14 @@ si auto-certifica come Auditor).
 
 Operativamente:
 1. `ls audits/reports/*.md` → estrai la data più recente per area
-2. Confronta con la cadenza
-3. Se vecchio o assente → segnala
+2. **Controlla ANCHE `/Volumes/Archivio/bagholderai-audits/*/runs/*/YYYYMMDD_audit[AX].md`** 
+   (dove i task Cowork scrivono per primi). Se lì c'è un report che non è in 
+   `audits/reports/`, il passo "corriere" non è stato fatto: fallo tu (copia in 
+   `audits/reports/` su MBP e su `/Volumes/Archivio/bagholderai`, righe §9 + 
+   tabella `AUDIT_PROTOCOL.md`) e segnalalo. (Aggiunta S129, ok Max: il 27-set 
+   CC ha dato "audit dovuti" per tre audit fatti quella mattina.)
+3. Confronta con la cadenza
+4. Se vecchio o assente → segnala
 
 E NON scrivere mai una riga in §9 per la sessione che stai chiudendo 
 se hai shippato codice (commit + restart bot + migration). Quella riga 
