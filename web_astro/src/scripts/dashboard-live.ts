@@ -1204,8 +1204,9 @@ type DailyPnlRow = {
     date: string;
     realizedDay: { grid: number; tf: number };
     realizedCum: number;
-    mtmCum: number;
-    /* true = no daily_pnl snapshot for this day, mtmCum fell back to realized */
+    /* null = no daily_pnl snapshot that day (bots offline, DB down, before the
+       first report): no point is drawn, the line joins the nearest real days. */
+    mtmCum: number | null;
     estimated: boolean;
   };
 
@@ -1225,7 +1226,6 @@ type DailyPnlRow = {
 
     const out: DailyPoint[] = [];
     let cumGrid = 0, cumTF = 0;
-    let cumGridFees = 0;   /* S119b: running Σ total_fees_today → net-of-fee */
     let cur = new Date(startDate + "T00:00:00Z");
     const endD = new Date(endStr + "T00:00:00Z");
     while (cur <= endD) {
@@ -1238,10 +1238,9 @@ type DailyPnlRow = {
 
       /* MTM = Grid P&L (from daily_pnl) + reconstructed TF P&L. */
       const dp = dpByDate[dStr];
-      let mtmCum: number;
+      let mtmCum: number | null;
       let estimated = false;
       if (dp) {
-        cumGridFees += Number(dp.total_fees_today || 0);
         /* S119b — smooth de-bias of the nightly snapshot, matching the hero:
            - grid P&L = total_pnl (= total_value − initial_capital) → the bot's
              own baseline self-cancels the $25 Kraken it added to
@@ -1255,14 +1254,21 @@ type DailyPnlRow = {
            the snapshot's residual ~$8 optimism (the bot's dust-reset realized
            drift, which the live/canonical rail excludes and the deeper
            bot-side daily_pnl fix would remove for good). */
-        const gridPnl = Number(dp.total_pnl || 0) - cumGridFees;
-        const tfPnl   = reconstructTFForDay(dStr) - 100;
+        /* S129 (Max: "the line rises and falls at random") — two leftovers
+           removed. (1) total_pnl is already net of fees since T.3 (2026-07-21,
+           commentary.get_grid_state: netWorth = budget − netInvested +
+           holdings − fees, byte-identical to the hero), so subtracting
+           Σ total_fees_today counted every fee twice. (2) The TF term was
+           `− 100`, a literal left behind when S125 made TF_ERA_BUDGET = 0:
+           with no TF fund, every snapshot day sank by $100. */
+        const gridPnl = Number(dp.total_pnl || 0);
+        const tfPnl   = reconstructTFForDay(dStr) - TF_ERA_BUDGET;
         mtmCum = +(gridPnl + tfPnl).toFixed(2);
       } else {
-        /* No daily_pnl snapshot for this day yet — fall back to realized.
-           Flagged so the tooltip says "est." instead of passing the
-           fallback off as a real mark-to-market point (S101). */
-        mtmCum = realizedCum;
+        /* No snapshot → no point (S129). The old fallback plotted realized-only
+           P&L, which ignores open positions: with the S101 "est." flag it still
+           drew fake ~$30-100 steps (flat through the 5→16 Sep blackout). */
+        mtmCum = null;
         estimated = true;
       }
 
@@ -1309,14 +1315,19 @@ type DailyPnlRow = {
   }
 
   /* ----- Aggregations for line (sample-last) and bars (sum) ----- */
-  type LineRow = { date: string; realizedCum: number; mtmCum: number; estimated: boolean };
+  type LineRow = { date: string; realizedCum: number; mtmCum: number | null; estimated: boolean };
   type BarRow  = { key: string; grid: number; tf: number; lastDate: string };
 
   function aggregateLine(data: DailyPoint[], periodFn: (d: string) => string): LineRow[] {
     const byPeriod: Record<string, LineRow> = {};
     for (const d of data) {
       const k = periodFn(d.date);
-      if (!byPeriod[k] || d.date > byPeriod[k].date) {
+      const cur = byPeriod[k];
+      /* Sample-last, preferring the last day that HAS a snapshot (S129). */
+      const better = !cur
+        || (d.mtmCum != null && (cur.mtmCum == null || d.date > cur.date))
+        || (d.mtmCum == null && cur.mtmCum == null && d.date > cur.date);
+      if (better) {
         byPeriod[k] = { date: d.date, realizedCum: d.realizedCum, mtmCum: d.mtmCum, estimated: d.estimated };
       }
     }
@@ -1520,6 +1531,7 @@ type DailyPnlRow = {
               fill: { target: "origin",
                       above: "rgba(78,138,87,0.10)",
                       below: "rgba(192,90,67,0.16)" },
+              spanGaps: true,   /* S129: days without a snapshot are null → straight join, no fake point */
               borderWidth: 2, tension: 0, pointRadius: 0,
               pointHoverRadius: 4, pointBackgroundColor: "#4E8A57",
               pointBorderColor: "#FFFFFF", pointBorderWidth: 2 },
@@ -1543,6 +1555,7 @@ type DailyPnlRow = {
               callbacks: {
                 label: (ctx: any) => {
                   const pnl = ctx.parsed.y;
+                  if (pnl == null || Number.isNaN(pnl)) return "no nightly snapshot this day";
                   const worth = INITIAL_CAPITAL + pnl;
                   const pct = (pnl / INITIAL_CAPITAL) * 100;
                   const est = lineRows[ctx.dataIndex]?.estimated ? " · est." : "";
