@@ -25,6 +25,7 @@ sharing it — revisit with a dedicated read-only key if one ever appears).
 Usage (Mac Mini, repo root):
     venv/bin/python3.13 scripts/reconcile_kraken.py              # dry-run, stdout only
     venv/bin/python3.13 scripts/reconcile_kraken.py --verbose    # + every matched order
+    venv/bin/python3.13 scripts/reconcile_kraken.py --write      # also INSERT into reconciliation_runs (venue='kraken')
 
 Exit codes: 0 all OK · 1 at least one DRIFT* · 2 fatal (Kraken/DB unreachable)
 """
@@ -219,15 +220,41 @@ def reconcile_symbol(symbol: str, raw, client, fills: list[dict], balance: dict,
         "unmatched_db_count": len(db_orphans), "unmatched_exchange_count": len(kr_orphans),
         "drift_count": len(drift), "db_holdings": db_holdings, "exchange_holdings": kraken_bal,
         "balance_status": bal_status, "balance_note": bal_note,
+        "drift_details": {
+            "drift": drift,
+            "in_db_not_on_kraken": [{k: d[k] for k in ("created_at", "side", "qty", "price", "fee", "order_id", "cycle")} for d in db_orphans],
+            "on_kraken_not_in_db": [{"at": _ts(o["ts"]), **{k: o[k] for k in ("side", "qty", "price", "fee", "order_id")}} for o in kr_orphans],
+        } if issues else None,
+        "matched_details": [{
+            "at": d["created_at"], "side": d["side"], "order_id": d["order_id"], "fills": k["fills"],
+            "qty_db": d["qty"], "qty_kr": k["qty"], "price_db": d["price"], "price_kr": round(k["price"], 6),
+            "fee_db": d["fee"], "fee_kr": round(k["fee"], 6),
+        } for d, k in matched],
     }
+
+
+def write_results(client, results: list[dict], notes: str) -> None:
+    rows = [{
+        "venue": "kraken", "symbol": r["symbol"], "status": r["status"],
+        "db_count": r["db_count"], "exchange_count": r["exchange_count"],
+        "matched_count": r["matched_count"], "unmatched_db_count": r["unmatched_db_count"],
+        "unmatched_exchange_count": r["unmatched_exchange_count"], "drift_count": r["drift_count"],
+        "db_holdings": r["db_holdings"], "exchange_holdings": r["exchange_holdings"],
+        "balance_status": r["balance_status"], "balance_note": r["balance_note"],
+        "drift_details": r["drift_details"], "matched_details": r["matched_details"], "notes": notes,
+    } for r in results]
+    res = client.table("reconciliation_runs").insert(rows).execute()
+    print(f"\n✓ wrote {len(res.data or [])} rows to reconciliation_runs (venue=kraken)")
 
 
 def main() -> int:
     ap = argparse.ArgumentParser(description="R.1 — Kraken ↔ DB reconciliation (read-only)")
     ap.add_argument("--verbose", action="store_true", help="print every matched order")
+    ap.add_argument("--write", action="store_true", help="INSERT results into reconciliation_runs")
     args = ap.parse_args()
 
-    print(f"[reconcile_kraken] {datetime.now(timezone.utc):%Y-%m-%d %H:%M:%S} UTC — dry-run (nothing written)")
+    mode = "WRITE" if args.write else "dry-run (nothing written)"
+    print(f"[reconcile_kraken] {datetime.now(timezone.utc):%Y-%m-%d %H:%M:%S} UTC — {mode}")
     try:
         raw = KrakenClient().raw
         raw.load_markets()
@@ -248,16 +275,26 @@ def main() -> int:
         m = raw.market(s)
         ours |= {m["id"], m.get("info", {}).get("altname"), m.get("info", {}).get("wsname")}
     other = [f for f in fills if f.get("pair") not in ours]
+    notes = "USD cash not reconciled yet (shared by both grids + unallocated funds)."
     if other:
-        print(f"\nℹ {len(other)} fill(s) on other pairs (not bot trades, e.g. EUR→USD conversions): "
-              f"{sorted({f.get('pair') for f in other})}")
-    print("\nUSD cash: not reconciled yet (shared by both grids + unallocated funds) — next phase.")
+        other_pairs = sorted({f.get("pair") for f in other})
+        print(f"\nℹ {len(other)} fill(s) on other pairs (not bot trades, e.g. EUR→USD conversions): {other_pairs}")
+        notes += f" Ignored {len(other)} non-bot fill(s) on {', '.join(other_pairs)}."
+    print(f"\n{notes}")
 
     print("\n=== SUMMARY ===")
     for r in results:
         print(f"  {r['symbol']:8s} {r['status']:22s} matched {r['matched_count']}/{r['db_count']} DB, "
               f"{r['exchange_count']} Kraken · orphans DB {r['unmatched_db_count']} / Kraken "
               f"{r['unmatched_exchange_count']} · drift {r['drift_count']} · balance {r['balance_status']}")
+    if args.write:
+        try:
+            write_results(client, results, notes)
+        except Exception as e:
+            print(f"FATAL: write failed: {type(e).__name__}: {e}")
+            return 2
+    else:
+        print("\n(dry-run: nothing written. Pass --write to persist into reconciliation_runs.)")
     return 1 if any(r["status"] != "OK" for r in results) else 0
 
 

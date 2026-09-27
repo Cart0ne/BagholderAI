@@ -823,13 +823,83 @@
       </div>
       </details>
 
+      <!-- ============ RECONCILIATION (Kraken) — R.1, S129 ============ -->
+      <div class="section-title" style="color: var(--green);">⚖️ Reconciliation · Kraken <span style="font-size:11px;opacity:.75;">(denaro reale)</span></div>
+      <div class="card" style="overflow-x: auto;">
+        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px;">
+          <span style="font-family: var(--mono); font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em;">Latest run per symbol</span>
+          <span id="recon-kr-last-ts" style="font-family: var(--mono); font-size: 11px; color: var(--text-dim);">—</span>
+        </div>
+        <table class="proposals">
+          <thead>
+            <tr>
+              <th>Bot</th>
+              <th>Last run</th>
+              <th>Status</th>
+              <th>Kraken / DB</th>
+              <th class="num">Matched</th>
+              <th class="num">Orfani DB · Kraken</th>
+              <th class="num">Drift</th>
+              <th class="num">Saldo DB → Kraken</th>
+              <th>Nota saldo</th>
+            </tr>
+          </thead>
+          <tbody id="recon-kr-tbody">
+            <tr><td colspan="9" style="text-align: center; color: var(--text-dim);">loading…</td></tr>
+          </tbody>
+        </table>
+        <div class="footnote">
+          Tre controlli, tutti i cicli dal 17-lug: <strong>ordine per ordine</strong> (numero d'ordine Kraken; quantità ±1e-8, prezzo ±0,1%, costo e commissione ±$0,01; i pezzi di un ordine sono sommati) ·
+          <strong>orfani</strong> nei due sensi · <strong>saldo moneta</strong> DB vs Kraken (surplus SOL fino a +2% = staking).
+          <br>Status:
+          <strong style="color: var(--green);">OK</strong> ·
+          <strong style="color: var(--red);">DRIFT</strong> ordine abbinato fuori tolleranza ·
+          <strong style="color: var(--red-strong);">DRIFT_EXCHANGE_ORPHAN</strong> ordine su Kraken assente dal DB ·
+          <strong style="color: var(--red-strong);">DRIFT_DB_ORPHAN</strong> riga DB senza ordine su Kraken ·
+          <strong style="color: var(--red);">DRIFT_BALANCE</strong> saldo moneta fuori tolleranza.
+          <br><strong style="color: var(--amber);">USD non ancora riconciliato</strong> (saldo condiviso dai due grid + fondi non assegnati).
+          Manuale sul Mac Mini: <code>venv/bin/python3.13 scripts/reconcile_kraken.py --write</code>. Notturno 03:00: <em>non ancora attivo</em> (R.1 fase 3).
+        </div>
+      </div>
+
+      <details class="collapsible">
+      <summary style="color: var(--green);">📊 Kraken — ordine per ordine (ultimo run)</summary>
+      <div class="card" style="overflow-x: auto;">
+        <table class="rules">
+          <thead>
+            <tr>
+              <th>ts (UTC)</th>
+              <th>sym</th>
+              <th>side</th>
+              <th class="num">pezzi</th>
+              <th class="num">qty Kr</th>
+              <th class="num">qty DB</th>
+              <th class="num">px Kr</th>
+              <th class="num">px DB</th>
+              <th class="num">Δ% px</th>
+              <th class="num">fee Kr</th>
+              <th class="num">fee DB</th>
+              <th class="num">Δ fee</th>
+            </tr>
+          </thead>
+          <tbody id="recon-kr-compare-tbody">
+            <tr><td colspan="12" style="text-align: center; color: var(--text-dim);">loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+      </details>
+
+      <details class="collapsible" id="recon-kr-issues" style="display: none;" open>
+      <summary style="color: var(--red);">⚠ Kraken — discrepanze</summary>
+      <div class="card"><pre id="recon-kr-issues-body" style="font-family: var(--mono); font-size: 11px; white-space: pre-wrap; margin: 0;"></pre></div>
+      </details>
+
       <!-- ============ RECONCILIATION (Binance) — REPERTO, S125 ============ -->
       <div class="section-title" style="color: var(--amber);">⚖️ Reconciliation · Binance <span style="font-size:11px;opacity:.75;">(archivio)</span></div>
       <div style="border:1px solid var(--amber);background:rgba(255,193,7,.06);border-radius:8px;padding:8px 12px;margin:6px 0 10px;font-family:var(--mono);font-size:11px;line-height:1.55;color:var(--text-dim);">
         <strong style="color:var(--amber);">Storico.</strong> Questo controllo confronta gli ordini con <em>Binance</em>, dove non operiamo piu' dal 7 agosto 2026.
         Le righe qui sotto sono l'ultima fotografia dell'era testnet e non si aggiornano piu'.
-        <br><strong style="color:var(--red,#e74c3c);">Su Kraken la riconciliazione NON esiste ancora</strong> — e' il controllo che prova che i numeri a database
-        corrispondono all'exchange, e oggi, sul denaro reale, non lo stiamo facendo. E' il debito aperto piu' serio del cutover.
+        <br>La riconciliazione del denaro reale e' la sezione <strong>Kraken</strong> qui sopra (R.1, S129).
       </div>
 
       <!-- Per-symbol latest -->
@@ -1881,12 +1951,18 @@
       'WARN_BINANCE_EMPTY': 'var(--yellow)',
       'DRIFT': 'var(--red)',
       'DRIFT_BINANCE_ORPHAN': 'var(--red-strong)',
+      'DRIFT_EXCHANGE_ORPHAN': 'var(--red-strong)',
+      'DRIFT_DB_ORPHAN': 'var(--red-strong)',
+      'DRIFT_BALANCE': 'var(--red)',
     };
     var RECONCILE_STATUS_ICON = {
       'OK': '✓',
       'WARN_BINANCE_EMPTY': '⚠',
       'DRIFT': '✗',
       'DRIFT_BINANCE_ORPHAN': '✗',
+      'DRIFT_EXCHANGE_ORPHAN': '✗',
+      'DRIFT_DB_ORPHAN': '✗',
+      'DRIFT_BALANCE': '✗',
     };
 
     function reconcileStatusBadge(status) {
@@ -1924,6 +2000,77 @@
       if (n >= 1000) return n.toLocaleString('en-US', { maximumFractionDigits: 0 });
       if (n >= 1) return n.toFixed(4);
       return n.toFixed(8);
+    }
+
+    // === RECONCILIATION (Kraken, R.1 S129) — rows venue='kraken' from scripts/reconcile_kraken.py ===
+    var KRAKEN_RECON_SYMBOLS = [
+      { sym: 'BTC/USD', label: 'BTC', color: '#3b82f6' },
+      { sym: 'SOL/USD', label: 'SOL', color: '#22c55e' },
+    ];
+    function renderReconciliationKraken(runs) {
+      var tbody = document.getElementById('recon-kr-tbody');
+      var cmp = document.getElementById('recon-kr-compare-tbody');
+      var issues = document.getElementById('recon-kr-issues');
+      var issuesBody = document.getElementById('recon-kr-issues-body');
+      if (!runs || !runs.length) {
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; color: var(--text-dim);">nessun run ancora — <code>scripts/reconcile_kraken.py --write</code> sul Mac Mini</td></tr>';
+        cmp.innerHTML = '<tr><td colspan="12" style="text-align: center; color: var(--text-dim);">no data</td></tr>';
+        issues.style.display = 'none';
+        return;
+      }
+      var latest = {};
+      runs.forEach(function(r) { if (!latest[r.symbol]) latest[r.symbol] = r; });
+      tbody.innerHTML = '';
+      cmp.innerHTML = '';
+      var newest = null, issueText = '', cmpRows = [];
+      KRAKEN_RECON_SYMBOLS.forEach(function(c) {
+        var r = latest[c.sym];
+        var tr = document.createElement('tr');
+        var symCell = '<td><span class="sym" style="color:' + c.color + '">' + c.label + '</span></td>';
+        if (!r) {
+          tr.innerHTML = symCell + '<td colspan="8" style="color: var(--text-dim);">no data</td>';
+          tbody.appendChild(tr);
+          return;
+        }
+        if (!newest || new Date(r.ts) > new Date(newest)) newest = r.ts;
+        var red = function(n) { return n > 0 ? '<span style="color: var(--red);">' + n + '</span>' : '0'; };
+        var balColor = r.balance_status === 'OK' ? 'var(--text)' : 'var(--red)';
+        tr.innerHTML = symCell +
+          '<td>' + fmtAge(r.ts) + '</td>' +
+          '<td>' + reconcileStatusBadge(r.status) + '</td>' +
+          '<td>' + (r.exchange_count != null ? r.exchange_count : '—') + ' / ' + (r.db_count != null ? r.db_count : '—') + '</td>' +
+          '<td class="num">' + (r.matched_count != null ? r.matched_count : '—') + '</td>' +
+          '<td class="num">' + red(r.unmatched_db_count || 0) + ' · ' + red(r.unmatched_exchange_count || 0) + '</td>' +
+          '<td class="num">' + red(r.drift_count || 0) + '</td>' +
+          '<td class="num" style="color:' + balColor + ';">' + fmtQtyShort(r.db_holdings) + ' → ' + fmtQtyShort(r.exchange_holdings) + '</td>' +
+          '<td style="color: var(--text-dim); font-size: 10px;">' + (r.balance_note || '') + '</td>';
+        tbody.appendChild(tr);
+        if (r.drift_details) issueText += c.sym + ' — ' + r.status + '\n' + JSON.stringify(r.drift_details, null, 2) + '\n\n';
+        (r.matched_details || []).forEach(function(m) { cmpRows.push(Object.assign({ sym: c.label, color: c.color }, m)); });
+      });
+      document.getElementById('recon-kr-last-ts').textContent = newest
+        ? (fmtAge(newest) + ' · ' + new Date(newest).toLocaleString()) : '—';
+      cmpRows.sort(function(a, b) { return a.at < b.at ? 1 : -1; });
+      cmpRows.forEach(function(m) {
+        var tr = document.createElement('tr');
+        tr.innerHTML =
+          '<td>' + m.at + '</td>' +
+          '<td><span class="sym" style="color:' + m.color + '">' + m.sym + '</span></td>' +
+          '<td>' + m.side + '</td>' +
+          '<td class="num">' + m.fills + '</td>' +
+          '<td class="num">' + fmtQtyShort(m.qty_kr) + '</td>' +
+          '<td class="num">' + fmtQtyShort(m.qty_db) + '</td>' +
+          '<td class="num">' + fmtPriceShort(m.price_kr) + '</td>' +
+          '<td class="num">' + fmtPriceShort(m.price_db) + '</td>' +
+          '<td class="num">' + fmtDeltaPct(m.price_db, m.price_kr) + '</td>' +
+          '<td class="num">' + Number(m.fee_kr).toFixed(4) + '</td>' +
+          '<td class="num">' + Number(m.fee_db).toFixed(4) + '</td>' +
+          '<td class="num">' + fmtDeltaAbs(m.fee_db, m.fee_kr, 4) + '</td>';
+        cmp.appendChild(tr);
+      });
+      if (!cmpRows.length) cmp.innerHTML = '<tr><td colspan="12" style="text-align: center; color: var(--text-dim);">no data</td></tr>';
+      issues.style.display = issueText ? '' : 'none';
+      issuesBody.textContent = issueText;
     }
 
     function renderReconciliation(runs) {
@@ -2595,8 +2742,17 @@
         // --- Reconciliation Binance (Step B, S70b) ---
         // Reads reconciliation_runs (S70 Step A schema). Empty until reconcile_binance.py
         // is run with --write on Mac Mini. Step C (nightly cron) pending S71+.
+        // R.1 (S129): Kraken rows first; the Binance archive is filtered by venue so
+        // Kraken rows can't crowd it out of the limit.
         try {
-          var reconcileRuns = await sbFetch('reconciliation_runs?select=*&order=ts.desc&limit=50');
+          var krakenRuns = await sbFetch('reconciliation_runs?venue=eq.kraken&select=*&order=ts.desc&limit=10');
+          renderReconciliationKraken(krakenRuns);
+        } catch (e) {
+          console.error('kraken reconciliation fetch failed:', e);
+          renderReconciliationKraken([]);
+        }
+        try {
+          var reconcileRuns = await sbFetch('reconciliation_runs?venue=eq.binance&select=*&order=ts.desc&limit=50');
           renderReconciliation(reconcileRuns);
         } catch (e) {
           console.error('reconciliation fetch failed:', e);
