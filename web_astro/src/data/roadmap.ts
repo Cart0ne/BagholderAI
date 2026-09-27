@@ -41,8 +41,8 @@ export interface RoadmapData {
 }
 
 export const ROADMAP: RoadmapData = {
-  version: "Versione 1.54 — Agosto 2026",
-  lastUpdated: "2026-08-07",
+  version: "Versione 1.55 — Settembre 2026",
+  lastUpdated: "2026-09-27",
   phases: [
     {
       id: 0,
@@ -200,6 +200,8 @@ export const ROADMAP: RoadmapData = {
         { text: "Fase 2a — one real order, placed and confirmed by hand", status: "done", who: "AI", comment: "2026-07-17 → 07-21. A $25 BTC/USD buy, then the matching sell four days later at +$0.71 net of fees. Small on purpose: the goal was to watch one full round trip touch the real exchange and land correctly in the database. It also caught the thing no testnet could: the real taker fee is 0.80%, double the published rate we had been assuming." },
         { text: "Fase 2b — first autonomous real trade ($100, BTC/USD)", status: "done", who: "AI", comment: "S122 (2026-07-22). First buy placed by the bot itself, unattended, 21:14 UTC: $33.33 of BTC at $65,699.90. Same session shipped the fee double-counting fix on both venues and handed the Kraken rows to Sherpa. New cycle kraken_2b so the measurement starts clean." },
         { text: "Fase 3 — scale to $400, two coins, Binance testnet retired", status: "done", who: "AI", comment: "S125 (2026-08-07). BTC/USD raised to $250 and SOL/USD opened at $150; the four Binance testnet grids switched off and the Trend Follower paused, so the whole system now runs on real money or not at all. Trigger was the testnet resetting itself on 5-6 August — opening a fourth simulated era would have restarted a fiction destined to be wiped again. SOL's first real buy landed 90 seconds after the row went in, and confirmed the 0.80% fee independently of BTC." },
+        { text: "Bots restart on their own after a Mac Mini reboot", status: "done", who: "AI", comment: "S129 (2026-09-27). Three reboots in September (a Wi-Fi drop, two macOS updates) each left the real-money bots stopped until someone relaunched them by hand — once for eleven days. Now a login agent waits five minutes, checks the network and the exchange, and starts only what is missing. It does not respawn a bot that crashes: that stays a human call." },
+        { text: "Nightly Kraken ↔ database reconciliation", status: "active", who: "AI", comment: "S129 (2026-09-27). Every night at 03:00 each real-money order in our database is matched to its Kraken order (quantity, price, fee) and coin balances are compared with the exchange. First run: 65 of 65 orders matched, zero discrepancies. Visible in the private admin panel for now; the public dashboard switches over after a few clean nights. USD cash is not reconciled yet." },
         { text: "Intensive monitoring (first week)", status: "todo", who: "MAX" },
         { text: "VPS migration for stability", status: "todo", who: "BOTH" },
         { text: "Gradual scale beyond $400", status: "todo", who: "MAX" },
