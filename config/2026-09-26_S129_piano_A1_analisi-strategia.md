@@ -31,7 +31,7 @@
 - **Periodi da marcare:** 17-lug ordine di prova · 22-lug avvio BTC $100 · 7-ago passaggio a $250 + SOL · **5→16 set blackout** (bot fermi 11 giorni) · 17-18 set blocchi Supabase (4 operazioni SOL ricostruite a mano) · 26-set ~7 ore ferme dopo l'aggiornamento macOS.
 - **Accantonamento profitti:** BTC mette da parte il 30% di ogni guadagno. Nel confronto va trattato allo stesso modo in tutte le alternative.
 
-**Dati in scadenza — ✅ SALVATI il 26-set** in `audits/a1_snapshot_20260926/` (fuori da git, **copia sia sul Mini sia sul MacBook**, 10 MB): proposte Sherpa dal 28-lug (716, **col regime di mercato di ogni momento**), punteggi Sentinel dal 27-ago (3.424; agosto prima del 27 era già perso), eventi e fotografie di stato degli ultimi 7 giorni, segnali NewsKeeper dal 28-giu, più una fotografia congelata di operazioni (64), registro modifiche (636), resoconti giornalieri, accantonamenti e config. **Conservazione portata da 30/60 a 120 giorni** (Max, 26-set): vale dal prossimo riavvio dell'orchestrator, che va fatto **entro il 25-ott**, altrimenti i punteggi Sentinel successivi alla copia iniziano a scadere.
+**Dati in scadenza — ✅ SALVATI il 26-set** in `audits/a1_snapshot_20260926/` (fuori da git, **copia sia sul Mini sia sul MacBook**, 10 MB): proposte Sherpa dal 28-lug (716, **col regime di mercato di ogni momento**), punteggi Sentinel dal 27-ago (3.424; agosto prima del 27 era già perso), eventi e fotografie di stato degli ultimi 7 giorni, segnali NewsKeeper dal 28-giu, più una fotografia congelata di operazioni (64), registro modifiche (636), resoconti giornalieri, accantonamenti e config. **Conservazione portata da 30/60 a 120 giorni** (Max, 26-set): **attiva dal riavvio del 27-set** (nessun dato perso dopo la copia).
 
 ## 3. Come procediamo
 

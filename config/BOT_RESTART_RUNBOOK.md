@@ -3,6 +3,7 @@
 **Creato:** 2026-06-22, con la procedura collaudata durante il restart post-blackout del 22-giu (boot 18:07, restart bot 18:20).
 **Aggiornato:** 2026-06-27 (S110e) — NewsKeeper **v1 ritirato** (processo spento + righe `polarity NULL` cancellate: ridondante, v2 ha passato il verdetto). Il runbook ora lancia **2 processi** (orchestrator + NewsKeeper v2), non 3.
 **Aggiornato:** 2026-09-16 (S127, cold start post-blackout di rete 5→14 set) — **flag e mappa allineati allo stato "solo denaro reale"** (S125): 2 grid Kraken, TF spento, `ALLOW_REAL_MONEY=true` obbligatorio, `SHERPA_TELEGRAM_ENABLED` tolto (Max). Le tabelle §0/§5 sotto descrivono ancora lo stack testnet a 4 grid: **vale la riga flag di §1 e il comando di §3**.
+**Aggiornato:** 2026-09-27 (S129, R.7) — **avvio automatico al login** (`com.bagholderai.autostart`) + **cold start = [`scripts/start_bots.py`](../scripts/start_bots.py)**, unica fonte dei flag (lancia solo ciò che manca, mai un secondo orchestrator). Dopo un riavvio del Mini i bot ripartono da soli 5 min dopo il login: il §3 serve solo se l'avvio automatico ha rinunciato (log `~/Library/Logs/bagholderai-autostart.log` sul Mini).
 **Scopo:** trasformare il riavvio dei bot da "ricostruzione a memoria dei comandi" a checklist copia-incollabile. Serve in due casi: **(A) cold start** dopo blackout/reboot del Mac Mini (tutto giù), **(B) restart graceful** per ricaricare codice nuovo (bot ancora vivi).
 
 > Regola di governance (CLAUDE.md §5, S105b): **CC riavvia i bot SOLO se Max lo chiede esplicitamente.** Pull e push restano autonomi di CC; il restart no. Questo runbook documenta *come* farlo quando Max lo chiede, non autorizza CC a farlo di iniziativa.
@@ -66,6 +67,20 @@ ssh max@Mac-mini-di-Max.local "ps aux | grep -E '[-]m bot\.' | grep -v grep"
 
 Il pre-check §2 mostra 0 processi. Non c'è nulla da fermare: si lancia e basta.
 
+**Prima guarda se l'avvio automatico ha già fatto (o perché ha rinunciato):**
+
+```bash
+ssh max@Mac-mini-di-Max.local 'tail -20 ~/Library/Logs/bagholderai-autostart.log'
+```
+
+**Lancio (stesso script dell'avvio automatico, stessi flag):**
+
+```bash
+ssh max@Mac-mini-di-Max.local 'cd /Volumes/Archivio/bagholderai && venv/bin/python3.13 scripts/start_bots.py && tail -14 $(ls -t logs/orchestrator_restart_*.log | head -1)'
+```
+
+Controlla Archivio + Kraken/Supabase/Telegram, lancia orchestrator e NewsKeeper v2 **solo se mancano**, attende 20 s e dice quanti grid sono vivi. `--dry-run` = mostra cosa lancerebbe. Comando a mano equivalente (storico, non usare se lo script funziona):
+
 ```bash
 ssh max@Mac-mini-di-Max.local 'cd /Volumes/Archivio/bagholderai
 TS=$(date +%Y%m%d_%H%M%S)
@@ -103,7 +118,9 @@ ssh max@Mac-mini-di-Max.local "pkill -TERM -f '[-]m bot.orchestrator'"
 # attendi qualche secondo, poi verifica che i figli siano spariti
 ssh max@Mac-mini-di-Max.local "ps aux | grep -E '[-]m bot\.(grid_runner|trend_follower|sentinel|sherpa|orchestrator)' | grep -v grep"
 
-# 3) Rilancia SOLO l'orchestrator (step 1 dello Scenario A), con i flag catturati al punto 1
+# 3) Rilancia: lo script vede NewsKeeper vivo e lancia SOLO l'orchestrator.
+#    Se i flag catturati al punto 1 differiscono da BOT_ENV in scripts/start_bots.py → FERMATI e chiedi a Max.
+ssh max@Mac-mini-di-Max.local "cd /Volumes/Archivio/bagholderai && venv/bin/python3.13 scripts/start_bots.py"
 ```
 
 ⚠️ Non uccidere NewsKeeper v2 in questo scenario. Se per sbaglio cade, rilancialo con lo step 2 dello Scenario A.

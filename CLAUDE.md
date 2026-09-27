@@ -267,6 +267,9 @@ e confronta con l'inventario atteso:
   (`ENABLE_TF=false`): la sua assenza NON è un guasto (aggiornato 2026-09-19)
 - **Standalone (non-managed)**: NewsKeeper v2; listener `x_poster_approve` 
   (LaunchAgent `com.bagholderai.xposter-approve`)
+- **Avvio automatico (R.7, S129)**: LaunchAgent `com.bagholderai.autostart` 
+  caricato (`launchctl list`; gira una volta al login, poi resta con pid `-`: 
+  è normale) + ultime righe di `~/Library/Logs/bagholderai-autostart.log`
 - **Cron sani** (crontab presente + ultimo run non in errore nei log): 
   x_poster `--cron` 20:30 Rome, reconcile_binance 03:00 Rome (interroga 
   ancora Binance, vedi R.1), telegram_publisher ogni 10 min, x_scanner 
@@ -289,7 +292,19 @@ il restart: catturare prima il comando di lancio corrente (`ps -p <pid> -o
 command=`) per replicare gli env flag esatti, fare shutdown graceful 
 (SIGTERM all'orchestrator, che propaga ai figli), NON toccare i processi 
 standalone NewsKeeper v1/v2, rilanciare daemonizzato (`nohup caffeinate … &`), 
-verificare i processi su + l'effetto a DB.
+verificare i processi su + l'effetto a DB. Il cold start si fa con 
+`venv/bin/python3.13 scripts/start_bots.py` (unica fonte dei flag, vedi 
+`config/BOT_RESTART_RUNBOOK.md`).
+
+**AVVIO AUTOMATICO DOPO UN RIAVVIO DEL MINI (R.7, S129 2026-09-27, ok Max)**: 
+i bot ripartono **da soli** 5 minuti dopo il login (LaunchAgent 
+`com.bagholderai.autostart` → `scripts/start_bots.py --auto`): lancia solo ciò 
+che manca, mai un secondo orchestrator, non parte senza rete (riprova 30 min). 
+Non è un respawn: un bot che muore dopo l'avvio NON viene rilanciato. Con 
+FileVault serve comunque che Max inserisca la password dopo il riavvio. Per 
+manutenzione: `touch ~/.bagholderai_no_autostart` sul Mini blocca l'avvio 
+automatico (toglierlo dopo). La regola sopra resta: i bot già vivi li riavvio 
+solo su richiesta di Max.
 
 ═══════════════════════════════════════════
  [6] PROJECT CONTEXT
