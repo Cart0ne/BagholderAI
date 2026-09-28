@@ -32,6 +32,11 @@ logging.basicConfig(
 )
 logger = logging.getLogger("bagholderai.telegram_publisher.cli")
 
+# S132: httpx logs every request at INFO and the Telegram URL embeds the bot
+# token → token in clear in logs/telegram_publisher.log. WARNING+ only.
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
+
 from utils.telegram_publisher import (
     run_all,
     publish_status_line,

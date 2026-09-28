@@ -27,6 +27,12 @@ logging.basicConfig(
 )
 logger = logging.getLogger("bagholderai.x_poster")
 
+# S132: httpx logs every request at INFO, and the Telegram sendMessage URL
+# embeds the bot token → token in clear in logs/x_poster/x_poster.log at every
+# cron run. Same fix as x_poster_approve.py (May): WARNING+ only from httpx.
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
+
 from utils.x_poster import (
     generate_post,
     post_to_x,
