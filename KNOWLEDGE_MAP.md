@@ -74,8 +74,8 @@
 
 | File | Contenuto |
 |---|---|
-| [config/MASTER_TASK_LIST_2026-09-26.md](config/MASTER_TASK_LIST_2026-09-26.md) | Master Task List — fonte dei task (la data nel nome = ultimo aggiornamento; usare sempre la più recente) |
-| [config/2026-09-26_S129_piano_A1_analisi-strategia.md](config/2026-09-26_S129_piano_A1_analisi-strategia.md) | Piano A.1 (S129): analisi dei 2 mesi a denaro reale Kraken — 3 domande, taratura del simulatore sulla realtà, 7 alternative fissate prima, limiti. Primo task della sessione successiva |
+| [config/MASTER_TASK_LIST_2026-09-28.md](config/MASTER_TASK_LIST_2026-09-28.md) | Master Task List — fonte dei task (la data nel nome = ultimo aggiornamento; usare sempre la più recente) |
+| [config/2026-09-26_S129_piano_A1_analisi-strategia.md](config/2026-09-26_S129_piano_A1_analisi-strategia.md) | Piano A.1 (S129) — ✅ eseguito S130: report [report_for_CEO/2026-09-28_S130_RforCEO_analisi-strategia-A1.md](report_for_CEO/2026-09-28_S130_RforCEO_analisi-strategia-A1.md); strumenti `scripts/backtest/a1_*.py` (simulatore fedele al bot live, prova ancorata, confronti appaiati, storico); dati in `audits/backtest/a1/` (locale) |
 | [config/SEQUENZA_post-golive_v1.md](config/SEQUENZA_post-golive_v1.md) | Sequenza post-go-live (09-ago): ordine dei 3 lavori + criterio "fatto" + marketing da residuo ad attività + parcheggiati |
 | [config/APPROVED_golive_experiment_design.md](config/APPROVED_golive_experiment_design.md) | Design dell'esperimento go-live APPROVED (collaudo €100 → €600) |
 

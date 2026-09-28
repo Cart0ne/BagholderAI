@@ -1,7 +1,7 @@
 # Piano A.1 — Analisi dei 2 mesi a denaro reale su Kraken
 
 **Stato:** ✅ APPROVATO da Max il 2026-09-28 (S130), con D2 aggiunta e staking SOL in riga separata · **Scritto:** 2026-09-26, S129 · **Esecuzione:** S130, 2026-09-28
-**Task:** [MASTER_TASK_LIST A.1](MASTER_TASK_LIST_2026-09-26.md) · **Innesco:** BTC a +11–13% sopra il prezzo medio il 23-set che non vende, poi vende al riavvio del 26-set a +7,7%.
+**Task:** [MASTER_TASK_LIST A.1](MASTER_TASK_LIST_2026-09-28.md) · **Innesco:** BTC a +11–13% sopra il prezzo medio il 23-set che non vende, poi vende al riavvio del 26-set a +7,7%.
 
 > ⚠️ **Salto di sequenza (segnalato):** nell'ordine emendato da Max il 16-set A.1 stava nel blocco 3, dopo R.7 (automatismi Mac Mini) → R.1 → X.1. Max il 26-set la porta in testa. R.7 resta il lavoro successivo: il 26-set i bot sono rimasti fermi ~7 ore dopo l'aggiornamento di macOS, esattamente il caso che R.7 copre.
 
