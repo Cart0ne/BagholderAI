@@ -208,19 +208,20 @@ def test_b1_dead_zone_arms_flag_and_skips_sell_same_tick():
     print("=" * 70)
     bot = _make_grid_bot_for_dead_zone()
     assert bot._skip_next_decision is False  # baseline
+    ref_before = bot._pct_last_buy_price
 
     trades = bot.check_price_and_execute(current_price=82143.07)
 
     assert len(trades) == 0, f"expected NO trades, got {len(trades)}"
     assert bot._skip_next_decision is True, "flag should be armed for next tick"
-    # Verifica che il recalibrate sia effettivamente avvenuto
-    assert bot._pct_last_buy_price == 82143.07, (
-        f"dead_zone should update _pct_last_buy_price; got {bot._pct_last_buy_price}"
+    # S131a (D2): the dead-zone reset leaves the buy reference where it was
+    assert bot._pct_last_buy_price == ref_before, (
+        f"dead_zone must NOT move _pct_last_buy_price (S131a D2); got {bot._pct_last_buy_price}"
     )
     assert bot._last_sell_price == 0.0, "dead_zone should reset _last_sell_price"
     print(f"  trades = [] ✓ (sell NOT triggered despite spike above avg)")
     print(f"  _skip_next_decision = True ✓ (armed for next tick)")
-    print(f"  _pct_last_buy_price = 82143.07 ✓ (recalibrate happened)")
+    print(f"  _pct_last_buy_price unchanged ✓ (S131a D2)")
     print(f"  _last_sell_price = 0 ✓ (ladder reset)")
 
 

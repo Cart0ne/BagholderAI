@@ -57,12 +57,19 @@ def _row(dd: float, unlock: float, dz: float, mp: float) -> dict[str, float]:
 
 
 # (regime, tier) -> {4 params}. Source: Brief S103a BOARD_TABLE.
+# S131a (Board S131, 2026-09-28): dead_zone_hours = 0 (DISABLED) in neutral,
+# greed and extreme_greed. The grid reads <= 0 as "off" (grid_bot DEAD ZONE
+# block). Until S131 these regimes had 2h/2h/3h, but with idle_reentry_hours
+# 1h/0.75h/0.5h the idle recalibrate reset the shared clock first, so the dead
+# zone only ever fired at restarts; A.1 found that behaviour better than a
+# working reset in every regime tested. Fear/extreme_fear keep 1h/2h, where
+# idle (2h/4h) is longer so the reset does fire. Re-check after X.1 (maker fee).
 BOARD_TABLE: dict[str, dict[str, dict[str, float]]] = {
     "extreme_fear":  {"LOW": _row(3, 12, 2, 0), "MID": _row(4, 12, 2, 0), "HIGH": _row(5, 12, 2, 0)},
     "fear":          {"LOW": _row(4, 6, 1, 0),  "MID": _row(5, 6, 1, 0),  "HIGH": _row(6, 6, 1, 0)},
-    "neutral":       {"LOW": _row(1, 2, 2, 0),  "MID": _row(2, 2, 2, 0),  "HIGH": _row(2, 1, 2, 0)},
-    "greed":         {"LOW": _row(1, 2, 2, 0),  "MID": _row(1, 2, 2, 0),  "HIGH": _row(1, 1, 2, 0)},
-    "extreme_greed": {"LOW": _row(1, 2, 3, 0),  "MID": _row(1, 2, 3, 0),  "HIGH": _row(1, 1, 3, 0)},
+    "neutral":       {"LOW": _row(1, 2, 0, 0),  "MID": _row(2, 2, 0, 0),  "HIGH": _row(2, 1, 0, 0)},
+    "greed":         {"LOW": _row(1, 2, 0, 0),  "MID": _row(1, 2, 0, 0),  "HIGH": _row(1, 1, 0, 0)},
+    "extreme_greed": {"LOW": _row(1, 2, 0, 0),  "MID": _row(1, 2, 0, 0),  "HIGH": _row(1, 1, 0, 0)},
 }
 
 

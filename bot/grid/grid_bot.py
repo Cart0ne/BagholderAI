@@ -773,15 +773,20 @@ class GridBot:
         #   - idle recalibrate (24h): skipped when current > avg
         # Resolution: after DEAD_ZONE_HOURS of inactivity, if the ladder
         # is active (_last_sell_price>0) and price is stuck above avg,
-        # reset the sell ladder and the buy reference to the current
-        # price. The next sell trigger reverts to avg_cost × (1+sell_pct
-        # +FEE)/(1−FEE) which is below current → sell scatta nello
-        # stesso tick. Vincoli brief: Grid only, NON tocca sell_pct,
+        # reset the sell ladder (S131a: the buy reference is left alone). The
+        # next sell trigger reverts to avg_cost × (1+sell_pct)/(1−FEE), below
+        # current → the sell fires on the next tick. Vincoli brief: Grid only, NON tocca sell_pct,
         # NON tocca TF/Sentinel/Sherpa.
         # 74b (S74b 2026-05-12): hours now per-coin from bot_config,
         # hot-reloadable via SupabaseConfigReader (grid_runner._sync_config_to_bot).
+        # S131a (Board S131, 2026-09-28): dead_zone_hours <= 0 = DISABLED by
+        # choice. Sherpa writes 0 in neutral/greed/extreme_greed (A.1: the reset
+        # in those regimes sold lots the ladder would have sold higher, and it
+        # only ever fired at restarts); fear/extreme_fear keep 1h/2h. Without
+        # this guard 0 would read as "fire immediately".
         DEAD_ZONE_HOURS = float(self.dead_zone_hours)
-        if (self.is_active
+        if (DEAD_ZONE_HOURS > 0
+                and self.is_active
                 and self.managed_by == "grid"
                 and not self.pending_liquidation
                 and not self._stop_loss_triggered
@@ -803,23 +808,27 @@ class GridBot:
                     f"holdings={self.state.holdings:.6f}, "
                     f"current {fmt_price(current_price)} > avg {fmt_price(self.state.avg_buy_price)}, "
                     f"ladder active at {fmt_price(previous_last_sell)}. "
-                    f"Resetting _last_sell_price → 0 and buy_reference "
-                    f"{fmt_price(previous_ref)} → {fmt_price(current_price)}."
+                    f"Resetting _last_sell_price → 0; buy_reference unchanged "
+                    f"at {fmt_price(previous_ref)} (S131a D2)."
                 )
                 self._last_sell_price = 0.0
-                self._pct_last_buy_price = current_price
+                # S131a D2: the reset no longer moves the buy reference. It only
+                # fires with price > avg, where moving it would put the buy
+                # trigger above avg (unreachable under Strategy A) and drift
+                # from the replayed value at the next restart. Same effect as the
+                # S70 cap on the idle recalibrate.
                 self._last_trade_time = utcnow()
                 self._idle_logged_hour = -1
                 # Brief fix_slippage_AB (S90, 2026-05-28): arm cooldown so the
                 # very next tick re-fetches a fresh price before deciding on
                 # sell/buy. Without this, the same `current_price` that just
-                # redefined _pct_last_buy_price would also trigger the sell
-                # check below — exactly the failure mode of 2026-05-27 21:44 UTC.
+                # reset the ladder would also trigger the sell check below —
+                # exactly the failure mode of 2026-05-27 21:44 UTC.
                 self._skip_next_decision = True
                 self.idle_reentry_alerts.append({
                     "symbol": self.symbol,
                     "elapsed_hours": elapsed_dz,
-                    "reference_price": current_price,
+                    "reference_price": previous_ref,
                     "recalibrate": True,
                     "dead_zone": True,
                 })
@@ -831,7 +840,7 @@ class GridBot:
                     message=(
                         f"Dead zone reset after {elapsed_dz:.1f}h idle: "
                         f"_last_sell_price {previous_last_sell} → 0, "
-                        f"buy_ref {previous_ref} → {current_price}"
+                        f"buy_ref unchanged at {previous_ref}"
                     ),
                     details={
                         "elapsed_hours": float(elapsed_dz),

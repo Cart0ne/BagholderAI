@@ -1089,9 +1089,9 @@ def test_r_replay_with_fee_in_base_coin():
 def test_s_dead_zone_recalibrate_fires_when_ladder_active_and_idle():
     """Brief 73a (S73 2026-05-11): after a sell run leaves the bot with
     _last_sell_price > 0 (ladder active), residual holdings, current >
-    avg, and >= 4h idle → reset _last_sell_price to 0 and recalibrate
-    buy reference to current price. Unsticks BTC/SOL/BONK stuck in the
-    dead zone where S69 guards collectively freeze the bot.
+    avg, and >= 4h idle → reset _last_sell_price to 0. Unsticks BTC/SOL/BONK
+    stuck in the dead zone where S69 guards collectively freeze the bot.
+    S131a (D2): the buy reference is left unchanged (was: reset to current).
     """
     from datetime import datetime, timedelta
     print("=" * 70)
@@ -1123,7 +1123,7 @@ def test_s_dead_zone_recalibrate_fires_when_ladder_active_and_idle():
     assert bot._last_sell_price == 0.0, (
         f"_last_sell_price must reset to 0, got {bot._last_sell_price}"
     )
-    assert_close(bot._pct_last_buy_price, 102.0, label="buy_ref reset to current")
+    assert_close(bot._pct_last_buy_price, initial_ref, label="buy_ref unchanged (S131a D2)")
     dead_zone_alerts = [
         a for a in bot.idle_reentry_alerts if a.get("dead_zone")
     ]
@@ -1132,7 +1132,7 @@ def test_s_dead_zone_recalibrate_fires_when_ladder_active_and_idle():
         f"{bot.idle_reentry_alerts}"
     )
     print(f"  $102 + 5h idle + ladder active: DEAD ZONE FIRED ✓ "
-          f"_last_sell_price → 0, buy_ref → ${bot._pct_last_buy_price:.2f}")
+          f"_last_sell_price → 0, buy_ref unchanged ${bot._pct_last_buy_price:.2f}")
 
 
 def test_t_dead_zone_does_not_fire_under_4h_idle():

@@ -1479,7 +1479,7 @@
       'skim_pct': '% of each sell\'s profit routed to reserve instead of reinvested',
       'stop_buy_drawdown_pct': 'Blocks NEW buys when total unrealized loss exceeds this % of allocation. Existing lots unaffected (Strategy A still applies). Re-enables after first profitable sell. 0 = disabled.',
       'stop_buy_unlock_hours': 'After stop-buy activation, auto-resets the block after this many hours so the bot can resume DCA at market even without a profitable sell. Profitable sell still resets BEFORE the timer. 0 = disabled (only profitable sell resets). Max 168h (1 week). Suggested 24h on coins where prolonged drawdowns are common.',
-      'dead_zone_hours': 'After a partial sell run, residual holdings stay anchored to the last-sell price ladder. If the rally stalls and price stays above avg cost without any trade for this many hours, the bot resets the ladder so a new sell trigger can fire. Prevents the bot from sitting frozen. Default 4h; higher for thin books (BONK), lower for liquid pairs (BTC).'
+      'dead_zone_hours': 'After a partial sell run, residual holdings stay anchored to the last-sell price ladder. If the rally stalls and price stays above avg cost without any trade for this many hours, the bot resets the ladder so a new sell trigger can fire (the buy reference is left alone). 0 = off: Sherpa sets 0 in neutral/greed and 1-2h in fear (Board S131).'
     };
 
     function configField(short, field, label, value) {

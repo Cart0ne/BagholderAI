@@ -91,10 +91,16 @@ va in §10 "Sessioni shipped". Solo un Auditor (CC fresh con brief
 ha titolo per aggiungere riga §9, e solo dopo aver depositato il file 
 `audits/reports/*.md` corrispondente.
 
-### Numerazione sessioni (formalizzata S108, 2026-06-20)
+### Numerazione sessioni (formalizzata S108, 2026-06-20; aggiornata S131, 2026-09-28)
 
-- **Sessioni di lavoro** (CEO + Board): prendono numero progressivo
-  (S108, S109...). Hanno diary, summary Supabase, possono avere brief.
+- **Sessioni di lavoro**: ogni sessione in cui si lavora prende un numero
+  progressivo (S131, S132...), **anche solo Max + CC**. I buchi di
+  calendario non contano: il contatore conta sessioni, non giorni.
+  Decisione Board S131 (BUSINESS_STATE §4).
+- **Diary entry Supabase**: solo nelle sessioni con il CEO. Le sessioni
+  solo-CC restano tracciate in PROJECT_STATE §10 e nella Master Task List.
+- Brief e report portano il numero della sessione che li scrive: un brief
+  S131a eseguito da CC nella sessione successiva produce un report S132.
 - **Sessioni marketing**: niente numero, niente diary, niente brief.
   Solo aggiornamento marketing tracker.
 - **Audit automatici** (Cowork): niente numero sessione. Se producono

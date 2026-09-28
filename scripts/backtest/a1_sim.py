@@ -47,6 +47,8 @@ class A1Grid:
     dz_keep_buy_ref: bool = False     # D2: il reset non tocca il riferimento d'acquisto
     dz_hours_fn: Optional[Callable[[str], float]] = None  # E: ore zona morta per regime
     sell_pct_add: float = 0.0         # G: + punti su sell_pct
+    dz_off_regimes: tuple = ()        # S131a (R): zona morta spenta per scelta in questi regimi
+    dz_resets_by_regime: dict = field(default_factory=dict)
     strategy: str = "A"
 
     # --- stato ---
@@ -199,8 +201,10 @@ class A1Grid:
 
         # --- zona morta ---
         dz_h = self.dz_hours_fn(p.regime) if self.dz_hours_fn else p.dz_h
+        if p.regime in self.dz_off_regimes:
+            dz_h = 0.0                        # S131a: 0 = zona morta disattivata
         clock = self.dz_clock if self.dz_fix else self.last_trade_time
-        if (not self._is_dust(price) and self.last_sell_price > 0 and self.avg > 0
+        if (dz_h > 0 and not self._is_dust(price) and self.last_sell_price > 0 and self.avg > 0
                 and price > self.avg and clock is not None
                 and (dt - clock).total_seconds() / 3600 >= dz_h):
             self.last_sell_price = 0.0
@@ -210,6 +214,7 @@ class A1Grid:
             self.dz_clock = dt
             self.skip_next_decision = True
             self.dz_resets += 1
+            self.dz_resets_by_regime[p.regime] = self.dz_resets_by_regime.get(p.regime, 0) + 1
             return
 
         # --- SELL ---

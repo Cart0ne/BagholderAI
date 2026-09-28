@@ -19,6 +19,43 @@ if TYPE_CHECKING:
 logger = logging.getLogger("bagholderai.runner")
 
 
+def _check_dead_zone_inert(bot: "GridBot", symbol: str) -> None:
+    """S131a guard: warn once when the dead zone cannot fire while running.
+
+    The idle recalibrate and the dead zone share `_last_trade_time`; the dead
+    zone block runs first in the tick, so it fires only if it comes due no
+    later than the idle check: dead_zone_hours <= idle_reentry_hours. With
+    0 < idle < dead zone the idle resets the clock first and the dead zone is
+    silently inert (the S129 bug). 0 on either side = that feature is off, not
+    inert. Logged on change only (the sync runs every tick).
+    """
+    dz = float(getattr(bot, "dead_zone_hours", 0) or 0)
+    idle = float(getattr(bot, "idle_reentry_hours", 0) or 0)
+    inert = dz > 0 and 0 < idle < dz
+    state = (dz, idle) if inert else None
+    if state == getattr(bot, "_dead_zone_inert_state", None):
+        return
+    bot._dead_zone_inert_state = state
+    if not inert:
+        return
+    logger.warning(
+        f"[{symbol}] Dead zone inert: idle_reentry_hours {idle}h < dead_zone_hours {dz}h "
+        f"— the idle recalibrate resets the shared clock first, the dead zone never fires."
+    )
+    from db.event_logger import log_event
+    try:
+        log_event(
+            severity="warn",
+            category="config",
+            event="dead_zone_inert",
+            symbol=symbol,
+            message=f"dead zone inert: idle {idle}h < dead zone {dz}h",
+            details={"idle_reentry_hours": idle, "dead_zone_hours": dz},
+        )
+    except Exception:
+        pass
+
+
 def _sync_config_to_bot(reader: "SupabaseConfigReader", bot: "GridBot", symbol: str):
     """
     Apply the latest Supabase config values to the running bot.
@@ -53,8 +90,9 @@ def _sync_config_to_bot(reader: "SupabaseConfigReader", bot: "GridBot", symbol: 
         bot.stop_buy_unlock_hours = float(sb_cfg["stop_buy_unlock_hours"])
     if "dead_zone_hours" in sb_cfg and sb_cfg["dead_zone_hours"] is not None:
         # 74b (S74b): per-coin dead-zone recalibrate threshold (hot-reload).
-        # Read fresh on every tick via self.dead_zone_hours.
+        # Read fresh on every tick via self.dead_zone_hours. S131a: 0 = off.
         bot.dead_zone_hours = float(sb_cfg["dead_zone_hours"])
+    _check_dead_zone_inert(bot, symbol)
     if "slippage_buffer_pct" in sb_cfg and sb_cfg["slippage_buffer_pct"] is not None:
         # S109 (MASTER 1.5): per-coin slippage buffer (SWEEP/LAST_SHOT buy).
         # Board-only static; FRACTION (0.03 = 3%). NULL in DB -> keep the

@@ -55,7 +55,8 @@ VARS = {"BASE": {}, "C": {}, "D": {"dz_fix": True}, "D2": {"dz_fix": True, "dz_k
         "E1": {"dz_fix": True, "dz_hours_fn": DZ_FNS["E1"]},
         "E2": {"dz_fix": True, "dz_hours_fn": DZ_FNS["E2"]},
         "E3": {"dz_fix": True, "dz_hours_fn": DZ_FNS["E3"]},
-        "F": {"fee_rate": 0.0025}, "G": {"sell_pct_add": 1.0}}
+        "F": {"fee_rate": 0.0025}, "G": {"sell_pct_add": 1.0},
+        "R": {"dz_off_regimes": ("neutral", "greed", "extreme_greed"), "dz_keep_buy_ref": True}}
 
 
 def fng_regimes() -> pd.DataFrame:

@@ -56,7 +56,16 @@ def send_idle_alerts(notifier, alerts, stop_buy_active: bool = False) -> None:
             continue
         sym = alert["symbol"]
         base = sym.split("/")[0] if "/" in sym else sym
-        if alert.get("recalibrate"):
+        if alert.get("dead_zone"):
+            # S131a: the dead-zone reset clears the sell ladder only; the buy
+            # reference stays where it was (D2).
+            notifier.send_message(
+                f"🔄 <b>DEAD ZONE: {base}</b>\n"
+                f"After {alert['elapsed_hours']:.1f}h without trades, sell ladder reset: "
+                f"next sale from avg cost.\n"
+                f"Buy reference unchanged at {fmt_price(alert['reference_price'])}."
+            )
+        elif alert.get("recalibrate"):
             notifier.send_message(
                 f"🔄 <b>IDLE RECALIBRATE: {base}</b>\n"
                 f"After {alert['elapsed_hours']:.1f}h idle, buy reference reset to "
