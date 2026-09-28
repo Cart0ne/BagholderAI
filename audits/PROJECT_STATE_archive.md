@@ -1396,3 +1396,106 @@ tests/                     **356/356 verdi** (S125: +4 T.4 in S124, +1 in S125; 
 ### Header S128
 > **2026-09-19 — S128: Supabase si blocca per ore — diagnosi, primo riavvio, registratore.** Quattro blocchi del database (4, 17, 18 e 19 set: il 17 dalle 16:39 e il 18 dalle 13:54, entrambi sbloccati da soli alle 20:13; il 19 dalle 11:25) con il 100% delle richieste fallite: il 17-18 persi dal DB 4 trade SOL reali (ricostruiti il 18 con l'ok di Max). **Diagnosi** (connettore Supabase + endpoint metriche + dashboard): la VM gratuita ha 431 MB di RAM e i servizi Supabase ne chiedono 1,28 GB → ~420 MB fissi in swap → **memoria esaurita = provato**; innesco probabile = budget Disk IO della Nano (non dimostrabile: durante i blocchi è cieco anche il monitoraggio Supabase). Esclusi CPU e le nostre query (DB 80 MB, ~0,2 richieste/s). **Decisione Max**: monitorare, riavviare al blocco successivo, poi scegliere fra VM propria (sua preferenza) e piano Pro. **Registratore** swap/disco ogni 30 min sul Mini (`b1fd0d0`, `14b1f3b`). Il blocco è tornato alle 11:25 → **Max ha riavviato il progetto alle 12:57**: swap già a 220–245 MB nei primi 2 minuti (indizio: macchina troppo piccola anche appena accesa). CLAUDE.md §5/§6 allineati al setup reale (`b63c8c9`). Dettaglio → §3/§4/§5/§6/§7/§10.
 
+## Rimosso in sessione S132 (2026-09-28) — compaction PROJECT_STATE (56 KB > tolleranza 52 KB, target ≤ 40 KB)
+
+<!-- riga 71 -->
+**🆕 Supabase — osservazione dopo il riavvio (S128):** registratore [`scripts/supabase_metrics_recorder.py`](scripts/supabase_metrics_recorder.py) via cron `*/30` sul Mini → `logs/supabase_metrics.jsonl` (una riga ogni 30 min: swap, memoria promessa, dischi, CPU; `ok:false` = Supabase bloccato). **Da leggere**: dove si assesta lo swap dopo il riavvio del 19-set 12:57 (220→245 MB nei primi 2 minuti; prima del blocco 416–429). Se risale in ore/giorni → macchina troppo piccola → VM o Pro; se resta basso per settimane → riavvio programmato (API `POST /v1/projects/{ref}/restart`: il token serve col permesso "Project Settings read-write", lo stesso che consente di **cancellare** il progetto). Collegati: `log_trade` e report delle 20:00 senza retry, nessun backup (§5).
+
+<!-- riga 73 -->
+> Parcheggiato in compaction S125: **backtest hand-off TF** (modellare il TF come "ride mode" nel harness) — trigger: sessione backtest, TF fermo da oggi → [archive](audits/PROJECT_STATE_archive.md).
+
+<!-- riga 75 -->
+**R.7 — Mac Mini autonomo: punto 1 ✅ SHIPPED S129 (27-set)** — LaunchAgent `com.bagholderai.autostart` ([plist](config/launchd/com.bagholderai.autostart.plist)) → 5 min dopo il login lancia [`scripts/start_bots.py`](scripts/start_bots.py) `--auto` (unica fonte dei flag, usato anche a mano: runbook §3). Lancia solo ciò che manca, non parte senza rete (riprova 30 min), niente respawn, interruttore `~/.bagholderai_no_autostart`. Test: (a) coi bot vivi → "bot già vivi" ✅ (a mano e via launchd, 21:03); (b) processo finto via launchd → sopravvive ✅; **(c) prova vera al prossimo riavvio del Mini**. **Resta aperto il punto 2** (watchdog Wi-Fi, test con Max vicino al Mini). Testo pieno → [MASTER_TASK_LIST R.7](config/MASTER_TASK_LIST_2026-09-28.md).
+
+<!-- riga 77 -->
+**✅ A.1 — CHIUSA S130 (28-set)** → [report](report_for_CEO/2026-09-28_S130_RforCEO_analisi-strategia-A1.md) (piano approvato da Max con D2 aggiunta e staking SOL in riga separata). Strumenti riutilizzabili `scripts/backtest/a1_*.py` (`b386b1f`): simulatore fedele al bot live (Sherpa minuto per minuto, fermi, riavvii ricostruiti), prova ancorata 54/62 operazioni reali rifatte, confronto appaiato su 20 disturbi di prezzo, storico con Sherpa ricostruito dal Fear & Greed. Dati in `audits/backtest/a1/` + prezzi Binance/Coinbase in `audits/backtest/data/` (non versionati). **Decisioni aperte → §6.**
+
+<!-- riga 87 -->
+- 🟡 **R.1 Riconciliazione Kraken — IN CORSO (S129, Max 27-set: prima di A.1)**. **Fase 1 ✅** [`scripts/reconcile_kraken.py`](scripts/reconcile_kraken.py) (`dbe5abc`), prova a vuoto 27-set 19:46 UTC: **BTC 26/26, SOL 39/39 ordini abbinati, 0 differenze a tolleranze da denaro vero, saldi OK** (BTC identico, SOL +0,19% = staking), 1 conversione EUR→USD esclusa. **Fase 2 ✅** (`0204664`): migration `s129_reconciliation_runs_kraken` via MCP (colonna `venue`, 403 righe esistenti = binance; `exchange_count`, `unmatched_exchange_count`, saldi DB/Kraken, `balance_status/note`; CHECK status + DRIFT_EXCHANGE_ORPHAN/DRIFT_DB_ORPHAN/DRIFT_BALANCE), `--write` (primo run 19:51 UTC: BTC e SOL OK), sezione **"Reconciliation · Kraken" in `/admin`** (archivio Binance filtrato per venue). **Fase 3 ✅** (`25c02a0`): `cron_reconcile.sh` → `reconcile_kraken.py --write` alle 03:00 Rome (crontab invariato, solo commento; backup `~/crontab_backup_20260927.txt`), provato a mano 19:58 UTC: OK. **Primo notturno: 28-set 03:00 → controllare in `/admin`**. **Da fare**: fase 4 dashboard pubblica §5 dopo qualche notte pulita (ok Max). USD non riconciliato: fase successiva (serve registro depositi).
+
+<!-- riga 88 -->
+  - 📝 **Input S127 dal ledger Kraken** (letto a mano il 16-set): staking SOL settimanale (resta attivo → movimento noto, non divergenza), depositi EUR a fee 2,4% + conversioni EUR→USD, differenze trade DB↔ledger sotto il centesimo. Lettura: `KrakenClient().raw` (nonce µs come i bot) + paginazione (max 50 righe). Dettaglio → MASTER_TASK_LIST nota R.1.
+
+<!-- riga 95 -->
+**🆕 XRP a prezzo fisso (parcheggio S125, prossimo esperimento):** misurare la commissione **maker** reale con un singolo ordine limite (listino 0,25% vs 0,80% taker che paghiamo oggi). Vale ~2/3 del nostro costo principale ed è mezz'ora di lavoro. Da tenere separato dalla "macchina completa di gestione ordini in attesa" (settimane). **Nota (Max, 07-ago): il margine è escluso** — proposto e ritirato nella stessa sessione; il bot non ha modello contabile per le posizioni a leva (non compaiono in `fetch_balance`), e il DCA del grid è esattamente il comportamento che viene liquidato.
+
+<!-- riga 97 -->
+> **Da osservare** (TODO chiusi archiviati in compaction S103a/S120): convergenza buy_pct post-Sherpa-LIVE; `sherpa_proposals` ≤ ~18 righe/gg; lampada STOP BUY viva (BTC in stop-buy dal boot S127); Sherpa che **restringe** la vendita SOL al boot S127 (`sell_pct` 3,36→2,52, `buy_pct` 1,34→1,68). ✅ `SHERPA_TELEGRAM_ENABLED` tolto al restart S127 — ma non bastava: i "CONFIG CHANGE DETECTED" li manda il grid → silenziati per i 7 parametri di Sherpa in S129 (`77f0250`).
+
+<!-- riga 108 -->
+- **2026-09-27 (S129) — R.7 avvio automatico: launcher in Python, non bash; `AbandonProcessGroup`; niente respawn.** Piano approvato da Max. Test sul Mini: sotto launchd `/bin/bash` riceve "Operation not permitted" su `/Volumes/Archivio` (permesso macOS TCC, disco USB), il Python di Homebrew (lo stesso del listener `/approve`) legge e scrive → `start_bots.sh` → `start_bots.py`. Provato anche che senza `AbandonProcessGroup` launchd uccide i processi lanciati a fine job. ALTERNATIVA scartata: dare accesso completo al disco a bash (permesso troppo largo). RISCHIO: un upgrade di Homebrew Python può richiedere di ri-concedere il permesso (vale anche per `/approve`). FALLBACK: `launchctl unload` + runbook §3 a mano.
+
+<!-- riga 109 -->
+- **2026-09-26 (S129) — Conservazione dati Sherpa (60→120 gg) e Sentinel (30→120 gg).** RICHIESTA Max (A.1: storico dei regimi). RAZIONALE: DB 64 MB su 500 MB del FREE; il collo di bottiglia è il Disk IO ([db_maintenance.py](bot/db_maintenance.py)) e le righe inserite al giorno non cambiano (+~7 MB di righe, indici un po' più grandi). Il premesso "8 GB" è del Pro, non del FREE. **Attivo dal restart del 27-set** (codice `4ba8928`). Copia congelata già fatta: `audits/a1_snapshot_20260926/` (Mini + MacBook, 10 MB). FALLBACK: rimettere 30/60.
+
+<!-- riga 110 -->
+- **2026-09-26 (S129) — A.1 anticipata: primo task della prossima sessione, prima di R.7.** DECISIONE Max, dopo il caso BTC (+11–13% sopra la media senza vendere, bug zona morta). CC ha segnalato il salto di sequenza (R.7 era il prossimo; il 26-set altre ~7h di fermo). Piano scritto e da approvare: [config/2026-09-26_S129_piano_A1_analisi-strategia.md](config/2026-09-26_S129_piano_A1_analisi-strategia.md). Idea di Max: tempo della zona morta variabile col regime → già così in Sherpa ma nella forchetta 1–3h; A.1 prova 3 varianti fissate prima.
+
+<!-- riga 111 -->
+- **2026-09-26 (S129) — Avvisi Telegram "CONFIG CHANGE" muti per i 7 parametri che Sherpa gestisce, attivi per tutti gli altri campi.** RICHIESTA Max (16-set: "togliamo i messaggi di sherpa", eseguita a metà in S127). RAZIONALE: ~12 avvisi/giorno di rumore; restano in `bot_events_log` + `config_changes_log` (/admin). Un cambio di capitale, `is_active`, ecc. avvisa ancora (allarme anti-manomissione). Costo: anche un ritocco manuale dal pannello a uno di quei 7 parametri non arriva più su Telegram. ALTERNATIVE: flag env che spegne tutto (perde l'allarme); distinguere l'autore via `config_changes_log` (query in più a ogni refresh). FALLBACK: revert di `77f0250` [config/supabase_config.py](config/supabase_config.py).
+
+<!-- riga 112 -->
+- **2026-09-19 (S128) — Supabase: monitorare, riavviare al blocco successivo, poi decidere.** DECISIONE Max. RAZIONALE: diagnosi = RAM della VM FREE esaurita (swap ~420 MB su 431 MB di RAM, memoria promessa 1,28 GB oltre il limite di 1,2); Max non esclude un problema lato Supabase (4 mesi senza guai) e i dati confermano che il nostro carico è leggero. ALTERNATIVE: Pro + Micro 1 GB subito (~$25/mese); migrazione a VM propria. FALLBACK: se i blocchi tornano anche dopo il riavvio → scelta VM/Pro col CEO. Riavvio eseguito da Max il 19-set 12:57 durante il 4° blocco (Project Settings → General → Restart project).
+
+<!-- riga 113 -->
+- **2026-09-19 (S128) — Preferenza Max: VM online propria (bot + Postgres) invece del piano Pro — NON ancora decisa col CEO.** Obiezioni CC: (1) diventiamo noi i gestori del DB (backup verificati, aggiornamenti di sicurezza); (2) il sito e le dashboard leggono il DB dal browser (~22 chiamate REST con chiave anon + 29 policy) → PostgREST esposto in HTTPS da gestire noi; (3) R.7 "Mac Mini autonomo" (prossimo lavoro) perderebbe quasi tutto il senso → decidere prima di iniziarla; (4) serve un ponte durante la migrazione. A favore: toglie insieme i due punti deboli (Mini di casa + DB gratuito) e costa meno del Pro. Supabase realmente usato: poco (28 tabelle, 6 funzioni/4 trigger, 1 job pg_cron; niente auth/storage/edge; bot tutti via `db/client.py`).
+
+<!-- riga 114 -->
+- **2026-09-19 (S128) — Registratore delle metriche ogni 30 minuti, non 5.** Obiezione di Max: "aggiungi carico alla macchina che si blocca?" → ~2 richieste/h contro ~800/h dei bot, nessuna query SQL, valori serviti da una copia già pronta; ridotto comunque a 30 min. Durante un blocco non legge nulla: la lettura fallita segna l'orario (il 19-set ha registrato l'inizio fra 11:00 e 11:30). FALLBACK: togliere la riga di crontab.
+
+<!-- riga 126 -->
+- ✅ **[S129] Grafici (Max 27-set) — dashboard CORRETTO, homepage verificata.** (a) Dashboard §2 "Portfolio value": le fotografie `daily_pnl` erano giuste ($416–454), il grafico le deformava — `− 100` di fondo TF rimasto dopo S125 (TF_ERA_BUDGET=0), commissioni sottratte due volte (total_pnl è netto da T.3), giorni senza fotografia sostituiti dal solo realizzato → fix `9b5ad33` (giorni mancanti = nessun punto, linea retta). Es. 22-set $347 → $454. (b) Homepage "Portfolio Overview": sparkline = ultime 7 fotografie, **corretta** (segue BTC 86,6k→84k); sembra nervosa perché ingrandisce movimenti di pochi $. Residui minori (non fatti, da decidere): etichetta "7d" = in realtà "ultime 7 fotografie" (dopo un buco copre più giorni); monitor "NET REALIZED" sulla scrivania nella scena ha una linea disegnata a mano accanto al numero vero ([LabRoom.jsx:240](web_astro/src/components/office/LabRoom.jsx#L240)).
+
+<!-- riga 130 -->
+- ✅ **[S130] Blocco "sopra la media" scriveva una riga in `bot_events_log` ogni minuto** (805 in 14h su BTC il 28-set, da quando il prezzo è sceso sotto il riferimento $84.751 portato su dal reset zona morta) → `354586a`, **attivo al prossimo riavvio**.
+
+<!-- riga 131 -->
+- ✅ **[S130] Pannello /grid "Next buy if ↓" mostrava una soglia irraggiungibile** ($84.073 con costo medio $77.363) → ora il costo medio con nota e tooltip (`354586a`, live via Vercel).
+
+<!-- riga 169 -->
+- **Capitale reale su Kraken (16-set, dal ledger):** USD **$322,11** · BTC 0,00287408 (avg $77.476,28) · SOL 0,27872354 (DB 0,277958 + staking) → equity ≈ **$568** (BTC $76.053, SOL $98,21) contro $551,15 al cutover del 07-ago. Realized netto su Kraken **+$20,86** (BTC +$9,88 · SOL +$10,98), fee di trading ~$10. **Costi d'ingresso** ≈ **$18,37** (depositi EUR 2,4% + conversioni EUR→USD 0,2% a luglio sul mercato e ~1% ad agosto con la conversione rapida): coperti dal realized (+$2,57), non ancora dall'equity (~−$5, BTC sotto avg). Max: *"in teoria non dovrei fare altri versamenti"*. Nessun prelievo, nessun movimento ignoto.
+
+<!-- riga 171 -->
+- **Supabase riavviato (S128)**: 19-set 12:57 Roma, da Max (Restart project completo, durante il 4° blocco): Postgres ripartito 10:57:44 UTC, bot tornati a scrivere da soli alle 12:58 senza essere riavviati. Il DB girava ininterrottamente dal 18-mar (184 giorni). **Crontab Mini**: aggiunta `*/30 … scripts/cron_supabase_metrics.sh` (copia del crontab precedente in `~/crontab_backup_20260919.txt`).
+
+<!-- riga 172 -->
+- **Go/no-go €100 LIVE**: **nessuna data fissa** — gated da condizioni di mercato (bear + bull + lateral). Sequenza: Sherpa LIVE testnet ✅ (S102b) → osservazione → S103 parametri Board-only → barometro verdict (~23 giu) → Board approval → mainnet.
+
+<!-- riga 213 -->
+| 2026-09-18/19 | infra+ops+docs | **S128** blocchi Supabase: backfill trade SOL persi (18) + diagnosi + registratore metriche + primo riavvio (19) | SHIPPED `b1fd0d0` → `b63c8c9` + commit di chiusura; nessun restart dei bot; Supabase riavviato da Max | **18-set**: 4 fill Kraken SOL/USD non scritti durante i blocchi → ricostruiti nel DB con l'ok di Max (posizione DB = memoria bot). **19-set**: diagnosi via connettore Supabase + endpoint Prometheus + screenshot dashboard → RAM della VM FREE esaurita (431 MB, swap ~420, commit 1,28 GB oltre il limite), innesco probabile budget Disk IO, esclusi CPU e query nostre. Max: monitorare → riavvio al blocco successivo → poi VM propria vs Pro (preferisce VM; col CEO). Registratore `*/30` sul Mini (`logs/supabase_metrics.jsonl`), ridotto da 5 a 30 min su obiezione di Max sul carico. 4° blocco alle 11:25 → riavvio 12:57, swap 220–245 MB a 2 min dal boot. CLAUDE.md §5/§6 allineati (2 grid Kraken, TF spento, cron completi). Nessun trade perso il 19. Roadmap: nessuna voce toccata. Nessun report CEO (niente brief): domande in §6. |
+
+<!-- seconda passata, riga 125 -->
+- 🟡 **[S125] Riconciliazione Kraken assente** → in corso R.1 (S129: script ok a vuoto, manca il notturno) → vincolo §1. Non è un bug di codice ma un buco di copertura, ed è il più serio aperto oggi.
+
+<!-- seconda passata, riga 127 -->
+- 🟢 **[S125] I numeri cablati sono la classe di bug dominante** (6 superfici in un giorno, trovate renderizzando la pagina viva). Regola: dopo un cambio di venue/ciclo si guarda il prodotto, non il sorgente. Testo pieno → archive compaction S127.
+
+<!-- seconda passata, riga 131 -->
+- 🟠 **[S119b] Floor doppia-conta la fee di buy (input nodo 5)** — `sell_pipeline.py:298-305`: `fee_floor = 2×fee_rate`, `min_price = avg × (1 + margine + 2×fee)`. Ma da S118 l'**avg include già 1× fee** (`buy_pipeline.py:304` `cost_for_avg = cost+fee`). Break-even netto vero = `avg×(1+fee)`≈avg×1,008; il floor sta a avg×1,016 → **~0,8% sovra-protettivo** (blocca vendite già in utile netto nella banda [1,008;1,016)). Non pericoloso (safe direction), ma sposta il floor → **rivedere la formula quando si chiude il nodo 5** (un margine 0,4% va sopra `avg×(1+fee)`, non `avg×(1+2×fee)`).
+
+<!-- seconda passata, riga 132 -->
+- **🟡 [S106a] PGRST100 "Failed to log scan data: failed to parse columns parameter ()"** — WARNING ricorrente nel TF (`logs/trend_follower.log`, es. 23:06:23, 23:09:40; pre-esistente, visto anche 21:23). Non blocca lo scan (scrive comunque trend_scans? da verificare). Una `.select()`/columns param vuota nel path di logging scan. Separato dal grid_mode fix; micro-brief futuro.
+
+<!-- seconda passata, riga 134 -->
+- 🟢 **[S119b] LOW cosmetico — reconcile logga "Binance" su venue kraken** — `state_manager.py:339/417`: stringhe hardcoded. La fonte dati è **corretta** (interroga Kraken via `bot.exchange_client`, `state_manager.py:318-319` + `grid_runner:330`). Solo l'etichetta è fuorviante → micro-fix. (CEO obiezione "reconcile cieco" verificata e **respinta con prova di codice**, non solo 0=0.)
+
+<!-- seconda passata, riga 135 -->
+- 🟢 **[S122] LOW — 2 query pubbliche `sherpa_proposals` senza filtro symbol** (`sherpa-live.ts:63` lampada STOP BUY limit=3; `dashboard-live.ts:1784` badge regime `rows[0]`): con Sherpa che scrive anche per BTC/USD Kraken, vedono la riga Kraken. Innocuo in valore (regime/stop_buy identici tra simboli), leak semantico + assunzione "3=1 per coin" stale. Follow-up: `&symbol=in.(...binance)`. (report sherpa-on-kraken §3)
+
+<!-- seconda passata, riga 142 -->
+- ✅ **[S130→S131] A.1 — decisioni prese dal Board S131** (BUSINESS_STATE §4: zona morta → regola esplicita S131a; quota-base scartata; A.2 dopo X.1; K1/K2 protezione crollo in coda cervelli). Testo originale: **[S130] A.1 — decisioni per CEO/Board** ([report §6](report_for_CEO/2026-09-28_S130_RforCEO_analisi-strategia-A1.md)): (1) **zona morta**: non correggere in modo diretto; provare prima la regola esplicita "spenta in avidità/neutrale, attiva in paura" + D2 (non era nell'elenco pre-fissato → mezz'ora di prova); (2) **X.1 procedere** (unica alternativa mai perdente nello storico; con commissione più bassa rivedere anche il margine di vendita); (3) **mandato**: in rialzo il grid lascia molto sul tavolo (SOL investito in media 26%) → quota tenuta + grid? (non provato); (4) **rischio crollo**: SOL nov 2022 −53% ≈ compra-e-tieni, contanti finiti al primo −20% e blocco perdita che si riapre da solo ogni 6-12h in paura → allungarlo o lotti più piccoli; (5) materiale per un post (numeri onesti).
+
+<!-- seconda passata, riga 144 -->
+- 🆕 **[S127] Da girare al CEO**: (a) **Max ha emendato la sequenza del 9-ago** — R.7 automatismi Mac Mini passa davanti a R.1 (nota in testa a `config/SEQUENZA_post-golive_v1.md`, il resto del file è intatto); (b) BUSINESS_STATE §6/§7 dicono ancora "post di annuncio denaro reale non scritto" — è uscito il 9-ago (X + Substack Notes). Testo CEO, non toccato.
+
+<!-- seconda passata, riga 178 -->
+| 2026-08-27 | 3 | **A3-20260827** cruscotto canali — Cowork scheduled | **CON RISERVE in peggioramento** | 1C · 2H · 2M · 2L. Dev.to +16,8% senza nuovi post; Bing 2° click; GSC pos 13,8→18,1; **0 nuovi post blog** nel ciclo; ultimi 3 post X a 3 impression. **CRITICAL Umami 401 al 3° ciclo**, minaccia REJECTED — premessa da verificare (§6 S127). Report: `audits/reports/20260827_audit[A3].md` (travasato S127). |
+
+<!-- seconda passata, riga 179 -->
+| 2026-08-26 | 1 | **A1-automated** integrità tecnica mensile — Cowork | **APPROVED** | 0C · 0H · 0M · 2L. **357/357** test, 0 schema mismatch, fleet sana. **LOW-1: finestra di rete di ~5h sul Mini la notte del 24-ago** — col senno di poi, il presagio del blackout Wi-Fi 5→14 set. LOW-2 non-atomicità 62a (valutare prima di scalare il capitale). Report: `audits/reports/20260826_audit[A1].md` (travasato S127). |
+
+<!-- seconda passata, riga 180 -->
+| 2026-07-29 | 2 | **A2-20260729** coerenza narrazione pubblica ↔ codice/DB — Cowork | **CON RISERVE** | 0C · **1H** · 1M · 3L · 8 positive. **H1**: la narrazione diceva ovunque "testnet / no real money" mentre il denaro girava dal 17-lug, caso peggiore `/terms` (claim legale al presente). ✅ **CHIUSO in S125** col reveal. M1 **non confermato** (verifica CC: era un artefatto no-JS dell'auditor). L1+L2 fixati `9159419`; L3 riclassificato 🟠 → §5. Testo pieno → [archive](audits/PROJECT_STATE_archive.md). Report: `audits/reports/20260729_audit[A2].md`. |
+
+<!-- seconda passata, riga 181 -->
+| 2026-05-07 → 07-30 | 1+2+3 | **I primi 9 audit** (+ A1-automated 07-29 e A3-20260730, righe spostate in archive S129) (A1 Phase1-split · A1-automated 05-27 · A2-S87 · A3-S78 · A1-automated 06-01 · A3-20260531 · A2-20260619 · A1-20260630 · A3-20260702) — sintesi-indice | tutti CON RISERVE/APPROVED | Findings remediati in S88-S89, S108a, S114, S115a. Due verità di fondo che hanno cambiato la strategia: **~3 visitatori esterni reali/mese** (la distribuzione è il collo di bottiglia) e il verdetto S113 **grid = ammortizzatore, non motore**. Dettaglio → [archive](audits/PROJECT_STATE_archive.md) compaction S116/S124/**S125**. Report gitignored in `audits/reports/`. |
