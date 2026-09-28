@@ -34,7 +34,9 @@
 
 **Coerente con la decisione del 7-ago?** Negli effetti sì: il TF è fermo. Nella forma no: due segnali su tre dicono "acceso", l'interruttore nel database e il valore predefinito della variabile (`true` se manca). Oggi basta `start_bots.py` a tenerlo spento. Chi lanciasse l'orchestrator a mano, dimenticando la variabile, farebbe ripartire il TF, anche se solo su Binance testnet.
 
-**Proposte per Max (non eseguite: il brief chiede di non toccare il TF senza ok):**
+**Esito: Max ha scelto A.** Il 28-set alle 19:31 UTC l'interruttore nel database è stato spento, con la riga in `config_changes_log` (`manual-ceo`). Il TF resta fermo, niente riavvio; dal prossimo avvio il messaggio dirà "TF off". B non è fatta: finché i due flag coincidono non serve.
+
+**Proposte presentate a Max:**
 - **A (consigliata): spegnere l'interruttore nel database** (`trend_follower_enabled = false`). Si fa con una modifica al database, reversibile in un secondo, senza riavvio. Da quel momento il messaggio dice "TF off" e le due protezioni sono entrambe chiuse.
 - **B: correggere il messaggio** perché mostri lo stato effettivo, per esempio "TF off (database on, ENABLE_TF=false)". È una riga nell'orchestrator e diventa attiva al prossimo riavvio. Può affiancare A.
 
@@ -66,7 +68,7 @@ Ogni giro scrive le stesse 71 righe. Tipi di evento nel giro delle 19:11:
 - 1 `dead_zone_recalibrate` TEST/USDT e 1 `dead_zone_recalibrate` BTC/USDT a $81.853 (più 1 `post_recalibrate_cooldown`);
 - 1 ciascuno di `profit_lock_triggered`, `trailing_stop_triggered`, `sell_penalty_reset`, `idle_recalibrate_suppressed_no_cash`, `idle_reentry_suppressed_no_cash`.
 
-Copia completa prima della cancellazione: `audits/backtest/s131c_test_rows_deleted_20260928.json` sul Mini (213 righe, non in git). **Le 142 righe del 26-set non le ho cancellate** (serve l'ok di Max). Se nessuno fa niente, spariscono da sole il 4-ott con la pulizia dei 7 giorni.
+Copia completa prima della cancellazione: `audits/backtest/s131c_test_rows_deleted_20260928.json` sul Mini (213 righe, non in git). **Le 142 righe del 26-set restano:** Max ha scelto di lasciarle scadere. Spariscono da sole il 4-ott con la pulizia dei 7 giorni.
 
 **La correzione** (`tests/conftest.py`, solo codice dei test, nessuna modifica ai bot):
 - **Primo strato:** prima che i test importino qualunque modulo del bot, la fabbrica del client viene sostituita da un finto database in memoria. Registra le scritture e restituisce risultati vuoti alle letture. Il momento conta: 23 moduli importano `log_event` direttamente all'avvio. È per questo che in S114 il problema era stato giudicato "non banale": una sostituzione fatta più tardi non li raggiunge.
