@@ -70,31 +70,41 @@ def execute_percentage_buy(bot, price: float) -> Optional[dict]:
             and not is_dust(bot.managed_holdings, price, bot._exchange_filters)  # S105b (was managed_holdings > 0)
             and bot.state.avg_buy_price > 0
             and price > bot.state.avg_buy_price):
-        logger.info(
+        # S130 (2026-09-28): log the block ONCE per episode, not every tick.
+        # When the buy reference sits above avg (e.g. after a dead-zone reset)
+        # the -buy_pct trigger stays met while price is between avg and the
+        # trigger, so this path runs every tick: 805 rows in bot_events_log in
+        # 14h on BTC/USD (Supabase FREE). Re-armed when avg changes or a buy
+        # clears the guard.
+        first_block = bot._buy_blocked_logged_avg != bot.state.avg_buy_price
+        (logger.info if first_block else logger.debug)(
             f"[{bot.symbol}] BUY BLOCKED: price {fmt_price(price)} > avg cost "
             f"{fmt_price(bot.state.avg_buy_price)}. Strategy A never buys above avg "
             f"(holdings={bot.state.holdings:.6f})."
         )
-        from db.event_logger import log_event
-        try:
-            log_event(
-                severity="info",
-                category="trade_audit",
-                event="buy_blocked_above_avg",
-                symbol=bot.symbol,
-                message=(
-                    f"Buy blocked: price {price} > avg {bot.state.avg_buy_price} "
-                    f"(holdings={bot.state.holdings})"
-                ),
-                details={
-                    "price": float(price),
-                    "avg_buy_price": float(bot.state.avg_buy_price),
-                    "holdings": float(bot.state.holdings),
-                },
-            )
-        except Exception:
-            pass
+        if first_block:
+            bot._buy_blocked_logged_avg = bot.state.avg_buy_price
+            from db.event_logger import log_event
+            try:
+                log_event(
+                    severity="info",
+                    category="trade_audit",
+                    event="buy_blocked_above_avg",
+                    symbol=bot.symbol,
+                    message=(
+                        f"Buy blocked: price {price} > avg {bot.state.avg_buy_price} "
+                        f"(holdings={bot.state.holdings})"
+                    ),
+                    details={
+                        "price": float(price),
+                        "avg_buy_price": float(bot.state.avg_buy_price),
+                        "holdings": float(bot.state.holdings),
+                    },
+                )
+            except Exception:
+                pass
         return None
+    bot._buy_blocked_logged_avg = None  # S130: guard cleared → next block is a new episode
 
     standard_cost = bot.capital_per_trade
     cash_before = bot._available_cash()

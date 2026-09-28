@@ -581,6 +581,36 @@ def test_k_buy_guard_above_avg_when_holdings():
     print(f"  TF bot (managed_by='tf'): buy above avg allowed ✓ (signal-driven path)")
 
 
+def test_k2_buy_guard_logs_once_per_episode():
+    """S130 (2026-09-28): the Strategy A block is written to bot_events_log
+    once per episode, not every tick (BTC/USD: 805 rows in 14h). A new row
+    only after the avg changes or a buy clears the guard.
+    """
+    from unittest.mock import patch
+    print("=" * 70)
+    print("TEST K2: buy guard logs once per episode")
+    print("=" * 70)
+    bot = make_bot()
+    bot.managed_by = "grid"
+    bot._execute_percentage_buy(price=100.0)  # first entry, avg=$100
+
+    with patch("db.event_logger.log_event") as log_event:
+        for price in (105.0, 104.0, 106.0):
+            assert bot._execute_percentage_buy(price=price) is None
+        assert log_event.call_count == 1, (
+            f"3 blocked ticks must log 1 row, got {log_event.call_count}"
+        )
+        print(f"  3 blocked ticks above avg: 1 event row ✓")
+
+        # Buy below avg clears the guard (and moves avg) → next block logs again
+        assert bot._execute_percentage_buy(price=95.0) is not None
+        assert bot._execute_percentage_buy(price=110.0) is None
+        assert log_event.call_count == 2, (
+            f"new episode must log again, got {log_event.call_count}"
+        )
+        print(f"  buy below avg, then blocked again: new event row ✓")
+
+
 def test_j_idle_recalibrate_skipped_above_avg():
     """Brief s70 FASE 2 (CEO + Max 2026-05-09): in IDLE RECALIBRATE path B
     (holdings > 0), skip the reset of _pct_last_buy_price if current_price
@@ -1859,6 +1889,7 @@ def main():
         test_i_sell_trigger_uses_avg_buy_price,
         test_j_idle_recalibrate_skipped_above_avg,
         test_k_buy_guard_above_avg_when_holdings,
+        test_k2_buy_guard_logs_once_per_episode,
         test_l_sell_trigger_includes_fee_buffer_grid_only,
         test_m_sell_ladder_three_steps,
         test_n_ladder_resets_on_full_selloff,

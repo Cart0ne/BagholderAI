@@ -209,6 +209,7 @@ class GridBot:
         self.skipped_sells: list = []    # filled each cycle with insufficient-holdings skips
         self.idle_reentry_alerts: list = []  # filled each cycle when idle re-entry fires
         self._idle_logged_hour: int = -1     # last elapsed-hour mark already logged (avoids spam)
+        self._buy_blocked_logged_avg: Optional[float] = None  # S130: avg of the last logged Strategy A buy block (avoids per-tick spam)
         # Percentage mode state (avg-cost trading post-S70 FASE 2)
         self._pct_last_buy_price: float = 0.0
         # Brief 70a Parte 3 (S70 2026-05-10): last sell price del ciclo

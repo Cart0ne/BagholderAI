@@ -1298,6 +1298,15 @@
         var hasBuyRef = buyRefForTrigger > 0 && buyPct > 0;
         var hasSellRef = a.avgBuyPrice > 0 && sellPct > 0 && !positionClosed;
         var nextBuyTrigger = hasBuyRef ? buyRefForTrigger * (1 - buyPct / 100) : 0;
+        // S130: Strategy A never buys above avg with an open position
+        // (buy_pipeline.py guard). When the reference sits above avg (e.g. after
+        // a dead-zone reset) the −buy_pct trigger is already met and the bot
+        // buys only once price reaches avg → show avg, not an unreachable
+        // trigger (BTC 28-set: "$84,073" shown, real next buy $77,363).
+        var buyCappedAtAvg = hasBuyRef && !positionClosed && a.avgBuyPrice > 0
+          && nextBuyTrigger > a.avgBuyPrice;
+        var rawBuyTrigger = nextBuyTrigger;
+        if (buyCappedAtAvg) nextBuyTrigger = a.avgBuyPrice;
         var ladderSellRef = botSellRef > 0 ? botSellRef : a.lastSellPrice;
         var sellRef = ladderSellRef > 0 ? ladderSellRef : a.avgBuyPrice;
         // S99b-b Parte B: the bot trades on sell_pct + _sell_pct_penalty
@@ -1360,8 +1369,13 @@
             '% of allocation. New buys are blocked. Existing holdings unaffected (Strategy A still applies). Reset mechanisms: profitable sell (always), OR auto-unlock timer (if enabled).' + unlockTooltipExtra + '">' +
             '<div class="cs-label" style="color:var(--red);">Stop-buy active</div>' +
             '<div class="cs-value" style="color:var(--red);font-size:11px;">BLOCKED · drawdown &gt; ' + stopBuyPct.toFixed(0) + '%' + unlockCountdownStr + '</div></div>'
-          : '<div class="coin-stat"><div class="cs-label">Next buy if ↓</div>' +
-            '<div class="cs-value" style="color:' + nextBuyColor + ';">' + nextBuyStr + '</div></div>';
+          : '<div class="coin-stat"' + (buyCappedAtAvg
+              ? ' title="The −' + buyPct.toFixed(1) + '% rule (trigger ' + fmtPrice(rawBuyTrigger) +
+                ') is already met, but Strategy A never buys above avg cost: next buy when price reaches avg."'
+              : '') + '><div class="cs-label">Next buy if ↓</div>' +
+            '<div class="cs-value" style="color:' + nextBuyColor + ';">' + nextBuyStr + '</div>' +
+            (buyCappedAtAvg ? '<div class="cs-label" style="text-transform:none;margin-top:2px;">= avg cost (no buys above avg)</div>' : '') +
+            '</div>';
         // Distanza % dal trigger di sell (negativo = ancora sotto trigger, positivo = già sopra)
         var nextSellDistance = (hasSellRef && livePrice > 0)
           ? ((livePrice - nextSellTrigger) / nextSellTrigger * 100) : null;
