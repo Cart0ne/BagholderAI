@@ -48,6 +48,8 @@ class A1Grid:
     dz_hours_fn: Optional[Callable[[str], float]] = None  # E: ore zona morta per regime
     sell_pct_add: float = 0.0         # G: + punti su sell_pct
     dz_off_regimes: tuple = ()        # S131a (R): zona morta spenta per scelta in questi regimi
+    trigger_fee_rate: Optional[float] = None  # S131a Q3 (F'): soglie di vendita calcolate come se la fee fosse questa
+    avg_trig: float = 0.0             # costo medio "come a trigger_fee_rate" (solo per la soglia)
     dz_resets_by_regime: dict = field(default_factory=dict)
     strategy: str = "A"
 
@@ -130,6 +132,8 @@ class A1Grid:
             return False
         fee = cost * self.fee_rate
         new_h = self.holdings + qty
+        if self.trigger_fee_rate is not None:
+            self.avg_trig = (self.avg_trig * self.holdings + cost * (1 + self.trigger_fee_rate)) / new_h
         self.avg = (self.avg * self.holdings + cost + fee) / new_h
         self.holdings = new_h
         self.cash -= cost + fee
@@ -167,6 +171,7 @@ class A1Grid:
             if self.holdings <= 1e-10:
                 self.holdings = 0.0
                 self.avg = 0.0
+                self.avg_trig = 0.0
             self.last_buy_price = price
             self.last_sell_price = 0.0
         else:
@@ -219,9 +224,11 @@ class A1Grid:
 
         # --- SELL ---
         if not self._is_dust(price):
-            ref = self.last_sell_price if self.last_sell_price > 0 else self.avg
+            f_trig = self.fee_rate if self.trigger_fee_rate is None else self.trigger_fee_rate
+            base_avg = self.avg if self.trigger_fee_rate is None else self.avg_trig
+            ref = self.last_sell_price if self.last_sell_price > 0 else base_avg
             sp = p.sell_pct + self.sell_pct_add
-            trig = ref * (1 + sp / 100) / (1 - self.fee_rate)
+            trig = ref * (1 + sp / 100) / (1 - f_trig)
             if self.avg > 0 and price >= trig:
                 self._sell(price, dt, "ladder" if self.last_sell_price > 0 else "avg")
 

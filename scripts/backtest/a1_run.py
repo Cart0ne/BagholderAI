@@ -47,6 +47,8 @@ VARIANTS = {
     "G": {"sell_pct_add": 1.0},
     # S131a: regola esplicita — zona morta spenta in neutrale/avidità/avidità
     # estrema, come oggi in paura/paura estrema, il reset non tocca il riferimento
+    # S131a Q3: F' = commissione 0,25% con soglie di vendita calcolate a 0,80%
+    "F2": {"fee_rate": 0.0025, "trigger_fee_rate": 0.008},
     "R": {"dz_off_regimes": ("neutral", "greed", "extreme_greed"), "dz_keep_buy_ref": True},
 }
 
