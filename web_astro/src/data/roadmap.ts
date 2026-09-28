@@ -41,7 +41,7 @@ export interface RoadmapData {
 }
 
 export const ROADMAP: RoadmapData = {
-  version: "Versione 1.56 — Settembre 2026",
+  version: "Versione 1.57 — Settembre 2026",
   lastUpdated: "2026-09-28",
   phases: [
     {
@@ -203,6 +203,7 @@ export const ROADMAP: RoadmapData = {
         { text: "Bots restart on their own after a Mac Mini reboot", status: "done", who: "AI", comment: "S129 (2026-09-27). Three reboots in September (a Wi-Fi drop, two macOS updates) each left the real-money bots stopped until someone relaunched them by hand — once for eleven days. Now a login agent waits five minutes, checks the network and the exchange, and starts only what is missing. It does not respawn a bot that crashes: that stays a human call." },
         { text: "Nightly Kraken ↔ database reconciliation", status: "active", who: "AI", comment: "S129 (2026-09-27). Every night at 03:00 each real-money order in our database is matched to its Kraken order (quantity, price, fee) and coin balances are compared with the exchange. First run: 65 of 65 orders matched, zero discrepancies. Visible in the private admin panel for now; the public dashboard switches over after a few clean nights. USD cash is not reconciled yet." },
         { text: "First strategy review on real money", status: "done", who: "AI", comment: "S130 (2026-09-28). Two months of real trades checked against simple alternatives fixed in advance (hold, weekly buys, fixed parameters, lower fees, different dead-zone timings) and against eleven historical months of falling, sideways and rising markets. Before trusting the simulator we made it replay our real trades: 54 of 62 came out the same. Report to the Board; decisions pending." },
+        { text: "Dead zone becomes an explicit rule", status: "done", who: "AI", comment: "S132 (2026-09-28). The review found that the dead-zone reset (sell a stuck lot after a few idle hours) only ever fired when the Mac Mini restarted, and that making it fire as designed would have cost money in a rising market. The Board turned the accident into a rule: off in greed and neutral, on in fear, and it no longer moves the buy price. Tested against the old behaviour on the two real months and on eleven historical months before going live the same evening." },
         { text: "Intensive monitoring (first week)", status: "todo", who: "MAX" },
         { text: "VPS migration for stability", status: "todo", who: "BOTH" },
         { text: "Gradual scale beyond $400", status: "todo", who: "MAX" },

@@ -4,7 +4,7 @@
 **Brief sorgente:** [`config/2026-09-28_S131a_brief_zona-morta-regola.md`](../config/2026-09-28_S131a_brief_zona-morta-regola.md) (Board S131)
 **Commit:** `a2a8028` (codice + test + modifica DB) · `9949fca` (variante F' negli script, per la Parte B)
 **Parte B (verifiche Q2-Q5b):** report separato [`2026-09-28_S132_RforCEO_a1-addendum.md`](2026-09-28_S132_RforCEO_a1-addendum.md)
-**Stato:** codice pronto e testato, **non ancora attivo**. Diventa attivo al prossimo riavvio dei bot, che decide Max, con la sequenza del §5.
+**Stato:** **LIVE dal 28-set 19:15 UTC.** Riavvio chiesto da Max ed eseguito da CC con la sequenza del §5, codice `9749b86`. Esito nel §5.
 
 ---
 
@@ -92,7 +92,20 @@ T.2 e T.3 (S120), che il brief chiedeva di verificare, sono già attivi da molti
 3. avvio con `scripts/start_bots.py`;
 4. controlli: nessuna vendita all'avvio; Sherpa non riscrive 2; nessun avviso `dead_zone_inert` nel registro eventi.
 
-**Dopo il riavvio:** la voce "zona morta inerte" di PROJECT_STATE §5 passa a chiusa con rimando a questo brief, e la roadmap riceve la voce della regola esplicita. **Vincolo noto, non bug:** idle e zona morta condividono ancora un solo cronometro. Oggi funziona perché in paura la zona morta (1h, 2h) arriva prima dell'idle (2h, 4h). Se un domani Sherpa cambiasse quei valori, lo segnala la guardia.
+**Eseguito il 28-set** (ok Max):
+- spegnimento ordinato alle 19:14 UTC, figli giù in 4 secondi, NewsKeeper non toccato;
+- zero scritto su BTC e SOL a bot spenti, con le righe in `config_changes_log`;
+- avvio alle 19:15 con gli stessi flag.
+
+**Verifiche:**
+- modalità denaro reale Kraken e riconciliazione d'avvio ok su entrambi;
+- **0 operazioni e nessun reset della zona morta all'avvio**;
+- Sherpa (regime avidità) non ha riscritto 2;
+- nessun avviso "inerte".
+
+BTC è ripartito col riferimento d'acquisto all'ultimo acquisto vero, $76.000: compra a $75.392. La scala è attiva dalla vendita a $84.735 e il prezzo è ~$83.700, quindi resta fermo come previsto al §4.
+
+**Fatto dopo il riavvio:** la voce "zona morta inerte" di PROJECT_STATE §5 è passata a chiusa con rimando a questo brief, e la roadmap (v1.57) ha la voce della regola esplicita. **Vincolo noto, non bug:** idle e zona morta condividono ancora un solo cronometro. Oggi funziona perché in paura la zona morta (1h, 2h) arriva prima dell'idle (2h, 4h). Se un domani Sherpa cambiasse quei valori, lo segnala la guardia.
 
 ## 6. Decisions
 
