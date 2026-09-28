@@ -14,7 +14,6 @@ Usage:
 Connectors:
     X         scripts.x_stats_refresh   (keys in config/.env)
     Dev.to    scripts.devto_stats       (keys in config/.env.marketing)
-    Umami     scripts.umami_stats
     Bing SEO  scripts.bing_seo_stats
     GSC       scripts.gsc_stats
 
@@ -24,6 +23,11 @@ Fonti MANUALI (no connettore, recupero a mano prima dell'audit):
               guarda u/Cart0neM nel browser. scripts/reddit_stats.py resta
               dormiente/pronto se riaprono. NON è nel run automatico (fallirebbe
               sempre con un falso ❌). Vedi audit_request_A3.md §1.
+    Vercel    Web Analytics: l'API dati risponde 404 sul team Hobby → Max copia
+              i numeri dal pannello (vedi config/cowork_prompt_A3_v2.md).
+
+Umami NON è più una fonte (decisione Max 2026-09-16, S127): l'API di Umami Cloud
+è a pagamento. scripts/umami_stats.py resta dormiente; vedi audits/DATA_CAVEATS.md.
 """
 
 import subprocess
@@ -35,10 +39,11 @@ REPO_ROOT = Path(__file__).parent.parent
 
 # Reddit NON è qui: API self-service chiusa da Reddit (2026-05-30) → fonte
 # manuale (vedi docstring). Inserirlo darebbe un ❌ fisso fuorviante.
+# Umami NON è qui dal S132 (fuori dalle fonti dal 16-set): il suo 401 fisso
+# aveva portato l'audit A3 del 27-set a REJECTED.
 CONNECTORS = [
     ("X", "scripts.x_stats_refresh"),
     ("Dev.to", "scripts.devto_stats"),
-    ("Umami", "scripts.umami_stats"),
     ("Bing SEO", "scripts.bing_seo_stats"),
     ("GSC", "scripts.gsc_stats"),
 ]

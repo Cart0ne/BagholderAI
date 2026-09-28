@@ -83,8 +83,9 @@
 
 | File | Stato |
 |---|---|
-| [config/2026-09-28_S131a_brief_zona-morta-regola.md](config/2026-09-28_S131a_brief_zona-morta-regola.md) | Brief CEO S131a: zona morta come regola esplicita + verifiche Q1-Q5 su A.1. Parte A codice S132 (`a2a8028`), riavvio e report da fare |
-| [config/2026-09-28_S131b_brief_contenuti-manutenzione.md](config/2026-09-28_S131b_brief_contenuti-manutenzione.md) | Brief CEO S131b: prompt audit A3 senza Umami + diagnosi poster X. In corso (S132) |
+| [config/2026-09-28_S131a_brief_zona-morta-regola.md](config/2026-09-28_S131a_brief_zona-morta-regola.md) | Brief CEO S131a: zona morta come regola esplicita + verifiche Q1-Q5 su A.1. Parte A codice S132 (`a2a8028`), report + addendum A.1 consegnati S132; **resta il riavvio** (Max) |
+| [config/2026-09-28_S131b_brief_contenuti-manutenzione.md](config/2026-09-28_S131b_brief_contenuti-manutenzione.md) | Brief CEO S131b: prompt audit A3 senza Umami + diagnosi poster X. Report S132 consegnato; **resta l'esperimento del poster col diario S131** (giro 29-set) |
+| [config/cowork_prompt_A3_v2.md](config/cowork_prompt_A3_v2.md) | Testo del task Cowork A3 v2 (senza Umami, Vercel manuale), da incollare nella UI Cowork. La copia "viva" del prompt è in `/Volumes/Archivio/bagholderai-audits/tasks/` (non in git) |
 | [config/2026-06-14_brief_sentinel-regime-technical-fallback.md](config/2026-06-14_brief_sentinel-regime-technical-fallback.md) | Proposta CC, attende CEO/Board |
 | [config/2026-06-27_S110c_brief_usdt-to-usdc.md](config/2026-06-27_S110c_brief_usdt-to-usdc.md) | USDT→USDC (MiCA), rimandato |
 | [config/2026-06-28_S111_brief_grid-regime-backtest.md](config/2026-06-28_S111_brief_grid-regime-backtest.md) | Backtest grid vs hold, in coda (S110d implementato 28-giu → `briefresolved.md/`) |
