@@ -1,7 +1,6 @@
 # Secrets
-config/.env
-config/.env.marketing
-config/.env.matrix
+# tutti i file .env di config, anche le copie (.env.bak…): il repository è pubblico
+config/.env*
 config/gsc_service_account.json
 
 # Python
