@@ -31,13 +31,16 @@ class TelegramNotifier:
         self.bot = Bot(token=TelegramConfig.BOT_TOKEN)
         self.chat_id = TelegramConfig.CHAT_ID
 
-    async def send_message(self, text: str, parse_mode: str = ParseMode.HTML) -> bool:
-        """Send a message to the configured chat. Returns True if sent."""
+    async def send_message(self, text: str, parse_mode: str = ParseMode.HTML,
+                           disable_notification: bool = False) -> bool:
+        """Send a message to the configured chat. Returns True if sent.
+        disable_notification=True delivers it without sound (night-time alerts)."""
         try:
             await self.bot.send_message(
                 chat_id=self.chat_id,
                 text=text,
                 parse_mode=parse_mode,
+                disable_notification=disable_notification,
             )
             logger.info("Telegram message sent.")
             return True
@@ -656,9 +659,9 @@ class SyncTelegramNotifier:
     def __init__(self):
         self._async = TelegramNotifier()
 
-    def send_message(self, text: str) -> bool:
+    def send_message(self, text: str, disable_notification: bool = False) -> bool:
         try:
-            result = _run_async(self._async.send_message(text))
+            result = _run_async(self._async.send_message(text, disable_notification=disable_notification))
             if not result:
                 logger.warning("Telegram send_message failed silently")
             return result

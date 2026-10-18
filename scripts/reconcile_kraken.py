@@ -28,9 +28,16 @@ Usage (Mac Mini, repo root):
     venv/bin/python3.13 scripts/reconcile_kraken.py --write      # also INSERT into reconciliation_runs (venue='kraken')
 
 Exit codes: 0 all OK · 1 at least one DRIFT* · 2 fatal (Kraken/DB unreachable)
+
+Telegram (S133, Max): with --write only, a silent message goes to the trade-alert
+chat when the run fails — any symbol not OK, or the run could not complete.
+A clean night sends nothing. Until S133 the outcome lived only in /admin, and a
+lost SOL buy (14-Oct Supabase block) sat there as DRIFT for 4 nights unseen.
 """
 
 import argparse
+import html
+import logging
 import sys
 from collections import defaultdict
 from datetime import datetime, timezone
@@ -53,6 +60,11 @@ STAKING_MAX_REL = 0.02      # SOL surplus up to +2% = staking rewards, OK with n
 STAKED_COINS = {"SOL"}
 
 SEVERITY = ["DRIFT_EXCHANGE_ORPHAN", "DRIFT_DB_ORPHAN", "DRIFT", "DRIFT_BALANCE", "OK"]
+
+ALERT_MAX_ITEMS = 5  # per symbol; the full list is in /admin
+
+# httpx logs request URLs at INFO, and Telegram URLs carry the bot token (S132).
+logging.getLogger("httpx").setLevel(logging.WARNING)
 
 
 def _ts(sec: float) -> str:
@@ -247,10 +259,60 @@ def write_results(client, results: list[dict], notes: str) -> None:
     print(f"\n✓ wrote {len(res.data or [])} rows to reconciliation_runs (venue=kraken)")
 
 
+# ============================================================
+# Telegram alert (S133)
+# ============================================================
+
+def build_alert(results: list[dict]) -> str | None:
+    """Telegram text (HTML) for a run with at least one symbol not OK; None if all OK."""
+    if all(r["status"] == "OK" for r in results):
+        return None
+    lines = ["⚠️ <b>Kraken reconciliation: DB and Kraken disagree</b>"]
+    for r in results:
+        lines.append(f"\n<b>{html.escape(r['symbol'])}</b> — {html.escape(r['status'])}")
+        if r["status"] == "OK":
+            continue
+        det = r.get("drift_details") or {}
+        items = []
+        for o in det.get("on_kraken_not_in_db", []):
+            items.append(f"On Kraken, not in DB: {o['at']} UTC {o['side'].upper()} "
+                         f"{o['qty']:.8f} @ ${o['price']:,.2f} ({o['order_id']})")
+        for d in det.get("in_db_not_on_kraken", []):
+            items.append(f"In DB, not on Kraken: {d['created_at']} UTC {d['side'].upper()} "
+                         f"{d['qty']:.8f} @ ${d['price']:,.2f} ({d['order_id']})")
+        for x in det.get("drift", []):
+            fields = ", ".join(f"{f['field']} DB {f['db']} vs Kraken {f['kraken']}" for f in x["findings"])
+            items.append(f"Different values on {x['order_id']}: {fields}")
+        if r.get("balance_status") != "OK":
+            items.append(f"Balance: {r.get('balance_note')}")
+        lines += [f"• {html.escape(it)}" for it in items[:ALERT_MAX_ITEMS]]
+        if len(items) > ALERT_MAX_ITEMS:
+            lines.append(f"• …and {len(items) - ALERT_MAX_ITEMS} more")
+    lines.append("\nDetails: /admin › Reconciliation · Kraken")
+    return "\n".join(lines)
+
+
+def fatal_alert(error: str) -> str:
+    """Telegram text (HTML) for a run that could not complete."""
+    return ("⚠️ <b>Kraken reconciliation failed</b>\n"
+            f"{html.escape(error[:300])}\n"
+            "Tonight's check is missing from /admin.")
+
+
+def notify(text: str) -> None:
+    """Silent message to the trade-alert chat. Never breaks the run."""
+    try:
+        from utils.telegram_notifier import SyncTelegramNotifier
+        sent = SyncTelegramNotifier().send_message(text, disable_notification=True)
+        print(f"Telegram alert {'sent' if sent else 'NOT sent'}")
+    except Exception as e:
+        print(f"Telegram alert failed: {type(e).__name__}: {e}")
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="R.1 — Kraken ↔ DB reconciliation (read-only)")
     ap.add_argument("--verbose", action="store_true", help="print every matched order")
-    ap.add_argument("--write", action="store_true", help="INSERT results into reconciliation_runs")
+    ap.add_argument("--write", action="store_true", help="INSERT results into reconciliation_runs (+ Telegram alert if not OK)")
     args = ap.parse_args()
 
     mode = "WRITE" if args.write else "dry-run (nothing written)"
@@ -263,12 +325,20 @@ def main() -> int:
         client = get_client()
     except Exception as e:
         print(f"FATAL: {type(e).__name__}: {e}")
+        if args.write:
+            notify(fatal_alert(f"Kraken or DB unreachable: {type(e).__name__}: {e}"))
         return 2
 
     pairs = sorted({f.get("pair") for f in fills})
     print(f"Kraken fills since {HISTORY_START:%Y-%m-%d}: {len(fills)} on pairs {pairs}")
 
-    results = [reconcile_symbol(s, raw, client, fills, balance, args.verbose) for s in SYMBOLS]
+    try:
+        results = [reconcile_symbol(s, raw, client, fills, balance, args.verbose) for s in SYMBOLS]
+    except Exception as e:  # DB reads happen here (e.g. a Supabase block at 03:00)
+        print(f"FATAL: {type(e).__name__}: {e}")
+        if args.write:
+            notify(fatal_alert(f"DB read failed: {type(e).__name__}: {e}"))
+        return 2
 
     ours = set()
     for s in SYMBOLS:
@@ -287,12 +357,16 @@ def main() -> int:
         print(f"  {r['symbol']:8s} {r['status']:22s} matched {r['matched_count']}/{r['db_count']} DB, "
               f"{r['exchange_count']} Kraken · orphans DB {r['unmatched_db_count']} / Kraken "
               f"{r['unmatched_exchange_count']} · drift {r['drift_count']} · balance {r['balance_status']}")
+    alert = build_alert(results)
     if args.write:
         try:
             write_results(client, results, notes)
         except Exception as e:
             print(f"FATAL: write failed: {type(e).__name__}: {e}")
+            notify(fatal_alert(f"results not saved: {type(e).__name__}: {e}") + (f"\n\n{alert}" if alert else ""))
             return 2
+        if alert:
+            notify(alert)
     else:
         print("\n(dry-run: nothing written. Pass --write to persist into reconciliation_runs.)")
     return 1 if any(r["status"] != "OK" for r in results) else 0
