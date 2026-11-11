@@ -293,6 +293,14 @@ e confronta con l'inventario atteso:
   trade eseguiti su Kraken in attesa che Supabase torni (si svuota da solo, ogni 10 min): 
   segnalalo. Un file `*_failed.jsonl` = trade **rifiutato** dal DB → va sistemato a mano, 
   segnalalo subito
+- **Il Mini esce da casa, non dallo studio (S134)**: Max a volte collega il Mini 
+  alla rete dello studio via Tailscale, e il client può riattivare da solo un 
+  exit node (l'11-nov era `tf-vps`, IP Oracle): allora Kraken/Supabase/Telegram 
+  passano da una macchina che non controlliamo. Verifica: 
+  `/Applications/Tailscale.app/Contents/MacOS/Tailscale status --json` → 
+  `ExitNodeStatus` deve essere null, e `curl -s https://api.ipify.org` dal Mini 
+  deve dare lo stesso IP del MacBook (casa). Se no **segnalalo** a Max e non 
+  toccare: lo toglie lui (menu Tailscale → Exit Node → None)
 - **In-process (no crontab)**: db_maintenance 04:00 UTC gira dentro 
   l'orchestrator (`bot/db_maintenance.py`, chiamato da `orchestrator.py`) — 
   verificare riga `[maintenance]` recente nel log orchestrator, non il crontab
