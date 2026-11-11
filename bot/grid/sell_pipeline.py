@@ -902,20 +902,36 @@ def execute_percentage_sell(
     # Profit skimming: set aside skim_pct% of positive profit into reserve
     if bot.skim_pct > 0 and realized_pnl > 0 and bot.reserve_ledger:
         skim_amount = realized_pnl * (bot.skim_pct / 100)
-        try:
-            trade_id = trade_db_row.get("id")
-            bot.reserve_ledger.log_skim(bot.symbol, skim_amount, trade_id=trade_id,
-                                          managed_by=bot.managed_by)
-            reserve_total = bot.reserve_ledger.get_reserve_total(
-                bot.symbol, force_refresh=True
-            )
-            trade_data["skim_amount"] = skim_amount
-            trade_data["reserve_total"] = reserve_total
-            logger.info(
-                f"SKIM ${skim_amount:.4f} → reserve total ${reserve_total:.2f} [{bot.symbol}]"
-            )
-        except Exception as e:
-            logger.warning(f"Failed to log skim for {bot.symbol}: {e}")
+        # S134: the trade itself is parked in the outbox (DB down) — park the
+        # skim with it so both land together, linked, when the DB is back.
+        if (trade_db_row or {}).get("_queued") and hasattr(bot.trade_logger, "attach_skim_to_queued"):
+            try:
+                attached = bot.trade_logger.attach_skim_to_queued(
+                    bot.symbol, trade_data.get("exchange_order_id"), skim_amount,
+                    managed_by=bot.managed_by,
+                )
+                if attached:
+                    trade_data["skim_amount"] = skim_amount
+                    logger.warning(
+                        f"SKIM ${skim_amount:.4f} queued with the parked trade [{bot.symbol}]"
+                    )
+            except Exception as e:
+                logger.warning(f"Failed to queue skim for {bot.symbol}: {e}")
+        else:
+            try:
+                trade_id = trade_db_row.get("id")
+                bot.reserve_ledger.log_skim(bot.symbol, skim_amount, trade_id=trade_id,
+                                              managed_by=bot.managed_by)
+                reserve_total = bot.reserve_ledger.get_reserve_total(
+                    bot.symbol, force_refresh=True
+                )
+                trade_data["skim_amount"] = skim_amount
+                trade_data["reserve_total"] = reserve_total
+                logger.info(
+                    f"SKIM ${skim_amount:.4f} → reserve total ${reserve_total:.2f} [{bot.symbol}]"
+                )
+            except Exception as e:
+                logger.warning(f"Failed to log skim for {bot.symbol}: {e}")
 
     logger.info(
         f"SELL {amount:.6f} {bot.symbol} @ {fmt_price(price)} "

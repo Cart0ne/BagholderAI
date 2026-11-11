@@ -16,7 +16,11 @@ from bot.sherpa.config_writer import WRITABLE_PARAMETERS as SHERPA_WRITABLE_PARA
 
 logger = logging.getLogger("bagholderai.config")
 
-CONFIG_REFRESH_INTERVAL = 300  # seconds between config refreshes
+# S134 (alleggerire Supabase): 300 → 1800. Sherpa now runs every 30 min and
+# its regime input moves every 4h, so a 5-min refresh re-read an unchanged row.
+# Side effect: a manual edit from /grid (or is_active=false) reaches the bot
+# within 30 min instead of 5.
+CONFIG_REFRESH_INTERVAL = 1800  # seconds between config refreshes
 
 
 # Fields to read from bot_config

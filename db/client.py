@@ -3,10 +3,106 @@ BagHolderAI - Database Client
 Handles all Supabase interactions: logging trades, updating portfolio, etc.
 """
 
-from datetime import datetime, date
+import json
+import logging
+import os
+import time
+from datetime import datetime, date, timezone
 from decimal import Decimal
+from pathlib import Path
 from typing import Optional
 from config.settings import DatabaseConfig
+
+logger = logging.getLogger("bagholderai.db")
+
+
+# --- S134 trade outbox --------------------------------------------------------
+# A trade already filled on the exchange whose INSERT fails because Supabase is
+# unreachable is parked in logs/trade_outbox_<SYMBOL>.jsonl (one file per grid
+# process, no concurrent writers) and flushed in order once the DB answers.
+# Permanent rejections (triggers, constraints) are NOT parked: they raise as
+# before, so a real bug stays visible.
+OUTBOX_RETRY_S = 600  # at most one flush attempt per 10 min during an outage
+_OUTBOX_LAST_ATTEMPT: dict = {}
+_TRANSIENT_CODES = {"PGRST002", "502", "503", "504", "520", "521", "522", "523", "524"}
+_TRANSIENT_TEXT = ("timed out", "timeout", "upstream connect", "schema cache",
+                   "JSON could not be generated", "Server disconnected",
+                   "Connection refused", "connection reset", "Name or service not known",
+                   "nodename nor servname")
+
+
+def _outbox_dir() -> Path:
+    override = os.getenv("BAGHOLDER_TRADE_OUTBOX_DIR")
+    if override:
+        return Path(override)
+    return Path(__file__).resolve().parent.parent / "logs"
+
+
+def _outbox_path(symbol: str, failed: bool = False) -> Path:
+    name = symbol.replace("/", "_")
+    suffix = "_failed" if failed else ""
+    return _outbox_dir() / f"trade_outbox_{name}{suffix}.jsonl"
+
+
+def _outbox_read(symbol: str) -> list:
+    path = _outbox_path(symbol)
+    if not path.exists():
+        return []
+    entries = []
+    for line in path.read_text().splitlines():
+        if not line.strip():
+            continue
+        try:
+            entries.append(json.loads(line))
+        except json.JSONDecodeError:
+            logger.error(f"[{symbol}] Outbox: unreadable line skipped: {line[:200]}")
+    return entries
+
+
+def _outbox_write(symbol: str, entries: list) -> None:
+    path = _outbox_path(symbol)
+    if not entries:
+        path.unlink(missing_ok=True)
+        return
+    tmp = path.with_suffix(".tmp")
+    tmp.write_text("".join(json.dumps(e, default=str) + "\n" for e in entries))
+    tmp.replace(path)
+
+
+def _outbox_append(symbol: str, data: dict, fill_time: str) -> None:
+    path = _outbox_path(symbol)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    entry = {"fill_time": fill_time, "data": data, "skim": None}
+    with path.open("a") as f:
+        f.write(json.dumps(entry, default=str) + "\n")
+
+
+def _outbox_append_failed(symbol: str, entry: dict, error: str) -> None:
+    path = _outbox_path(symbol, failed=True)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a") as f:
+        f.write(json.dumps({**entry, "error": error[:500]}, default=str) + "\n")
+
+
+def _is_transient_db_error(e: Exception) -> bool:
+    """True when the DB/gateway is unreachable, False when it answered with a
+    real rejection (trigger, constraint, bad request)."""
+    code = str(getattr(e, "code", "") or "")
+    msg = str(getattr(e, "message", "") or e)
+    if code in _TRANSIENT_CODES:
+        return True
+    if code.startswith("P0") or code.startswith("23") or code.startswith("42"):
+        return False  # raised by a trigger / constraint / SQL error
+    try:
+        import httpx
+        if isinstance(e, (httpx.TimeoutException, httpx.TransportError)):
+            return True
+    except ImportError:
+        pass
+    if isinstance(e, (TimeoutError, ConnectionError, OSError)):
+        return True
+    low = msg.lower()
+    return any(t.lower() in low for t in _TRANSIENT_TEXT)
 
 
 def get_client():
@@ -121,6 +217,9 @@ class TradeLogger:
         fee_asset: Optional[str] = None,
     ) -> dict:
         """Log a trade to the database."""
+        # S134: taken first — get_current_cycle below can block for minutes
+        # during an outage, and a parked trade must keep its real fill time.
+        fill_time = datetime.now(timezone.utc).isoformat()
         data = {
             "symbol": symbol,
             "side": side,
@@ -146,8 +245,133 @@ class TradeLogger:
         if fee_asset is not None:
             data["fee_asset"] = fee_asset
 
-        result = self.client.table("trades").insert(data).execute()
+        # S134 trade outbox: a fill that already happened on the exchange must
+        # never be lost because Supabase is down (14-ott SOL, 08-nov BTC). The
+        # happy path is unchanged; only a transient DB failure parks the row in
+        # a local file, flushed in order as soon as the DB answers again.
+        if _outbox_read(symbol):
+            # Older trades still parked: they must land first (the short-sell
+            # trigger sums buys/sells, order matters).
+            self.flush_outbox(symbol)
+            if _outbox_read(symbol):
+                _outbox_append(symbol, data, fill_time)
+                logger.error(
+                    f"[{symbol}] Trade queued to outbox behind earlier unsent "
+                    f"trades ({side} {amount} @ {price}, id={exchange_order_id})"
+                )
+                return {"_queued": True}
+
+        try:
+            result = self.client.table("trades").insert(data).execute()
+        except Exception as e:
+            if not _is_transient_db_error(e):
+                raise
+            _outbox_append(symbol, data, fill_time)
+            logger.error(
+                f"[{symbol}] Trade NOT logged, DB unreachable ({e}) — queued to "
+                f"outbox, will retry ({side} {amount} @ {price}, id={exchange_order_id})"
+            )
+            return {"_queued": True}
         return result.data[0] if result.data else {}
+
+    # --- S134 trade outbox ------------------------------------------------
+
+    def attach_skim_to_queued(self, symbol: str, exchange_order_id: Optional[str],
+                              amount: float, managed_by: Optional[str] = None,
+                              config_version: str = "v3") -> bool:
+        """Attach a profit skim to a SELL parked in the outbox, so it is
+        written together with (and linked to) the trade when it lands."""
+        entries = _outbox_read(symbol)
+        for entry in reversed(entries):
+            if entry["data"].get("exchange_order_id") == exchange_order_id:
+                entry["skim"] = {
+                    "amount": round(amount, 8),
+                    "managed_by": managed_by,
+                    "config_version": config_version,
+                }
+                _outbox_write(symbol, entries)
+                return True
+        return False
+
+    def flush_outbox(self, symbol: str, force: bool = False) -> int:
+        """Try to write parked trades (oldest first). Never raises.
+
+        Rate-limited to one attempt every OUTBOX_RETRY_S per symbol (a DB call
+        during an outage can block for minutes), unless force=True (boot).
+        Returns how many entries are still parked.
+        """
+        entries = _outbox_read(symbol)
+        if not entries:
+            return 0
+        now = time.time()
+        last = _OUTBOX_LAST_ATTEMPT.get(symbol, 0.0)
+        if not force and (now - last) < OUTBOX_RETRY_S:
+            return len(entries)
+        _OUTBOX_LAST_ATTEMPT[symbol] = now
+
+        while entries:
+            entry = entries[0]
+            try:
+                self._flush_one(symbol, entry)
+            except Exception as e:
+                if _is_transient_db_error(e):
+                    logger.warning(
+                        f"[{symbol}] Outbox flush: DB still unreachable ({e}); "
+                        f"{len(entries)} trade(s) still parked"
+                    )
+                    break
+                # Permanent rejection (e.g. trigger): park it aside so it
+                # doesn't block the queue forever. The nightly reconciliation
+                # flags the missing trade.
+                logger.error(
+                    f"[{symbol}] Outbox flush: trade REJECTED by DB ({e}); moved "
+                    f"to {_outbox_path(symbol, failed=True).name}"
+                )
+                _outbox_append_failed(symbol, entry, str(e))
+            entries.pop(0)
+            _outbox_write(symbol, entries)
+        return len(entries)
+
+    def _flush_one(self, symbol: str, entry: dict) -> None:
+        data = dict(entry["data"])
+        data["created_at"] = entry["fill_time"]
+        data["cycle"] = get_current_cycle(self.client, symbol)
+        trade_id = None
+        order_id = data.get("exchange_order_id")
+        if order_id:
+            # The first attempt may have landed even though the reply timed
+            # out: never insert the same exchange order twice.
+            found = (
+                self.client.table("trades").select("id")
+                .eq("exchange_order_id", order_id).limit(1).execute()
+            )
+            if found.data:
+                trade_id = found.data[0]["id"]
+        if trade_id is None:
+            result = self.client.table("trades").insert(data).execute()
+            trade_id = result.data[0]["id"] if result.data else None
+            logger.info(
+                f"[{symbol}] Outbox flush: trade written ({data.get('side')} "
+                f"{data.get('amount')} @ {data.get('price')}, fill {entry['fill_time']}, "
+                f"id={order_id})"
+            )
+        skim = entry.get("skim")
+        if skim and trade_id:
+            existing = (
+                self.client.table("reserve_ledger").select("id")
+                .eq("trade_id", trade_id).limit(1).execute()
+            )
+            if not existing.data:
+                self.client.table("reserve_ledger").insert({
+                    "symbol": symbol,
+                    "amount": skim["amount"],
+                    "trade_id": trade_id,
+                    "config_version": skim.get("config_version", "v3"),
+                    "managed_by": skim.get("managed_by"),
+                    "cycle": data["cycle"],
+                    "created_at": entry["fill_time"],
+                }).execute()
+                logger.info(f"[{symbol}] Outbox flush: skim ${skim['amount']} written")
     
     def get_trades(
         self,
@@ -337,7 +561,9 @@ class ReserveLedger:
     Cache TTL = 5 minutes — refreshed on config reload cycles.
     """
 
-    CACHE_TTL = 300  # seconds
+    # S134: 300 → 1800. The reserve only changes on a skim (sell), and the sell
+    # path force-refreshes right after it; the TTL just bounded idle re-reads.
+    CACHE_TTL = 1800  # seconds
 
     def __init__(self):
         self.client = get_client()

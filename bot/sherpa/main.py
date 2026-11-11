@@ -62,7 +62,11 @@ from bot.sherpa.volatility import get_volatility_multipliers
 
 logger = logging.getLogger("bagholderai.sherpa")
 
-LOOP_INTERVAL_S = 120
+# S134 (alleggerire Supabase): 120 → 1800. Each loop costs ~6 reads (slow
+# score, regime, bots, board state, cooldown logs); the only dynamic input is
+# the Sentinel slow-loop regime, refreshed every 4h, and the Board debounce is
+# 24h — a 2-min loop re-read the same rows ~120 times per regime update.
+LOOP_INTERVAL_S = 1800
 
 # Brief 79c (S79 2026-05-18): even when the on-change filter skips an
 # insert, write at least one row per symbol per SHERPA_HEARTBEAT_S so

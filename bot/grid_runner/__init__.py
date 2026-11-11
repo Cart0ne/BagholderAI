@@ -425,6 +425,18 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
         logger.warning(f"[{cfg.symbol}] Could not load exchange filters: {e}")
 
     bot.setup_grid(price)
+    # S134: trades parked in the outbox during a Supabase outage must reach the
+    # DB BEFORE the boot replay rebuilds holdings/avg cost from `trades`.
+    if trade_logger is not None:
+        try:
+            _left = trade_logger.flush_outbox(cfg.symbol, force=True)
+            if _left:
+                logger.error(
+                    f"[{cfg.symbol}] {_left} trade(s) still parked in the outbox at "
+                    f"boot (DB not accepting them) — the boot replay will miss them"
+                )
+        except Exception as e:
+            logger.warning(f"[{cfg.symbol}] Outbox flush at boot failed: {e}")
     # Brief s70 FASE 2: avg-cost only. Boot replay popola state.holdings
     # + state.avg_buy_price + _pct_last_buy_price + _last_trade_time.
     bot.init_avg_cost_state_from_db()
@@ -648,6 +660,14 @@ def run_grid_bot(symbol: str = "BTC/USDT", once: bool = False, dry_run: bool = F
             # Brief 74b (S74b 2026-05-12): mirror in-memory state for the
             # public dashboard widgets. Best-effort, never fails the loop.
             _upsert_runtime_state(trade_logger, bot, cfg.symbol)
+
+            # S134: retry trades parked during a Supabase outage. No DB call
+            # when the outbox is empty; rate-limited (10 min) inside.
+            if trade_logger is not None:
+                try:
+                    trade_logger.flush_outbox(cfg.symbol)
+                except Exception as e:
+                    logger.warning(f"[{cfg.symbol}] Outbox flush failed: {e}")
 
             # 39a/39c: stop-loss or take-profit inside check_price_and_execute
             # may have flagged pending_liquidation. Handle it NOW (before the

@@ -30,7 +30,13 @@ from bot.db_maintenance import maybe_run_maintenance
 
 logger = logging.getLogger("bagholderai.orchestrator")
 
-POLL_INTERVAL = 30          # seconds between bot_config reconciliations
+POLL_INTERVAL = 30          # seconds between process-liveness checks (no DB call)
+# S134 (alleggerire Supabase): bot_config was read every POLL_INTERVAL
+# (~2.900 reads/day + as many of trend_config). Process supervision stays at
+# 30s; the DB read happens every CONFIG_POLL_INTERVAL, or immediately when a
+# child process has exited (so a bot stopped via is_active=false is never
+# mistaken for a crash on stale data).
+CONFIG_POLL_INTERVAL = 300
 MAX_RESTART_ATTEMPTS = 5    # consecutive crash restarts before giving up on a symbol
 HEALTH_CHECK_INTERVAL = 24 * 60 * 60  # 57a: daily FIFO/holdings/cash integrity check
 
@@ -373,26 +379,47 @@ def run_orchestrator():
     _last_error_alert_ts = 0.0
     # 57a: timestamp of the last periodic health check.
     _last_health_check_ts = time.time()
+    # S134: cached desired state between DB reads (see CONFIG_POLL_INTERVAL).
+    desired: dict = {}
+    tf_enabled = False
+    _last_config_read_ts = 0.0
+    _config_loaded = False
     while not shutting_down["v"]:
         try:
-            # 1. Desired state from bot_config
+            # 1. Desired state from bot_config — S134: only every
+            # CONFIG_POLL_INTERVAL, or right away if a child has exited.
             # S118: venue read for spawn telemetry only — the orchestrator is
             # venue-agnostic by design (it spawns any is_active row; the
             # grid_runner picks its exchange from its own row).
-            result = supabase.table("bot_config").select(
-                "symbol, is_active, managed_by, pending_liquidation, venue"
-            ).execute()
-            desired = {r["symbol"]: r for r in (result.data or [])}
+            now_ts = time.time()
+            child_exited = any(
+                info.process.poll() is not None and not info.gave_up
+                for info in grid_processes.values()
+            )
+            if (not _config_loaded or child_exited
+                    or (now_ts - _last_config_read_ts) >= CONFIG_POLL_INTERVAL):
+                # Stamp the attempt first: during an outage retry every
+                # CONFIG_POLL_INTERVAL, not every 30s (each call can block).
+                _last_config_read_ts = now_ts
+                result = supabase.table("bot_config").select(
+                    "symbol, is_active, managed_by, pending_liquidation, venue"
+                ).execute()
+                desired = {r["symbol"]: r for r in (result.data or [])}
 
-            # 2. Trend follower enable flag
-            try:
-                tf_result = supabase.table("trend_config").select(
-                    "trend_follower_enabled"
-                ).limit(1).execute()
-                tf_enabled = bool(tf_result.data[0]["trend_follower_enabled"]) if tf_result.data else False
-            except Exception as e:
-                logger.warning(f"Could not read trend_config: {e}")
-                tf_enabled = False
+                # 2. Trend follower enable flag — S134: not read at all when
+                # the env flag keeps TF off (it cannot run either way).
+                if ENABLE_TF:
+                    try:
+                        tf_result = supabase.table("trend_config").select(
+                            "trend_follower_enabled"
+                        ).limit(1).execute()
+                        tf_enabled = bool(tf_result.data[0]["trend_follower_enabled"]) if tf_result.data else False
+                    except Exception as e:
+                        logger.warning(f"Could not read trend_config: {e}")
+                        tf_enabled = False
+                else:
+                    tf_enabled = False
+                _config_loaded = True
 
             # A row is "should run" when is_active=True. The historical
             # contract also required pending_liquidation=False, under the
@@ -590,7 +617,7 @@ def run_orchestrator():
                         f"🚀 <b>Orchestrator started</b>\n"
                         f"Grid bots: {grid_count} ({symbols_list})\n"
                         f"Trend Follower: {tf_status}\n"
-                        f"Poll interval: {POLL_INTERVAL}s"
+                        f"Poll: processes {POLL_INTERVAL}s · config {CONFIG_POLL_INTERVAL}s"
                     )
                 except Exception:
                     pass
@@ -605,6 +632,7 @@ def run_orchestrator():
                         "symbols": sorted(grid_processes.keys()),
                         "tf_enabled": tf_enabled,
                         "poll_interval_s": POLL_INTERVAL,
+                        "config_poll_interval_s": CONFIG_POLL_INTERVAL,
                     },
                 )
                 first_run = False

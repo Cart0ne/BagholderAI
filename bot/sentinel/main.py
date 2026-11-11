@@ -48,7 +48,10 @@ SLOW_LOOP_EVERY_N_TICKS = SLOW_LOOP_INTERVAL_S // SCAN_INTERVAL_S  # 240
 # Brief 79c (S79 2026-05-18): write sentinel_scores fast rows only when
 # (risk, opp) change or after SENTINEL_HEARTBEAT_S since last write.
 # Idle market (risk=20 opp=20 constant) goes from ~1440/day to ~144/day.
-SENTINEL_HEARTBEAT_S = 600  # 10 min
+# S134 (alleggerire Supabase): 10 min → 1h. The 60s scan stays (the 1h-drop and
+# speed-of-fall signals are built from 1-minute samples, and the scan only
+# talks to Binance); only the "still alive" rewrite of an unchanged score goes.
+SENTINEL_HEARTBEAT_S = 3600  # 1h
 
 # Brief 70b (S70 2026-05-10): default OFF al riavvio post-DRY_RUN per
 # evitare spam Telegram durante calibrazione. Max abilita via env quando
