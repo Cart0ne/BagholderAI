@@ -41,8 +41,8 @@ export interface RoadmapData {
 }
 
 export const ROADMAP: RoadmapData = {
-  version: "Versione 1.58 — Ottobre 2026",
-  lastUpdated: "2026-10-18",
+  version: "Versione 1.59 — Novembre 2026",
+  lastUpdated: "2026-11-11",
   phases: [
     {
       id: 0,
@@ -82,7 +82,7 @@ export const ROADMAP: RoadmapData = {
         { text: "Public dashboard: CEO's Log + Numbers + Under the Hood", status: "done", who: "AI", comment: "Session 14. Static HTML + Supabase REST." },
         { text: "Admin dashboard with parameter editing", status: "done", who: "AI", comment: "Session 17. SHA-256 auth, live config updates." },
         { text: "Percentage grid: buy_pct / sell_pct in bot_config", status: "done", who: "AI", comment: "Session 18. BTC 1.8/1.0, SOL 1.5/1.0, BONK 1.0/1.0." },
-        { text: "Bot reads config from Supabase (refresh every 5 min)", status: "done", who: "AI", comment: "Session 18. No more code changes to tweak parameters." },
+        { text: "Bot reads config from Supabase (refresh every 5 min)", status: "done", who: "AI", comment: "Session 18. No more code changes to tweak parameters. S134: every 30 min now, to spare the free database." },
         { text: "Admin dashboard: buy_pct / sell_pct / grid_mode fields", status: "done", who: "AI", comment: "Session 19. Confirmed working." },
         { text: "Activate grid_mode=percentage and beta test", status: "done", who: "BOTH", comment: "Session 20. Activated with a side of phantom money." },
       ],
@@ -204,6 +204,7 @@ export const ROADMAP: RoadmapData = {
         { text: "Nightly Kraken ↔ database reconciliation", status: "active", who: "AI", comment: "S129 (2026-09-27). Every night at 03:00 each real-money order in our database is matched to its Kraken order (quantity, price, fee) and coin balances are compared with the exchange. First run: 65 of 65 orders matched, zero discrepancies. Visible in the private admin panel for now; the public dashboard switches over after a few clean nights. USD cash is not reconciled yet. S133 (2026-10-18): first real catch — a $5 SOL buy executed on Kraken during a database outage on 14 October and never written to our records. The check flagged it the next night, but the flag sat unread in the admin panel for four nights; the trade was rebuilt from the exchange record, and a failed check now also sends a message to the operator." },
         { text: "First strategy review on real money", status: "done", who: "AI", comment: "S130 (2026-09-28). Two months of real trades checked against simple alternatives fixed in advance (hold, weekly buys, fixed parameters, lower fees, different dead-zone timings) and against eleven historical months of falling, sideways and rising markets. Before trusting the simulator we made it replay our real trades: 54 of 62 came out the same. Report to the Board; decisions pending." },
         { text: "Dead zone becomes an explicit rule", status: "done", who: "AI", comment: "S132 (2026-09-28). The review found that the dead-zone reset (sell a stuck lot after a few idle hours) only ever fired when the Mac Mini restarted, and that making it fire as designed would have cost money in a rising market. The Board turned the accident into a rule: off in greed and neutral, on in fear, and it no longer moves the buy price. Tested against the old behaviour on the two real months and on eleven historical months before going live the same evening." },
+        { text: "Database outages no longer lose trades — and the bots ask the database 8× less often", status: "done", who: "AI", comment: "S134 (2026-11-11). Our free database froze for hours almost every day since late October, and on 8 November a $33 BTC buy executed on Kraken never reached our records (caught by the nightly reconciliation, rebuilt from the exchange record). Max's hunch: another project on the same free plan never freezes, so the problem was us. The access logs agreed: ~18,700 requests a day, almost all re-reading rows that had not changed, against under 1,000 for the other project. Now the bots read their settings every 5-30 minutes instead of every 30 seconds and write their status only when it changes: ~2,400 requests a day, trading untouched. And a trade the database cannot take is kept in a local file on the Mac Mini and written, in order and never twice, as soon as the database is back." },
         { text: "Intensive monitoring (first week)", status: "todo", who: "MAX" },
         { text: "VPS migration for stability", status: "todo", who: "BOTH" },
         { text: "Gradual scale beyond $400", status: "todo", who: "MAX" },
