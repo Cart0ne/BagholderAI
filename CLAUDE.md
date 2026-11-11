@@ -285,9 +285,14 @@ e confronta con l'inventario atteso:
 - **Cron sani** (crontab presente + ultimo run non in errore nei log): 
   x_poster `--cron` 20:30 Rome, reconcile 03:00 Rome (**Kraken** dal S129, R.1:
   `cron_reconcile.sh` → `reconcile_kraken.py --write`, log `~/cron_reconcile.log`,
-  esito in `/admin` › "Reconciliation · Kraken" — uno status ≠ OK va segnalato), telegram_publisher ogni 10 min, x_scanner 
-  sabato 08:00, supabase_metrics_recorder ogni 30 min 
+  esito in `/admin` › "Reconciliation · Kraken" — uno status ≠ OK va segnalato), telegram_publisher ogni 30 min 
+  (era 10 fino al S134), x_scanner sabato 08:00, supabase_metrics_recorder ogni 30 min 
   (`logs/supabase_metrics.jsonl`, una riga `ok:false` = Supabase bloccato)
+- **Coda dei trade (S134)**: `ls /Volumes/Archivio/bagholderai/logs/trade_outbox_*` 
+  sul Mini. Nessun file = tutti i trade sono a DB. Un file `trade_outbox_<SYM>.jsonl` = 
+  trade eseguiti su Kraken in attesa che Supabase torni (si svuota da solo, ogni 10 min): 
+  segnalalo. Un file `*_failed.jsonl` = trade **rifiutato** dal DB → va sistemato a mano, 
+  segnalalo subito
 - **In-process (no crontab)**: db_maintenance 04:00 UTC gira dentro 
   l'orchestrator (`bot/db_maintenance.py`, chiamato da `orchestrator.py`) — 
   verificare riga `[maintenance]` recente nel log orchestrator, non il crontab
@@ -301,13 +306,16 @@ l'orchestrator / i bot sul Mac Mini **SOLO se Max lo chiede esplicitamente**.
 Pull e push restano autonomi di CC; il restart no — è Max a deciderne il 
 momento. Questa regola supera sia il divieto assoluto "CC non riavvia" (usato 
 in alcuni brief) sia l'autonomia piena della vecchia nota. Quando Max chiede 
-il restart: catturare prima il comando di lancio corrente (`ps -p <pid> -o 
-command=`) per replicare gli env flag esatti, fare shutdown graceful 
-(SIGTERM all'orchestrator, che propaga ai figli), NON toccare i processi 
-standalone NewsKeeper v1/v2, rilanciare daemonizzato (`nohup caffeinate … &`), 
-verificare i processi su + l'effetto a DB. Il cold start si fa con 
-`venv/bin/python3.13 scripts/start_bots.py` (unica fonte dei flag, vedi 
-`config/BOT_RESTART_RUNBOOK.md`).
+il restart: catturare prima gli env flag esatti dal processo vivo con 
+`ps eww -p <pid>` (`ps -o command=` NON li mostra) e confrontarli con `BOT_ENV` 
+di `scripts/start_bots.py`, fare shutdown graceful (SIGTERM all'orchestrator, 
+che propaga ai figli), NON toccare il processo standalone NewsKeeper v2, 
+rilanciare con `venv/bin/python3.13 scripts/start_bots.py` (unica fonte dei 
+flag, lancia solo ciò che manca; vedi `config/BOT_RESTART_RUNBOOK.md`), 
+verificare i processi su + l'effetto a DB. Via SSH redirigere l'output su 
+file (`… > /tmp/start_bots.out 2>&1; cat /tmp/start_bots.out`, comandi pronti 
+nel runbook §3/§4): senza, i figli tengono aperto lo stdout e il comando resta 
+appeso (S134).
 
 **AVVIO AUTOMATICO DOPO UN RIAVVIO DEL MINI (R.7, S129 2026-09-27, ok Max)**: 
 i bot ripartono **da soli** 5 minuti dopo il login (LaunchAgent 
@@ -328,6 +336,13 @@ solo su richiesta di Max.
 - 2 grid attivi: BTC/USD, SOL/USD (TF spento via flag)
 - Stack: Python, Supabase (DB, piano FREE), Telegram (notifications), 
   Vercel (sito + dashboard)
+- **Supabase FREE: tenere basso il numero di richieste (S134, Max).** La VM 
+  gratuita si bloccava quasi ogni giorno con ~18.700 richieste/giorno; dopo il 
+  S134 i bot ne fanno ~2.400 (orchestrator 5 min, Sherpa 30 min, config grid 
+  30 min, stato grid solo se cambia). Ogni nuova lettura/scrittura periodica 
+  va giustificata: prima di aggiungerne una, stima quante richieste al giorno 
+  costa. Misura: connettore Supabase `query_logs` su `edge_logs` (funziona 
+  anche col DB giù); l'IP dice quale macchina chiama (Mini ≠ MacBook dall'11-nov)
 - Host dei bot: Mac Mini, repo ufficiale `/Volumes/Archivio/bagholderai`
 - Lingua preferita per la comunicazione: italiano
 
